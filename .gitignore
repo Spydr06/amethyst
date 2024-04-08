@@ -1,0 +1,11 @@
+*.elf
+*.sym
+*.o
+*.out
+*.a
+*.iso
+
+build/
+compile_commands.json
+.cache/
+
