@@ -1,18 +1,28 @@
-KERNEL_ELF ?= kernel.elf
-KERNEL_SYM ?= kernel.sym
+ARCH ?= x86_64
+VERSION ?= 0.0.1
+
+KERNEL_ELF ?= amethyst-$(VERSION)-$(ARCH).elf
+KERNEL_SYM ?= amethyst-$(VERSION)-$(ARCH).sym
 BUILD_DIR ?= build
 ISOROOT_DIR ?= $(BUILD_DIR)/iso
 
 ISO ?= amethyst.iso
 
-SOURCES := $(shell find -name "*.c" -or -name "*.S" | grep -v "arch/")
+SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S" 
+SOURCES := $(shell find $(SOURCE_PATTERN) | grep -v "arch/")
 
-ARCH ?= x86_64
+INCLUDES := . include libk/include
+
+C_CXX_FLAGS += -Wall -Wextra \
+			   -ffreestanding -fno-stack-protector -fno-stack-check -fno-lto -fPIE \
+		       -g \
+			   $(foreach i, $(INCLUDES), -I$(shell realpath $i))
 
 override CC := $(ARCH)-elf-gcc
-CFLAGS += -Wall -Wextra -std=c2x\
-		  -ffreestanding -fno-stack-protector -fno-stack-check -fno-lto -fPIE \
-		  -I$(shell realpath include) -I$(shell realpath .) -g
+CFLAGS += -std=c2x $(C_CXX_FLAGS)
+
+override CXX := $(ARCH)-elf-g++
+CXXFLAGS += -std=c++2x $(C_CXX_FLAGS)
 
 override AS := $(ARCH)-elf-as
 ASFLAGS += -am
@@ -30,13 +40,15 @@ QEMUFLAGS += -m 2G -serial stdio -display sdl
 
 ifeq ($(ARCH), x86_64)
 	CFLAGS += -m64 -march=x86-64 -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2
-	SOURCES += $(shell find $(ARCH_DIR) arch/x86-common -name "*.c" -or -name "*.S")
+	SOURCES += $(shell find $(ARCH_DIR) arch/x86-common $(SOURCE_PATTERN))
 else
 _error:
 	$(error Unsupported architecture "$(ARCH)")
 endif
 
 OBJECTS := $(patsubst %, $(BUILD_DIR)/%.o, $(SOURCES))
+
+VERSION_H := include/version.h
 
 .PHONY: all
 all: $(ISO)
@@ -49,11 +61,15 @@ $(KERNEL_ELF): $(OBJECTS)
 	$(OBJCOPY) --only-keep-debug $(KERNEL_ELF) $(KERNEL_SYM)
 	$(OBJCOPY) --strip-debug $(KERNEL_ELF)
 
-$(BUILD_DIR)/%.c.o: %.c
+$(BUILD_DIR)/%.c.o: %.c | $(VERSION_H)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.c.o=%.c.d)" -c $^ -o $@
 
-$(BUILD_DIR)/%.S: %.S
+$(BUILD_DIR)/%.cpp.o: %.cpp | $(VERSION_H)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -MMD -MP -MF "$(@:%.cpp.o=%.cpp.d)" -c $^ -o $@
+
+$(BUILD_DIR)/%.S: %.S | $(VERSION_H)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.S=%.s.d)" -E $^ -o $@
 
@@ -61,14 +77,21 @@ $(BUILD_DIR)/%.S.o: $(BUILD_DIR)/%.S
 	@mkdir -p $(dir $@)
 	$(AS) $(ASFLAGS) -c $^ -o $@
 
+$(VERSION_H): $(VERSION_H).in
+	sed -e 's|@VERSION@|$(VERSION)|g' $< > $@
+
 .PHONY: iso
 iso: $(ISO)
 
-$(ISO): $(KERNEL_ELF)
-	@mkdir -p $(ISOROOT_DIR)/boot/grub
-	cp -v grub.cfg $(ISOROOT_DIR)/boot/grub
+$(ISO): $(KERNEL_ELF) | $(ISOROOT_DIR)/boot/grub/grub.cfg
 	cp -v $< $(ISOROOT_DIR)/boot
 	grub-mkrescue -o $@ $(ISOROOT_DIR)
+
+$(ISOROOT_DIR)/boot/grub/grub.cfg: grub.cfg.in
+	@mkdir -p $(dir $@)
+	sed -e 's|@VERSION@|$(VERSION)|g' \
+		-e 's|@KERNEL_ELF@|$(notdir $(KERNEL_ELF))|' \
+		$< > $@
 
 .PHONY: run
 run: $(ISO)
@@ -80,4 +103,5 @@ clean:
 	rm -f $(KERNEL_ELF)
 	rm -f $(KERNEL_SYM)
 	rm -rf $(ISOROOT_DIR)
+	rm -f $(VERSION_H)
 
