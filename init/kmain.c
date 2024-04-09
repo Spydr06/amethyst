@@ -1,18 +1,30 @@
-#include <arch/x86-common/io.h>
+#include <tty.h>
+#include <multiboot.h>
+#include <kernelio.h>
 
-void putb(uint8_t c) {
-    while((inb(0x3f8+5) & 0x20) == 0);
-
-    outb(0x3f8, c);
-}
-
-void puts(const char* s) {
-    while(*s++)
-        putb(*s);
-}
+#include <stdint.h>
 
 void kmain(void)
 {
-    puts("Hello, World!\n");
+    console_init();
+    
+    if(multiboot_sig != MULTIBOOT_BOOTLOADER_MAGIC) {
+        printk("Corrupted multiboot information.\nGot: %p\n", (void*) (uintptr_t) multiboot_sig);
+        return;
+    }
+
+    multiboot_info_t* multiboot_info = (void*) (uintptr_t) multiboot_ptr;        
+
+    printk("Booting from %s...\n", (const char*) (uintptr_t) multiboot_info->boot_loader_name);
+
+    printk("Framebuffer of type %hhu at %p [%xx%x:%u]\n",
+            multiboot_info->framebuffer_type, 
+            (void*) (uintptr_t) multiboot_info->framebuffer_addr, 
+            multiboot_info->framebuffer_width, multiboot_info->framebuffer_height,
+            multiboot_info->framebuffer_bpp);
+
+     
+
+    printk("Hello, World!\n");
     while(1);
 }

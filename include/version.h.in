@@ -1,0 +1,7 @@
+#ifndef _AMETHYST_VERSION_H
+#define _AMETHYST_VERSION_H
+
+#define AMETHYST_VERSION "@VERSION@"
+
+#endif /* _AMETHYST_VERSION_H */
+

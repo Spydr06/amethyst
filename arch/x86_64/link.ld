@@ -2,7 +2,7 @@ OUTPUT_FORMAT(elf64-x86-64)
 
 KERNEL_BASE = 0xFFFFFFFF80000000;
 
-ENTRY(start)
+ENTRY(_start)
 SECTIONS {
 	. = 0x100000;
 	
@@ -31,11 +31,13 @@ SECTIONS {
 	}
 	
 	/* Zero-initialised data */
+    . = ALIGN(16);
 	.bss : AT(ADDR(.bss) - KERNEL_BASE) {
 		*(.bss .bss.*)
 	}
+    . = ALIGN(16);
 	
-	kernel_end = .;
+	_end = .;
 	
 	/DISCARD/ : {
 		*(.note .note.*)

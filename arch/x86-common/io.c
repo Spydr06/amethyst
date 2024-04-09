@@ -54,8 +54,4 @@ void outl(uint16_t port, uint32_t value) {
     );
 }
 
-_Noreturn void hlt(void) {
-    __asm__ volatile("hlt");
-    while(1); // unreachable
-}
 
