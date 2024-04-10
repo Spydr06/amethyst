@@ -1,7 +1,7 @@
 #ifndef _AMETHYST_CDEFS_H
 #define _AMETHYST_CDEFS_H
 
-#ifdef __ASSEMBLY__
+#ifdef ASM_FILE
 #define _AC(X,Y)	X
 #define _AT(T,X)	X
 #else
@@ -18,6 +18,14 @@
 
 #define __section(sect) __attribute__((section (sect)))
 #define __always_inline __inline __attribute__ ((__always_inline__))
+
+#define __low_ptr(ptr) ((void*) (((uintptr_t) (ptr)) + _KERNEL_BASE_)) 
+
+#ifndef ASM_FILE
+
+extern const char _KERNEL_BASE_[];
+
+#endif /* ASM_FILE */
 
 #endif /* _AMETHYST_CDEFS_H */
 

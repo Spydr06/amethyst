@@ -9,28 +9,31 @@ SECTIONS
   PROVIDE(_LOAD_START_ = _ELF_START_);
   . = _ELF_START_;
 
-  .multiboot (_ELF_START_ ): {
+  .init (_ELF_START_): AT(ADDR(.init)) {
       PROVIDE(_MULTIBOOT_START_ = .);
       KEEP(*(.multiboot))
-   }
+      *(.inittext)
+  }
 
-  .text ALIGN(0x10) :
+  PROVIDE(_KERNEL_BASE_ = KERNEL_BASE);
+  . += KERNEL_BASE;
+  
+  .text ALIGN(0x1000) : AT(ADDR(.text) - KERNEL_BASE)
   {
     _TEXT_START_ = .;
-    *(.text*)
-    *(.gnu.linkonce.t*)
+    *(.text .text.*)
     _TEXT_END_ = .;
   }
 
-  .rodata :
+  .rodata ALIGN(0x1000) : AT(ADDR(.rodata) - KERNEL_BASE)
   {
     _RODATA_START_ = .;
-    *(.rodata*)
+    *(.rodata .rodata.*)
     *(.gnu.linkonce.r*)
     _RODATA_END_ = .;
   }
 
-  .init_array :
+  .init_array : AT(ADDR(.init_array) - KERNEL_BASE)
   {
     PROVIDE_HIDDEN (__init_array_start = .);
     KEEP (*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))
@@ -46,32 +49,34 @@ SECTIONS
   }*/
 
   /* For stack unwinding (exception handling)  */
-  .eh_frame_hdr ALIGN(0x8):
+  .eh_frame_hdr ALIGN(0x8) : AT(ADDR(.eh_frame_hdr) - KERNEL_BASE)
   {
     KEEP(*(.eh_frame_hdr*))
   }
-  .eh_frame ALIGN(0x8):
+
+  .eh_frame ALIGN(0x8) : AT(ADDR(.eh_frame) - KERNEL_BASE)
   {
   	PROVIDE (__eh_frame_start = .);
     KEEP(*(.eh_frame))
     LONG (0);
   }
-  .gcc_except_table :
+  .gcc_except_table : AT(ADDR(.gcc_except_table) - KERNEL_BASE)
   {
     *(.gcc_except_table)
   }
 
-  .data :
+  .data ALIGN(0x1000) : AT(ADDR(.data) - KERNEL_BASE)
   {
     _DATA_START_ = .;
-    *(.data*)
+    *(.padata)
+    *(.data .data.*)
     *(.gnu.linkonce.d*)
     _DATA_END_ = .;
   }
 
   PROVIDE(_LOAD_END_ = .);
 
-  .bss :
+  .bss : AT(ADDR(.bss) - KERNEL_BASE)
   {
     _BSS_START_ = .;
     *(.bss .bss.* .gnu.linkonce.b.*)
@@ -81,8 +86,9 @@ SECTIONS
 
   . = ALIGN(0x10);
   _end = .;
-    /DISCARD/ : {
-		*(.note .note.*)
-        *(.comment)
-	}
+  
+  /DISCARD/ : {
+    *(.note .note.*)
+    *(.comment)
+  }
 }

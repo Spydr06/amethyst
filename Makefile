@@ -9,16 +9,17 @@ KERNEL_SYM ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).sym
 ISOROOT_DIR ?= $(BUILD_DIR)/iso
 ISO ?= amethyst.iso
 
-#SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S" -or -name "*.s" 
-SOURCE_PATTERN := -name "*.S"
+SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S" -or -name "*.s" 
 SOURCES := $(shell find $(SOURCE_PATTERN) | grep -v "arch/")
 
 INCLUDES := . include libk/include
 
+SSP := $(shell openssl rand -hex 8)
+
 C_CXX_FLAGS += -Wall -Wextra \
 			   -ffreestanding -fno-stack-protector -fno-stack-check -fno-lto -fPIE \
 		       -g \
-			   -D__$(ARCH)__ -D__$(ARCH) \
+			   -D__$(ARCH)__ -D__$(ARCH) -D__SSP__=0x$(SSP) \
 			   $(foreach i, $(INCLUDES), -I$(shell realpath $i))
 
 override CC := $(ARCH)-elf-gcc
@@ -28,13 +29,15 @@ override CXX := $(ARCH)-elf-g++
 CXXFLAGS += -std=c++2x $(C_CXX_FLAGS)
 
 override AS := $(ARCH)-elf-as
-ASFLAGS += -am
+ASFLAGS += -am -g
 
 override ARCH_DIR := arch/$(ARCH)
 override LDSCRIPT := $(ARCH_DIR)/link.ld
 
 override LD := $(ARCH)-elf-ld
-LDFLAGS += -m elf_$(ARCH) -nostdlib -static -no-pie --no-dynamic-linker -z max-page-size=0x1000 -T $(LDSCRIPT)
+LDFLAGS += -m elf_$(ARCH) -nostdlib \
+		   -static -no-pie --no-dynamic-linker -z max-page-size=0x1000 \
+		   -T $(LDSCRIPT)
 
 override OBJCOPY := $(ARCH)-elf-objcopy
 

@@ -1,0 +1,7 @@
+#ifndef _AMETHYST_VIDEO_VGA_H
+#define _AMETHYST_VIDEO_VGA_H
+
+
+
+#endif /* _AMETHYST_VIDEO_VGA_H */
+
