@@ -1,14 +1,16 @@
 ARCH ?= x86_64
 VERSION ?= 0.0.1
 
-KERNEL_ELF ?= amethyst-$(VERSION)-$(ARCH).elf
-KERNEL_SYM ?= amethyst-$(VERSION)-$(ARCH).sym
 BUILD_DIR ?= build
-ISOROOT_DIR ?= $(BUILD_DIR)/iso
 
+KERNEL_ELF ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).elf
+KERNEL_SYM ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).sym
+
+ISOROOT_DIR ?= $(BUILD_DIR)/iso
 ISO ?= amethyst.iso
 
-SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S" -or -name "*.s" 
+#SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S" -or -name "*.s" 
+SOURCE_PATTERN := -name "*.S"
 SOURCES := $(shell find $(SOURCE_PATTERN) | grep -v "arch/")
 
 INCLUDES := . include libk/include
@@ -35,6 +37,10 @@ override LD := $(ARCH)-elf-ld
 LDFLAGS += -m elf_$(ARCH) -nostdlib -static -no-pie --no-dynamic-linker -z max-page-size=0x1000 -T $(LDSCRIPT)
 
 override OBJCOPY := $(ARCH)-elf-objcopy
+
+GDB ?= gdb
+GDBFLAGS := -ex "target remote localhost:1234" \
+			-ex "symbol-file $(KERNEL_SYM)"
 
 override QEMU := qemu-system-$(ARCH)
 QEMUFLAGS += -m 2G -serial stdio -display sdl
@@ -100,13 +106,16 @@ $(ISOROOT_DIR)/boot/grub/grub.cfg: grub.cfg.in
 
 .PHONY: run
 run: $(ISO)
-	$(QEMU) $(QEMUFLAGS) -cdrom $< -boot order=d -enable-kvm
+	$(QEMU) $(QEMUFLAGS) -cdrom $< -boot order=d
+
+.PHONY: debug
+debug: $(ISO)
+	$(QEMU) $(QEMUFLAGS) -cdrom $< -boot order=d -s -S &
+	$(GDB) $(GDBFLAGS)
 
 .PHONY: clean
 clean:
 	rm -rf $(BUILD_DIR)
-	rm -f $(KERNEL_ELF)
-	rm -f $(KERNEL_SYM)
 	rm -rf $(ISOROOT_DIR)
 	rm -f $(VERSION_H)
 

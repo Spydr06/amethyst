@@ -47,6 +47,8 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
         switch(format[++i]) {
         case 's': {
             const char* s = va_arg(ap, const char*);
+            if(!s)
+                s = "(null)";
             while(*s) {
                 printed++;
                 writer(*s++);

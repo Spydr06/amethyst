@@ -3,43 +3,85 @@ OUTPUT_FORMAT(elf64-x86-64)
 KERNEL_BASE = 0xFFFFFFFF80000000;
 
 ENTRY(_start)
-SECTIONS {
-	. = 0x100000;
-	
-	. += SIZEOF_HEADERS;
-	
-	.init : AT(ADDR(.init)) {
-		KEEP( *(.multiboot) )
-		*(.inittext)
-	}
+SECTIONS
+{
+  PROVIDE(_ELF_START_ = . + 0x100000);
+  PROVIDE(_LOAD_START_ = _ELF_START_);
+  . = _ELF_START_;
 
-	. += KERNEL_BASE;
-	
-	.text ALIGN(0x1000) : AT(ADDR(.text) - KERNEL_BASE) {
-		*(.text .text.*)
-	}
-	
-	/* read-only data, page aligned to allow use of the no-execute feature */
-	.rodata ALIGN(0x1000) : AT(ADDR(.rodata) - KERNEL_BASE) {
-		*(.rodata .rodata.*)
-	}
-	
-	/* Read-write data, page aligned for the .padata section */
-	.data ALIGN(0x1000) : AT(ADDR(.data) - KERNEL_BASE) {
-		*(.padata)
-		*(.data .data.*)
-	}
-	
-	/* Zero-initialised data */
-    . = ALIGN(16);
-	.bss : AT(ADDR(.bss) - KERNEL_BASE) {
-		*(.bss .bss.*)
-	}
-    . = ALIGN(16);
-	
-	_end = .;
-	
-	/DISCARD/ : {
+  .multiboot (_ELF_START_ ): {
+      PROVIDE(_MULTIBOOT_START_ = .);
+      KEEP(*(.multiboot))
+   }
+
+  .text ALIGN(0x10) :
+  {
+    _TEXT_START_ = .;
+    *(.text*)
+    *(.gnu.linkonce.t*)
+    _TEXT_END_ = .;
+  }
+
+  .rodata :
+  {
+    _RODATA_START_ = .;
+    *(.rodata*)
+    *(.gnu.linkonce.r*)
+    _RODATA_END_ = .;
+  }
+
+  .init_array :
+  {
+    PROVIDE_HIDDEN (__init_array_start = .);
+    KEEP (*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))
+    KEEP (*(.init_array .ctors))
+    PROVIDE_HIDDEN (__init_array_end = .);
+  }
+  /*.fini_array :
+  {
+    PROVIDE_HIDDEN (__fini_array_start = .);
+    KEEP (*(SORT_BY_INIT_PRIORITY(.fini_array.*) SORT_BY_INIT_PRIORITY(.dtors.*)))
+    KEEP (*(.fini_array EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .dtors))
+    PROVIDE_HIDDEN (__fini_array_end = .);
+  }*/
+
+  /* For stack unwinding (exception handling)  */
+  .eh_frame_hdr ALIGN(0x8):
+  {
+    KEEP(*(.eh_frame_hdr*))
+  }
+  .eh_frame ALIGN(0x8):
+  {
+  	PROVIDE (__eh_frame_start = .);
+    KEEP(*(.eh_frame))
+    LONG (0);
+  }
+  .gcc_except_table :
+  {
+    *(.gcc_except_table)
+  }
+
+  .data :
+  {
+    _DATA_START_ = .;
+    *(.data*)
+    *(.gnu.linkonce.d*)
+    _DATA_END_ = .;
+  }
+
+  PROVIDE(_LOAD_END_ = .);
+
+  .bss :
+  {
+    _BSS_START_ = .;
+    *(.bss .bss.* .gnu.linkonce.b.*)
+    *(COMMON)
+    _BSS_END_ = .;
+  }
+
+  . = ALIGN(0x10);
+  _end = .;
+    /DISCARD/ : {
 		*(.note .note.*)
         *(.comment)
 	}

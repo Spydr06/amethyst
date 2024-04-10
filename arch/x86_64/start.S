@@ -3,6 +3,8 @@
 /* The kernel is linked to run at -2GB. This allows efficient addressing */
 KERNEL_BASE = 0xFFFFFFFF80000000
 
+MULTIBOOT_INFO_SIZE = 120
+
 .section .multiboot, "a"
 .globl multiboot
 multiboot:
@@ -28,7 +30,7 @@ _start:
 	/* 1. Save multiboot state */
 	mov %eax, multiboot_sig - KERNEL_BASE
 	mov %ebx, multiboot_ptr - KERNEL_BASE
-	
+    
 	/* 2. Ensure that the CPU support long mode */
 	mov $0x80000000, %eax
 	cpuid
@@ -86,6 +88,7 @@ not64bitCapable:
 not64bitCapable.loop:
 	hlt
 	jmp not64bitCapable.loop
+
 .code64
 .globl start64
 start64:
@@ -159,9 +162,9 @@ init_stack:
 /* === General Data === */
 .section .data
 .globl multiboot_sig
-.globl multiboot_ptr
 multiboot_sig:	.long 0
-multiboot_ptr:	.long 0
+.globl multiboot_ptr
+multiboot_ptr:  .long 0
 
 /* Global Descriptor Table */
 GDTPtr_low:
