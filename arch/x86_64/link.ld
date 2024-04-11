@@ -1,4 +1,4 @@
-OUTPUT_FORMAT(elf64-x86-64)
+/*OUTPUT_FORMAT(elf64-x86-64)*/
 
 KERNEL_BASE = 0xFFFFFFFF80000000;
 
@@ -10,7 +10,6 @@ SECTIONS
   . = _ELF_START_;
 
   .init (_ELF_START_): AT(ADDR(.init)) {
-      PROVIDE(_MULTIBOOT_START_ = .);
       KEEP(*(.multiboot))
       *(.inittext)
   }

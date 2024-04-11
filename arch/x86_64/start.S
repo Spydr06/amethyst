@@ -1,4 +1,5 @@
-#include <multiboot.h>
+#include <multiboot2.h>
+#include <video/vga.h>
 
 /* The kernel is linked to run at -2GB. This allows efficient addressing */
 KERNEL_BASE = 0xFFFFFFFF80000000
@@ -16,19 +17,31 @@ IA32_FS_BASE    = 0xC0000082
 
 .extern kmain
 
+.set MULTIBOOT_HEADER_SIZE, multiboot_end - multiboot
+.set MULTIBOOT_CHECKSUM, -(MULTIBOOT2_HEADER_MAGIC + MULTIBOOT_ARCHITECTURE_I386 + MULTIBOOT_HEADER_SIZE)
+
 .section .multiboot, "a"
 .globl multiboot
 multiboot:
-	.long MULTIBOOT_HEADER_MAGIC
-	.long MULTIBOOT_HEADER_FLAGS
-	.long MULTIBOOT_CHECKSUM
-	.long multiboot
-	.long 0, 0, 0, 0	/* load_addr, load_end_addr, bss_end_addr, entry_addr */
-	/* Video mode */
-	.long 0 	/* Mode type (0: LFB) */
-	.long 0 	/* Width (no preference) */
-	.long 0 	/* Height (no preference) */
-	.long 32	/* Depth (32-bit preferred) */
+	.align 8
+    .long MULTIBOOT2_HEADER_MAGIC
+	.long MULTIBOOT_ARCHITECTURE_I386
+    .long MULTIBOOT_HEADER_SIZE 
+	.long MULTIBOOT_CHECKSUM 
+    
+    .align 8
+    .word MULTIBOOT_HEADER_TAG_FRAMEBUFFER
+    .word 0
+    .long 20
+    .long INIT_VGA_WIDTH
+    .long INIT_VGA_HEIGHT
+    .long INIT_VGA_DEPTH
+
+    .align 8
+    .word 0
+    .word 0
+    .long 8
+multiboot_end:
 
 /* === Code === */
 .section .inittext, "ax"
@@ -47,9 +60,9 @@ _start:
     call enable_cpu_feat    
 
     // zero .bss
-    mov _BSS_START_ - KERNEL_BASE, %edi
-    mov _BSS_END_ - KERNEL_BASE, %ecx
-    sub _BSS_START_ - KERNEL_BASE, %ecx
+    mov $(_BSS_START_ - KERNEL_BASE), %edi
+    mov $(_BSS_END_ - KERNEL_BASE), %ecx
+    sub $(_BSS_START_ - KERNEL_BASE), %ecx
     mov $0, %eax
     rep stosb
 

@@ -1,7 +1,7 @@
 set timeout=5
 
 menuentry "amethyst @VERSION@" {
-    multiboot /boot/@KERNEL_ELF@
+    multiboot2 /boot/@KERNEL_ELF@
     boot
 }
 
