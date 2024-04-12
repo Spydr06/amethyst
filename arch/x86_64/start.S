@@ -11,6 +11,14 @@ MULTIBOOT_STACK = 0x9D400
 IA32_EFER       = 0xC0000080
 IA32_FS_BASE    = 0xC0000082  
 
+PRESENT_BIT  = 0b00000001
+WRITE_BIT    = 0b00000010
+HUGEPAGE_BIT = 0b10000000
+
+PAGE_SIZE = 0x200000
+PAGE_TABLE_ENTRY = (HUGEPAGE_BIT | WRITE_BIT | PRESENT_BIT)
+LOOP_LIMIT = 512
+
 .extern _BSS_START_
 .extern _BSS_END_
 .extern tls
@@ -43,7 +51,6 @@ multiboot:
     .long 8
 multiboot_end:
 
-/* === Code === */
 .section .inittext, "ax"
 .globl _start
 .code32
@@ -53,27 +60,24 @@ _start:
 	mov %ebx, multiboot_ptr - KERNEL_BASE
 
     // enable 32-bit stack
-    mov $MULTIBOOT_STACK, %esp
+    mov $(stack_top - KERNEL_BASE), %esp
     mov %esp, %ebp
 
     // enable cpu features
     call enable_cpu_feat    
 
     // zero .bss
-    mov $(_BSS_START_ - KERNEL_BASE), %edi
-    mov $(_BSS_END_ - KERNEL_BASE), %ecx
-    sub $(_BSS_START_ - KERNEL_BASE), %ecx
-    mov $0, %eax
-    rep stosb
+    //mov $(_BSS_START_ - KERNEL_BASE), %edi
+//    mov $(_BSS_END_ - KERNEL_BASE), %ecx
+//    sub $(_BSS_START_ - KERNEL_BASE), %ecx
+//    mov $0, %eax
+//    rep stosb
 
     // enable stack protector
-    rdtsc
-    mov %eax, 0x1014
+    // rdtsc
+    // mov %eax, 0x1014
 
-    call begin_enter_long_mode
-
-    cli
-    hlt
+    jmp begin_enter_long_mode
 
 enable_cpu_feat:
 	// ensure that the CPU support long mode
@@ -145,29 +149,58 @@ enable_cpu_feat:
 
 begin_enter_long_mode:
 	// set up state for long mode
-	/* Enable:
-	    PGE (Page Global Enable)
-	  + PAE (Physical Address Extension)
-	  + PSE (Page Size Extensions)
-	*/
-	mov %cr4, %eax
-	or $(0x80|0x20|0x10), %eax
-	mov %eax, %cr4
+    mov $(p3_table - KERNEL_BASE), %eax
+    or $(PRESENT_BIT | WRITE_BIT), %eax
+    mov %eax, (p4_table - KERNEL_BASE)
 
-	// load PDP4
-	mov $(init_pml4 - KERNEL_BASE), %eax
-	mov %eax, %cr3
+    mov $(p3_table_hh - KERNEL_BASE), %eax
+    or $(PRESENT_BIT | WRITE_BIT), %eax
+    mov %eax, (p4_table - KERNEL_BASE + 511 * 8)
+
+    mov $(p4_table - KERNEL_BASE), %eax
+    or $(PRESENT_BIT | WRITE_BIT), %eax
+    mov %eax, (p4_table - KERNEL_BASE + 510 * 8)
+
+    mov $(p2_table - KERNEL_BASE), %eax
+    or $(PRESENT_BIT | WRITE_BIT), %eax
+    mov %eax, (p3_table - KERNEL_BASE)
+
+    mov $(p2_table - KERNEL_BASE), %eax
+    or $(PRESENT_BIT | WRITE_BIT), %eax
+    mov %eax, (p3_table_hh - KERNEL_BASE + 510 * 8)
+
+    // counter
+    mov $0, %ecx
+
+.L.map_p2_table:
+    mov $PAGE_SIZE, %eax
+    mul %ecx
+    or $PAGE_TABLE_ENTRY, %eax
+
+    movl %eax, p2_table - KERNEL_BASE (,%ecx,8)
+
+    inc %ecx
+    cmp $LOOP_LIMIT, %ecx
+    jne .L.map_p2_table
+
+    mov $(p4_table - KERNEL_BASE), %eax
+    mov %eax, %cr3
+
+    // enable PAE (physical address extension)
+    mov %cr4, %eax
+    or $(1 << 5), %eax // PAE bit
+    mov %eax, %cr4
 
 	// enable IA-32e mode (Also enables SYSCALL and NX)
 	mov $IA32_EFER, %ecx
-	rdmsr
-	or $(1 << 11)|(1 << 8)|(1 << 0), %eax     /* NXE, LME, SCE */
-	wrmsr
+	rdmsr // read model-specific register
+	or $(1 << 8), %eax     /* LME */
+	wrmsr // write model-specific register
 
-	// enable paging and enter long mode
-	mov %cr0, %eax
-	or $0x80010000, %eax      /* PG & WP */
-	mov %eax, %cr0
+    mov %cr0, %eax
+    or $(1 << 31), %eax // paging bit
+    or $(1 << 16), %eax // write protect
+    mov %eax, %cr0
 
 	lgdt gdtr_low - KERNEL_BASE
 	ljmp $0x08, $long_mode
@@ -175,8 +208,16 @@ begin_enter_long_mode:
 .code64
 
 long_mode:
-	/* Running in 64-bit mode, jump to high memory */
-	lgdt gdtr_high
+	// set up segment registers
+	mov $0x10, %ax
+	mov %ax, %ss
+	mov %ax, %ds
+	mov %ax, %es
+	mov %ax, %fs
+	mov %ax, %gs
+
+    // Running in 64-bit mode, jump to high memory
+    lgdt gdtr_high
 	mov $long_mode_high, %rax
 	jmp *%rax
 
@@ -184,7 +225,7 @@ long_mode:
 long_mode_high:
 	// clear low-memory mapping
 	mov $0, %rax
-	mov %rax, init_pml4 - KERNEL_BASE + 0
+//	mov %rax, init_pml4 - KERNEL_BASE + 0
 	
 	// set up segment registers
 	mov $0x10, %ax
@@ -195,7 +236,7 @@ long_mode_high:
 	mov %ax, %gs
 	
 	// set up stack pointer
-    mov $init_stack, %rsp
+    mov $stack_top, %rsp
     push $0
     push $0
     mov %rsp, %rbp
@@ -220,46 +261,35 @@ long_mode_high:
 	hlt
 	jmp .L.long_mode.loop
 
-/* === Page-aligned data === */
-.section .padata
-/* Initial paging structures, four levels */
-/* The +3 for sub-pages indicates "present (1) + writable (2)" */
-init_pml4:
-	.quad low_pdpt - KERNEL_BASE + 3	/* low map for startup, will be cleared before rust code runs */
-	.rept 512 - 3
-		.quad 0
-	.endr
-	.quad 0 	/* If you so wish, this is a good place for the "Fractal" mapping */
-	.quad init_pdpt - KERNEL_BASE + 3	/* Final mapping */
-low_pdpt:
-	.quad init_pd - KERNEL_BASE + 3	/* early init identity map */
-	.rept 512 - 1
-		.quad 0
-	.endr
-init_pdpt:	/* covers the top 512GB, 1GB each entry */
-	.rept 512 - 2
-		.quad 0
-	.endr
-	.quad init_pd - KERNEL_BASE + 3	/* at -2GB, identity map the kernel image */
-	.quad 0
-init_pd:
-	/* 0x80 = Page size extension */
-	.quad 0x000000 + 0x80 + 3	/* Map 2MB, enough for a 1MB kernel */
-	.quad 0x200000 + 0x80 + 3	/* - give it another 2MB, just in case */
-	.rept 512 - 2
-		.quad 0
-	.endr 
-init_stack_base:
-	.rept 0x1000 * 2
-		.byte 0
-	.endr
-init_stack:
+.section .bss
+.align 4096
+p4_table:
+    .space 4096
+p3_table:
+    .space 4096
+p3_table_hh:
+    .space 4096
+p2_table:
+    .space 4096
+.align 4096
+end_of_mapped_memory:
+    .quad 0
+stack:
+    .space 16384
+stack_top:
 
 .section .data
 .globl multiboot_sig
 multiboot_sig:	.long 0
 .globl multiboot_ptr
 multiboot_ptr:  .long 0
+
+GDT_WRITABLE     = (1 << 41)
+GDT_EXECUTABLE   = (1 << 43)
+GDT_CODE_OR_DATA = (1 << 44)
+GDT_USERMODE     = (1 << 45)
+GDT_PRESENT      = (1 << 47)
+GDT_64BIT        = (1 << 53)
 
 // Global Descriptor Table
 gdtr_low:
@@ -270,12 +300,24 @@ gdtr_high:
 	.quad gdt
 .globl gdt
 gdt:
-	.long 0, 0
-        .long 0x00000000, 0x00209A00	/* 0x08: 64-bit Code */
-        .long 0x00000000, 0x00009200    /* 0x10: 64-bit Data */
-        .long 0x00000000, 0x0040FA00    /* 0x18: 32-bit User Code */
-        .long 0x00000000, 0x0040F200    /* 0x20: User Data        */
-        .long 0x00000000, 0x0020FA00    /* 0x28: 64-bit User Code       */
-        .long 0x00000000, 0x0000F200    /* 0x30: User Data (64 version) */
+	.quad 0 // boot entry
+gdt_code:
+    .quad GDT_CODE_OR_DATA | GDT_PRESENT | GDT_WRITABLE | GDT_EXECUTABLE | GDT_64BIT
+gdt_data:
+    .quad GDT_CODE_OR_DATA | GDT_PRESENT | GDT_WRITABLE 
+gdt_user_code:
+    .quad GDT_CODE_OR_DATA | GDT_PRESENT | GDT_WRITABLE | GDT_EXECUTABLE | GDT_64BIT | GDT_USERMODE
+gdt_user_data:
+    .quad GDT_CODE_OR_DATA | GDT_PRESENT | GDT_WRITABLE | GDT_USERMODE
+gdt_tss_low:
+    .quad 0
+gdt_tss_high:
+    .quad 0
+//    .long 0x0000FFFF, 0x00209ACF	/* 0x08: 64-bit Code */
+//    .long 0x0000FFFF, 0x000092CF    /* 0x10: 64-bit Data */
+//    .long 0x0000FFFF, 0x0040FACF    /* 0x18: 32-bit User Code */
+//    .long 0x0000FFFF, 0x0040F2CF    /* 0x20: User Data        */
+//    .long 0x0000FFFF, 0x0020FACF    /* 0x28: 64-bit User Code       */
+//    .long 0x0000FFFF, 0x0000F2CF    /* 0x30: User Data (64 version) */
 gdt_end:
 
