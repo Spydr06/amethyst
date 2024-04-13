@@ -3,7 +3,7 @@
 #include <string.h>
 #include <video/vga.h>
 
-/*void vga_init(struct vga* vga, const multiboot_info_t *multiboot_info, uint32_t *buffer) {
+void vga_init(struct vga* vga, const struct multiboot_tag_framebuffer_common* multiboot_info, uint32_t *buffer) {
     vga->width = multiboot_info->framebuffer_width;
     vga->height = multiboot_info->framebuffer_height;
     vga->screen = (void*)((void*) ((uintptr_t) multiboot_info->framebuffer_addr) - (void*)_KERNEL_BASE_);
@@ -11,7 +11,7 @@
 
     // init to zero
     memset(vga->buffer, 0, vga->width * vga->height * sizeof(uint32_t));
-}*/
+}
 
 void vga_put_pixel(struct vga *vga, uint32_t x, uint32_t y, uint32_t color) {
     if(x >= vga->width || y >= vga->height)
@@ -24,7 +24,7 @@ void vga_buffer_to_screen(struct vga *vga) {
         vga->screen[i] = vga->buffer[i];
     }
 
-    memset(vga->buffer, 0, vga->width * vga->height * sizeof(uint32_t));
+ //   memset(vga->buffer, 0, vga->width * vga->height * sizeof(uint32_t));
 }
 
 uint64_t FONT[256] = {
@@ -120,7 +120,7 @@ uint64_t FONT[256] = {
 0x0010101038444444,//Y
 0x007E04081020407E,//Z
 0x003E02020202023E,//[
-0x00006030180C0600,  /* //\ */
+0x00006030180C0600,  /* \ */
 0x007C40404040407C,  //]
 0x000000000000663C,//^
 0xFF00000000000000,//_
