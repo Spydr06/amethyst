@@ -2,18 +2,16 @@
 #include <multiboot2.h>
 #include <kernelio.h>
 #include <processor.h>
+#include <version.h>
 
 #include "cdefs.h"
+#include "video/console.h"
 #include "video/vga.h"
 #include "init/interrupts.h"
 
-#include <stdint.h>
-
 void greet(void) {
-    printk("Hello, World!\n");
+    printk(" \e[1;32m*\e[0m Booting \e[35mAmethyst\e[0m version \e[97m" AMETHYST_VERSION "\e[0m\n");
 }
-
-uint32_t vga_buffer[INIT_VGA_WIDTH * INIT_VGA_HEIGHT];
 
 static void init_vga(const struct multiboot_tag* tag) {
     const struct multiboot_tag_framebuffer* fb_tag = (struct multiboot_tag_framebuffer*) tag;
@@ -26,6 +24,7 @@ static void init_vga(const struct multiboot_tag* tag) {
     );
 
     vga_init(fb_tag);
+    vga_console_init(VGACON_DEFAULT_OPTS);
 }
 
 static void (*multiboot_tag_handlers[])(const struct multiboot_tag*) = {
@@ -34,18 +33,12 @@ static void (*multiboot_tag_handlers[])(const struct multiboot_tag*) = {
 
 void kmain(void)
 {
-    console_init();
+    early_console_init();
     init_interrupts();
     if(parse_multiboot_tags(multiboot_tag_handlers, __len(multiboot_tag_handlers)) < 0)
         panic("Failed parsing multiboot tags.");
 
-    for(size_t x = 0; x < 10; x++) {
-        for(size_t y = 0; y < 10; y++) {
-            vga_put_pixel(x, y, 0xffffff);
-        }
-    }
-//    vga_buffer_to_screen(&vga);
-
     greet();
+
     hlt();
 }

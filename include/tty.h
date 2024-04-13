@@ -3,10 +3,9 @@
 
 #include <cdefs.h>
 
-void puts(const char* str);
-void putchar(int ch);
+void early_putchar(int ch);
 
-void console_init(void);
+void early_console_init(void);
 
 #endif /* _AMETHYST_TTY_H */
 

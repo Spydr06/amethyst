@@ -41,6 +41,11 @@ LDFLAGS += -m elf_$(ARCH) -nostdlib \
 
 override OBJCOPY := $(ARCH)-elf-objcopy
 
+CONSOLEFONT_OBJECT ?= $(BUILD_DIR)/default.psf.o
+CONSOLEFONT ?= fonts/default.psf
+
+TAR ?= tar
+
 GDB ?= gdb
 GDBFLAGS := -ex "target remote localhost:1234" \
 			-ex "symbol-file $(KERNEL_SYM)"
@@ -66,7 +71,7 @@ all: $(ISO)
 .PHONY: kernel
 kernel: $(KERNEL_ELF)
 
-$(KERNEL_ELF): $(OBJECTS)
+$(KERNEL_ELF): $(OBJECTS) $(CONSOLEFONT_OBJECT)
 	$(LD) $(LDFLAGS) $^ -o $@
 	$(OBJCOPY) --only-keep-debug $(KERNEL_ELF) $(KERNEL_SYM)
 	$(OBJCOPY) --strip-debug $(KERNEL_ELF)
@@ -93,6 +98,9 @@ $(BUILD_DIR)/%.s.o: %.s
  
 $(VERSION_H): $(VERSION_H).in
 	sed -e 's|@VERSION@|$(VERSION)|g' $< > $@
+
+$(CONSOLEFONT_OBJECT): $(CONSOLEFONT)
+	objcopy -O elf64-x86-64 -B i386 -I binary $< $@
 
 .PHONY: iso
 iso: $(ISO)

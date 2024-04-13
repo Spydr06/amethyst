@@ -24,7 +24,7 @@ static void early_serial_init(int port, int baud) {
     early_serial_base = port;
 }
 
-void console_init(void)
+void early_console_init(void)
 {
     early_serial_init(DEFAULT_SERIAL_PORT, DEFAULT_BAUD);
 }

@@ -7,8 +7,9 @@
 #include <tty.h>
 #include <processor.h>
 #include <stddef.h>
+#include <stdlib.h>
 
-kernelio_writer_t kernelio_writer = putchar;
+kernelio_writer_t kernelio_writer = early_putchar;
 
 int printk(const char* restrict format, ...) {
     va_list ap;
@@ -28,26 +29,6 @@ int fprintk(kernelio_writer_t writer, const char* restrict format, ...) {
 
 int vprintk(const char* restrict format, va_list ap) {
     return vfprintk(kernelio_writer, format, ap);
-}
-
-static int atoi(const char* s) {
-    int res = 0;
-    int sign = 1;
-    
-    while(isspace(*s)) s++;
-    
-    if(*s == '-') {
-        sign = -1;
-        s++;
-    }
-    else if(*s == '+') {
-        sign = 1;
-        s++;
-    }
-
-    while(*s)
-        res = res * 10 + *(s++) - '0';
-    return res * sign;
 }
 
 int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) {
