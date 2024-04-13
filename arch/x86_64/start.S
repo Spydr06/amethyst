@@ -301,23 +301,24 @@ gdtr_high:
 .globl gdt
 gdt:
 	.quad 0 // boot entry
+.globl gdt_code
 gdt_code:
     .quad GDT_CODE_OR_DATA | GDT_PRESENT | GDT_WRITABLE | GDT_EXECUTABLE | GDT_64BIT
+.globl gdt_data
 gdt_data:
     .quad GDT_CODE_OR_DATA | GDT_PRESENT | GDT_WRITABLE 
+.globl gdt_user_code
 gdt_user_code:
     .quad GDT_CODE_OR_DATA | GDT_PRESENT | GDT_WRITABLE | GDT_EXECUTABLE | GDT_64BIT | GDT_USERMODE
+.globl gdt_user_data
 gdt_user_data:
     .quad GDT_CODE_OR_DATA | GDT_PRESENT | GDT_WRITABLE | GDT_USERMODE
+.globl gdt_tss_low
 gdt_tss_low:
     .quad 0
+.globl gdt_tss_high
 gdt_tss_high:
     .quad 0
-//    .long 0x0000FFFF, 0x00209ACF	/* 0x08: 64-bit Code */
-//    .long 0x0000FFFF, 0x000092CF    /* 0x10: 64-bit Data */
-//    .long 0x0000FFFF, 0x0040FACF    /* 0x18: 32-bit User Code */
-//    .long 0x0000FFFF, 0x0040F2CF    /* 0x20: User Data        */
-//    .long 0x0000FFFF, 0x0020FACF    /* 0x28: 64-bit User Code       */
-//    .long 0x0000FFFF, 0x0000F2CF    /* 0x30: User Data (64 version) */
+.globl gdt_end
 gdt_end:
 
