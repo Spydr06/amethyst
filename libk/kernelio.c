@@ -1,4 +1,5 @@
 #include "kernelio.h"
+#include "math.h"
 #include "string.h"
 
 #include <ctype.h>
@@ -56,8 +57,12 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
     }
 
 #define PAD(s) if(pad_buf_size > 0 && (padding = atoi(pad_buf) - strlen((s))) > 0) {\
-        while(padding-- > 0)                                                        \
+        while(padding-- > 0) {                                                      \
             writer(pad_fill);                                                       \
+            printed++;                                                              \
+        }                                                                           \
+        pad_buf_size = 0;                                                           \
+        memset(pad_buf, 0, sizeof pad_buf);                                         \
     }
 
     int printed = 0;
@@ -143,6 +148,14 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
             PAD(s);
             WRITES(s);
         } break;
+        case 'f': {
+            double d = va_arg(ap, double);
+            int prec = 6;
+            if(pad_buf_size > 0)
+                prec = atoi(pad_buf);
+            printed += fprintk(writer, "%ld.%lu", (long) d, (unsigned long) (d - (long) d) * (unsigned long) pow10(prec));
+            break;
+        }
         case 'h':
             if(mode == M_SHORT)
                 mode = M_CHAR;
@@ -210,7 +223,8 @@ void __klog(enum klog_severity severity, const char* format, ...) {
     if(severity < klog_min_severity) 
         return;
 
-    printk("[%8u] ", 0);
+    uint64_t millis = 0; // TODO
+    printk("[%8lu] ", millis);
 
     va_list ap;
     va_start(ap, format);

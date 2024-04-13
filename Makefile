@@ -49,7 +49,7 @@ override QEMU := qemu-system-$(ARCH)
 QEMUFLAGS += -m 2G -serial stdio -display sdl
 
 ifeq ($(ARCH), x86_64)
-	CFLAGS += -m64 -march=x86-64 -mcmodel=large -mno-red-zone
+	CFLAGS += -m64 -march=x86-64 -mcmodel=large -mno-red-zone -mno-mmx -mno-sse2
 	SOURCES += $(shell find $(ARCH_DIR) arch/x86-common $(SOURCE_PATTERN))
 else
 _error:

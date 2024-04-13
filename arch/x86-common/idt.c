@@ -84,13 +84,13 @@ void idt_reload(void) {
 cpu_status_t* __interrupt_handler(cpu_status_t* status) {
     switch(status->interrupt_number) {
         case DOUBLE_FAULT:
-            printk("Double Fault at %p.\n", (void*) status->error_code);
+            klog(ERROR, "Double Fault at %p.", (void*) status->error_code);
             break;
         default:
             if(status->interrupt_number < __len(exception_names))
-                panic("Unhandled Interrupt \"%s\".\n", exception_names[status->interrupt_number]);
+                panic("Unhandled Interrupt \"%s\".", exception_names[status->interrupt_number]);
             else
-                panic("Unhandled Interrupt %llu.\n", (unsigned long long) status->interrupt_number);
+                panic("Unhandled Interrupt %llu.", (unsigned long long) status->interrupt_number);
     }
 
     return status; 

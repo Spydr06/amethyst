@@ -15,19 +15,17 @@ void greet(void) {
 
 uint32_t vga_buffer[INIT_VGA_WIDTH * INIT_VGA_HEIGHT];
 
-//static struct vga vga;
-
 static void init_vga(const struct multiboot_tag* tag) {
     const struct multiboot_tag_framebuffer* fb_tag = (struct multiboot_tag_framebuffer*) tag;
 
-     klog(DEBUG, "Framebuffer of type %hhu at %p [%ux%u:%u]", 
+    klog(DEBUG, "Framebuffer of type %hhu at %p [%ux%u:%u]", 
         fb_tag->common.framebuffer_type, 
         (void*) fb_tag->common.framebuffer_addr,
         fb_tag->common.framebuffer_width, fb_tag->common.framebuffer_height, 
         fb_tag->common.framebuffer_bpp
     );
 
- //   vga_init(&vga, &fb_tag->common, vga_buffer);
+    vga_init(fb_tag);
 }
 
 static void (*multiboot_tag_handlers[])(const struct multiboot_tag*) = {
@@ -41,7 +39,11 @@ void kmain(void)
     if(parse_multiboot_tags(multiboot_tag_handlers, __len(multiboot_tag_handlers)) < 0)
         panic("Failed parsing multiboot tags.");
 
-//    vga_put_pixel(&vga, 10, 10, 0xff0000ff);
+    for(size_t x = 0; x < 10; x++) {
+        for(size_t y = 0; y < 10; y++) {
+            vga_put_pixel(x, y, 0xffffff);
+        }
+    }
 //    vga_buffer_to_screen(&vga);
 
     greet();

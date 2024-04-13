@@ -32,7 +32,7 @@ static const char* const tag_strings[] = {
 
 int parse_multiboot_tags(void (*handlers[])(const struct multiboot_tag*), size_t num_handlers) {
     if(multiboot_sig != MULTIBOOT2_BOOTLOADER_MAGIC) {
-        printk("Corrupted multiboot information.\nGot: %p\n", (void*) (uintptr_t) multiboot_sig);
+        klog(ERROR, "Corrupted multiboot information. Got: %p", (void*) (uintptr_t) multiboot_sig);
         return -1;
     }
 
@@ -44,7 +44,7 @@ int parse_multiboot_tags(void (*handlers[])(const struct multiboot_tag*), size_t
     };
 
     const struct boot_info boot_info = *(struct boot_info*) ptr;
-    printk("multiboot2 info at %p (size %u)\n", ptr, boot_info.total_size); 
+    klog(DEBUG, "multiboot2 info at %p (size %u)", ptr, boot_info.total_size); 
 
     ptr += sizeof(struct boot_info);
 
@@ -54,7 +54,7 @@ int parse_multiboot_tags(void (*handlers[])(const struct multiboot_tag*), size_t
     while(1) {
         ptr = __align8(ptr);
         tag = (const struct multiboot_tag*) ptr;
-        printk("  [%zu] %s (%u:%u)\n", parsed, tag_strings[tag->type], tag->type, tag->size);
+        klog(DEBUG, "  (%2zu) %s (%u:%u)", parsed, tag_strings[tag->type], tag->type, tag->size);
         if(tag->type < num_handlers && handlers[tag->type])
             handlers[tag->type](tag);
         parsed++;

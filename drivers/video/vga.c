@@ -1,30 +1,27 @@
 #include <cdefs.h>
 #include <stdint.h>
-#include <string.h>
 #include <video/vga.h>
 
-void vga_init(struct vga* vga, const struct multiboot_tag_framebuffer_common* multiboot_info, uint32_t *buffer) {
-    vga->width = multiboot_info->framebuffer_width;
-    vga->height = multiboot_info->framebuffer_height;
-    vga->screen = (void*)((void*) ((uintptr_t) multiboot_info->framebuffer_addr) - (void*)_KERNEL_BASE_);
-    vga->buffer = buffer;
+#ifdef __x86_64__
+    #include <arch/x86_64/paging.h>
+#endif
 
-    // init to zero
-    memset(vga->buffer, 0, vga->width * vga->height * sizeof(uint32_t));
+static struct vga vga;
+
+void vga_init(const struct multiboot_tag_framebuffer* tag) {
+    vga.address = (void*)(uint64_t) FRAMEBUFFER_MEM_START;
+    vga.pitch = tag->common.framebuffer_pitch;
+    vga.bpp = tag->common.framebuffer_bpp;
+    vga.memory_size = tag->common.framebuffer_pitch * tag->common.framebuffer_height;
+    vga.width = tag->common.framebuffer_width;
+    vga.height = tag->common.framebuffer_height;
+    vga.phys_addr = tag->common.framebuffer_addr;
+
+    __framebuffer_map_page(tag);
 }
 
-void vga_put_pixel(struct vga *vga, uint32_t x, uint32_t y, uint32_t color) {
-    if(x >= vga->width || y >= vga->height)
-        return;
-    vga->buffer[vga->width * y + x] = color;
-}
-
-void vga_buffer_to_screen(struct vga *vga) {
-    for(size_t i = vga->width * vga->height; i >= 0; i--) {
-        vga->screen[i] = vga->buffer[i];
-    }
-
- //   memset(vga->buffer, 0, vga->width * vga->height * sizeof(uint32_t));
+void vga_put_pixel(uint32_t x, uint32_t y, uint32_t color) {
+    *((uint32_t*) (vga.address + (y * vga.pitch) + (x * sizeof(uint32_t)))) = color;
 }
 
 uint64_t FONT[256] = {

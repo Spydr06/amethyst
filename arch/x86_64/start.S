@@ -1,6 +1,8 @@
 #include <multiboot2.h>
 #include <video/vga.h>
 
+#include "paging.h"
+
 /* The kernel is linked to run at -2GB. This allows efficient addressing */
 KERNEL_BASE = 0xFFFFFFFF80000000
 
@@ -11,12 +13,6 @@ MULTIBOOT_STACK = 0x9D400
 IA32_EFER       = 0xC0000080
 IA32_FS_BASE    = 0xC0000082  
 
-PRESENT_BIT  = 0b00000001
-WRITE_BIT    = 0b00000010
-HUGEPAGE_BIT = 0b10000000
-
-PAGE_SIZE = 0x200000
-PAGE_TABLE_ENTRY = (HUGEPAGE_BIT | WRITE_BIT | PRESENT_BIT)
 LOOP_LIMIT = 512
 
 .extern _BSS_START_
@@ -67,15 +63,15 @@ _start:
     call enable_cpu_feat    
 
     // zero .bss
-    //mov $(_BSS_START_ - KERNEL_BASE), %edi
-//    mov $(_BSS_END_ - KERNEL_BASE), %ecx
-//    sub $(_BSS_START_ - KERNEL_BASE), %ecx
-//    mov $0, %eax
-//    rep stosb
+    mov $(_BSS_START_ - KERNEL_BASE), %edi
+    mov $(_BSS_END_ - KERNEL_BASE), %ecx
+    sub $(_BSS_START_ - KERNEL_BASE), %ecx
+    mov $0, %eax
+    rep stosb
 
-    // enable stack protector
-    // rdtsc
-    // mov %eax, 0x1014
+    //enable stack protector
+    rdtsc
+    mov %eax, 0x1014
 
     jmp begin_enter_long_mode
 
@@ -224,9 +220,9 @@ long_mode:
 .section .text
 long_mode_high:
 	// clear low-memory mapping
-	mov $0, %rax
-//	mov %rax, init_pml4 - KERNEL_BASE + 0
-	
+	mov $0, %eax
+    movl %eax, p4_table - KERNEL_BASE 
+
 	// set up segment registers
 	mov $0x10, %ax
 	mov %ax, %ss
@@ -263,12 +259,16 @@ long_mode_high:
 
 .section .bss
 .align 4096
+.globl p4_table
 p4_table:
     .space 4096
+.globl p3_table
 p3_table:
     .space 4096
+.globl p3_table_hh
 p3_table_hh:
     .space 4096
+.globl p2_table
 p2_table:
     .space 4096
 .align 4096

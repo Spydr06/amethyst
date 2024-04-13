@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 _Noreturn static __always_inline void hlt(void) {
-    __asm__ volatile("hlt");
+    __asm__ volatile("cli; hlt");
     while(1); // unreachable
 }
 
