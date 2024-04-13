@@ -18,7 +18,7 @@ struct vga {
     uint32_t* screen;
 };
 
-//void vga_init(struct vga* vga, const multiboot_info_t* multiboot_info, uint32_t* buffer);
+void vga_init(struct vga* vga, const struct multiboot_tag_framebuffer_common* multiboot_info, uint32_t* buffer);
 void vga_put_pixel(struct vga* vga, uint32_t x, uint32_t y, uint32_t color);
 void vga_buffer_to_screen(struct vga* vga);
 

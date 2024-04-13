@@ -18,8 +18,16 @@
 
 #define __section(sect) __attribute__((section (sect)))
 #define __always_inline __inline __attribute__ ((__always_inline__))
+#define __noreturn _Noreturn
+
+#define __aligned(al) __attribute__((aligned(al)))
+#define __interrupt __attribute__ ((interrupt))
 
 #define __low_ptr(ptr) ((void*) (((uintptr_t) (ptr)) + _KERNEL_BASE_)) 
+
+#define __len(arr) (sizeof((arr)) / sizeof(*(arr)))
+
+#define __align8(ptr) ((void*) (((uintptr_t) (ptr) + 7) & ~7))
 
 #ifndef ASM_FILE
 
