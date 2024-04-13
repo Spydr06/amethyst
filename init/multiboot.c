@@ -30,11 +30,9 @@ static const char* const tag_strings[] = {
     "LOAD BASE ADDR"
 };
 
-int parse_multiboot_tags(void (*handlers[])(const struct multiboot_tag*), size_t num_handlers) {
-    if(multiboot_sig != MULTIBOOT2_BOOTLOADER_MAGIC) {
-        klog(ERROR, "Corrupted multiboot information. Got: %p", (void*) (uintptr_t) multiboot_sig);
-        return -1;
-    }
+size_t parse_multiboot_tags(void (*handlers[])(const struct multiboot_tag*), size_t num_handlers) {
+    if(multiboot_sig != MULTIBOOT2_BOOTLOADER_MAGIC)
+        panic("Corrupted multiboot information. Got: %p", (void*) (uintptr_t) multiboot_sig);
 
     const uint8_t* ptr = __low_ptr(multiboot_ptr);
     
@@ -63,6 +61,6 @@ int parse_multiboot_tags(void (*handlers[])(const struct multiboot_tag*), size_t
         ptr += tag->size;
     }
 
-    return parsed; 
+    return boot_info.total_size; 
 }
 

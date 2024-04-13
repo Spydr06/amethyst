@@ -415,7 +415,7 @@ struct multiboot_tag_load_base_addr
 #include <stdint.h>
 #include <stddef.h>
 
-int parse_multiboot_tags(void (*handlers[])(const struct multiboot_tag*), size_t num_handlers);
+size_t parse_multiboot_tags(void (*handlers[])(const struct multiboot_tag*), size_t num_handlers);
 
 extern uint32_t multiboot_sig;
 extern uint32_t multiboot_ptr;

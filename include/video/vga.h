@@ -27,7 +27,6 @@ extern struct vga vga;
 void vga_init(const struct multiboot_tag_framebuffer* multiboot_info);
 void vga_put_pixel(uint32_t x, uint32_t y, uint32_t color);
 void vga_clear(uint32_t color);
-void vga_putchar(char c, uint32_t x, uint32_t y, uint32_t fg, uint32_t bg, uint32_t width, uint32_t height);
 
 #endif /* ASM_FILE */
 

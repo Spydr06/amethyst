@@ -272,6 +272,7 @@ p3_table_hh:
 p2_table:
     .space 4096
 .align 4096
+.globl end_of_mapped_memory
 end_of_mapped_memory:
     .quad 0
 stack:

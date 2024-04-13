@@ -31,22 +31,4 @@ void vga_clear(uint32_t color) {
         fb[i] = color;
 }
 
-void vga_putchar(char c, uint32_t x, uint32_t y, uint32_t fg, uint32_t bg, uint32_t width, uint32_t height) {
-    uint8_t* glyph = psf_get_glyph(c, _binary_fonts_default_psf_start);
-
-    size_t bytesperline = (width + 7) / 8;
-    size_t offset = (y * height * vga.pitch) + (x * width * sizeof(uint32_t));
-
-    uint32_t xx, line;
-    for(uint32_t y = 0; y < height; y++) {
-        line = offset;
-        for(xx = 0; xx < width; xx++) {
-            *((uint32_t*) (vga.address + line)) = glyph[xx / 8] & (0x80 >> (xx & 7)) ? fg : bg;
-            line += vga.bpp / 8;
-        }
-
-        glyph += bytesperline;
-        offset += vga.pitch;
-    }
-}
 

@@ -1,6 +1,7 @@
 #include "kernelio.h"
 #include "math.h"
 #include "string.h"
+#include "sys/spinlock.h"
 
 #include <ctype.h>
 #include <stdint.h>
@@ -10,6 +11,11 @@
 #include <stdlib.h>
 
 kernelio_writer_t kernelio_writer = early_putchar;
+
+static inline void puts(const char* str) {
+    while(*str)
+        kernelio_writer(*str++);
+}
 
 int printk(const char* restrict format, ...) {
     va_list ap;
@@ -181,14 +187,14 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
 }
 
 void __panic(const char* file, int line, const char* func, const char* error, ...) {
-    printk("PANIC [%s:%d in %s()] ", file, line, func); 
+    printk("\e[91mPANIC [%s:%d in %s()] ", file, line, func); 
 
     va_list ap;
     va_start(ap, error);
     vprintk(error, ap);
     va_end(ap);
 
-    printk("\n\n[stack trace]:\n");
+    printk("\e[0m\n\n[stack trace]:\n");
     dump_stack();
 
     hlt();
@@ -200,9 +206,23 @@ enum klog_severity klog_min_severity = KLOG_INFO;
 enum klog_severity klog_min_severity = KLOG_DEBUG;
 #endif
 
+static const char* colors[__KLOG_MAX] = {
+    [KLOG_DEBUG] = "\e[38m",
+    [KLOG_INFO] = nullptr,
+    [KLOG_WARN] = "\e[33m",
+    [KLOG_ERROR] = "\e[31m"
+};
+
 void __klog(enum klog_severity severity, const char* format, ...) {
+    static spinlock_t klog_spinlock = {false};
+
+    spinlock_acquire(&klog_spinlock);
+
     if(severity < klog_min_severity) 
         return;
+
+    if(colors[severity])
+        puts(colors[severity]);
 
     uint64_t millis = 0; // TODO
     printk("[%8lu] ", millis);
@@ -212,6 +232,11 @@ void __klog(enum klog_severity severity, const char* format, ...) {
     vprintk(format, ap);
     va_end(ap);
 
+    if(colors[severity])
+        puts("\e[0m");
+
     kernelio_writer('\n'); 
+
+    spinlock_release(&klog_spinlock);
 }
 

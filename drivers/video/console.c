@@ -16,7 +16,7 @@
 struct vga_console vga_console = {0};
 
 static uint32_t vga_colors[16] = {
-    0x000000,
+    /*0x000000,
     0xCD3131,
     0x0DBC79,
     0xE5E510,
@@ -31,6 +31,22 @@ static uint32_t vga_colors[16] = {
     0x3B8EEA,
     0xD670D6,
     0x29B8DB,
+    0xffffff*/
+    0x000000,
+    0xd54e53,
+    0xb9ca4a,
+    0xe78c45,
+    0x7aa6da,
+    0xc397d8,
+    0x70c0b1,
+    0xb0b0b0,
+    0x666666,
+    0xff3334,
+    0x9ec400,
+    0xe7c547,
+    0x7aa6da,
+    0xb777e0,
+    0x54c3d6,
     0xffffff
 };
 
@@ -195,6 +211,33 @@ static int parse_control_sequence(char c) {
     return 1;
 }
 
+static void __putchar(char c) {
+    uint8_t* glyph = psf_get_glyph(c, vga_console.psf_font);
+
+    size_t bytesperline = (vga_console.glyph_width + 7) / 8;
+    size_t offset = (vga_console.current_y * vga_console.glyph_height * vga.pitch) + (vga_console.current_x * vga_console.glyph_width * sizeof(uint32_t));
+
+    uint32_t x, line;
+    for(uint32_t y = 0; y < vga_console.glyph_height; y++) {
+        line = offset;
+        for(x = 0; x < vga_console.glyph_width; x++) {
+            *((uint32_t*) (vga.address + line)) = glyph[x >> 3] & (0x80 >> (x & 7)) ? vga_console.fg : vga_console.bg;
+
+            if(vga_console.modifiers & (VGACON_MOD_UNDERLINED | VGACON_MOD_CROSSED)) {
+                if(vga_console.modifiers & VGACON_MOD_UNDERLINED && y == (uint32_t) vga_console.glyph_height - 1)
+                    *((uint32_t*) (vga.address + line)) = vga_console.fg;
+                else if(vga_console.modifiers & VGACON_MOD_CROSSED && y == vga_console.glyph_height / 2)
+                    *((uint32_t*) (vga.address + line)) = vga_console.fg;
+            }
+
+            line += vga.bpp / 8;
+        }
+
+        glyph += bytesperline;
+        offset += vga.pitch;
+    }
+}
+
 static int parse_escape_sequence(char c) {
     switch(vga_console.esc_status) {
         case VGA_ESC_SEQ_BEGIN_PARSE:
@@ -213,10 +256,10 @@ static int parse_escape_sequence(char c) {
 }
 
 void vga_console_putchar(int c) {
+    vga_console.writer_before(c);
     if(vga_console.esc_status && parse_escape_sequence(c))
         return;
 
-    vga_console.writer_before(c);
     switch(c) {
         case '\n':
             vga_console.current_y++;
@@ -228,14 +271,11 @@ void vga_console_putchar(int c) {
         case '\r':
             vga_console.current_x = 0;
             break;
-        case ' ':
-            vga_console.current_x++;
-            break;
         case '\e':
             vga_console.esc_status = VGA_ESC_SEQ_BEGIN_PARSE;
-            break;
+            return;
         default:
-            vga_putchar(c, vga_console.current_x, vga_console.current_y, vga_console.fg, vga_console.bg, vga_console.glyph_width, vga_console.glyph_height);
+            __putchar(c);
             vga_console.current_x++;
             break;
     }

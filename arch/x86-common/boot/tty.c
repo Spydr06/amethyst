@@ -17,13 +17,8 @@ static void serial_putchar(int ch) {
 }
 
 void early_putchar(int ch) {
-    switch(ch) {
-        case '\e':
-            return;
-        case '\n':
-            early_putchar('\r');
-            break;
-    }
+    if(ch == '\n')
+        early_putchar('\r');
 
     if(early_serial_base != 0)
         serial_putchar(ch);
