@@ -1,7 +1,7 @@
 #include <multiboot2.h>
 #include <video/vga.h>
 
-#include "paging.h"
+#include "mem/paging.h"
 
 /* The kernel is linked to run at -2GB. This allows efficient addressing */
 KERNEL_BASE = 0xFFFFFFFF80000000
@@ -19,6 +19,7 @@ LOOP_LIMIT = 512
 .extern _BSS_END_
 .extern tls
 
+.extern _init_basic_system
 .extern kmain
 
 .set MULTIBOOT_HEADER_SIZE, multiboot_end - multiboot
@@ -250,6 +251,7 @@ long_mode_high:
     movq %rax, 0x28(%rbx)
 
     // call kernel entry
+    call _init_basic_system
 	call kmain
 
     cli

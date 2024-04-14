@@ -7,6 +7,7 @@
 extern size_t memory_size_in_bytes;
 
 void pmm_setup(uintptr_t addr, uint32_t size);
+void* pmm_alloc_frame(void);
 
 #endif /* _AMETHYST_MEM_PMM_H */
 

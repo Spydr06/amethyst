@@ -1,10 +1,9 @@
-#include "ff/psf.h"
 #include <cdefs.h>
 #include <stdint.h>
 #include <video/vga.h>
 
 #ifdef __x86_64__
-    #include <arch/x86_64/paging.h>
+    #include <arch/x86_64/mem/paging.h>
 #endif
 
 struct vga vga = {0};

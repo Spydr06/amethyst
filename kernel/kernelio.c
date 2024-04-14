@@ -214,10 +214,6 @@ static const char* colors[__KLOG_MAX] = {
 };
 
 void __klog(enum klog_severity severity, const char* format, ...) {
-    static spinlock_t klog_spinlock = {false};
-
-    spinlock_acquire(&klog_spinlock);
-
     if(severity < klog_min_severity) 
         return;
 
@@ -236,7 +232,5 @@ void __klog(enum klog_severity severity, const char* format, ...) {
         puts("\e[0m");
 
     kernelio_writer('\n'); 
-
-    spinlock_release(&klog_spinlock);
 }
 

@@ -2,7 +2,7 @@
 #include <kernelio.h>
 #include <stdint.h>
 
-#include "../paging.h"
+#include "../mem/paging.h"
 
 void __framebuffer_map_page(const struct multiboot_tag_framebuffer* tag) {
     uint64_t phys_addr = (uint64_t) tag->common.framebuffer_addr;
