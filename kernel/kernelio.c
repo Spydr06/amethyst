@@ -1,12 +1,11 @@
 #include "kernelio.h"
 #include "math.h"
 #include "string.h"
-#include "sys/spinlock.h"
 
 #include <ctype.h>
 #include <stdint.h>
 #include <tty.h>
-#include <processor.h>
+#include <cpu/cpu.h>
 #include <stddef.h>
 #include <stdlib.h>
 
@@ -37,29 +36,58 @@ int vprintk(const char* restrict format, va_list ap) {
     return vfprintk(kernelio_writer, format, ap);
 }
 
+struct padding {
+    char fill;
+    char default_fill;
+    char buf[20];
+    uint8_t buf_size;
+};
+
+static void reset_padding(struct padding* pad) {
+    pad->fill = pad->default_fill;
+    if(pad->buf_size) {
+        pad->buf_size = 0;
+        memset(pad->buf, 0, sizeof(pad->buf));
+    }
+}
+
+static int get_padding(struct padding* pad) {
+    if(!pad->buf_size)
+        return -1;
+    
+    int padding = atoi(pad->buf);
+    reset_padding(pad);
+    return padding;
+}
+
+static int print_padding(kernelio_writer_t writer, const char* s, int padding, char fill) {
+    if(padding <= 0)
+        return 0;
+    
+    padding -= strlen(s);
+
+    int printed = 0;
+    while(padding-- > 0) {
+        writer(fill);
+        printed++;
+    }
+    return printed;
+}
+
 int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) {
 #define WRITES(s) while(*(s)) { \
         printed++;              \
         writer(*(s)++);         \
     }
 
-#define PAD(s) if(pad_buf_size > 0 && (padding = atoi(pad_buf) - strlen((s))) > 0) {\
-        while(padding-- > 0) {                                                      \
-            writer(pad_fill);                                                       \
-            printed++;                                                              \
-        }                                                                           \
-        pad_buf_size = 0;                                                           \
-        memset(pad_buf, 0, sizeof pad_buf);                                         \
-    }
-
     int printed = 0;
+    enum : uint8_t { M_CHAR, M_SHORT, M_INT, M_LONG, M_LONG_LONG, M_SIZE_T, M_INTMAX_T } mode;
+    
+    struct padding high_padding = {0, .default_fill = ' '};
+    struct padding low_padding = {0, .default_fill = '0'};
+    struct padding* selected_padding = &high_padding;
 
     char buf[100];
-    enum { M_CHAR, M_SHORT, M_INT, M_LONG, M_LONG_LONG, M_SIZE_T, M_INTMAX_T } mode;
-    char pad_fill;
-    char pad_buf[20] = {0};
-    unsigned pad_buf_size;
-    int padding;
 
     for(size_t i = 0; format[i]; i++) {
         if(format[i] != '%') {
@@ -69,11 +97,9 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
         }
         
         mode = M_INT;
-        pad_fill = ' ';
-        if(pad_buf_size) {
-            pad_buf_size = 0;
-            memset(pad_buf, 0, sizeof pad_buf);
-        }
+
+        reset_padding(&high_padding);
+        reset_padding(&low_padding);
 
         char c;
     repeat:
@@ -82,8 +108,14 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
             const char* s = va_arg(ap, const char*);
             if(!s)
                 s = "(null)";
-            PAD(s);
-            while(*s) {
+
+            int low_pad = get_padding(&low_padding);
+            int high_pad = get_padding(&high_padding);
+            size_t len = low_pad >= 0 ? strnlen(s, (size_t) low_pad) : strlen(s);
+
+            printed += print_padding(writer, "", high_pad - len, high_padding.fill); 
+
+            while(len-- > 0 && *s) {
                 printed++;
                 writer(*s++);
             }
@@ -97,11 +129,7 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
             writer('0');
             writer('x');
             const char* s = utoa((uint64_t) va_arg(ap, void*), buf, 16);
-            int l = strlen(s);
-            while(l++ < (int) sizeof(void*) * 2) {
-                printed++;
-                writer('0');
-            }
+            printed += print_padding(writer, s, sizeof(void*) * 2, '0');
             WRITES(s);
         } break;
         case 'd':
@@ -112,7 +140,7 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
                 : mode == M_LONG ? itoa((int64_t) va_arg(ap, long), buf, 10)
                 : mode == M_LONG_LONG ? itoa((int64_t) va_arg(ap, long long), buf, 10)
                 : itoa((uint64_t) va_arg(ap, size_t), buf, 10);
-            PAD(s);
+            printed += print_padding(writer, s, get_padding(&high_padding), high_padding.fill);
             WRITES(s);
         } break;
         case 'x': {
@@ -122,7 +150,7 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
                 : mode == M_LONG ? utoa((uint64_t) va_arg(ap, unsigned long), buf, 16)
                 : mode == M_LONG_LONG ? utoa((uint64_t) va_arg(ap, unsigned long long), buf, 16)
                 : utoa((uint64_t) va_arg(ap, size_t), buf, 16);
-            PAD(s);
+            printed += print_padding(writer, s, get_padding(&high_padding), high_padding.fill);
             WRITES(s);
         } break;
         case 'u': {
@@ -132,15 +160,17 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
                 : mode == M_LONG ? utoa((uint64_t) va_arg(ap, unsigned long), buf, 10)
                 : mode == M_LONG_LONG ? utoa((uint64_t) va_arg(ap, unsigned long long), buf, 10)
                 : utoa((uint64_t) va_arg(ap, size_t), buf, 10);
-            PAD(s);
+            printed += print_padding(writer, s, get_padding(&high_padding), high_padding.fill);
             WRITES(s);
         } break;
         case 'f': {
             double d = va_arg(ap, double);
-            int prec = 6;
-            if(pad_buf_size > 0)
-                prec = atoi(pad_buf);
-            printed += fprintk(writer, "%ld.%lu", (long) d, (unsigned long) (d - (long) d) * (unsigned long) pow10(prec));
+            int precision = 6;
+            int low_pad = get_padding(&low_padding);
+            if(low_pad >= 0)
+                precision = low_pad;
+            // TODO: high padding
+            printed += fprintk(writer, "%ld.%lu", (long) d, (unsigned long) (d - (long) d) * (unsigned long) pow10(precision));
             break;
         }
         case 'h':
@@ -166,12 +196,18 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
             printed++;
             break;
         case '0':
-        case ' ':
-            pad_fill = c;
+            if(selected_padding->buf_size > 0)
+                goto digit;
+        case ' ': // fall through
+            selected_padding->fill = c;
+            goto repeat;
+        case '.':
+            selected_padding = &low_padding;
             goto repeat;
         default:
-            if(isdigit(c) && pad_buf_size < __len(pad_buf)) {
-                pad_buf[pad_buf_size++] = c;
+        digit:
+            if(isdigit(c) && selected_padding->buf_size < __len(selected_padding->buf)) {
+                selected_padding->buf[selected_padding->buf_size++] = c;
                 goto repeat;
             }
             printed += 2;
@@ -181,9 +217,7 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
     }
 
     return printed;
-
 #undef WRITES
-#undef PAD
 }
 
 void __panic(const char* file, int line, const char* func, const char* error, ...) {

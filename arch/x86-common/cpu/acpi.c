@@ -25,9 +25,7 @@ static bool parse_rsdt(const struct RSDP_descriptor* desc) {
     struct ACPI_SDT_header header = rsdt_root->header;
 
 #ifndef NDEBUG
-    char sig[5] = {0};
-    memcpy(sig, header.signature, sizeof(header.signature));
-    klog(DEBUG, "- RSDT Signature: \"%s\"; Header size: %u", sig, header.length);
+    klog(DEBUG, "- RSDT Signature: \"%.4s\"; Header size: %u", header.signature, header.length);
 #endif
 
     version = RSDT_V1;
@@ -56,8 +54,7 @@ static bool parse_rsdt(const struct RSDP_descriptor* desc) {
         );
 #ifndef NDEBUG
         struct ACPI_SDT_header* table_header = (struct ACPI_SDT_header*) ENSURE_HIGHER_HALF((uintptr_t) rsdt_root->tables[i]);
-        memcpy(sig, table_header->signature, sizeof(table_header->signature));
-        klog(DEBUG, "  (%2u): Signature: %s", i, sig);
+        klog(DEBUG, "  (%2u): Signature: \"%.4s\"", i, table_header->signature);
 #endif
     }
 

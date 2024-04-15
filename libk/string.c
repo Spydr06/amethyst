@@ -138,3 +138,9 @@ size_t strlen(const char* s) {
     return l;
 }
 
+size_t strnlen(const char* s, size_t maxlen) {
+    size_t l = 0;
+    while(maxlen-- > 0 && *s++) l++;
+    return l;
+}
+
