@@ -3,6 +3,8 @@
 #include <arch/x86-common/cpu/cpu.h>
 #include <kernelio.h>
 
+struct paging_status paging_status = { nullptr, nullptr, 0 };
+
 __noreturn void page_fault_handler(uintptr_t error_code) {
     uint64_t cr2 = 0;
     __asm__ volatile (

@@ -15,8 +15,10 @@
 
 #define FRAMEBUFFER_MEM_START 0xffffffffbd000000
 #define HIGHER_HALF_ADDRESS_OFFSET 0xFFFF800000000000
-#define VM_OFFSET_MASK 0xFFFFFFFFFFE00000
 #define SIGN_EXTENSION 0xFFFF000000000000
+
+#define VM_OFFSET_MASK 0xFFFFFFFFFFE00000
+#define  VM_PAGE_TABLE_BASE_ADDRESS_MASK 0xFFFFFFF000
 
 #define PD_ENTRY(addr)   (((addr) >> 21) & 0x1ff)
 #define PDPR_ENTRY(addr) (((addr) >> 30) & 0x1ff)
@@ -31,19 +33,28 @@
 #define RESERVED_VIOLATION 0x8
 #define FETCH_VIOLATION 0x10
 
-
 #ifndef ASM_FILE
 
 #include <stdint.h>
+#include <stddef.h>
 #include <cdefs.h>
 
 #define IS_ADDRESS_HIGHER_HALF(addr) ((addr) & (1lu << 62))
 #define ENSURE_HIGHER_HALF(addr) ((addr) > HIGHER_HALF_ADDRESS_OFFSET ? (addr) : (addr) + HIGHER_HALF_ADDRESS_OFFSET)
 
+struct paging_status {
+    uint64_t* page_root_address;
+    uint64_t* hhdm_page_root_address;
+    size_t page_generation;
+};
+
 extern uint64_t p4_table[];
 extern uint64_t p3_table[];
 extern uint64_t p3_table_hh[];
 extern uint64_t p2_table[];
+
+extern struct paging_status paging_status;
+extern uintptr_t higher_half_direct_map_base;
 
 void __framebuffer_map_page(const struct multiboot_tag_framebuffer* tag);
 

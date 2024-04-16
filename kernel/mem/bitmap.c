@@ -5,8 +5,6 @@
 #include <kernelio.h>
 #include <stdint.h>
 
-#define ADDRESS_TO_BITMAP_ENTRY(addr) ((addr) / PAGE_SIZE)
-
 extern char _end;
 
 size_t memory_size_in_bytes = 0;
@@ -14,7 +12,11 @@ uint32_t bitmap_size = 0;
 uint32_t used_frames;
 static uint32_t number_of_entries = 0;
 static uintptr_t memory_map_phys_addr;
-static uintptr_t* memory_map = (uintptr_t*) &_end;
+uintptr_t* memory_map = (uintptr_t*) &_end;
+
+void bitmap_set_bit(uint64_t location);
+void bitmap_set_bit_from_address(uintptr_t addr);
+bool bitmap_test_bit(uint64_t location);
 
 void bitmap_init(uintptr_t end_of_reserved_area) {
     bitmap_size = memory_size_in_bytes / PAGE_SIZE + 1;
@@ -22,7 +24,7 @@ void bitmap_init(uintptr_t end_of_reserved_area) {
     number_of_entries = bitmap_size / 64 + 1;
     memory_map_phys_addr = mmap_determine_bitmap_region(end_of_reserved_area, bitmap_size / 8 + 1); 
 
-    uintptr_t end_of_mapped_physical_memory = (uintptr_t) ((void*) &end_of_mapped_memory) - (uintptr_t) _KERNEL_BASE_;
+    uintptr_t end_of_mapped_physical_memory = end_of_mapped_memory - (uintptr_t) _KERNEL_BASE_;
     if(memory_map_phys_addr > end_of_mapped_physical_memory)
         panic("unimplemented - Address %p is above the initially mapped memory: %p", (void*) memory_map_phys_addr, (void*) end_of_mapped_physical_memory);
     else
@@ -81,11 +83,4 @@ int64_t bitmap_request_frame(void) {
     return -1;
 }
 
-void bitmap_set_bit(uint64_t location) {
-    memory_map[location / BITMAP_ROW_BITS] |= 1 << (location % BITMAP_ROW_BITS);
-}
 
-void bitmap_set_bit_from_address(uintptr_t addr) {
-    if(addr < memory_size_in_bytes)
-        bitmap_set_bit(ADDRESS_TO_BITMAP_ENTRY(addr));
-}

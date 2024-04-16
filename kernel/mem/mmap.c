@@ -1,3 +1,5 @@
+#include "mem/bitmap.h"
+#include "mem/pmm.h"
 #include <mem/mmap.h>
 #include <kernelio.h>
 
@@ -12,6 +14,7 @@ const char* mmap_types[] = {
 
 static uint32_t mmap_number_of_entries;
 static struct multiboot_mmap_entry* mmap_entries;
+static uint8_t num_physical_reserved;
 
 void mmap_parse(const struct multiboot_tag_mmap* root) {
     mmap_number_of_entries = (root->size - sizeof(struct multiboot_tag_mmap)) / root->entry_size; 
@@ -27,8 +30,20 @@ void mmap_parse(const struct multiboot_tag_mmap* root) {
 #endif
 }
 
-void mmap_setup(void) {
-
+void mmap_setup(const struct multiboot_tag_basic_meminfo* entry) {
+    num_physical_reserved = 0;
+    if(used_frames > 0) {
+        uint32_t counter = 0;
+        uint64_t mem_limit = (entry->mem_upper + 1024) * 1024;
+        while(counter < mmap_number_of_entries) {
+            if(mmap_entries[counter].addr < mem_limit && mmap_entries[counter].type > 1) {
+                klog(DEBUG, "Found usable MMAP entry at addr %p.", (void*) mmap_entries[counter].addr);
+                pmm_reserve_area(mmap_entries[counter].addr, mmap_entries[counter].len);
+                num_physical_reserved++;
+            }
+            counter++;
+        }
+    }
 }
 
 uintptr_t mmap_determine_bitmap_region(uint64_t lower_limit, size_t size) {
