@@ -2,8 +2,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <video/console.h>
-#include <video/vga.h>
+#include <drivers/video/console.h>
+#include <drivers/video/vga.h>
 #include <ff/psf.h>
 #include <tty.h>
 #include <kernelio.h>

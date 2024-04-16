@@ -1,5 +1,5 @@
 #include <multiboot2.h>
-#include <video/vga.h>
+#include <drivers/video/vga.h>
 
 #include "mem/paging.h"
 
@@ -252,7 +252,6 @@ long_mode_high:
 
     // call kernel entry
     call _init_basic_system
-	call kmain
 
     cli
 .L.long_mode.loop:

@@ -1,8 +1,14 @@
-#ifndef _AMETHYST_X86_COMMON_PROCESSOR_H
-#define _AMETHYST_X86_COMMON_PROCESSOR_H
+#ifndef _AMETHYST_X86_COMMON_CPU_H
+#define _AMETHYST_X86_COMMON_CPU_H
 
 #include <cdefs.h>
 #include <stdint.h>
+
+#ifdef __x86_64__
+    #include <arch/x86_64/cpu.h>
+#else
+    #error "not implemented"
+#endif
 
 _Noreturn static __always_inline void hlt(void) {
     __asm__ volatile("cli; hlt");
@@ -34,5 +40,5 @@ static __always_inline uint16_t gs(void)
 	return seg;
 }
 
-#endif /* _AMETHYST_X86_COMMON_PROCESSOR_H */
+#endif /* _AMETHYST_X86_COMMON_CPU_H */
 

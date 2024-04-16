@@ -1,6 +1,6 @@
 #include <cdefs.h>
 #include <stdint.h>
-#include <video/vga.h>
+#include <drivers/video/vga.h>
 
 #ifdef __x86_64__
     #include <arch/x86_64/mem/paging.h>

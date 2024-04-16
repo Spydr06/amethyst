@@ -6,6 +6,7 @@
 #define IDT_PRESENT_FLAG 0x80
 #define IDT_INTERRUPT_TYPE_FLAG 0x0E
 #define IDT_SEGMENT_SELECTOR 0x08
+#define IDT_DPL_USER_FLAG 0x60
 
 #define DIVIDE_ERROR 0
 #define DEBUG_EXC 1
@@ -34,6 +35,8 @@
 #define KEYBOARD_INTERRUPT 33
 #define PIT_INTERRUPT 34
 
+#define SYSCALL_INTERRUPT 0x80
+
 struct interrupt_descriptor {
     uint16_t offset_1;
     uint16_t selector;
@@ -54,6 +57,8 @@ struct idtr {
 struct interrupt_frame {
 
 } __attribute__((packed));
+
+extern void* isr_stub_table[0x100];
 
 void init_interrupts(void);
 

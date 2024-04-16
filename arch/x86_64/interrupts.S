@@ -99,6 +99,7 @@ isr_no_err_stub 31
 isr_no_err_stub 32
 isr_no_err_stub 33
 isr_no_err_stub 34
+isr_no_err_stub 128
 isr_no_err_stub 255
 
 .globl isr_stub_table
@@ -138,6 +139,8 @@ isr_stub_table:
     .quad isr_stub_32
     .quad isr_stub_33
     .quad isr_stub_34
-.org isr_stub_table + 254 * 8
+.org isr_stub_table + 128 * 8
+    .quad isr_stub_128
+.org isr_stub_table + 255 * 8
     .quad isr_stub_255
 

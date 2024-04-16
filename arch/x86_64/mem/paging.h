@@ -15,7 +15,7 @@
 
 #define FRAMEBUFFER_MEM_START 0xffffffffbd000000
 #define HIGHER_HALF_ADDRESS_OFFSET 0xFFFF800000000000
-
+#define VM_OFFSET_MASK 0xFFFFFFFFFFE00000
 #define SIGN_EXTENSION 0xFFFF000000000000
 
 #define PD_ENTRY(addr)   (((addr) >> 21) & 0x1ff)
@@ -24,6 +24,13 @@
 #define PT_ENTRY(addr)   (((addr) >> 12) & 0x1ff)
 
 #define ENTRIES_TO_ADDRESS(pml4, pdpr, pd, pt) ((pml4 << 39) | (pdpr << 30) | (pd << 21) |  (pt << 12))
+
+#define PRESENT_VIOLATION 0x1
+#define WRITE_VIOLATION 0x2
+#define ACCESS_VIOLATION 0x4
+#define RESERVED_VIOLATION 0x8
+#define FETCH_VIOLATION 0x10
+
 
 #ifndef ASM_FILE
 
@@ -44,6 +51,8 @@ static __always_inline void clean_new_table(uint64_t* table) {
     for(unsigned i = 0; i < PAGES_PER_TABLE; i++)
         table[i] = 0l;
 }
+
+__noreturn void page_fault_handler(uintptr_t error_code);
 
 #endif /* ASM_FILE */
 

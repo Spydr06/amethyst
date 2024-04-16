@@ -1,8 +1,8 @@
 #include "idt.h"
+#include "cpu/syscalls.h"
 
-#include <arch/x86_64/processor.h>
-
-#include <stddef.h>
+#include <cpu/cpu.h>
+#include <mem/vmm.h>
 #include <cdefs.h>
 #include <stdint.h>
 
@@ -83,8 +83,14 @@ void idt_reload(void) {
 
 cpu_status_t* __interrupt_handler(cpu_status_t* status) {
     switch(status->interrupt_number) {
+        case PAGE_FAULT:
+            page_fault_handler(status->error_code);
+            break;
         case DOUBLE_FAULT:
             klog(ERROR, "Double Fault at %p.", (void*) status->error_code);
+            break;
+        case SYSCALL_INTERRUPT:
+            return syscall_dispatch(status);
             break;
         default:
             if(status->interrupt_number < __len(exception_names))

@@ -2,15 +2,18 @@
 #include <tty.h>
 #include <multiboot2.h>
 #include <kernelio.h>
-#include <processor.h>
+#include <cpu/cpu.h>
 #include <version.h>
 #include <cdefs.h>
-#include <video/console.h>
-#include <video/vga.h>
+#include <drivers/video/console.h>
+#include <drivers/video/vga.h>
 #include <init/interrupts.h>
 #include <mem/pmm.h>
 #include <mem/mmap.h>
 #include "../cpu/acpi.h"
+#include "drivers/pci/pci.h"
+
+extern void kmain(void);
 
 static void init_vga(const struct multiboot_tag* tag) {
     const struct multiboot_tag_framebuffer* fb_tag = (struct multiboot_tag_framebuffer*) tag;
@@ -50,7 +53,7 @@ static void (*multiboot_tag_handlers[])(const struct multiboot_tag*) = {
     [MULTIBOOT_TAG_TYPE_ACPI_NEW] = init_acpi,
 };
 
-void _init_basic_system(void)
+__noreturn void _init_basic_system(void)
 {
     early_console_init();
     init_interrupts();
@@ -64,4 +67,9 @@ void _init_basic_system(void)
         acpi_parse_sdt((uintptr_t) (((struct multiboot_tag_old_acpi*) acpi_tag) + 1), MULTIBOOT_TAG_TYPE_ACPI_OLD);
     else
         acpi_parse_sdt((uintptr_t) (((struct multiboot_tag_new_acpi*) acpi_tag) + 1), MULTIBOOT_TAG_TYPE_ACPI_NEW);
+
+    pci_init(0x0cfc, 0x0cf8);
+
+    kmain();
+    hlt();
 }

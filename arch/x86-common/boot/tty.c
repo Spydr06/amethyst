@@ -1,7 +1,7 @@
 #include "boot.h"
 
 #include "../io.h"
-#include "../processor.h"
+#include "../cpu/cpu.h"
 
 #include <cdefs.h>
 

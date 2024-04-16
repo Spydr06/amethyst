@@ -1,5 +1,5 @@
-#ifndef _AMETHYST_X86_64_PROCESSOR_H
-#define _AMETHYST_X86_64_PROCESSOR_H
+#ifndef _AMETHYST_X86_64_CPU_H
+#define _AMETHYST_X86_64_CPU_H
 
 #include <stdint.h>
 
@@ -28,7 +28,7 @@ typedef struct {
     uint64_t rflags;
     uint64_t rsp;
     uint64_t ss;
-} __attribute__((__packed__)) cpu_status_t ;
+} __attribute__((__packed__)) cpu_status_t;
 
-#endif /* _AMETHYST_X86_64_PROCESSOR_H */
+#endif /* _AMETHYST_X86_64_CPU_H */
 
