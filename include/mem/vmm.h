@@ -64,6 +64,8 @@ extern struct vmm_info vmm_kernel;
 void* map_phys_to_virt_addr(void* physical_address, void* address, enum paging_flags flags);
 void* map_phys_to_virt_addr_hh(void* physical_addres, void* address, enum paging_flags flags, uint64_t* pml4_root);
 
+void map_vaddress_range(void* virtual_address, enum paging_flags flags, size_t required_pages, uint64_t* pml4_root);
+
 void vmm_init(enum vmm_level level, struct vmm_info* info);
 enum phys_address is_physical_address_mapped(uintptr_t physicall_address, uintptr_t virtual_address);
 

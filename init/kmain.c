@@ -1,3 +1,4 @@
+#include <mem/heap.h>
 #include <drivers/pci/pci.h>
 #include <drivers/storage/ata.h>
 #include <kernelio.h>
@@ -48,6 +49,8 @@ static void pci_devices_init(void) {
 
 void kmain(void)
 {
+    kernel_heap_init();
+    
     syscalls_init();
     pci_devices_init();
     

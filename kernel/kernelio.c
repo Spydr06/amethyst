@@ -254,8 +254,8 @@ void __klog(enum klog_severity severity, const char* format, ...) {
     if(colors[severity])
         puts(colors[severity]);
 
-    uint64_t millis = 0; // TODO
-    printk("[%8lu] ", millis);
+    static uint64_t num = 0; // TODO: should be the time since boot
+    printk("[%8lu] ", num++);
 
     va_list ap;
     va_start(ap, format);

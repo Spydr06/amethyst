@@ -7,6 +7,8 @@
 #define panic(...) (__panic(__FILE__, __LINE__, __func__, __VA_ARGS__))
 #define klog(sev, ...) (__klog(KLOG_##sev, __VA_ARGS__))
 
+#define unimplemented() (panic("unimplemented()"))
+
 typedef void (*kernelio_writer_t)(int);
 
 enum klog_severity {

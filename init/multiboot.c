@@ -42,7 +42,7 @@ size_t parse_multiboot_tags(void (*handlers[])(const struct multiboot_tag*), siz
     };
 
     const struct boot_info boot_info = *(struct boot_info*) ptr;
-    klog(DEBUG, "multiboot2 info at %p (size %u)", ptr, boot_info.total_size); 
+    klog(INFO, "multiboot2 info at %p (size %u)", ptr, boot_info.total_size); 
 
     ptr += sizeof(struct boot_info);
 
@@ -52,7 +52,7 @@ size_t parse_multiboot_tags(void (*handlers[])(const struct multiboot_tag*), siz
     while(1) {
         ptr = __align8(ptr);
         tag = (const struct multiboot_tag*) ptr;
-        klog(DEBUG, "  (%2zu) %s (%u:%u)", parsed, tag_strings[tag->type], tag->type, tag->size);
+        klog(INFO, "  (%2zu) %s (%u:%u)", parsed, tag_strings[tag->type], tag->type, tag->size);
         if(tag->type < num_handlers && handlers[tag->type])
             handlers[tag->type](tag);
         parsed++;
