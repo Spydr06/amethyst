@@ -23,6 +23,7 @@ struct vga {
 };
 
 extern struct vga vga;
+extern uint32_t vga_color_map[256];
 
 void vga_init(const struct multiboot_tag_framebuffer* multiboot_info);
 void vga_put_pixel(uint32_t x, uint32_t y, uint32_t color);

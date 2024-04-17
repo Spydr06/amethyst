@@ -150,13 +150,13 @@ static void select_graphic_rendition(int* nums, unsigned nums_len) {
                     case 2: // 24-bit rgb value
                         if(nums_len <= i + 3)
                             break;
-                        vga_console.fg = nums[i + 1] << 16 | nums[i + 2] << 8 | nums[i + 3]; 
+                        vga_console.fg = (nums[i + 1] & 0xff) << 16 | (nums[i + 2] & 0xff) << 8 | (nums[i + 3] & 0xff); 
                         i += 3;
                         break;
                     case 5: // 8-bit color lookup
                         if(nums_len <= i + 1)
                             break;
-
+                        vga_console.fg = vga_color_map[(uint8_t) nums[i + 1]];
                         i++;
                         break;
                 }
@@ -175,13 +175,13 @@ static void select_graphic_rendition(int* nums, unsigned nums_len) {
                     case 2: // 24-bit rgb value
                         if(nums_len <= i + 3)
                             break;
-                        vga_console.bg = nums[i + 1] << 16 | nums[i + 2] << 8 | nums[i + 3]; 
+                        vga_console.bg = (nums[i + 1] & 0xff) << 16 | (nums[i + 2] & 0xff) << 8 | (nums[i + 3] & 0xff); 
                         i += 3;
                         break;
                     case 5: // 8-bit color lookup
                         if(nums_len <= i + 1)
                             break;
-
+                        vga_console.bg = vga_color_map[(uint8_t) nums[i + 1]];
                         i++;
                         break;
                 }

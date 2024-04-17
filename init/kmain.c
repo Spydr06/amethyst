@@ -19,22 +19,12 @@ static void color_test(void) {
     }
     printk("\n\n");
 
-    for(int i = 0; i < 255; i += 10) {
-        printk("\e[48;2;%i;0;0m  \e[0m", i);
+    for(int i = 0; i < 256; i++) {
+        printk("\e[48;5;%hhum  \e[0m", i);
+        
+        if(i == 15 || (i > 15 && i < 232 && (i - 16) % 36 == 35) || i == 231)
+            printk("\n");
     }
-    printk("\n\n");
-
-    for(int i = 0; i < 255; i += 10) {
-        printk("\e[48;2;0;%i;0m  \e[0m", i);
-    }
-    printk("\n\n");
-
-    for(int i = 0; i < 255; i += 10) {
-        printk("\e[48;2;0;0;%im  \e[0m", i);
-    }
-    printk("\n\n");
-
-
 
     printk("\n\n");
 }
