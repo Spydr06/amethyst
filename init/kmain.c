@@ -1,3 +1,4 @@
+#include "filesystem/virtual.h"
 #include <mem/heap.h>
 #include <drivers/pci/pci.h>
 #include <drivers/storage/ata.h>
@@ -16,6 +17,25 @@ static void color_test(void) {
     for(int i = 100; i <= 107; i++) {
         printk("\e[%im  \e[0m ", i);
     }
+    printk("\n\n");
+
+    for(int i = 0; i < 255; i += 10) {
+        printk("\e[48;2;%i;0;0m  \e[0m", i);
+    }
+    printk("\n\n");
+
+    for(int i = 0; i < 255; i += 10) {
+        printk("\e[48;2;0;%i;0m  \e[0m", i);
+    }
+    printk("\n\n");
+
+    for(int i = 0; i < 255; i += 10) {
+        printk("\e[48;2;0;0;%im  \e[0m", i);
+    }
+    printk("\n\n");
+
+
+
     printk("\n\n");
 }
 
@@ -50,12 +70,13 @@ static void pci_devices_init(void) {
 void kmain(void)
 {
     kernel_heap_init();
-    
-    syscalls_init();
     pci_devices_init();
+    syscalls_init();
     
     greet();
     color_test();
+
+    vfs_init();
 
     while(1);
 }

@@ -7,31 +7,26 @@
 #include <ff/psf.h>
 #include <tty.h>
 #include <kernelio.h>
+#include <math.h>
 
 #define TABSIZE 4
 
 #define DEFAULT_FG_COLOR (vga_console.options & VGACON_COLORED ? vga_colors[7] : 0xffffffff)
 #define DEFAULT_BG_COLOR (vga_console.options & VGACON_COLORED ? vga_colors[0] : 0x00000000)
 
+enum cursor_movement : uint8_t {
+    CURSOR_UP,
+    CURSOR_DOWN,
+    CURSOR_FORWARD,
+    CURSOR_BACKWARD,
+    CURSOR_LINE_DOWN,
+    CURSOR_LINE_UP,
+    CURSOR_HORIZONTAL_ABSOLUTE
+};
+
 struct vga_console vga_console = {0};
 
 static uint32_t vga_colors[16] = {
-    /*0x000000,
-    0xCD3131,
-    0x0DBC79,
-    0xE5E510,
-    0x2472C8,
-    0xBC3FBC,
-    0x11A8CD,
-    0xB0B0B0,
-    0xE5E5E5,
-    0xE74856,
-    0x23D164,
-    0xE6E600,
-    0x3B8EEA,
-    0xD670D6,
-    0x29B8DB,
-    0xffffff*/
     0x000000,
     0xd54e53,
     0xb9ca4a,
@@ -148,7 +143,23 @@ static void select_graphic_rendition(int* nums, unsigned nums_len) {
                 if(vga_console.options & VGACON_COLORED)
                     vga_console.fg = vga_colors[n - 30];
                 break;
-            case 38: // TODO
+            case 38:
+                if(nums_len <= i + 1)
+                    break;
+                switch(nums[++i]) {
+                    case 2: // 24-bit rgb value
+                        if(nums_len <= i + 3)
+                            break;
+                        vga_console.fg = nums[i + 1] << 16 | nums[i + 2] << 8 | nums[i + 3]; 
+                        i += 3;
+                        break;
+                    case 5: // 8-bit color lookup
+                        if(nums_len <= i + 1)
+                            break;
+
+                        i++;
+                        break;
+                }
                 break;
             case 39:
                 vga_console.fg = DEFAULT_FG_COLOR;
@@ -157,7 +168,23 @@ static void select_graphic_rendition(int* nums, unsigned nums_len) {
                 if(vga_console.options & VGACON_COLORED)
                     vga_console.bg = vga_colors[n - 40];
                 break;
-            case 48: // TODO
+            case 48:
+                if(nums_len <= i + 1)
+                    break;
+                switch(nums[++i]) {
+                    case 2: // 24-bit rgb value
+                        if(nums_len <= i + 3)
+                            break;
+                        vga_console.bg = nums[i + 1] << 16 | nums[i + 2] << 8 | nums[i + 3]; 
+                        i += 3;
+                        break;
+                    case 5: // 8-bit color lookup
+                        if(nums_len <= i + 1)
+                            break;
+
+                        i++;
+                        break;
+                }
                 break;
             case 49:
                 vga_console.bg = DEFAULT_BG_COLOR;
@@ -176,6 +203,41 @@ static void select_graphic_rendition(int* nums, unsigned nums_len) {
     }
 
     return;
+}
+
+static void move_cursor_sequence(int* nums, unsigned nums_len, enum cursor_movement movement) {
+    if(!nums_len) {
+        nums_len = 1;
+        *nums = 1;
+    }
+
+    for(unsigned i = 0; i < nums_len; i++) {
+        switch(movement) {
+        case CURSOR_UP:
+            vga_console.cursor_y = MAX(vga_console.cursor_y - nums[i], 0);
+            break;
+        case CURSOR_DOWN:
+            vga_console.cursor_y = MIN(vga_console.cursor_y + nums[i], vga_console.height - 1);
+            break;
+        case CURSOR_BACKWARD:
+            vga_console.cursor_x = MAX(vga_console.cursor_x - nums[i], 0);
+            break;
+        case CURSOR_FORWARD:
+            vga_console.cursor_x = MIN(vga_console.cursor_x + nums[i], vga_console.width - 1);
+            break;
+        case CURSOR_LINE_DOWN:
+            vga_console.cursor_y = MIN(vga_console.cursor_y + nums[i], vga_console.height - 1);
+            vga_console.cursor_x = 0;
+            break;
+        case CURSOR_LINE_UP:
+            vga_console.cursor_y = MAX(vga_console.cursor_y - nums[i], 0);
+            vga_console.cursor_x = 0;
+            break;
+        case CURSOR_HORIZONTAL_ABSOLUTE:
+            vga_console.cursor_x = MAX(MIN(nums[i], vga_console.width - 1), 0);
+            break;
+        }
+    }
 }
 
 static int parse_control_sequence(char c) {
@@ -201,6 +263,27 @@ static int parse_control_sequence(char c) {
             return 1;
         case 'm': // select graphic rendition
             select_graphic_rendition(nums, nums_len);
+            break;
+        case 'A':
+            move_cursor_sequence(nums, nums_len, CURSOR_UP);
+            break;
+        case 'B':
+            move_cursor_sequence(nums, nums_len, CURSOR_DOWN);
+            break;
+        case 'C':
+            move_cursor_sequence(nums, nums_len, CURSOR_FORWARD);
+            break;
+        case 'D':
+            move_cursor_sequence(nums, nums_len, CURSOR_BACKWARD);
+            break;
+        case 'E':
+            move_cursor_sequence(nums, nums_len, CURSOR_LINE_DOWN);
+            break;
+        case 'F':
+            move_cursor_sequence(nums, nums_len, CURSOR_LINE_UP);
+            break;
+        case 'H':
+            move_cursor_sequence(nums, nums_len, CURSOR_HORIZONTAL_ABSOLUTE);
             break;
         default:
             break;
