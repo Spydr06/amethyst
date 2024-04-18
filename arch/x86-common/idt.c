@@ -1,6 +1,7 @@
 #include "idt.h"
 #include "arch/x86-common/dev/pic.h"
 #include "cpu/syscalls.h"
+#include "drivers/char/keyboard.h"
 
 #include <cpu/cpu.h>
 #include <mem/vmm.h>
@@ -100,7 +101,7 @@ cpu_status_t* __interrupt_handler(cpu_status_t* status) {
             tick();
         );
         case PIC(KEYBOARD_INTERRUPT,
-            // TODO
+            keyboard_interrupt_handler();
         );
         case PAGE_FAULT:
             page_fault_handler(status->error_code);

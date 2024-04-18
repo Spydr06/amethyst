@@ -67,7 +67,6 @@ void kmain(void)
     color_test();
 
     vfs_init();
-
     while(1);
 }
 

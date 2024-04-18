@@ -248,6 +248,11 @@ static const char* colors[__KLOG_MAX] = {
     [KLOG_ERROR] = "\e[31m"
 };
 
+static void print_timestamp(void) {
+    uint64_t ms = millis();
+    printk("[%5lu.%03lu] ", ms / 1000, ms % 1000); 
+}
+
 void __klog(enum klog_severity severity, const char* format, ...) {
     if(severity < klog_min_severity) 
         return;
@@ -255,7 +260,7 @@ void __klog(enum klog_severity severity, const char* format, ...) {
     if(colors[severity])
         puts(colors[severity]);
 
-    printk("[%8lu] ", millis());
+    print_timestamp();
 
     va_list ap;
     va_start(ap, format);
