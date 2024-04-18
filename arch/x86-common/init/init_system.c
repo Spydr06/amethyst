@@ -11,8 +11,16 @@
 #include <mem/pmm.h>
 #include <mem/mmap.h>
 #include "../cpu/acpi.h"
+#include "arch/x86-common/dev/pic.h"
+#include "arch/x86-common/dev/pit.h"
 #include "drivers/pci/pci.h"
 #include "mem/vmm.h"
+
+uint64_t __millis = 0;
+
+uint64_t millis(void) {
+    return __millis;
+}
 
 extern void kmain(void);
 
@@ -58,7 +66,10 @@ static void (*multiboot_tag_handlers[])(const struct multiboot_tag*) = {
 __noreturn void _init_basic_system(void)
 {
     early_console_init();
+    init_pit(SYSTEM_TICK_FREQUENCY);   
+    pic_init();
     init_interrupts();
+
     size_t mbi_size = parse_multiboot_tags(multiboot_tag_handlers, __len(multiboot_tag_handlers));
     
     end_of_mapped_memory = (uintptr_t) &end_of_mapped_memory;

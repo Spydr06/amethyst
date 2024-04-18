@@ -32,6 +32,7 @@ typedef struct fs_node* (*finddir_type_t)(struct fs_node*, const char*);
 
 struct inode {
     ino_t ino;
+    // TODO: file stats
 };
 
 struct fs_node {

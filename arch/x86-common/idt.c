@@ -1,4 +1,5 @@
 #include "idt.h"
+#include "arch/x86-common/dev/pic.h"
 #include "cpu/syscalls.h"
 
 #include <cpu/cpu.h>
@@ -7,6 +8,8 @@
 #include <stdint.h>
 
 #include <kernelio.h>
+
+extern uint64_t __millis;
 
 __aligned(0x10) struct interrupt_descriptor idt[256];
 const struct idtr idtr = {
@@ -81,8 +84,24 @@ void idt_reload(void) {
     );
 }
 
+static void tick(void) {
+    __millis++;
+}
+
+#define PIC(num, code) (num): { \
+        code                         \
+    }                                \
+    pic_send_eoi(status->interrupt_number - APIC_TIMER_INTERRUPT); \
+    break
+
 cpu_status_t* __interrupt_handler(cpu_status_t* status) {
     switch(status->interrupt_number) {
+        case PIC(PIT_INTERRUPT,
+            tick();
+        );
+        case PIC(KEYBOARD_INTERRUPT,
+            // TODO
+        );
         case PAGE_FAULT:
             page_fault_handler(status->error_code);
             break;

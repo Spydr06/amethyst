@@ -7,7 +7,7 @@
 #include <cpu/syscalls.h>
 
 static void greet(void) {
-    printk("\n \e[1;32m>>\e[0m Booting \e[95mAmethyst\e[0m version \e[97m" AMETHYST_VERSION "\e[1;32m <<\e[0m\n");
+    printk("\n \e[1;32m>>\e[0m Booting \e[95mAmethyst\e[0m version \e[97m" AMETHYST_VERSION "\e[90m (built " AMETHYST_COMPILATION_DATE " " AMETHYST_COMPILATION_TIME ")\e[1;32m <<\e[0m\n");
 }
 
 static void color_test(void) {

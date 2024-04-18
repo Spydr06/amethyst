@@ -3,7 +3,6 @@
 
 #include <kernelio.h>
 #include <stdint.h>
-#include <drivers/video/vga.h>
 
 #define VGACON_COLORED (1 << 0)
 #define VGACON_DEFAULT_OPTS (VGACON_COLORED)

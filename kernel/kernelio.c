@@ -8,6 +8,7 @@
 #include <cpu/cpu.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <timer.h>
 
 kernelio_writer_t kernelio_writer = early_putchar;
 
@@ -254,8 +255,7 @@ void __klog(enum klog_severity severity, const char* format, ...) {
     if(colors[severity])
         puts(colors[severity]);
 
-    static uint64_t num = 0; // TODO: should be the time since boot
-    printk("[%8lu] ", num++);
+    printk("[%8lu] ", millis());
 
     va_list ap;
     va_start(ap, format);
