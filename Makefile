@@ -9,14 +9,14 @@ KERNEL_SYM ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).sym
 ISOROOT_DIR ?= $(BUILD_DIR)/iso
 ISO ?= amethyst.iso
 
-SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S"
+SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S" -or -name "*.ids"
 SOURCES := $(shell find $(SOURCE_PATTERN) | grep -v "arch/")
 
 INCLUDES := . include libk/include
 
 SSP := $(shell openssl rand -hex 8)
 
-C_CXX_FLAGS += -Wall -Wextra \
+C_CXX_FLAGS += -Wall -Wextra -Wno-trigraphs \
 			   -ffreestanding -fno-stack-protector -fno-stack-check -fno-lto -fPIE \
 		       -g \
 			   -D__$(ARCH)__ -D__$(ARCH) -D__SSP__=0x$(SSP) \
@@ -91,6 +91,13 @@ $(BUILD_DIR)/%.S: %.S | $(VERSION_H)
 $(BUILD_DIR)/%.S.o: $(BUILD_DIR)/%.S
 	@mkdir -p $(dir $@)
 	$(AS) $(ASFLAGS) -c $^ -o $@
+
+$(BUILD_DIR)/%.ids.c: %.ids
+	@mkdir -p $(dir $@)
+	$(MAKE) -C $(dir $<) OUTPUT=$(shell realpath $(BUILD_DIR))/$<.c
+
+$(BUILD_DIR)/%.ids.o: $(BUILD_DIR)/%.ids.c
+	$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.ids.o=%.ids.d)" -c $^ -o $@
 
 $(VERSION_H): $(VERSION_H).in
 	sed -e 's|@VERSION@|$(VERSION)|g' $< > $@
