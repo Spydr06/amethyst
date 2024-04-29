@@ -9,7 +9,7 @@ KERNEL_SYM ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).sym
 ISOROOT_DIR ?= $(BUILD_DIR)/iso
 ISO ?= amethyst.iso
 
-SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S" -or -name "*.s" 
+SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S"
 SOURCES := $(shell find $(SOURCE_PATTERN) | grep -v "arch/")
 
 INCLUDES := . include libk/include
@@ -92,15 +92,11 @@ $(BUILD_DIR)/%.S.o: $(BUILD_DIR)/%.S
 	@mkdir -p $(dir $@)
 	$(AS) $(ASFLAGS) -c $^ -o $@
 
-$(BUILD_DIR)/%.s.o: %.s
-	@mkdir -p $(dir $@)
-	$(AS) $(ASFLAGS) -c $^ -o $@
- 
 $(VERSION_H): $(VERSION_H).in
 	sed -e 's|@VERSION@|$(VERSION)|g' $< > $@
 
 $(CONSOLEFONT_OBJECT): $(CONSOLEFONT)
-	objcopy -O elf64-x86-64 -B i386 -I binary $< $@
+	$(LD) -r -b binary -o $@ $<
 
 .PHONY: iso
 iso: $(ISO)

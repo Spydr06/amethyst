@@ -1,6 +1,7 @@
 #ifndef _AMETHYST_FILESYSTEM_VIRTUAL_H
 #define _AMETHYST_FILESYSTEM_VIRTUAL_H
 
+#include "sys/spinlock.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -15,6 +16,8 @@ enum fs_flags : uint32_t {
     FS_CHARDEV,
     FS_BLOCKDEV,
     FS_PIPE,
+    FS_SOCKET,
+    FS_FIFO,
     FS_SYMLINK,
     FS_MOUNTPOINT
 };
@@ -30,18 +33,13 @@ typedef void (*close_type_t)(struct fs_node*);
 typedef struct dirent* (*readdir_type_t)(struct fs_node*, size_t);
 typedef struct fs_node* (*finddir_type_t)(struct fs_node*, const char*);
 
-struct inode {
-    ino_t ino;
-    // TODO: file stats
-};
-
 struct fs_node {
     char name[MAX_FILENAME_LENGTH];
+    enum fs_flags flags;    
     uint32_t mask;
     uid_t uid;
     gid_t gid;
-    enum fs_flags flags;    
-    struct inode inode;
+    ino_t inode;
     size_t length;
 
     read_type_t read;
@@ -55,15 +53,17 @@ struct fs_node {
             finddir_type_t finddir;
         };
 
-        struct fs_node* ptr;
+        struct fs_node* link;
     };
 };
 
 struct dirent {
     char name[MAX_FILENAME_LENGTH];
+    struct fs_node* node;
     ino_t ino;
 };
 
+extern spinlock_t fs_lock;
 extern struct fs_node* vfs;
 
 void vfs_init(void);

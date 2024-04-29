@@ -89,10 +89,8 @@ static void tick(void) {
     __millis++;
 }
 
-#define PIC(num, code) (num): { \
-        code                         \
-    }                                \
-    pic_send_eoi(status->interrupt_number - APIC_TIMER_INTERRUPT); \
+#define PIC(num, code) (num): { code }                              \
+    pic_send_eoi(status->interrupt_number - APIC_TIMER_INTERRUPT);  \
     break
 
 cpu_status_t* __interrupt_handler(cpu_status_t* status) {

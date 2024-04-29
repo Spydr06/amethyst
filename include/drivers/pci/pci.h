@@ -1,75 +1,60 @@
 #ifndef _AMETHYST_DRIVERS_PCI_H
 #define _AMETHYST_DRIVERS_PCI_H
 
-#include <stdint.h>
+#include "dynarray.h"
 
-struct pci_driver_identifier {
-    uint16_t vendor;
-    uint16_t device;
-    uint16_t class;
-    uint16_t subclass;
-    uint16_t interface;
+struct pci_device {
+    int64_t parent;
+    uint8_t bus;
+    uint8_t func;
+    uint8_t device;
+    uint16_t device_id;
+    uint16_t vendor_id;
+    uint8_t rev_id;
+    uint8_t subclass;
+    uint8_t device_class;
+    uint8_t prog_if;
+    int multifunction;
+    uint8_t irq_pin;
+    int has_prt;
+    uint32_t gsi;
+    uint16_t gsi_flags;
+};
+
+struct pic_bar {
+    uintptr_t base;
+    size_t size;
+
+    bool is_mmio;
+    bool is_prefetchable;
+};
+
+struct pci_device_id {
+    uint16_t device_id;
+    const char* device;
 } __attribute__((packed));
 
-struct pci_device_descriptor {
-    uint32_t bar0;
-    uint32_t bar1;
-    uint32_t bar2;
-    uint32_t bar3;
-    uint32_t interrupt;
-
-    uint16_t bus;
-    uint16_t device;
-    uint16_t function;
-
+struct pci_vendor_id {
     uint16_t vendor_id;
-    uint16_t device_id;
+    const char* vendor;
 
-    uint8_t class_id;
-    uint8_t subclass_id;
-    uint8_t interface_id;
+    size_t num_device_ids;
+    struct pci_device_id* device_ids;
+} __attribute__((packed));
 
-    uint8_t revision;
-};
+extern const size_t pci_id_lookup_table_size;
+extern const struct pci_vendor_id pci_id_lookup_table[];
 
-struct pci_base_address_register {
-    bool prefetchable;
-    uint8_t type;
-    uint32_t size;
-    uint8_t* address;
-};
+extern struct dynarray devices;
 
-struct pci {
-    uint16_t data_port;
-    uint16_t command_port;
-    struct pci_device_descriptor dev;
-    struct pci_base_address_register bar;
-};
+void pci_init(void);
 
-extern struct pci pci;
+uint32_t pci_device_read_dword(struct pci_device* device, uint32_t offset);
+void pci_device_write_dword(struct pci_device* device, uint32_t offset, uint32_t value);
 
-void pci_init(uint16_t data_port, uint16_t command_port);
-
-bool pci_find_driver(struct pci_driver_identifier identifier);
-bool pci_find_driver_on_bus(struct pci_driver_identifier identifier, uint16_t bus, uint16_t device);
-
-void pci_get_device_descriptor(uint16_t bus, uint16_t device, uint16_t function);
-void pci_get_base_address_register(uint16_t bus, uint16_t device, uint16_t function, uint16_t bar_num);
-
-uint32_t pci_read(uint16_t bus, uint16_t device, uint16_t function, uint32_t register_offset);
-void pci_write(uint16_t bus, uint16_t device, uint16_t function, uint32_t register_offset, uint32_t value);
-
-inline uint32_t pci_read_device(struct pci_device_descriptor device, uint32_t register_offset) {
-    return pci_read(device.bus, device.device, device.function, register_offset);
-}
-
-inline void pci_write_device(struct pci_device_descriptor device, uint32_t register_offset, uint32_t value) {
-    return pci_write(device.bus, device.device, device.function, register_offset, value);
-}
-
-inline struct pci_device_descriptor pci_get_descriptor(void) {
-    return pci.dev;
-}
+const struct pci_vendor_id* pci_lookup_vendor(uint16_t vendor_id);
+const char* pci_lookup_vendor_id(uint16_t vendor_id);
+const char* pci_lookup_device_id(uint16_t vendor_id, uint16_t device_id);
 
 #endif /* _AMETHYST_DRIVERS_PCI_H */
 

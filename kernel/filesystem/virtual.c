@@ -1,11 +1,14 @@
+#include "sys/spinlock.h"
 #include <filesystem/virtual.h>
 
 #include <kernelio.h>
 
+spinlock_t fs_lock;
 struct fs_node* vfs = nullptr;
 
 void vfs_init(void) {
     klog(INFO, "Initializing virtual file system...");
+    spinlock_release(&fs_lock);
 }
 
 size_t vfs_read(struct fs_node* node, size_t offset, size_t size, uint8_t* buffer) {

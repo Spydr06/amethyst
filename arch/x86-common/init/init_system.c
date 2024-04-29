@@ -14,6 +14,7 @@
 #include "arch/x86-common/dev/pic.h"
 #include "arch/x86-common/dev/pit.h"
 #include "drivers/pci/pci.h"
+#include "mem/heap.h"
 #include "mem/vmm.h"
 
 uint64_t __millis = 0;
@@ -55,12 +56,18 @@ static void init_acpi(const struct multiboot_tag* tag) {
     acpi_tag = tag;
 }
 
+static void save_cmdline(const struct multiboot_tag* tag) {
+    const struct multiboot_tag_string* cmdline = (struct multiboot_tag_string*) tag;
+    klog(DEBUG, "cmdline: %s", cmdline->string);
+}
+
 static void (*multiboot_tag_handlers[])(const struct multiboot_tag*) = {
     [MULTIBOOT_TAG_TYPE_FRAMEBUFFER] = init_vga,
     [MULTIBOOT_TAG_TYPE_MMAP] = init_mmap,
     [MULTIBOOT_TAG_TYPE_BASIC_MEMINFO] = init_basic_meminfo,
     [MULTIBOOT_TAG_TYPE_ACPI_OLD] = init_acpi,
     [MULTIBOOT_TAG_TYPE_ACPI_NEW] = init_acpi,
+    [MULTIBOOT_TAG_TYPE_CMDLINE] = save_cmdline,
 };
 
 __noreturn void _init_basic_system(void)
@@ -88,8 +95,6 @@ __noreturn void _init_basic_system(void)
     mmap_setup(meminfo_tag);
     hhdm_map_physical_memory();    
     vmm_init(VMM_LEVEL_SUPERVISOR, nullptr); 
-
-    pci_init(0x0cfc, 0x0cf8);
 
     kmain();
     hlt();

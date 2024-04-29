@@ -12,6 +12,9 @@
 
 kernelio_writer_t kernelio_writer = early_putchar;
 
+static char stdin_buffer[1024];
+static size_t stdin_buffer_size = 0;
+
 static inline void puts(const char* str) {
     while(*str)
         kernelio_writer(*str++);
@@ -271,5 +274,35 @@ void __klog(enum klog_severity severity, const char* format, ...) {
         puts("\e[0m");
 
     kernelio_writer('\n'); 
+}
+
+void stdin_push_char(char c) {
+    if(stdin_buffer_size >= __len(stdin_buffer)) {
+        klog(WARN, "Kernel stdin buffer is full; dropping character '%c'.", c);
+        return;
+    }
+
+    stdin_buffer[stdin_buffer_size++] = c;
+    kernelio_writer(c);
+}
+
+char kgetc(void) {
+    // TODO: wait for keyboard input
+    if(stdin_buffer_size) {
+        char c = stdin_buffer[0];
+        memmove(stdin_buffer, stdin_buffer + 1, stdin_buffer_size - 1);
+        return c;
+    }
+
+    return '\0';
+}
+
+char* kgets(char* s, unsigned size) {
+    size = MIN(size, stdin_buffer_size);
+    
+    memcpy(s, stdin_buffer, size);
+    memmove(stdin_buffer, stdin_buffer + size, stdin_buffer_size - size);
+
+    return s;
 }
 

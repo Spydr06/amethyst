@@ -1,7 +1,6 @@
 #include "filesystem/virtual.h"
 #include <mem/heap.h>
 #include <drivers/pci/pci.h>
-#include <drivers/storage/ata.h>
 #include <kernelio.h>
 #include <version.h>
 #include <cpu/syscalls.h>
@@ -29,40 +28,13 @@ static void color_test(void) {
     printk("\n\n");
 }
 
-static void ata_init(struct pci_device_descriptor device) {
-    klog(INFO, "Found ATA device %04hx", device.device_id);
-}
-
-static void ata_fail(void) {
-    klog(WARN, "No ATA device found.");
-}
-
-static void pci_devices_init(void) {
-    struct {
-        struct pci_driver_identifier identifier;
-        void (*callback)(struct pci_device_descriptor device);
-        void (*on_error)(void);
-    } pci_drivers[] = {
-        {ata_identifier(), ata_init, ata_fail}
-    };
-    
-    for(size_t i = 0; i < __len(pci_drivers); i++) {
-        if(!pci_find_driver(pci_drivers[i].identifier)) {
-            if(pci_drivers[i].on_error)
-                pci_drivers[i].on_error();
-            continue;
-        }
-            
-        pci_drivers[i].callback(pci_get_descriptor());
-    }
-} 
-
 void kmain(void)
 {
-    kernel_heap_init();
-    pci_devices_init();
     syscalls_init();
     
+    kernel_heap_init();   
+    pci_init();
+
     greet();
     color_test();
 

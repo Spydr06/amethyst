@@ -1,132 +1,158 @@
+#include "drivers/pci/ids.h"
 #include <drivers/pci/pci.h>
+
+#include <kernelio.h>
+#include <assert.h>
+#include <dynarray.h>
+
+#ifdef __x86_64__
 #include "arch/x86-common/io.h"
-#include "kernelio.h"
+#define PCI_DATA_PORT    0x0cfc
+#define PCI_COMMAND_PORT 0x0cf8
+#endif
 
-#include <stdint.h>
-#include <string.h>
+#define MAX_DEVICE 32
+#define MAX_FUNCTION 8
 
-struct pci pci;
+struct dynarray pci_devices;
 
-void pci_write_device(struct pci_device_descriptor device, uint32_t register_offset, uint32_t value);
-uint32_t pci_read_device(struct pci_device_descriptor device, uint32_t register_offset); 
-struct pci_device_descriptor pci_get_descriptor(void);
+static void pci_check_bus(uint8_t bus, uint64_t parent);
 
-void pci_init(uint16_t data_port, uint16_t command_port) {
-    memset(&pci, 0, sizeof(struct pci));
-    pci.data_port = data_port;
-    pci.command_port = command_port;
+static void get_address(struct pci_device* device, uint32_t offset) {
+    uint32_t address = (device->bus << 16)
+        | (device->device << 11)
+        | (device->func << 8)
+        | (offset & ~((uint32_t) 3))
+        | 0x80000000;
+    outl(PCI_COMMAND_PORT, address);
 }
 
-uint32_t pci_read(uint16_t bus, uint16_t device, uint16_t function, uint32_t register_offset) {
-    uint32_t id = (0x1 << 31)
-        | ((bus & 0xff) << 16)
-        | ((device & 0x1f) << 11)
-        | ((function & 0x07) << 8)
-        | (register_offset & 0xfc);
+static void pci_check_function(uint8_t bus, uint8_t slot, uint8_t func, int64_t parent) {
+    struct pci_device device = {0};
+    device.bus = bus;
+    device.func = func;
+    device.device = slot;
 
-    outl(pci.command_port, id);
-    uint32_t dev = inl(pci.data_port);
-    return dev >> (8 * (register_offset % 4));
-}
+    uint32_t config_0 = pci_device_read_dword(&device, 0x00);
 
-void pci_write(uint16_t bus, uint16_t device, uint16_t function, uint32_t register_offset, uint32_t value) {
-    uint32_t id = (0x1 << 31)
-        | ((bus & 0xff) << 16)
-        | ((device & 0x1f) << 11)
-        | ((function & 0x07) << 8)
-        | (register_offset & 0xfc);
-
-    outl(pci.command_port, id);
-    outl(pci.data_port, value);
-}
-
-void pci_get_base_address_register(uint16_t bus, uint16_t device, uint16_t function, uint16_t bar_num) {
-    uint32_t headertype = pci_read(bus, device, function, 0x0e) & 0x7f;
-    int32_t max_bars = 6 - 4 * headertype;
-    if(bar_num >= max_bars)
+    if(config_0 == 0xffffffff)
         return;
 
-    uint32_t bar_value = pci_read(bus, device, function, 0x10 + 4 * bar_num);
-    pci.bar.type = bar_value & 0x1 ? 1 : 0;
+    uint32_t config_8 = pci_device_read_dword(&device, 0x08);
+    uint32_t config_c = pci_device_read_dword(&device, 0x0c);
+    uint32_t config_3c = pci_device_read_dword(&device, 0x3c);
 
-    if(!pci.bar.type) {
-        // TODO
-        pci.bar.address = (uint8_t*)(uintptr_t)(bar_value & ~0x7);
+    device.parent = parent;
+    device.device_id = (uint16_t) (config_0 >> 16);
+    device.vendor_id = (uint16_t) config_0;
+    device.rev_id = (uint8_t) config_8;
+    device.subclass = (uint8_t) (config_8 >> 16);
+    device.device_class = (uint8_t) (config_8 >> 24);
+    device.prog_if = (uint8_t) (config_8 >> 8);
+    device.irq_pin = (uint8_t) (config_3c >> 8);
+
+    if(config_c & 0x800000)
+        device.multifunction = 1;
+    else
+        device.multifunction = 0;
+
+    size_t id = dynarr_push(&pci_devices, &device);
+    if(device.device_class == 0x06 && device.subclass == 0x04) {
+        // PCI to PCI bridge
+        uint32_t config_18 = pci_device_read_dword(&device, 0x18);
+        pci_check_bus((config_18 >> 8) & 0xff, id);
     }
-    else if(bar_value & 0x1) {
-        pci.bar.address = (uint8_t*)(uintptr_t)(bar_value & ~0x3);
-        pci.bar.prefetchable = false;
-    }
-
-    return;
 }
 
-bool pci_find_driver(struct pci_driver_identifier identifier) {
-    for(uint16_t bus = 0; bus < 8; bus++)
-        for(uint16_t device = 0; device < 32; device++)
-            if(pci_find_driver_on_bus(identifier, bus, device))
-                return true;
-    return false;
-}
-
-bool pci_device_has_function(uint16_t bus, uint16_t device) {
-    return pci_read(bus, device, 0, 0x0e) & (1 << 7); 
-}
-
-bool pci_find_driver_on_bus(struct pci_driver_identifier identifier, uint16_t bus, uint16_t device) {
-    uint8_t functions = pci_device_has_function(bus, device) ? 8 : 1;
-    for(uint8_t function = 0; function < functions; function++) {
-        pci_get_device_descriptor(bus, device, function);
-        if(pci.dev.vendor_id == 0x0000 || pci.dev.vendor_id == 0xffff)
-            break;
-
-        klog(DEBUG, "pci dev %04hx", pci.dev.device_id);
-
-        for(uint16_t bar_num = 0; bar_num < 6; bar_num++) {
-            pci_get_base_address_register(bus, device, function, bar_num);
-            if(!pci.bar.address)
-                continue;
-
-            switch(bar_num) {
-                case 0:
-                    pci.dev.bar0 = (uintptr_t) pci.bar.address;
-                    break;
-                case 1:
-                    pci.dev.bar1 = (uintptr_t) pci.bar.address;
-                    break;
-                case 2:
-                    pci.dev.bar2 = (uintptr_t) pci.bar.address;
-                    break;
-                case 3:
-                    pci.dev.bar3 = (uintptr_t) pci.bar.address;
-                    break;
-            }
+static void pci_check_bus(uint8_t bus, uint64_t parent) {
+    for(size_t dev = 0; dev < MAX_DEVICE; dev++) {
+        for(size_t func = 0; func < MAX_FUNCTION; func++) {
+            pci_check_function(bus, dev, func, parent);
         }
+    }
+}
 
-        if(pci.dev.vendor_id == identifier.vendor && pci.dev.device_id == identifier.device)
-            return true;
+static void pci_init_root_bus(void) {
+    struct pci_device device = {0};
+    uint32_t config_c = pci_device_read_dword(&device, 0x0c);
+    uint32_t config_0;
 
-        if((pci.dev.class_id == identifier.class && pci.dev.subclass_id == identifier.subclass)
-            && (pci.dev.interface_id == identifier.interface || !identifier.interface))
-                return true;
+    if(!(config_c & 0x800000)) {
+        pci_check_bus(0, -1);
+        return;
+    }
+    
+    for(size_t func = 0; func < MAX_FUNCTION; func++) {
+        device.func = func;
+        config_0 = pci_device_read_dword(&device, 0);
+        if(config_0 & 0xffffffff)
+            continue;
+
+        pci_check_bus(func, -1);
+    }
+}
+
+void pci_init(void) {
+    dynarr_init(&pci_devices, sizeof(struct pci_device), 0);
+
+    pci_init_root_bus();
+
+    klog(INFO, "PCI Scan: found %zu devices:", pci_devices.size);
+
+    for(size_t i = 0; i < pci_devices.size; i++) {
+        struct pci_device* dev = dynarr_getelem(&pci_devices, i);
+
+        klog(INFO, 
+            "  %02hhx:%02hhx.%01hhx - %s (%04hx) : %s (%04hx)",
+            dev->bus,
+            dev->device,
+            dev->func,
+            pci_lookup_vendor_id(dev->vendor_id),
+            dev->vendor_id,
+            pci_lookup_device_id(dev->vendor_id, dev->device_id),
+            dev->device_id
+        );
+    }
+}
+
+uint32_t pci_device_read_dword(struct pci_device* device, uint32_t offset) {
+    assert(!(offset & 1));
+    get_address(device, offset);
+    return inl(PCI_DATA_PORT + (offset & 3));
+}
+
+void pci_device_write_dword(struct pci_device* device, uint32_t offset, uint32_t value) {
+    assert(!(offset & 3));
+    get_address(device, offset);
+    outl(PCI_DATA_PORT + (offset & 3), value);
+}
+
+const struct pci_vendor_id* pci_lookup_vendor(uint16_t vendor_id) {
+    for(size_t i = 0; i < pci_id_lookup_table_size; i++) {
+        if(pci_id_lookup_table[i].vendor_id == vendor_id)
+            return &pci_id_lookup_table[i];
+    } 
+    return nullptr;
+}
+
+const char* pci_lookup_vendor_id(uint16_t vendor_id) {
+    const struct pci_vendor_id* vendor = pci_lookup_vendor(vendor_id);
+    if(vendor)
+        return vendor->vendor;
+    return "unknown";
+}
+
+const char* pci_lookup_device_id(uint16_t vendor_id, uint16_t device_id) {
+    const struct pci_vendor_id* vendor = pci_lookup_vendor(vendor_id);
+    if(!vendor)
+        return "unknown";
+
+    for(size_t i = 0; i < vendor->num_device_ids; i++) {
+        if(vendor->device_ids[i].device_id == device_id)
+            return vendor->device_ids[i].device;
     }
 
-    return false; 
+    return "unknown";
 }
 
-void pci_get_device_descriptor(uint16_t bus, uint16_t device, uint16_t function) {
-    pci.dev.bus = bus;
-    pci.dev.device = device;
-    pci.dev.function = function;
-
-    pci.dev.vendor_id = pci_read(bus, device, function, 0x00);
-    pci.dev.device_id = pci_read(bus, device, function, 0x02);
-
-    pci.dev.class_id = pci_read(bus, device, function, 0x0b);
-    pci.dev.subclass_id = pci_read(bus, device, function, 0x0a);
-    pci.dev.interface_id = pci_read(bus, device, function, 0x09);
-
-    pci.dev.revision = pci_read(bus, device, function, 0x08);
-    pci.dev.interrupt = pci_read(bus, device, function, 0x3c);
-}
 

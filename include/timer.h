@@ -5,5 +5,7 @@
 
 uint64_t millis(void);
 
+void sleep(uint64_t ms);
+
 #endif /* _AMETHYST_TIMER_H */ 
 

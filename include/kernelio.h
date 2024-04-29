@@ -34,6 +34,10 @@ void __klog(enum klog_severity severity, const char* format, ...) __attribute__(
 __noreturn void __panic(const char* file, int line, const char* function, const char* error, ...)
     __attribute__((format(printf, 4, 5)));
 
+void stdin_push_char(char c);
+char kgetc(void);
+char* kgets(char* s, unsigned size);
+
 void dump_stack(void);
 
 #endif /* _AMETHYST_KERNELIO_H */
