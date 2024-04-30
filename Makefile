@@ -12,7 +12,7 @@ ISO ?= amethyst.iso
 SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S" -or -name "*.ids"
 SOURCES := $(shell find $(SOURCE_PATTERN) | grep -v "arch/")
 
-INCLUDES := . include libk/include
+INCLUDES := . include libk/include arch/include
 
 SSP := $(shell openssl rand -hex 8)
 

@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #ifdef __x86_64__
-    #include <arch/x86_64/cpu.h>
+    #include <x86_64/cpu/cpu.h>
 #else
     #error "not implemented"
 #endif

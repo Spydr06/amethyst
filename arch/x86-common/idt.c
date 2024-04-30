@@ -1,7 +1,7 @@
-#include "idt.h"
-#include "arch/x86-common/dev/pic.h"
-#include "cpu/syscalls.h"
-#include "drivers/char/keyboard.h"
+#include <x86-common/idt.h>
+#include <x86-common/dev/pic.h>
+#include <cpu/syscalls.h>
+#include <drivers/char/keyboard.h>
 
 #include <cpu/cpu.h>
 #include <mem/vmm.h>

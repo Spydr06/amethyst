@@ -1,5 +1,5 @@
-#include "pic.h"
-#include "../io.h"
+#include <x86-common/dev/pic.h>
+#include <x86-common/dev/io.h>
 
 void pic_init(void)
 {

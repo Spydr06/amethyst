@@ -1,5 +1,5 @@
-#include "pit.h"
-#include "arch/x86-common/io.h"
+#include <x86-common/dev/pit.h>
+#include <x86-common/dev/io.h>
 
 #include <stdint.h>
 

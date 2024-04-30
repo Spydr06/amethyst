@@ -1,11 +1,9 @@
-#include "acpi.h"
-#include "rsdt.h"
+#include <x86-common/cpu/acpi.h>
+#include <x86-common/cpu/rsdt.h>
 
 #include <kernelio.h>
 #include <mem/bitmap.h>
 #include <mem/vmm.h>
-
-#include <string.h>
 
 static struct RSDT* rsdt_root = nullptr;
 static struct XSDT* xsdt_root __attribute__((unused)) = nullptr;

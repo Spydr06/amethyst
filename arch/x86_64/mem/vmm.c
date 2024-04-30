@@ -1,10 +1,10 @@
 #include <mem/vmm.h>
 #include <mem/pmm.h>
 #include <stdint.h>
-#include "kernelio.h"
-#include "mem/bitmap.h"
-#include "mem/mmap.h"
-#include "paging.h"
+#include <kernelio.h>
+#include <mem/bitmap.h>
+#include <mem/mmap.h>
+#include <x86_64/mem/paging.h>
 
 struct vmm_container* vmm_container_root = nullptr;
 

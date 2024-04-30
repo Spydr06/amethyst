@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #ifdef __x86_64__
-#include <arch/x86_64/mem/paging.h>
+#include <x86_64/mem/paging.h>
 #define VMM_RESERVED_SPACE_SIZE 0x14480000000
 #endif
 

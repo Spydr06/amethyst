@@ -1,5 +1,5 @@
-#include "tls.h"
-#include "cdefs.h"
+#include <x86-common/init/tls.h>
+#include <cdefs.h>
 #include <stddef.h>
 
 #ifdef __x86_64__

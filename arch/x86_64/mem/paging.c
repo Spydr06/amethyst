@@ -1,6 +1,5 @@
-#include "paging.h"
-
-#include <arch/x86-common/cpu/cpu.h>
+#include <x86_64/mem/paging.h>
+#include <x86-common/cpu/cpu.h>
 #include <kernelio.h>
 
 struct paging_status paging_status = { nullptr, nullptr, 0 };

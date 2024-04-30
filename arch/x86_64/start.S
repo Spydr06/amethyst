@@ -1,7 +1,7 @@
 #include <multiboot2.h>
 #include <drivers/video/vga.h>
 
-#include "mem/paging.h"
+#include <x86_64/mem/paging.h>
 
 /* The kernel is linked to run at -2GB. This allows efficient addressing */
 KERNEL_BASE = 0xFFFFFFFF80000000

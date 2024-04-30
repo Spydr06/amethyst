@@ -3,7 +3,7 @@
 #include "cdefs.h"
 #include "kernelio.h"
 #include "mem/bitmap.h"
-#include "paging.h"
+#include <x86_64/mem/paging.h>
 
 uintptr_t higher_half_direct_map_base;
 

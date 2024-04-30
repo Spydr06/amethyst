@@ -1,6 +1,6 @@
 #include <cpu/syscalls.h>
-#include "../idt.h"
-#include "kernelio.h"
+#include <x86-common/idt.h>
+#include <kernelio.h>
 
 #define SYSCALL_IDT_VECTOR 0x80
 

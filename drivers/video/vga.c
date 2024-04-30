@@ -3,7 +3,7 @@
 #include <drivers/video/vga.h>
 
 #ifdef __x86_64__
-    #include <arch/x86_64/mem/paging.h>
+    #include <x86_64/mem/paging.h>
 #endif
 
 struct vga vga = {0};

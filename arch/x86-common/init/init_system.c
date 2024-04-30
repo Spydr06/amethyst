@@ -10,12 +10,12 @@
 #include <init/interrupts.h>
 #include <mem/pmm.h>
 #include <mem/mmap.h>
-#include "../cpu/acpi.h"
-#include "arch/x86-common/dev/pic.h"
-#include "arch/x86-common/dev/pit.h"
-#include "drivers/pci/pci.h"
-#include "mem/heap.h"
-#include "mem/vmm.h"
+#include <x86-common/cpu/acpi.h>
+#include <x86-common/dev/pic.h>
+#include <x86-common/dev/pit.h>
+#include <drivers/pci/pci.h>
+#include <mem/heap.h>
+#include <mem/vmm.h>
 
 uint64_t __millis = 0;
 
