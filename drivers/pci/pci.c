@@ -1,4 +1,3 @@
-#include "drivers/pci/ids.h"
 #include <drivers/pci/pci.h>
 
 #include <kernelio.h>

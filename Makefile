@@ -51,7 +51,7 @@ GDBFLAGS := -ex "target remote localhost:1234" \
 			-ex "symbol-file $(KERNEL_SYM)"
 
 override QEMU := qemu-system-$(ARCH)
-QEMUFLAGS += -m 2G -serial stdio -display sdl
+QEMUFLAGS += -m 2G -serial stdio -smp cpus=4
 
 ifeq ($(ARCH), x86_64)
 	CFLAGS += -m64 -march=x86-64 -mcmodel=large -mno-red-zone -mno-mmx -mno-sse2

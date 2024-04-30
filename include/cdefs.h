@@ -16,6 +16,8 @@
 #define _BITUL(x)	(_UL(1) << (x))
 #define _BITULL(x)	(_ULL(1) << (x))
 
+#define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
+
 #define __section(sect) __attribute__((section (sect)))
 #define __always_inline __inline __attribute__ ((__always_inline__))
 #define __noreturn _Noreturn

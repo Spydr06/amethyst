@@ -5,7 +5,7 @@
 #include <stdarg.h>
 
 #define panic(...) (__panic(__FILE__, __LINE__, __func__, __VA_ARGS__))
-#define klog(sev, ...) (__klog(KLOG_##sev, __VA_ARGS__))
+#define klog(sev, ...) (__klog(KLOG_##sev, __FILENAME__, __VA_ARGS__))
 
 #define unimplemented() (panic("unimplemented()"))
 
@@ -29,7 +29,7 @@ int vprintk(const char* restrict format, va_list ap);
 int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap);
 
 extern enum klog_severity klog_min_severity;
-void __klog(enum klog_severity severity, const char* format, ...) __attribute__((format(printf, 2, 3)));
+void __klog(enum klog_severity severity, const char* file, const char* format, ...) __attribute__((format(printf, 3, 4)));
 
 __noreturn void __panic(const char* file, int line, const char* function, const char* error, ...)
     __attribute__((format(printf, 4, 5)));

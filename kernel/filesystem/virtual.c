@@ -1,17 +1,26 @@
-#include "sys/spinlock.h"
 #include <filesystem/virtual.h>
+#include <mem/heap.h>
+#include <sys/spinlock.h>
 
 #include <kernelio.h>
+#include <assert.h>
 
-spinlock_t fs_lock;
-struct fs_node* vfs = nullptr;
+struct vnode* vfs_root = nullptr;
+
+spinlock_t list_lock;
+struct vfs* vfs_list;
 
 void vfs_init(void) {
-    klog(INFO, "Initializing virtual file system...");
-    spinlock_release(&fs_lock);
+    vfs_root = kmalloc(sizeof(struct vnode));
+    assert(vfs_root);
+
+    spinlock_init(list_lock);
+
+    vfs_root->type = V_TYPE_DIR;
+    vfs_root->refcount = 1;
 }
 
-size_t vfs_read(struct fs_node* node, size_t offset, size_t size, uint8_t* buffer) {
+/*size_t vfs_read(struct fs_node* node, size_t offset, size_t size, uint8_t* buffer) {
     if(node->read)
         return node->read(node, offset, size, buffer);
     return 0;
@@ -44,5 +53,5 @@ struct fs_node* vfs_finddir(struct fs_node* node, const char* name) {
     if((node->flags & 0x7) == FS_DIRECTORY && node->finddir)
         return node->finddir(node, name);
     return nullptr;
-}
+}*/
 

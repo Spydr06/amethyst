@@ -33,11 +33,11 @@ void kmain(void)
     syscalls_init();
     
     kernel_heap_init();   
-    pci_init();
 
     greet();
     color_test();
 
+    pci_init();
     vfs_init();
     while(1);
 }

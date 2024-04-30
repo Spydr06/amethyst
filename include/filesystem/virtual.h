@@ -1,80 +1,114 @@
 #ifndef _AMETHYST_FILESYSTEM_VIRTUAL_H
 #define _AMETHYST_FILESYSTEM_VIRTUAL_H
 
-#include "sys/spinlock.h"
+#include <abi.h>
+#include <sys/mutex.h>
+
 #include <stdint.h>
 #include <stddef.h>
 
 #define MAX_FILENAME_LENGTH 256
 
-struct fs_node;
-struct dirent;
-
-enum fs_flags : uint32_t {
-    FS_FILE = 1,
-    FS_DIRECTORY,
-    FS_CHARDEV,
-    FS_BLOCKDEV,
-    FS_PIPE,
-    FS_SOCKET,
-    FS_FIFO,
-    FS_SYMLINK,
-    FS_MOUNTPOINT
+enum vflags {
+    V_FLAGS_ROOT = 1
 };
 
-typedef uint32_t gid_t;
-typedef uint32_t uid_t;
-typedef uint32_t ino_t;
+enum vfflags {
+    V_FFLAGS_READ           = 1,
+    V_FFLAGS_WRITE          = 2,
+    V_FFLAGS_NONBLOCKING    = 4,
+    V_FFLAGS_SHARED         = 8,
+    V_FFLAGS_EXEC           = 16
+};
 
-typedef size_t (*read_type_t)(struct fs_node*, size_t, size_t, uint8_t*);
-typedef size_t (*write_type_t)(struct fs_node*, size_t, size_t, const uint8_t*);
-typedef void (*open_type_t)(struct fs_node*);
-typedef void (*close_type_t)(struct fs_node*);
-typedef struct dirent* (*readdir_type_t)(struct fs_node*, size_t);
-typedef struct fs_node* (*finddir_type_t)(struct fs_node*, const char*);
+enum vtype {
+    V_TYPE_REGULAR,
+    V_TYPE_DIR,
+    V_TYPE_CHDEV,
+    V_TYPE_BLKDEV,
+    V_TYPE_FIFO,
+    V_TYPE_LINK,
+    V_TYPE_SOCKET
+};
 
-struct fs_node {
-    char name[MAX_FILENAME_LENGTH];
-    enum fs_flags flags;    
-    uint32_t mask;
+struct cred {
     uid_t uid;
     gid_t gid;
+};
+
+struct vattr {
+    enum vtype type;
+    mode_t mode;
+    uid_t uid;
+    gid_t gid;
+    int fsid;
     ino_t inode;
-    size_t length;
-
-    read_type_t read;
-    write_type_t write;
-    open_type_t open;
-    close_type_t close;
-
-    union {
-        struct {
-            readdir_type_t readdir;
-            finddir_type_t finddir;
-        };
-
-        struct fs_node* link;
-    };
+    int nlinks;
+    size_t size;
+    size_t fsblock_size;
+    struct timespec atime;
+    struct timespec mtime;
+    struct timespec ctime;
+    int rdev_major;
+    int rdev_minor;
+    size_t blocks_used;
 };
 
-struct dirent {
-    char name[MAX_FILENAME_LENGTH];
-    struct fs_node* node;
-    ino_t ino;
+struct vfs {
+    struct vfs* next;
+    struct vfsops* ops;
+    struct vnode* node_covered;
+    struct vnode* root;
+    enum vflags flags;
 };
 
-extern spinlock_t fs_lock;
-extern struct fs_node* vfs;
+struct vfsops {
+    int (*mount)(struct vfs **vfs, struct vnode *mp, struct vnode *backing, void *data);
+	int (*unmount)(struct vfs *vfs);
+	int (*sync)(struct vfs *vfs);
+	int (*root)(struct vfs *vfs, struct vnode **root);
+};
+
+struct vnode {
+    struct vops* ops;
+    mutex_t lock;
+    int refcount;
+    enum vfflags flags;
+    enum vtype type;
+    struct vfs* vfs;
+    struct vfs* vfsmounted;
+    void* socketbinding;
+};
+
+struct polldata;
+
+typedef struct vops_t {
+	int (*open)(struct vnode **node, int flags, struct cred *cred);
+	int (*close)(struct vnode *node, int flags, struct cred *cred);
+	int (*read)(struct vnode *node, void *buffer, size_t size, uintmax_t offset, int flags, size_t *readc, struct cred *cred);
+	int (*write)(struct vnode *node, void *buffer, size_t size, uintmax_t offset, int flags, size_t *writec, struct cred *cred);
+	int (*lookup)(struct vnode *node, char *name, struct vnode **result, struct cred *cred);
+	int (*create)(struct vnode *parent, char *name, struct vattr *attr, int type, struct vnode **result, struct cred *cred);
+	int (*getattr)(struct vnode *node, struct vattr *attr, struct cred *cred);
+	int (*setattr)(struct vnode *node, struct vattr *attr, struct cred *cred);
+	int (*poll)(struct vnode *node, struct polldata *, int events);
+	int (*access)(struct vnode *node, mode_t mode, struct cred *cred);
+	int (*unlink)(struct vnode *node, char *name, struct cred *cred);
+	int (*link)(struct vnode *node, struct vnode *dir, char *name, struct cred *cred);
+	int (*symlink)(struct vnode *parent, char *name, struct vattr *attr, char *path, struct cred *cred);
+	int (*readlink)(struct vnode *parent, char **link, struct cred *cred);
+	int (*inactive)(struct vnode *node);
+	int (*mmap)(struct vnode *node, void *addr, uintmax_t offset, int flags, struct cred *cred);
+	int (*munmap)(struct vnode *node, void *addr, uintmax_t offset, int flags, struct cred *cred);
+	int (*getdents)(struct vnode *node, struct dent *buffer, size_t count, uintmax_t offset, size_t *readcount);
+	int (*isatty)(struct vnode *node);
+	int (*ioctl)(struct vnode *node, unsigned long request, void *arg, int *result);
+	int (*maxseek)(struct vnode *node, size_t *max);
+	int (*resize)(struct vnode *node, size_t newsize, struct cred *cred);
+	int (*rename)(struct vnode *source, char *oldname, struct vnode *target, char *newname, int flags);
+} vops_t;
 
 void vfs_init(void);
-
-size_t vfs_read(struct fs_node* node, size_t offset, size_t size, uint8_t* buffer);
-size_t vfs_write(struct fs_node* node, size_t offset, size_t size, const uint8_t* buffer);
-void vfs_open(struct fs_node* node, uint8_t read, uint8_t write);
-void vfs_close(struct fs_node* node);
-
-struct dirent* vfs_readdir(struct fs_node*, size_t index);
-struct fs_node* vfs_finddir(struct fs_node*, const char* name);
 
 #endif /* _AMETHYST_FILESYSTEM_VIRTUAL_H */
 

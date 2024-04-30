@@ -4,12 +4,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-struct dynarray {
+typedef struct dynarray {
     size_t size;
     size_t alloc;
     size_t elem_size;
     uint8_t* elems;
-};
+} dynarr_t;
 
 void dynarr_init(struct dynarray* dynarr, size_t item_size, size_t init_size);
 void dynarr_free(struct dynarray* dynarr);
