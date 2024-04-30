@@ -52,9 +52,8 @@ void pci_init(void);
 uint32_t pci_device_read_dword(struct pci_device* device, uint32_t offset);
 void pci_device_write_dword(struct pci_device* device, uint32_t offset, uint32_t value);
 
-const struct pci_vendor_id* pci_lookup_vendor(uint16_t vendor_id);
-const char* pci_lookup_vendor_id(uint16_t vendor_id);
-const char* pci_lookup_device_id(uint16_t vendor_id, uint16_t device_id);
+const struct pci_vendor_id* pci_lookup_vendor_id(uint16_t vendor_id);
+const struct pci_device_id* pci_lookup_device_id(const struct pci_vendor_id*, uint16_t device_id);
 
 #endif /* _AMETHYST_DRIVERS_PCI_H */
 

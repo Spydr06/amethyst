@@ -101,14 +101,17 @@ void pci_init(void) {
     for(size_t i = 0; i < pci_devices.size; i++) {
         struct pci_device* dev = dynarr_getelem(&pci_devices, i);
 
+        const struct pci_vendor_id* vendor_id = pci_lookup_vendor_id(dev->vendor_id);
+        const struct pci_device_id* dev_id = pci_lookup_device_id(vendor_id, dev->device_id);
+
         klog(INFO, 
             "  %02hhx:%02hhx.%01hhx - %s (%04hx) : %s (%04hx)",
             dev->bus,
             dev->device,
             dev->func,
-            pci_lookup_vendor_id(dev->vendor_id),
+            vendor_id ? vendor_id->vendor : "unknown",
             dev->vendor_id,
-            pci_lookup_device_id(dev->vendor_id, dev->device_id),
+            dev_id ? dev_id->device : "unknown",
             dev->device_id
         );
     }
@@ -126,7 +129,7 @@ void pci_device_write_dword(struct pci_device* device, uint32_t offset, uint32_t
     outl(PCI_DATA_PORT + (offset & 3), value);
 }
 
-const struct pci_vendor_id* pci_lookup_vendor(uint16_t vendor_id) {
+const struct pci_vendor_id* pci_lookup_vendor_id(uint16_t vendor_id) {
     for(size_t i = 0; i < pci_id_lookup_table_size; i++) {
         if(pci_id_lookup_table[i].vendor_id == vendor_id)
             return &pci_id_lookup_table[i];
@@ -134,24 +137,16 @@ const struct pci_vendor_id* pci_lookup_vendor(uint16_t vendor_id) {
     return nullptr;
 }
 
-const char* pci_lookup_vendor_id(uint16_t vendor_id) {
-    const struct pci_vendor_id* vendor = pci_lookup_vendor(vendor_id);
-    if(vendor)
-        return vendor->vendor;
-    return "unknown";
-}
-
-const char* pci_lookup_device_id(uint16_t vendor_id, uint16_t device_id) {
-    const struct pci_vendor_id* vendor = pci_lookup_vendor(vendor_id);
+const struct pci_device_id* pci_lookup_device_id(const struct pci_vendor_id* vendor, uint16_t device_id) {
     if(!vendor)
-        return "unknown";
+        return nullptr;
 
     for(size_t i = 0; i < vendor->num_device_ids; i++) {
         if(vendor->device_ids[i].device_id == device_id)
-            return vendor->device_ids[i].device;
+            return &vendor->device_ids[i];
     }
 
-    return "unknown";
+    return nullptr;
 }
 
 
