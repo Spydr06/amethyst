@@ -4,7 +4,7 @@
 #include <kernelio.h>
 #include <mem/bitmap.h>
 #include <mem/mmap.h>
-#include <x86_64/mem/paging.h>
+#include <x86_64/mem/mmu.h>
 
 struct vmm_container* vmm_container_root = nullptr;
 

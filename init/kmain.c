@@ -34,6 +34,16 @@ void kmain(void)
     
     kernel_heap_init();   
 
+    void* a[10];
+    for(size_t i = 0; i < __len(a); i++) {
+        a[i] = kmalloc(1000); 
+        memset(a[i], 69, 1000);
+    }
+
+    for(size_t i = 0; i < __len(a); i++) {
+        kfree(a[i]);
+    }
+
     greet();
     color_test();
 

@@ -4,6 +4,9 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
+#define ROUND_DOWN(v, n) ((v) - ((v) % (n)))
+#define ROUND_UP(v, n) ROUND_DOWN((v) + (n) - 1, n)
+
 double pow10(int x);
 
 #endif /* _AMETHYST_LIBK_MATH_H */

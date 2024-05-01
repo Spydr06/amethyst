@@ -1,5 +1,5 @@
-#ifndef _AMETHYST_X86_64_PAGING_H
-#define _AMETHYST_X86_64_PAGING_H
+#ifndef _AMETHYST_X86_64_MMU_H
+#define _AMETHYST_X86_64_MMU_H
 
 #define PRESENT_BIT  0b00000001
 #define WRITE_BIT    0b00000010
@@ -39,6 +39,8 @@
 #include <stddef.h>
 #include <cdefs.h>
 
+#include <multiboot2.h>
+
 #define IS_ADDRESS_HIGHER_HALF(addr) ((addr) & (1lu << 62))
 #define ENSURE_HIGHER_HALF(addr) ((addr) > HIGHER_HALF_ADDRESS_OFFSET ? (addr) : (addr) + HIGHER_HALF_ADDRESS_OFFSET)
 
@@ -56,7 +58,7 @@ extern uint64_t p2_table[];
 extern struct paging_status paging_status;
 extern uintptr_t higher_half_direct_map_base;
 
-void __framebuffer_map_page(const struct multiboot_tag_framebuffer* tag);
+void mmu_map_framebuffer(const struct multiboot_tag_framebuffer* tag);
 
 static __always_inline void clean_new_table(uint64_t* table) {
     for(unsigned i = 0; i < PAGES_PER_TABLE; i++)
@@ -67,5 +69,5 @@ __noreturn void page_fault_handler(uintptr_t error_code);
 
 #endif /* ASM_FILE */
 
-#endif /* _AMETHYST_X86_64_PAGING_H */
+#endif /* _AMETHYST_X86_64_MMU_H */
 

@@ -202,7 +202,9 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
         case '0':
             if(selected_padding->buf_size > 0)
                 goto digit;
-        case ' ': // fall through
+
+            /* fall through */
+        case ' ':
             selected_padding->fill = c;
             goto repeat;
         case '.':

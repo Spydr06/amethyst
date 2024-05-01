@@ -3,7 +3,7 @@
 #include <drivers/video/vga.h>
 
 #ifdef __x86_64__
-    #include <x86_64/mem/paging.h>
+    #include <x86_64/mem/mmu.h>
 #endif
 
 struct vga vga = {0};
@@ -17,7 +17,7 @@ void vga_init(const struct multiboot_tag_framebuffer* tag) {
     vga.height = tag->common.framebuffer_height;
     vga.phys_addr = tag->common.framebuffer_addr;
 
-    __framebuffer_map_page(tag);
+    mmu_map_framebuffer(tag);
 }
 
 void vga_put_pixel(uint32_t x, uint32_t y, uint32_t color) {

@@ -55,7 +55,7 @@ void* vmm_alloc_at(uintptr_t base_address, size_t size, enum paging_flags flags,
     if(!IS_ADDRESS_HIGHER_HALF(return_address))
         flags |= VMM_FLAGS_USER_LEVEL;
 
-    klog(DEBUG, "Flags PRESENT(%hu) - WRITE(%hu) - USER(%hu)", flags & VMM_FLAGS_PRESENT, flags & VMM_FLAGS_WRITE_ENABLE, flags & VMM_FLAGS_USER_LEVEL);
+    klog(DEBUG, "Flags PRESENT(%lu) - WRITE(%lu) - USER(%lu)", flags & VMM_FLAGS_PRESENT, flags & VMM_FLAGS_WRITE_ENABLE, flags & VMM_FLAGS_USER_LEVEL);
 
     if(!(flags & VMM_FLAGS_ADDRESS_ONLY)) {
         size_t required_pages = align_value_to_page(size) / PAGE_SIZE;
@@ -80,6 +80,10 @@ void* vmm_alloc_at(uintptr_t base_address, size_t size, enum paging_flags flags,
     return flags & VMM_FLAGS_STACK
         ? ((void*) return_address + THREAD_DEFAULT_STACK_SIZE) 
         : (void*) return_address;
+}
+
+void vmm_free(void* ptr, size_t size, enum paging_flags flags) {
+    klog(WARN, "vmm_free() not implmented!");
 }
 
 static void* map_vaddress(void* virtual_address, enum paging_flags flags, uint64_t* pml4_root) {

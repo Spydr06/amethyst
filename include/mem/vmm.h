@@ -5,17 +5,18 @@
 #include <stdint.h>
 
 #ifdef __x86_64__
-#include <x86_64/mem/paging.h>
+#include <x86_64/mem/mmu.h>
 #define VMM_RESERVED_SPACE_SIZE 0x14480000000
 #endif
 
-enum paging_flags : uint16_t {
+enum paging_flags : uint64_t {
     VMM_FLAGS_NONE = 0,
     VMM_FLAGS_PRESENT = (1 << 0),
     VMM_FLAGS_WRITE_ENABLE = (1 << 1),
     VMM_FLAGS_USER_LEVEL = (1 << 2),
     VMM_FLAGS_ADDRESS_ONLY = (1 << 7),
-    VMM_FLAGS_STACK = (1 << 8)
+    VMM_FLAGS_STACK = (1 << 8),
+    VMM_FLAGS_NOEXEC = (1 << 63),
 };
 
 enum vmm_level : uint8_t {
@@ -75,6 +76,8 @@ void* vmm_alloc_at(uintptr_t base_address, size_t size, enum paging_flags flags,
 inline void* vmm_alloc(size_t size, enum paging_flags flags, struct vmm_info* info) {
     return vmm_alloc_at(0x0, size, flags, info);
 }
+
+void vmm_free(void* ptr, size_t size, enum paging_flags flags);
 
 inline size_t align_value_to_page(size_t value) {
     return ((value + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE;
