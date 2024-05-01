@@ -31,6 +31,17 @@ CXXFLAGS += -std=c++2x $(C_CXX_FLAGS)
 override AS := $(ARCH)-elf-as
 ASFLAGS += -am -g
 
+ifeq (, $(findstring gcc, $(CC)))
+	$(error Unsupported C compiler "$(CC)", expect gcc)
+endif
+
+CC_VERSION := $(shell $(CC) -dumpversion)
+
+ifneq ($(shell expr $(CC_VERSION) \>= 13),1)
+_error:
+	$(error Unsupported "$(CC)" version "$(CC_VERSION)", expect >= 13)
+endif
+
 override ARCH_DIR := arch/$(ARCH)
 override LDSCRIPT := $(ARCH_DIR)/link.ld
 
