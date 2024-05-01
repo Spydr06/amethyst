@@ -16,7 +16,7 @@ enum paging_flags : uint64_t {
     VMM_FLAGS_USER_LEVEL = (1 << 2),
     VMM_FLAGS_ADDRESS_ONLY = (1 << 7),
     VMM_FLAGS_STACK = (1 << 8),
-    VMM_FLAGS_NOEXEC = (1 << 63),
+    VMM_FLAGS_NOEXEC = (1ull << 63),
 };
 
 enum vmm_level : uint8_t {

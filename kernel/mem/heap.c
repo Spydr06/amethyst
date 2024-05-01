@@ -39,7 +39,7 @@ static struct scache* get_cache_from_size(size_t size) {
 
 void kernel_heap_init(void) {
     for(int i = 0; i < CACHE_COUNT; i++) {
-        caches[i] = slab_newcache(allocsizes[i] + sizeof(size_t) * 2, 0, nullptr, nullptr);
+        caches[i] = slab_newcache(allocsizes[i] + sizeof(size_t) * 2, 0, init_area, dtor);
         assert(caches[i]);
     }
 }
@@ -57,7 +57,34 @@ void* kmalloc(size_t size) {
 }
 
 void* krealloc(void* ptr, size_t size) {
-    unimplemented();
+    size_t *start = ((size_t*) ptr) - 2;
+    size_t current_size = start[1];
+
+    if(size < current_size) {
+        start[1] = size;
+        return ptr;
+    }
+
+    struct scache* old_cache = get_cache_from_size(start[0]);
+    struct scache* new_cache = get_cache_from_size(size);
+
+    // reuse same allocation
+    if(old_cache == new_cache) {
+        size_t diff = size - current_size;
+        memset((void*)((uintptr_t) ptr + current_size), 0, diff);
+        start[1] = size;
+        return ptr;
+    }
+
+    // new allocation
+    size_t* new = slab_alloc(new_cache);
+    if(!new)
+        return nullptr;
+
+    new[1] = size;
+    memcpy(new + 2, ptr, current_size);
+    slab_free(old_cache, start);
+    return new + 2;
 }
 
 void kfree(void* ptr) {

@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#define HASHTABLE_FOREACH(table, entry)                                                             \
+	for (uintmax_t toffset = 0; toffset < (table)->capacity; ++toffset)                             \
+		for (struct hashentry* entry = (table)->entries[toffset]; entry != NULL; entry = entry->next)
+
 struct hashentry {
     struct hashentry* next;
     struct hashentry* prev;

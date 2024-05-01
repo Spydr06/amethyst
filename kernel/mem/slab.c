@@ -21,7 +21,7 @@ static struct scache self_cache = {
 };
 
 static void init_direct(struct scache* cache, struct slab* slab, void* base) {
-	slab->free = NULL;
+	slab->free = nullptr;
 	slab->used = 0;
 
 	for (uintmax_t offset = 0; offset < cache->true_size*  cache->slab_obj_count; offset += cache->true_size) {
@@ -35,7 +35,7 @@ static void init_direct(struct scache* cache, struct slab* slab, void* base) {
 }
 
 static void init_indirect(struct scache* cache, struct slab* slab, void** base, void* objbase) {
-	slab->free = NULL;
+	slab->free = nullptr;
 	slab->used = 0;
 	slab->base = objbase;
 
@@ -51,7 +51,7 @@ static void init_indirect(struct scache* cache, struct slab* slab, void** base, 
 
 static bool growcache(struct scache* cache) {
 	void* _slab = vmm_alloc(PAGE_SIZE, VMM_FLAGS_PRESENT | VMM_FLAGS_WRITE_ENABLE, nullptr);
-	if (_slab == NULL)
+	if (_slab == nullptr)
 		return false;
 	struct slab* slab = GET_SLAB(_slab);
 
@@ -59,7 +59,7 @@ static bool growcache(struct scache* cache) {
 		init_direct(cache, slab, _slab);
 	} else {
 		void* base = vmm_alloc(cache->slab_obj_count*  cache->true_size, VMM_FLAGS_PRESENT | VMM_FLAGS_WRITE_ENABLE, nullptr);
-		if (base == NULL) {
+		if (base == nullptr) {
 			vmm_free(_slab, PAGE_SIZE, 0);
 			return false;
 		}
@@ -68,7 +68,7 @@ static bool growcache(struct scache* cache) {
 
 
 	slab->next = cache->empty;
-	slab->prev = NULL;
+	slab->prev = nullptr;
 	if (slab->next)
 		slab->next->prev = slab;
 	cache->empty = slab;
@@ -76,8 +76,8 @@ static bool growcache(struct scache* cache) {
 }
 
 static void* takeobject(struct scache* cache, struct slab* slab) {
-	if (slab->free == NULL)
-		return NULL;
+	if (slab->free == nullptr)
+		return nullptr;
 
 	void** objend = slab->free;
 
@@ -94,7 +94,7 @@ static void* takeobject(struct scache* cache, struct slab* slab) {
 
 	slab->free = *slab->free;
 	slab->used += 1;
-	*objend = NULL;
+	*objend = nullptr;
 	if (cache->size < SLAB_INDIRECT_CUTOFF)
 		return (void*)((uintptr_t)objend - cache->size);
 	else
@@ -103,20 +103,20 @@ static void* takeobject(struct scache* cache, struct slab* slab) {
 
 // frees an object and returns the slab the object belongs to
 static struct slab* returnobject(struct scache* cache, void* obj) {
-	struct slab* slab = NULL;
-	void** freeptr = NULL;
+	struct slab* slab = nullptr;
+	void** freeptr = nullptr;
 	if (cache->size < SLAB_INDIRECT_CUTOFF) {
 		slab = (struct slab*)(ROUND_DOWN((uintptr_t)obj, PAGE_SIZE) + SLAB_PAGE_OFFSET);
 		freeptr = (void**)((uintptr_t)obj + cache->size);
-		assert(*freeptr == NULL);
+		assert(*freeptr == nullptr);
 	} else {
-		bool partial = cache->full == NULL;
+		bool partial = cache->full == nullptr;
 		slab = partial ? cache->partial : cache->full;
 		while (slab) {
 			void* top = (void*)((uintptr_t)slab->base + cache->slab_obj_count*  cache->true_size);
 			if (obj >= slab->base && obj < top)
 				break;
-			if (slab->next == NULL && partial == false) {
+			if (slab->next == nullptr && partial == false) {
 				slab = cache->partial;
 				partial = true;
 			} else {
@@ -141,15 +141,15 @@ static struct slab* returnobject(struct scache* cache, void* obj) {
 
 void* slab_alloc(struct scache* cache) {
 	spinlock_acquire(&cache->lock);
-	struct slab* slab = NULL;
-	if (cache->partial != NULL)
+	struct slab* slab = nullptr;
+	if (cache->partial != nullptr)
 		slab = cache->partial;
-	else if (cache->empty != NULL)
+	else if (cache->empty != nullptr)
 		slab = cache->empty;
 
-	void* ret = NULL;
+	void* ret = nullptr;
 
-	if (slab == NULL) {
+	if (slab == nullptr) {
 		if (growcache(cache))
 			slab = cache->empty;
 		else
@@ -161,25 +161,25 @@ void* slab_alloc(struct scache* cache) {
 	if (slab == cache->empty) {
 		cache->empty = slab->next;
 		if (slab->next)
-			slab->next->prev = NULL;
+			slab->next->prev = nullptr;
 
 		if (cache->partial)
 			cache->partial->prev = slab;
 
 		slab->next = cache->partial;
-		slab->prev = NULL;
+		slab->prev = nullptr;
 		cache->partial = slab;
 	} else if (slab->used == cache->slab_obj_count) {
 		cache->partial = slab->next;
 
 		if (slab->next)
-			slab->next->prev = NULL;
+			slab->next->prev = nullptr;
 
 		if (cache->full)
 			cache->full->prev = slab;
 
 		slab->next = cache->full;
-		slab->prev = NULL;
+		slab->prev = nullptr;
 		cache->full = slab;
 	}
 
@@ -195,7 +195,7 @@ void slab_free(struct scache* cache, void* addr) {
 	assert(slab);
 
 	if (slab->used == 0) {
-		if (slab->prev == NULL)
+		if (slab->prev == nullptr)
 			cache->partial = slab->next;
 		else
 			slab->prev->next = slab->next;
@@ -204,14 +204,14 @@ void slab_free(struct scache* cache, void* addr) {
 			slab->next->prev = slab->prev;
 
 		slab->next = cache->empty;
-		slab->prev = NULL;
+		slab->prev = nullptr;
 		if (slab->next)
 			slab->next->prev = slab;
 		cache->empty = slab;
 	}
 	
 	if (slab->used == cache->slab_obj_count - 1) {
-		if (slab->prev == NULL)
+		if (slab->prev == nullptr)
 			cache->full = slab->next;
 		else
 			slab->prev->next = slab->next;
@@ -220,7 +220,7 @@ void slab_free(struct scache* cache, void* addr) {
 			slab->next->prev = slab->prev;
 
 		slab->next = cache->partial;
-		slab->prev = NULL;
+		slab->prev = nullptr;
 		if (slab->next)
 			slab->next->prev = slab;
 		cache->partial = slab;
@@ -233,8 +233,8 @@ struct scache* slab_newcache(size_t size, size_t align, void (*ctor)(struct scac
 		align = 8;
 
 	struct scache* cache = slab_alloc(&self_cache);
-	if (cache == NULL)
-		return NULL;
+	if (cache == nullptr)
+		return nullptr;
 
 	cache->size = size;
 	cache->align = align;
@@ -243,9 +243,9 @@ struct scache* slab_newcache(size_t size, size_t align, void (*ctor)(struct scac
 	cache->ctor = ctor;
 	cache->dtor = dtor;
 	cache->slab_obj_count = size < SLAB_INDIRECT_CUTOFF ? SLAB_DATA_SIZE / cache->true_size : SLAB_INDIRECT_COUNT;
-	cache->full = NULL;
-	cache->empty = NULL;
-	cache->partial = NULL;
+	cache->full = nullptr;
+	cache->empty = nullptr;
+	cache->partial = nullptr;
 	spinlock_init(cache->lock);
 
 	klog(WARN, "new cache: size %lu align %lu true_size %lu objcount %lu", cache->size, cache->align, cache->true_size, cache->slab_obj_count);
@@ -256,12 +256,12 @@ struct scache* slab_newcache(size_t size, size_t align, void (*ctor)(struct scac
 static size_t purge(struct scache* cache, size_t maxcount){
 	struct slab* slab = cache->empty;
 	for (size_t done = 0; done < maxcount; ++done) {
-		if (slab == NULL)
+		if (slab == nullptr)
 			return done;
 
 		struct slab* next = slab->next;
 		if (next)
-			next->prev = NULL;
+			next->prev = nullptr;
 
 		if (cache->size >= SLAB_INDIRECT_CUTOFF)
 			vmm_free(slab->base, cache->slab_obj_count*  cache->true_size, 0);
@@ -277,8 +277,8 @@ static size_t purge(struct scache* cache, size_t maxcount){
 
 void slab_freecache(struct scache* cache) {
 	spinlock_acquire(&cache->lock);
-	assert(cache->partial == NULL);
-	assert(cache->full == NULL);
+	assert(cache->partial == nullptr);
+	assert(cache->full == nullptr);
 
 	purge(cache, (size_t)-1);
 

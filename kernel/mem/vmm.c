@@ -32,18 +32,16 @@ void* vmm_alloc_at(uintptr_t base_address, size_t size, enum paging_flags flags,
             info->status.cur_container->next = new_container;
             info->status.cur_container = new_container;
         }
-        else {
-            klog(ERROR, "pmm_alloc_frame() returned NULL.");
+        else
             return nullptr;
-        }
     }
 
     size_t new_size = align_value_to_page(size);
     uintptr_t return_address = info->status.next_available_address;
     if(base_address != 0 && base_address > return_address) {
-        if(!is_address_aligned(base_address, PAGE_SIZE))
-            klog(ERROR, "Base address %p is not aligned to 0x%x", (void*) base_address, PAGE_SIZE);
-        klog(DEBUG, "Allocating address %p", (void*) base_address);
+//        if(!is_address_aligned(base_address, PAGE_SIZE))
+//            klog(ERROR, "Base address %p is not aligned to 0x%x", (void*) base_address, PAGE_SIZE);
+//        klog(DEBUG, "Allocating address %p", (void*) base_address);
         info->status.next_available_address = base_address;
         return_address = base_address;
     }
@@ -55,17 +53,15 @@ void* vmm_alloc_at(uintptr_t base_address, size_t size, enum paging_flags flags,
     if(!IS_ADDRESS_HIGHER_HALF(return_address))
         flags |= VMM_FLAGS_USER_LEVEL;
 
-    klog(DEBUG, "Flags PRESENT(%lu) - WRITE(%lu) - USER(%lu)", flags & VMM_FLAGS_PRESENT, flags & VMM_FLAGS_WRITE_ENABLE, flags & VMM_FLAGS_USER_LEVEL);
+//    klog(DEBUG, "Flags PRESENT(%lu) - WRITE(%lu) - USER(%lu)", flags & VMM_FLAGS_PRESENT, flags & VMM_FLAGS_WRITE_ENABLE, flags & VMM_FLAGS_USER_LEVEL);
 
     if(!(flags & VMM_FLAGS_ADDRESS_ONLY)) {
         size_t required_pages = align_value_to_page(size) / PAGE_SIZE;
         size_t arch_flags = parse_flags(flags);
 
-        klog(DEBUG, "No physical memory needed: mapping address %p", (void*) info->root_table_hddm);
 
         for(size_t i = 0; i < required_pages; i++) {
             void* frame = pmm_alloc_frame();
-            klog(DEBUG, "Address to map: %p - physical frame: %p", frame, (void*) return_address);
             map_phys_to_virt_addr_hh(
                 (void*) frame,
                 (void*) return_address + i * PAGE_SIZE,
@@ -83,7 +79,10 @@ void* vmm_alloc_at(uintptr_t base_address, size_t size, enum paging_flags flags,
 }
 
 void vmm_free(void* ptr, size_t size, enum paging_flags flags) {
-    klog(WARN, "vmm_free() not implmented!");
+    (void) ptr;
+    (void) size;
+    (void) flags;
+    klog(ERROR, "vmm_free() not implmented!");
 }
 
 static void* map_vaddress(void* virtual_address, enum paging_flags flags, uint64_t* pml4_root) {

@@ -17,13 +17,17 @@
 #include <mem/heap.h>
 #include <mem/vmm.h>
 
+static const struct multiboot_tag* acpi_tag = nullptr;
+static const struct multiboot_tag_basic_meminfo* meminfo_tag = nullptr;
+static const struct multiboot_tag_string* cmdline_tag = nullptr;
+
 uint64_t __millis = 0;
 
 uint64_t millis(void) {
     return __millis;
 }
 
-extern void kmain(void);
+extern void kmain(size_t cmdline_size, const char* cmdline);
 
 static void init_vga(const struct multiboot_tag* tag) {
     const struct multiboot_tag_framebuffer* fb_tag = (struct multiboot_tag_framebuffer*) tag;
@@ -43,7 +47,6 @@ static void init_mmap(const struct multiboot_tag* tag) {
     mmap_parse((struct multiboot_tag_mmap*) tag);
 }
 
-static const struct multiboot_tag_basic_meminfo* meminfo_tag = nullptr;
 static void init_basic_meminfo(const struct multiboot_tag* tag) {
     meminfo_tag = (struct multiboot_tag_basic_meminfo*) tag;
 
@@ -51,14 +54,12 @@ static void init_basic_meminfo(const struct multiboot_tag* tag) {
     memory_size_in_bytes = ((uintptr_t) meminfo_tag->mem_upper + 1024) * 1024;
 }
 
-static const struct multiboot_tag* acpi_tag = nullptr;
 static void init_acpi(const struct multiboot_tag* tag) {
     acpi_tag = tag;
 }
 
 static void save_cmdline(const struct multiboot_tag* tag) {
-    const struct multiboot_tag_string* cmdline = (struct multiboot_tag_string*) tag;
-    klog(DEBUG, "cmdline: %s", cmdline->string);
+    cmdline_tag = (struct multiboot_tag_string*) tag;
 }
 
 static void (*multiboot_tag_handlers[])(const struct multiboot_tag*) = {
@@ -96,7 +97,11 @@ __noreturn void _init_basic_system(void)
     hhdm_map_physical_memory();    
     vmm_init(VMM_LEVEL_SUPERVISOR, nullptr); 
 
-    kmain();
+    if(cmdline_tag)
+        kmain(cmdline_tag->size, cmdline_tag->string);
+    else
+        kmain(0, nullptr);
+
     hlt();
 }
 

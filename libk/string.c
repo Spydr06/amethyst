@@ -3,6 +3,11 @@
 #include <ctype.h>
 #include <stdint.h>
 
+//
+// C standard memory manipulation functions
+// Implementations paritally taken from musl libc
+//
+
 void* memset(void* s, int c, size_t n) {
     uint8_t* p = s;
     while(n--)
@@ -50,6 +55,12 @@ void *memmove(void *dest, const void *src, size_t n)
 	}
 
 	return dest;
+}
+
+int memcmp(const void* vl, const void* vr, size_t n) {
+    const unsigned char *l = vl, *r = vr;
+	for (; n && *l == *r; n--, l++, r++);
+	return n ? *l - *r : 0;
 }
 
 char* reverse(char* str, size_t len) {

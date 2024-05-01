@@ -28,27 +28,17 @@ static void color_test(void) {
     printk("\n\n");
 }
 
-void kmain(void)
+void kmain(size_t cmdline_len, const char* cmdline)
 {
-    syscalls_init();
-    
+    syscalls_init(); 
     kernel_heap_init();   
-
-    void* a[10];
-    for(size_t i = 0; i < __len(a); i++) {
-        a[i] = kmalloc(1000); 
-        memset(a[i], 69, 1000);
-    }
-
-    for(size_t i = 0; i < __len(a); i++) {
-        kfree(a[i]);
-    }
+    
+    pci_init();
+    vfs_init();
 
     greet();
     color_test();
 
-    pci_init();
-    vfs_init();
     while(1);
 }
 

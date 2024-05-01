@@ -44,13 +44,13 @@ void vmm_init(enum vmm_level level, struct vmm_info* info) {
     info->status.items_per_page = PAGE_SIZE - sizeof(struct vmm_item) - 1;
     info->status.cur_index = 0;
 
-#ifndef NDEBUG
+/*#ifndef NDEBUG
     klog(DEBUG, "\tvmm_container_root starts at: %p - %p", (void*) info->status.container_root, (void*) is_address_aligned(info->vmm_data_start, PAGE_SIZE));
     klog(DEBUG, "\tvmmDataStart  starts at: %p - %p (end_of_vmm_data)", (void*) info->vmm_data_start, (void*) info->status.vmm_data_end);
     klog(DEBUG, "\thigherHalfDirectMapBase: %p - %p", (void*) higher_half_direct_map_base, (void*) is_address_aligned(higher_half_direct_map_base, PAGE_SIZE));
     klog(DEBUG, "\tvmmSpaceStart: %p - start_of_vmm_space: (%p)", (void*) info->vmm_space_start, (void*) info->start_of_vmm_space);
     klog(DEBUG, "\tsizeof struct vmm_container: 0x%lu", sizeof(struct vmm_container));
-#endif
+#endif*/
 
     void* vmm_root_phys = pmm_alloc_frame();
     if(!vmm_root_phys) {
@@ -134,7 +134,6 @@ void* map_phys_to_virt_addr_hh(void* physical_address, void* address, enum pagin
         pdpr_root = new_table_hhdm;
     }
     else {
-        klog(DEBUG, "pml4 already allocated.");
         pdpr_root = (uint64_t*) hhdm_get_variable((uintptr_t) pml4_root[pml4_e] & VM_PAGE_TABLE_BASE_ADDRESS_MASK);
     }
 
@@ -147,13 +146,12 @@ void* map_phys_to_virt_addr_hh(void* physical_address, void* address, enum pagin
         pd_root = new_table_hhdm;
     }
     else {
-        klog(DEBUG, "pdpr already allocated.");
         pd_root = (uint64_t*) hhdm_get_variable((uintptr_t) pdpr_root[pdpr_e] & VM_PAGE_TABLE_BASE_ADDRESS_MASK);
     }
 
     if(!(pd_root[pd_e] & 1)) {
         pd_root[pd_e] = (uint64_t) physical_address | HUGEPAGE_BIT | flags | user_mode_status;
-        klog(DEBUG, "PD Flags: 0x%hx entry value pd_root[0x%04hx] = %p", flags, pd_e, (void*) pd_root[pd_e]);
+        klog(DEBUG, "PD Flags: 0x%zx entry value pd_root[0x%04hx] = %p", flags, pd_e, (void*) pd_root[pd_e]);
     }
 
     return address;

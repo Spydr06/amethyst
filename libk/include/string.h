@@ -8,6 +8,8 @@ void* memset(void* s, int c, size_t n);
 void* memcpy(void* dst, const void* src, size_t n);
 void* memmove(void* dest, const void *src, size_t n);
 
+int memcmp(const void* vl, const void* vr, size_t n);
+
 char* reverse(char* str, size_t len);
 char* utoa(uint64_t num, char* str, int base);
 char* itoa(int64_t num, char* str, int base);

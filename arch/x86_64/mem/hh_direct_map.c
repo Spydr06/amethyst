@@ -52,7 +52,7 @@ void* hhdm_get_variable(uintptr_t phys_address) {
         return (void*) phys_address + higher_half_direct_map_base;
     }
 
-    klog(ERROR, "Address %p is not in physical memory.", (void*) phys_address);
+//    klog(ERROR, "Address %p is not in physical memory.", (void*) phys_address);
     return nullptr;
 }
 
