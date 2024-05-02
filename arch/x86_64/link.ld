@@ -4,16 +4,7 @@ KERNEL_BASE = 0xFFFFFFFF80000000;
 
 ENTRY(_start)
 SECTIONS
-{
-  PROVIDE(_ELF_START_ = . + 0x1000000);
-  PROVIDE(_LOAD_START_ = _ELF_START_);
-  . = _ELF_START_;
-
-  .init (_ELF_START_): AT(ADDR(.init)) {
-      KEEP(*(.multiboot))
-      *(.inittext)
-  }
-
+{ 
   PROVIDE(_KERNEL_BASE_ = KERNEL_BASE);
   . += KERNEL_BASE;
   
@@ -57,6 +48,11 @@ SECTIONS
     *(.gnu.linkonce.d*)
     _DATA_END_ = .;
   }
+
+  /* Dynamic section for relocations, both in its own PHDR and inside data PHDR */
+  .dynamic : {
+    *(.dynamic)
+  } :data :dynamic
 
   PROVIDE(_LOAD_END_ = .);
 

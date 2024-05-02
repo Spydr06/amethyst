@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include <tty.h>
-#include <multiboot2.h>
 #include <kernelio.h>
 #include <cpu/cpu.h>
 #include <version.h>
@@ -17,9 +16,8 @@
 #include <mem/heap.h>
 #include <mem/vmm.h>
 
-static const struct multiboot_tag* acpi_tag = nullptr;
-static const struct multiboot_tag_basic_meminfo* meminfo_tag = nullptr;
-static const struct multiboot_tag_string* cmdline_tag = nullptr;
+extern void _start(void);
+extern void kmain(size_t cmdline_size, const char* cmdline);
 
 uint64_t __millis = 0;
 
@@ -27,61 +25,16 @@ uint64_t millis(void) {
     return __millis;
 }
 
-extern void kmain(size_t cmdline_size, const char* cmdline);
 
-static void init_vga(const struct multiboot_tag* tag) {
-    const struct multiboot_tag_framebuffer* fb_tag = (struct multiboot_tag_framebuffer*) tag;
-
-    klog(DEBUG, "Framebuffer of type %hhu at %p [%ux%u:%u]", 
-        fb_tag->common.framebuffer_type, 
-        (void*) fb_tag->common.framebuffer_addr,
-        fb_tag->common.framebuffer_width, fb_tag->common.framebuffer_height, 
-        fb_tag->common.framebuffer_bpp
-    );
-
-    vga_init(fb_tag);
-    vga_console_init(VGACON_DEFAULT_OPTS);
-}
-
-static void init_mmap(const struct multiboot_tag* tag) { 
-    mmap_parse((struct multiboot_tag_mmap*) tag);
-}
-
-static void init_basic_meminfo(const struct multiboot_tag* tag) {
-    meminfo_tag = (struct multiboot_tag_basic_meminfo*) tag;
-
-    klog(INFO, "Available memory: %u kb - %u kb", meminfo_tag->mem_lower, meminfo_tag->mem_upper);
-    memory_size_in_bytes = ((uintptr_t) meminfo_tag->mem_upper + 1024) * 1024;
-}
-
-static void init_acpi(const struct multiboot_tag* tag) {
-    acpi_tag = tag;
-}
-
-static void save_cmdline(const struct multiboot_tag* tag) {
-    cmdline_tag = (struct multiboot_tag_string*) tag;
-}
-
-static void (*multiboot_tag_handlers[])(const struct multiboot_tag*) = {
-    [MULTIBOOT_TAG_TYPE_FRAMEBUFFER] = init_vga,
-    [MULTIBOOT_TAG_TYPE_MMAP] = init_mmap,
-    [MULTIBOOT_TAG_TYPE_BASIC_MEMINFO] = init_basic_meminfo,
-    [MULTIBOOT_TAG_TYPE_ACPI_OLD] = init_acpi,
-    [MULTIBOOT_TAG_TYPE_ACPI_NEW] = init_acpi,
-    [MULTIBOOT_TAG_TYPE_CMDLINE] = save_cmdline,
-};
-
-__noreturn void _init_basic_system(void)
+__noreturn void _start(void)
 {
     early_console_init();
     init_pit(SYSTEM_TICK_FREQUENCY);   
     pic_init();
     init_interrupts();
-
-    size_t mbi_size = parse_multiboot_tags(multiboot_tag_handlers, __len(multiboot_tag_handlers));
     
-    end_of_mapped_memory = (uintptr_t) &end_of_mapped_memory;
-    pmm_setup(multiboot_ptr, mbi_size);
+   // end_of_mapped_memory = (uintptr_t) &end_of_mapped_memory;
+    /*pmm_setup(multiboot_ptr, mbi_size);
 
     if(!acpi_tag)
         panic("No ACPI tag received from bootloader.");
@@ -95,13 +48,14 @@ __noreturn void _init_basic_system(void)
 
     mmap_setup(meminfo_tag);
     hhdm_map_physical_memory();    
-    vmm_init(VMM_LEVEL_SUPERVISOR, nullptr); 
+    vmm_init(VMM_LEVEL_SUPERVISOR, nullptr); */
 
-    if(cmdline_tag)
-        kmain(cmdline_tag->size, cmdline_tag->string);
-    else
+    //if(cmdline_tag)
+    //    kmain(cmdline_tag->size, cmdline_tag->string);
+    //else
         kmain(0, nullptr);
 
+while(1);
     hlt();
 }
 

@@ -3,14 +3,18 @@ VERSION ?= 0.0.1
 
 BUILD_DIR ?= build
 
+LIMINE_DIR ?= limine
+LIMINE_LOADERS := $(LIMINE_DIR)/limine-bios.sys $(LIMINE_DIR)/limine-bios-cd.bin $(LIMINE_DIR)/limine-uefi-cd.bin
+
 KERNEL_ELF ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).elf
 KERNEL_SYM ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).sym
 
 ISOROOT_DIR ?= $(BUILD_DIR)/iso
 ISO ?= amethyst.iso
 
+SOURCE_DIRS := libk kernel init drivers
 SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S" -or -name "*.ids"
-SOURCES := $(shell find $(SOURCE_PATTERN) | grep -v "arch/")
+SOURCES := $(shell find $(SOURCE_DIRS) $(SOURCE_PATTERN) | grep -v "arch/")
 
 INCLUDES := . include libk/include arch/include
 
@@ -83,55 +87,97 @@ all: $(ISO)
 kernel: $(KERNEL_ELF)
 
 $(KERNEL_ELF): $(OBJECTS) $(CONSOLEFONT_OBJECT)
-	$(LD) $(LDFLAGS) $^ -o $@
-	$(OBJCOPY) --only-keep-debug $(KERNEL_ELF) $(KERNEL_SYM)
-	$(OBJCOPY) --strip-debug $(KERNEL_ELF)
+	@echo "  LD    $@"
+	@$(LD) $(LDFLAGS) $^ -o $@
+	@$(OBJCOPY) --only-keep-debug $(KERNEL_ELF) $(KERNEL_SYM)
+	@$(OBJCOPY) --strip-debug $(KERNEL_ELF)
 
 $(BUILD_DIR)/%.c.o: %.c | $(VERSION_H)
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.c.o=%.c.d)" -c $^ -o $@
+	@echo "  CC    $^"
+	@$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.c.o=%.c.d)" -c $^ -o $@
 
 $(BUILD_DIR)/%.cpp.o: %.cpp | $(VERSION_H)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -MMD -MP -MF "$(@:%.cpp.o=%.cpp.d)" -c $^ -o $@
+	@echo "  CXX   $^"
+	@$(CXX) $(CXXFLAGS) -MMD -MP -MF "$(@:%.cpp.o=%.cpp.d)" -c $^ -o $@
 
 $(BUILD_DIR)/%.S: %.S | $(VERSION_H)
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -DASM_FILE -MMD -MP -MF "$(@:%.S=%.s.d)" -E $^ -o $@
+	@echo "  GEN   $(notdir $@)"
+	@$(CC) $(CFLAGS) -DASM_FILE -MMD -MP -MF "$(@:%.S=%.s.d)" -E $^ -o $@
 
 $(BUILD_DIR)/%.S.o: $(BUILD_DIR)/%.S
 	@mkdir -p $(dir $@)
-	$(AS) $(ASFLAGS) -c $^ -o $@
+	@echo "  AS    $^"
+	@$(AS) $(ASFLAGS) -c $^ -o $@
 
 $(BUILD_DIR)/%.ids.c: %.ids
 	@mkdir -p $(dir $@)
-	$(MAKE) -C $(dir $<) OUTPUT=$(shell realpath $(BUILD_DIR))/$<.c
+	@echo "  MAKE  $^"
+	@$(MAKE) -C $(dir $<) OUTPUT=$(shell realpath $(BUILD_DIR))/$<.c
 
 $(BUILD_DIR)/%.ids.o: $(BUILD_DIR)/%.ids.c
-	$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.ids.o=%.ids.d)" -c $^ -o $@
+	@echo "  CC    $^"
+	@$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.ids.o=%.ids.d)" -c $^ -o $@
 
 $(VERSION_H): $(VERSION_H).in
-	sed -e 's|@VERSION@|$(VERSION)|g' $< > $@
+	@echo "  GEN   $@"
+	@sed -e 's|@VERSION@|$(VERSION)|g' $< > $@
 
 $(CONSOLEFONT_OBJECT): $(CONSOLEFONT)
-	$(LD) -r -b binary -o $@ $<
+	@echo "  LD    $^"
+	@$(LD) -r -b binary -o $@ $<
 
 .PHONY: iso
 iso: $(ISO)
 
-$(ISO): $(KERNEL_ELF) | $(ISOROOT_DIR)/boot/grub/grub.cfg
-	cp -v $< $(ISOROOT_DIR)/boot
-	grub-mkrescue -o $@ $(ISOROOT_DIR)
+$(LIMINE_DIR):
+	$(error "limine directory missing")
 
-$(ISOROOT_DIR)/boot/grub/grub.cfg: grub.cfg.in
+$(LIMINE_DIR)/limine: $(LIMINE_DIR)
+	@echo "  MAKE  $(LIMINE_DIR)"
+	@$(MAKE) -C $(LIMINE_DIR) limine
+
+$(ISO): $(KERNEL_ELF) | $(LIMINE_DIR)/limine $(ISOROOT_DIR)/boot/limine/limine.cfg
+	@echo "  CP    $< $(ISOROOT_DIR)/boot"
+	@cp $< $(ISOROOT_DIR)/boot
+	
+	@echo "  CP    $(LIMINE_LOADERS) $(ISOROOT_DIR)/boot/limine"
+	@cp $(LIMINE_LOADERS) $(ISOROOT_DIR)/boot/limine
+
+	@echo "  MKDIR $(ISOROOT_DIR)/EFI/BOOT"
+	@mkdir -p $(ISOROOT_DIR)/EFI/BOOT
+
+	@echo "  CP    $(LIMINE_DIR)/BOOTX64.EFI $(ISOROOT_DIR)/EFI/BOOT"
+	@cp $(LIMINE_DIR)/BOOTX64.EFI $(ISOROOT_DIR)/EFI/BOOT
+	@echo "  CP    $(LIMINE_DIR)/BOOTIA32.EFI $(ISOROOT_DIR)/EFI_BOOT"
+	@cp $(LIMINE_DIR)/BOOTIA32.EFI $(ISOROOT_DIR)/EFI_BOOT
+	
+	@echo "  XORRISO      $@"
+	@xorriso -as mkisofs -b boot/limine/limine-bios-cd.bin \
+		-no-emul-boot -boot-load-size 4 -boot-info-table \
+        --efi-boot boot/limine/limine-uefi-cd.bin \
+        -efi-boot-part --efi-boot-image --protective-msdos-label \
+        $(ISOROOT_DIR) -o $@
+
+	@echo "  BIOS-INSTALL $@"
+	@$(LIMINE_DIR)/limine bios-install $@
+
+$(ISOROOT_DIR)/boot/limine/limine.cfg: limine.cfg.in
 	@mkdir -p $(dir $@)
-	sed -e 's|@VERSION@|$(VERSION)|g' \
+	@echo "  GEN   $@"
+	@sed -e 's|@VERSION@|$(VERSION)|g' \
 		-e 's|@KERNEL_ELF@|$(notdir $(KERNEL_ELF))|' \
 		$< > $@
 
 .PHONY: run
 run: $(ISO)
 	$(QEMU) $(QEMUFLAGS) -cdrom $< -boot order=d
+
+.PHONY: run-kvm
+run-kvm: $(ISO)
+	$(QEMU) $(QEMUFLAGS) -enable-kvm -cdrom $< -boot order=d
 
 .PHONY: debug
 debug: $(ISO)

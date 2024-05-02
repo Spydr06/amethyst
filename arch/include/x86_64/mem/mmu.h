@@ -5,27 +5,7 @@
 #define WRITE_BIT    0b00000010
 #define HUGEPAGE_BIT 0b10000000
 
-#define PAGE_SIZE 0x200000
-#define PAGE_TABLE_ENTRY (HUGEPAGE_BIT | WRITE_BIT | PRESENT_BIT)
-#define PAGE_ALIGNMENT_MASK (PAGE_SIZE - 1)
-
-#define PAGES_PER_TABLE 0x200
-
-#define ALIGN_PHYSADDRESS(addr) (addr & (~PAGE_ALIGNMENT_MASK))
-
-#define FRAMEBUFFER_MEM_START 0xffffffffbd000000
-#define HIGHER_HALF_ADDRESS_OFFSET 0xFFFF800000000000
-#define SIGN_EXTENSION 0xFFFF000000000000
-
-#define VM_OFFSET_MASK 0xFFFFFFFFFFE00000
-#define  VM_PAGE_TABLE_BASE_ADDRESS_MASK 0xFFFFFFF000
-
-#define PD_ENTRY(addr)   (((addr) >> 21) & 0x1ff)
-#define PDPR_ENTRY(addr) (((addr) >> 30) & 0x1ff)
-#define PML4_ENTRY(addr) (((addr) >> 39) & 0x1ff)
-#define PT_ENTRY(addr)   (((addr) >> 12) & 0x1ff)
-
-#define ENTRIES_TO_ADDRESS(pml4, pdpr, pd, pt) ((pml4 << 39) | (pdpr << 30) | (pd << 21) |  (pt << 12))
+#define PAGE_SIZE 0x1000
 
 #define PRESENT_VIOLATION 0x1
 #define WRITE_VIOLATION 0x2
@@ -35,36 +15,10 @@
 
 #ifndef ASM_FILE
 
-#include <stdint.h>
-#include <stddef.h>
 #include <cdefs.h>
+#include <limine/limine.h>
 
-#include <multiboot2.h>
-
-#define IS_ADDRESS_HIGHER_HALF(addr) ((addr) & (1lu << 62))
-#define ENSURE_HIGHER_HALF(addr) ((addr) > HIGHER_HALF_ADDRESS_OFFSET ? (addr) : (addr) + HIGHER_HALF_ADDRESS_OFFSET)
-
-struct paging_status {
-    uint64_t* page_root_address;
-    uint64_t* hhdm_page_root_address;
-    size_t page_generation;
-};
-
-extern uint64_t p4_table[];
-extern uint64_t p3_table[];
-extern uint64_t p3_table_hh[];
-extern uint64_t p2_table[];
-
-extern struct paging_status paging_status;
-extern uintptr_t higher_half_direct_map_base;
-
-void mmu_map_framebuffer(const struct multiboot_tag_framebuffer* tag);
-
-static __always_inline void clean_new_table(uint64_t* table) {
-    for(unsigned i = 0; i < PAGES_PER_TABLE; i++)
-        table[i] = 0l;
-}
-
+void mmu_map_framebuffer(const struct limine_framebuffer* mmap);
 __noreturn void page_fault_handler(uintptr_t error_code);
 
 #endif /* ASM_FILE */

@@ -9,7 +9,7 @@
 #ifndef ASM_FILE
 
 #include <stdint.h>
-#include <multiboot2.h>
+#include <limine/limine.h>
 
 struct vga {
     void* address;
@@ -25,7 +25,7 @@ struct vga {
 extern struct vga vga;
 extern uint32_t vga_color_map[256];
 
-void vga_init(const struct multiboot_tag_framebuffer* multiboot_info);
+void vga_init(const struct limine_framebuffer* tag);
 void vga_put_pixel(uint32_t x, uint32_t y, uint32_t color);
 void vga_clear(uint32_t color);
 

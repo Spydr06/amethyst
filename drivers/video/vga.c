@@ -2,20 +2,22 @@
 #include <stdint.h>
 #include <drivers/video/vga.h>
 
+#include <stddef.h>
+
 #ifdef __x86_64__
     #include <x86_64/mem/mmu.h>
 #endif
 
 struct vga vga = {0};
 
-void vga_init(const struct multiboot_tag_framebuffer* tag) {
-    vga.address = (void*)(uint64_t) FRAMEBUFFER_MEM_START;
-    vga.pitch = tag->common.framebuffer_pitch;
-    vga.bpp = tag->common.framebuffer_bpp;
-    vga.memory_size = tag->common.framebuffer_pitch * tag->common.framebuffer_height;
-    vga.width = tag->common.framebuffer_width;
-    vga.height = tag->common.framebuffer_height;
-    vga.phys_addr = tag->common.framebuffer_addr;
+void vga_init(const struct limine_framebuffer* tag) {
+    //vga.address = (void*)(uint64_t) FRAMEBUFFER_MEM_START;
+    vga.pitch = tag->pitch;
+    vga.bpp = tag->bpp;
+    vga.memory_size = tag->pitch * tag->height;
+    vga.width = tag->width;
+    vga.height = tag->height;
+    vga.phys_addr = (uintptr_t) tag->address;
 
     mmu_map_framebuffer(tag);
 }

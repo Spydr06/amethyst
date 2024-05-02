@@ -1,7 +1,0 @@
-set timeout=5
-
-menuentry "amethyst @VERSION@" {
-    multiboot2 /boot/@KERNEL_ELF@ initrd=foo
-    boot
-}
-

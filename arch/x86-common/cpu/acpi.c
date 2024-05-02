@@ -2,7 +2,6 @@
 #include <x86-common/cpu/rsdt.h>
 
 #include <kernelio.h>
-#include <mem/bitmap.h>
 #include <mem/vmm.h>
 
 static struct RSDT* rsdt_root = nullptr;
@@ -11,7 +10,7 @@ static enum RSDT_version version = RSDT_V2;
 static uint32_t rsdt_tables_total = 0;
 
 static bool parse_rsdt(const struct RSDP_descriptor* desc) {
-    klog(DEBUG, "- RSDT descriptor address: %p", (void*) (uintptr_t) desc->rsdt_address);
+   /* klog(DEBUG, "- RSDT descriptor address: %p", (void*) (uintptr_t) desc->rsdt_address);
     map_phys_to_virt_addr(
         (void*) ALIGN_PHYSADDRESS((uintptr_t) desc->rsdt_address),
         (void*) ENSURE_HIGHER_HALF((uintptr_t) desc->rsdt_address),
@@ -56,7 +55,8 @@ static bool parse_rsdt(const struct RSDP_descriptor* desc) {
 #endif
     }
 
-    return acpi_validate_sdt((uint8_t*) desc, sizeof(struct RSDP_descriptor));
+    return acpi_validate_sdt((uint8_t*) desc, sizeof(struct RSDP_descriptor));*/
+    unimplemented();
 }
 
 static bool parse_rsdt_v2(const struct RSDP_descriptor_20* desc __attribute__((unused))) {

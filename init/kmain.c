@@ -31,13 +31,13 @@ static void color_test(void) {
 
 void kmain(size_t cmdline_size, const char* cmdline)
 {
-    syscalls_init(); 
+    /*syscalls_init(); 
     kernel_heap_init();   
    
     cmdline_parse(cmdline_size, cmdline);
 
     pci_init();
-    vfs_init();
+    vfs_init();*/
 
     greet();
     color_test();
