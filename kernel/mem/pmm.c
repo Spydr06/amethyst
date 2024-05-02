@@ -10,7 +10,9 @@ void pmm_setup(uintptr_t addr, uint32_t size) {
     uintptr_t bitmap_start_addr;
     size_t bitmap_size;
     bitmap_get_region(&bitmap_start_addr, &bitmap_size, ADDRESS_TYPE_PHYSICAL);
-    spinlock_release(&memory_spinlock);
+    spinlock_init(memory_spinlock);
+
+    pmm_reserve_area(bitmap_start_addr, bitmap_size);
 }
 
 static bool frame_available(void) {

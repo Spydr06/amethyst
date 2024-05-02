@@ -1,4 +1,5 @@
 #include "filesystem/virtual.h"
+#include "init/cmdline.h"
 #include <mem/heap.h>
 #include <drivers/pci/pci.h>
 #include <kernelio.h>
@@ -28,11 +29,13 @@ static void color_test(void) {
     printk("\n\n");
 }
 
-void kmain(size_t cmdline_len, const char* cmdline)
+void kmain(size_t cmdline_size, const char* cmdline)
 {
     syscalls_init(); 
     kernel_heap_init();   
-    
+   
+    cmdline_parse(cmdline_size, cmdline);
+
     pci_init();
     vfs_init();
 
