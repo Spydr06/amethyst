@@ -79,6 +79,10 @@ void init_interrupts(void) {
     _idt_reload(&idtr);
 }
 
+void idt_reload(void) {
+    _idt_reload(&idtr);
+}
+
 static void tick(void) {
     __millis++;
 }

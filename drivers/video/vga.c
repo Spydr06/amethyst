@@ -2,24 +2,33 @@
 #include <stdint.h>
 #include <drivers/video/vga.h>
 
+#include <errno.h>
 #include <stddef.h>
 
-#ifdef __x86_64__
-    #include <x86_64/mem/mmu.h>
-#endif
+#include <limine/limine.h>
 
 struct vga vga = {0};
 
-void vga_init(const struct limine_framebuffer* tag) {
-    //vga.address = (void*)(uint64_t) FRAMEBUFFER_MEM_START;
-    vga.pitch = tag->pitch;
-    vga.bpp = tag->bpp;
-    vga.memory_size = tag->pitch * tag->height;
-    vga.width = tag->width;
-    vga.height = tag->height;
-    vga.phys_addr = (uintptr_t) tag->address;
+static volatile struct limine_framebuffer_request framebuffer_request = {
+    .id = LIMINE_FRAMEBUFFER_REQUEST,
+    .revision = 0
+};
 
-    mmu_map_framebuffer(tag);
+int vga_init(void) {
+    if(!framebuffer_request.response || !framebuffer_request.response->framebuffer_count)
+        return ENOMEM;
+
+    struct limine_framebuffer* fb = framebuffer_request.response->framebuffers[0];
+
+    vga.address = fb->address;
+    vga.pitch = fb->pitch;
+    vga.bpp = fb->bpp;
+    vga.memory_size = fb->pitch * fb->height;
+    vga.width = fb->width;
+    vga.height = fb->height;
+    vga.phys_addr = (uintptr_t) fb->address;
+
+    return 0;
 }
 
 void vga_put_pixel(uint32_t x, uint32_t y, uint32_t color) {

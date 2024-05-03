@@ -23,16 +23,13 @@ INCLUDES := . include libk/include arch/include
 SSP := $(shell openssl rand -hex 8)
 
 C_CXX_FLAGS += -Wall -Wextra -Wno-trigraphs \
-			   -ffreestanding -fno-stack-protector -fno-stack-check -fno-lto -fPIE \
+			   -ffreestanding -fstack-protector -fno-lto -fPIE \
 		       -g \
-			   -D__$(ARCH)__ -D__$(ARCH) -D__SSP__=0x$(SSP) \
+			   -D__$(ARCH)__ -D__$(ARCH) -D_SSP=0x$(SSP) \
 			   $(foreach i, $(INCLUDES), -I$(shell realpath $i))
 
 override CC := $(ARCH)-elf-gcc
-CFLAGS += -std=c2x $(C_CXX_FLAGS)
-
 override CXX := $(ARCH)-elf-g++
-CXXFLAGS += -std=c++2x $(C_CXX_FLAGS)
 
 override AS := $(ARCH)-elf-as
 ASFLAGS += -am -g
@@ -70,12 +67,15 @@ override QEMU := qemu-system-$(ARCH)
 QEMUFLAGS += -m 2G -serial stdio -smp cpus=4
 
 ifeq ($(ARCH), x86_64)
-	CFLAGS += -m64 -march=x86-64 -mcmodel=large -mno-red-zone -mno-mmx -mno-sse2
+	C_CXX_FLAGS += -m64 -march=x86-64 -mcmodel=large -mno-red-zone -mno-mmx -mno-sse2
 	SOURCES += $(shell find $(ARCH_DIR) $(SOURCE_PATTERN))
 else
 _error:
 	$(error Unsupported architecture "$(ARCH)")
 endif
+
+CFLAGS += -std=c2x $(C_CXX_FLAGS)
+CXXFLAGS += -std=c++2x $(C_CXX_FLAGS)
 
 OBJECTS := $(patsubst %, $(BUILD_DIR)/%.o, $(SOURCES))
 

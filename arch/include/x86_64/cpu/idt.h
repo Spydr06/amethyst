@@ -64,5 +64,7 @@ void init_interrupts(void);
 
 void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags);
 
+void idt_reload(void);
+
 #endif /* _AMETHYST_X86_64_IDT_H */
 

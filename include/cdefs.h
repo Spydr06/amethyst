@@ -31,6 +31,8 @@
 
 #define __align8(ptr) ((void*) (((uintptr_t) (ptr) + 7) & ~7))
 
+#define __tmpvar(var) var##__LINE__
+
 #ifndef ASM_FILE
 
 extern const char _KERNEL_BASE_[];
