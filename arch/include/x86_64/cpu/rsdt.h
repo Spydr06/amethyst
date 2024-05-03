@@ -1,5 +1,5 @@
-#ifndef _AMETHYST_X86_COMMON_CPU_RSDT_H
-#define _AMETHYST_X86_COMMON_CPU_RSDT_H
+#ifndef _AMETHYST_X86_64_CPU_RSDT_H
+#define _AMETHYST_X86_64_CPU_RSDT_H
 
 #include "acpi.h"
 
@@ -13,5 +13,5 @@ struct XSDT {
     uint64_t tables[];
 } __attribute__((packed));
 
-#endif /* _AMETHYST_X86_COMMON_CPU_RSDT */
+#endif /* _AMETHYST_X86_64_CPU_RSDT */
 

@@ -102,6 +102,7 @@ isr_no_err_stub 34
 isr_no_err_stub 128
 isr_no_err_stub 255
 
+.section .rodata
 .globl isr_stub_table
 isr_stub_table:
     .quad isr_stub_0
@@ -143,4 +144,12 @@ isr_stub_table:
     .quad isr_stub_128
 .org isr_stub_table + 255 * 8
     .quad isr_stub_255
+
+.section .text
+.globl _idt_reload
+_idt_reload:
+    cli
+    lidt (%rdi)
+    sti
+    ret
 

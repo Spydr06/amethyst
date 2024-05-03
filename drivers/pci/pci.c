@@ -5,9 +5,9 @@
 #include <dynarray.h>
 
 #ifdef __x86_64__
-#include <x86-common/dev/io.h>
-#define PCI_DATA_PORT    0x0cfc
-#define PCI_COMMAND_PORT 0x0cf8
+    #include <x86_64/dev/io.h>
+    #define PCI_DATA_PORT    0x0cfc
+    #define PCI_COMMAND_PORT 0x0cf8
 #endif
 
 #define MAX_DEVICE 32

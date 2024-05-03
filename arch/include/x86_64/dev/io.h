@@ -1,5 +1,5 @@
-#ifndef _AMETHYST_X86_COMMON_IO_H
-#define _AMETHYST_X86_COMMON_IO_H
+#ifndef _AMETHYST_X86_64_IO_H
+#define _AMETHYST_X86_64_IO_H
 
 #include <stdint.h>
 
@@ -12,5 +12,5 @@ void outw(uint16_t port, uint16_t value);
 uint32_t inl(uint16_t port);
 void outl(uint16_t port, uint32_t value);
 
-#endif /* _AMETHYST_X86_COMMON_IO_H */
+#endif /* _AMETHYST_X86_64_IO_H */
 

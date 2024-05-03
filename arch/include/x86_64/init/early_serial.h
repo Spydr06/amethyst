@@ -1,5 +1,5 @@
-#ifndef _AMETHYST_X86_COMMON_EARLY_SERIAL_H
-#define _AMETHYST_X86_COMMON_EARLY_SERIAL_H
+#ifndef _AMETHYST_X86_64_EARLY_SERIAL_H
+#define _AMETHYST_X86_64_EARLY_SERIAL_H
 
 #include <stdint.h>
 
@@ -20,5 +20,5 @@
 
 extern int32_t early_serial_base;
 
-#endif /* _AMETHYST_X86_COMMON_EARLY_SERIAL_H */
+#endif /* _AMETHYST_X86_64_EARLY_SERIAL_H */
 

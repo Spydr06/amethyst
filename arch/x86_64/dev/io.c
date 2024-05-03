@@ -1,4 +1,4 @@
-#include <x86-common/dev/io.h>
+#include <x86_64/dev/io.h>
 
 uint8_t inb(uint16_t port) {
     uint8_t value;

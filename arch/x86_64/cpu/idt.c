@@ -1,5 +1,5 @@
-#include <x86-common/idt.h>
-#include <x86-common/dev/pic.h>
+#include <x86_64/cpu/idt.h>
+#include <x86_64/dev/pic.h>
 #include <cpu/syscalls.h>
 #include <drivers/char/keyboard.h>
 
@@ -10,9 +10,12 @@
 
 #include <kernelio.h>
 
+extern void _idt_reload(volatile const struct idtr* idtr);
+
 extern uint64_t __millis;
 
 __aligned(0x10) struct interrupt_descriptor idt[256];
+
 const struct idtr idtr = {
     .size = sizeof(idt) - 1,
     .idt = (uintptr_t) (void*) idt
@@ -73,16 +76,7 @@ void init_interrupts(void) {
         idt_set_descriptor(i, isr_stub_table[i], IDT_PRESENT_FLAG | IDT_INTERRUPT_TYPE_FLAG);
     }
     idt_set_descriptor(255, isr_stub_table[255], IDT_PRESENT_FLAG | IDT_INTERRUPT_TYPE_FLAG);
-    idt_reload();
-}
-
-void idt_reload(void) {
-    __asm__ volatile (
-        "cli;"
-        "lidt %0;"
-        "sti"
-        :: "m"(idtr)
-    );
+    _idt_reload(&idtr);
 }
 
 static void tick(void) {

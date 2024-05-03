@@ -1,4 +1,5 @@
 .PHONY: all
 all:
-	python3 pci-id-gen.py $(OUTPUT)
+	@echo "  GEN   $(OUTPUT)"
+	@python3 pci-id-gen.py $(OUTPUT)
 

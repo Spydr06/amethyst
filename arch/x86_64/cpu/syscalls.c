@@ -1,5 +1,5 @@
 #include <cpu/syscalls.h>
-#include <x86-common/idt.h>
+#include <x86_64/cpu/idt.h>
 #include <kernelio.h>
 
 #define SYSCALL_IDT_VECTOR 0x80
@@ -27,6 +27,6 @@ cpu_status_t* syscall_dispatch(cpu_status_t* regs)
 
 size_t execute_syscall(size_t syscall_num, size_t arg0, size_t arg1, size_t arg2)
 {
-
+    unimplemented();
 }
 

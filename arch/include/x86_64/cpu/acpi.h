@@ -1,5 +1,5 @@
-#ifndef _AMETHYST_X86_COMMON_CPU_ACPI_H
-#define _AMETHYST_X86_COMMON_CPU_ACPI_H
+#ifndef _AMETHYST_X86_64_CPU_ACPI_H
+#define _AMETHYST_X86_64_CPU_ACPI_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -41,5 +41,5 @@ struct RSDP_descriptor_20 {
 bool acpi_parse_sdt(uintptr_t address, enum RSDT_version type);
 bool acpi_validate_sdt(uint8_t* descriptor, size_t size);
 
-#endif /* _AMETHYST_X86_COMMON_CPU_ACPI_H */
+#endif /* _AMETHYST_X86_64_CPU_ACPI_H */
 

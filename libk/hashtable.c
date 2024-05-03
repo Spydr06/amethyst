@@ -14,9 +14,9 @@ static struct scache* hash_entry_cache = nullptr;
 // Reference:
 // https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
 //
-static inline uint64_t fnv1ahash(void *buffer, size_t size) {
-	uint8_t *ptr = buffer;
-	uint8_t *top = ptr + size;
+static inline uint64_t fnv1ahash(const void *buffer, size_t size) {
+	const uint8_t *ptr = buffer;
+	const uint8_t *top = ptr + size;
 	uint64_t h = FNV1OFFSET;
 
 	while (ptr < top) {
@@ -27,7 +27,7 @@ static inline uint64_t fnv1ahash(void *buffer, size_t size) {
 	return h;
 }
 
-static struct hashentry* get_entry(hashtable_t *table, void *key, size_t keysize, uintmax_t hash) {
+static struct hashentry* get_entry(hashtable_t *table, const void *key, size_t keysize, uintmax_t hash) {
 	uintmax_t tableoffset = hash % table->capacity;
 
 	struct hashentry* entry = table->entries[tableoffset];
@@ -55,7 +55,7 @@ int hashtable_init(hashtable_t *table, size_t size) {
     return table->entries ? 0 : ENOMEM;
 }
 
-int hashtable_set(hashtable_t *table, void *value, void *key, size_t keysize, bool allocate) {
+int hashtable_set(hashtable_t *table, void *value, const void *key, size_t keysize, bool allocate) {
     uintmax_t hash = fnv1ahash(key, keysize);
 
     struct hashentry* entry = get_entry(table, key, keysize, hash);
@@ -94,7 +94,7 @@ int hashtable_set(hashtable_t *table, void *value, void *key, size_t keysize, bo
     return 0;
 }
 
-int hashtable_get(hashtable_t *table, void **value, void *key, size_t keysize) {
+int hashtable_get(hashtable_t *table, void **value, const void *key, size_t keysize) {
     uintmax_t hash = fnv1ahash(key, keysize);
 
     struct hashentry* entry = get_entry(table, key, keysize, hash);

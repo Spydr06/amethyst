@@ -1,5 +1,4 @@
 #include <x86_64/mem/mmu.h>
-#include <x86-common/cpu/cpu.h>
 #include <kernelio.h>
 
 __noreturn void page_fault_handler(uintptr_t error_code) {

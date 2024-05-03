@@ -9,9 +9,10 @@
 #include <init/interrupts.h>
 #include <mem/pmm.h>
 #include <mem/mmap.h>
-#include <x86-common/cpu/acpi.h>
-#include <x86-common/dev/pic.h>
-#include <x86-common/dev/pit.h>
+#include <x86_64/cpu/acpi.h>
+#include <x86_64/dev/pic.h>
+#include <x86_64/dev/pit.h>
+#include <x86_64/cpu/gdt.h>
 #include <drivers/pci/pci.h>
 #include <mem/heap.h>
 #include <mem/vmm.h>
@@ -25,10 +26,14 @@ uint64_t millis(void) {
     return __millis;
 }
 
+static struct cpu init_cpu;
 
 __noreturn void _start(void)
 {
+    cpu_set(&init_cpu);
     early_console_init();
+    
+    gdt_reload();
     init_pit(SYSTEM_TICK_FREQUENCY);   
     pic_init();
     init_interrupts();
@@ -55,7 +60,7 @@ __noreturn void _start(void)
     //else
         kmain(0, nullptr);
 
-while(1);
+    while(1);
     hlt();
 }
 

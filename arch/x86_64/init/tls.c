@@ -1,4 +1,4 @@
-#include <x86-common/init/tls.h>
+#include <x86_64/init/tls.h>
 #include <cdefs.h>
 #include <stddef.h>
 

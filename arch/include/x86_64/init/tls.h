@@ -1,5 +1,5 @@
-#ifndef _AMETHYST_X86_COMMON_BOOT_TLS_H
-#define _AMETHYST_X86_COMMON_BOOT_TLS_H
+#ifndef _AMETHYST_X86_64_BOOT_TLS_H
+#define _AMETHYST_X86_64_BOOT_TLS_H
 
 #include <stdint.h>
 
@@ -12,5 +12,5 @@ struct tls_table {
 
 extern struct tls_table tls;
 
-#endif /* _AMETHYST_X86_COMMON_BOOT_TLS_H */
+#endif /* _AMETHYST_X86_64_BOOT_TLS_H */
 

@@ -1,5 +1,5 @@
-#include <x86-common/dev/pit.h>
-#include <x86-common/dev/io.h>
+#include <x86_64/dev/pit.h>
+#include <x86_64/dev/io.h>
 
 #include <stdint.h>
 

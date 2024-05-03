@@ -1,5 +1,5 @@
-#include <x86-common/cpu/acpi.h>
-#include <x86-common/cpu/rsdt.h>
+#include <x86_64/cpu/acpi.h>
+#include <x86_64/cpu/rsdt.h>
 
 #include <kernelio.h>
 #include <mem/vmm.h>

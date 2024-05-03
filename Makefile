@@ -12,7 +12,9 @@ KERNEL_SYM ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).sym
 ISOROOT_DIR ?= $(BUILD_DIR)/iso
 ISO ?= amethyst.iso
 
-SOURCE_DIRS := libk kernel init drivers
+override ARCH_DIR := arch/$(ARCH)
+override SOURCE_DIRS := libk kernel init drivers $(ARCH_DIR)
+
 SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S" -or -name "*.ids"
 SOURCES := $(shell find $(SOURCE_DIRS) $(SOURCE_PATTERN) | grep -v "arch/")
 
@@ -46,7 +48,6 @@ _error:
 	$(error Unsupported "$(CC)" version "$(CC_VERSION)", expect >= 13)
 endif
 
-override ARCH_DIR := arch/$(ARCH)
 override LDSCRIPT := $(ARCH_DIR)/link.ld
 
 override LD := $(ARCH)-elf-ld
@@ -70,7 +71,7 @@ QEMUFLAGS += -m 2G -serial stdio -smp cpus=4
 
 ifeq ($(ARCH), x86_64)
 	CFLAGS += -m64 -march=x86-64 -mcmodel=large -mno-red-zone -mno-mmx -mno-sse2
-	SOURCES += $(shell find $(ARCH_DIR) arch/x86-common $(SOURCE_PATTERN))
+	SOURCES += $(shell find $(ARCH_DIR) $(SOURCE_PATTERN))
 else
 _error:
 	$(error Unsupported architecture "$(ARCH)")

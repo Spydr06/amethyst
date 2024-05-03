@@ -1,7 +1,7 @@
-#include <x86-common/init/early_serial.h>
+#include <x86_64/init/early_serial.h>
 
-#include <x86-common/dev/io.h>
-#include <x86-common/cpu/cpu.h>
+#include <x86_64/dev/io.h>
+#include <x86_64/cpu/cpu.h>
 
 #include <cdefs.h>
 

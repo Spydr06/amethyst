@@ -1,5 +1,5 @@
-#ifndef _AMETHYST_X86_COMMON_DEV_PIT_H
-#define _AMETHYST_X86_COMMON_DEV_PIT_H
+#ifndef _AMETHYST_X86_64_DEV_PIT_H
+#define _AMETHYST_X86_64_DEV_PIT_H
 
 #include <stdint.h>
 
@@ -16,5 +16,5 @@ extern uint32_t __pit_delta_time;
 
 void init_pit(uint32_t frequency);
 
-#endif /* _AMETHYST_X86_COMMON_DEV_PIT_H */
+#endif /* _AMETHYST_X86_64_DEV_PIT_H */
 

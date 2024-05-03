@@ -1,5 +1,5 @@
-#ifndef _AMETHYST_X86_COMMON_DEV_PIC_H
-#define _AMETHYST_X86_COMMON_DEV_PIC_H
+#ifndef _AMETHYST_X86_64_DEV_PIC_H
+#define _AMETHYST_X86_64_DEV_PIC_H
 
 #include <stdint.h>
 
@@ -14,5 +14,5 @@ void pic_init(void);
 void pic_disable(void);
 void pic_send_eoi(uint32_t irq);
 
-#endif /* _AMETHYST_X86_COMMON_DEV_PIC_H */
+#endif /* _AMETHYST_X86_64_DEV_PIC_H */
 
