@@ -39,7 +39,6 @@ void vmm_init(struct mmap* mmap) {
     // map hhdm
     for(uint64_t i = 0; i < mmap->mmap->entry_count; i++) {
         const struct limine_memmap_entry* entry = mmap->mmap->entries[i];
-        klog(DEBUG, "%zu", i);
         assert(vmm_map(MAKE_HHDM(entry->base), entry->length, VMM_FLAGS_EXACT, MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, nullptr));
     }
 }
