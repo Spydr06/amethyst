@@ -8,7 +8,7 @@
 #define klog(sev, ...) (__klog(KLOG_##sev, __FILENAME__, __VA_ARGS__))
 #define klog_inl(sev, ...) (__klog_inl(KLOG_##sev, __FILENAME__, __VA_ARGS__))
 
-#define here() (__klog(KLOG_DEBUG, __FILENAME__, "\e[34m" __FILE__ ":%d:%s(): here\e[0m", __LINE__, __func__))
+#define here() (__klog(KLOG_DEBUG, __FILENAME__, __FILE__ ":%d:%s(): \e[36mhere\e[0m", __LINE__, __func__))
 
 #define unimplemented() (panic("unimplemented()"))
 

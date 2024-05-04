@@ -18,6 +18,8 @@
 #include <mem/vmm.h>
 #include <limine/limine.h>
 
+#include <assert.h>
+
 extern void _start(void);
 extern void kmain(size_t cmdline_size, const char* cmdline);
 
@@ -54,8 +56,11 @@ __noreturn void _start(void)
     else
         vga_console_init(VGACON_DEFAULT_OPTS);   
 
-    pmm_init();
-
+    struct mmap mmap;
+    assert(mmap_parse(&mmap) == 0);
+    pmm_init(&mmap);
+    mmu_init(&mmap);
+    vmm_init(&mmap);
 
 /*    if(!acpi_tag)
         panic("No ACPI tag received from bootloader.");
@@ -63,14 +68,7 @@ __noreturn void _start(void)
         acpi_parse_sdt((uintptr_t) (((struct multiboot_tag_old_acpi*) acpi_tag) + 1), MULTIBOOT_TAG_TYPE_ACPI_OLD);
     else
         acpi_parse_sdt((uintptr_t) (((struct multiboot_tag_new_acpi*) acpi_tag) + 1), MULTIBOOT_TAG_TYPE_ACPI_NEW);
-
-    if(!meminfo_tag)
-        panic("No memory information given by the bootloader.");
-
-    mmap_setup(meminfo_tag);
-    hhdm_map_physical_memory();    
-    vmm_init(VMM_LEVEL_SUPERVISOR, nullptr); */
-
+*/
     //if(cmdline_tag)
     //    kmain(cmdline_tag->size, cmdline_tag->string);
     //else

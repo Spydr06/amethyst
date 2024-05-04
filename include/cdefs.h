@@ -35,7 +35,8 @@
 
 #ifndef ASM_FILE
 
-extern const char _KERNEL_BASE_[];
+extern char _KERNEL_BASE_[];
+extern char _end[];
 
 #endif /* ASM_FILE */
 

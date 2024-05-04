@@ -1,6 +1,10 @@
 #ifndef _AMETHYST_MEM_VMM_H
 #define _AMETHYST_MEM_VMM_H
 
+#include <mem/mmap.h>
+
+#include <sys/mutex.h>
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -9,30 +13,70 @@
 #define VMM_RESERVED_SPACE_SIZE 0x14480000000
 #endif
 
-enum paging_flags : uint64_t {
-    VMM_FLAGS_NONE = 0,
-    VMM_FLAGS_PRESENT = (1 << 0),
-    VMM_FLAGS_WRITE_ENABLE = (1 << 1),
-    VMM_FLAGS_USER_LEVEL = (1 << 2),
-    VMM_FLAGS_ADDRESS_ONLY = (1 << 7),
-    VMM_FLAGS_STACK = (1 << 8),
-    VMM_FLAGS_NOEXEC = (1ull << 63),
+#define VMM_RANGES_PER_CACHE ((PAGE_SIZE - sizeof(struct vmm_cache_header)) / sizeof(struct vmm_range))
+
+enum vmm_flags : uint8_t {
+    VMM_FLAGS_PAGESIZE = 1,
+    VMM_FLAGS_ALLOCATE = 2,
+    VMM_FLAGS_PHYSICAL = 4,
+    VMM_FLAGS_FILE     = 8,
+    VMM_FLAGS_EXACT    = 16,
+    VMM_FLAGS_SHARED   = 32,
+
+    VMM_PERMANENT_FLAGS_MASK = (VMM_FLAGS_FILE | VMM_FLAGS_SHARED)
 };
 
-enum vmm_level : uint8_t {
-    VMM_LEVEL_USER,
-    VMM_LEVEL_SUPERVISOR
+enum vmm_action : uint8_t {
+    VMM_ACTION_READ  = 1,
+    VMM_ACTION_WRITE = 2,
+    VMM_ACTION_EXEC  = 4
 };
 
-struct vmm_info {
+struct vmm_range {
+    struct vmm_range* next;
+    struct vmm_range* prev;
 
+    void* start;
+    size_t size;
+    enum vmm_flags flags;
+    enum mmu_flags mmu_flags;
+    
+    struct vnode* vnode;
+    size_t offset;
 };
 
-void vmm_init(enum vmm_level level, struct vmm_info* info);
+struct vmm_cache_header {
+    mutex_t lock;
+    struct vmm_cache* next;
+    size_t free_count;
+    uintmax_t first_free;
+};
 
-void* vmm_alloc(size_t size, enum paging_flags flags, struct vmm_info* info);
+struct vmm_cache {
+    struct vmm_cache_header header;
+    struct vmm_range ranges[VMM_RANGES_PER_CACHE];
+};
 
-void vmm_free(void* ptr, size_t size, enum paging_flags flags);
+struct vmm_space {
+    mutex_t lock;
+    mutex_t pflock;
+    struct vmm_range* ranges;
+    void* start;
+    void* end;
+};
+
+struct vmm_context {
+    struct vmm_space space;
+    page_table_ptr_t page_table;
+};
+
+static_assert(sizeof(struct vmm_cache) <= PAGE_SIZE);
+
+void vmm_init(struct mmap* mmap);
+void vmm_switch_context(struct vmm_context* context);
+
+void* vmm_map(void* addr, size_t size, enum vmm_flags flags, enum mmu_flags mmu_flags, void* private);
+void vmm_unmap(void* addr, size_t size, enum vmm_flags flags);
 
 #endif /* _AMETHYST_MEM_VMM_H */
 

@@ -42,27 +42,25 @@ static void free_list_remove(struct page* page);
 
 static void allocate(struct page* page);
 
-void pmm_init(void) {
+void pmm_init(struct mmap* mmap) {
     assert(hhdm_request.response);
     hhdm_base = hhdm_request.response->offset;
 
-    struct mmap mmap;
-    assert(mmap_parse(&mmap) == 0);
 
-    klog(INFO, "total memory: 0x%zx bytes", mmap.memory_size);
+    klog(INFO, "total memory: 0x%zx bytes", mmap->memory_size);
 
-    pages = MAKE_HHDM(mmap.biggest_entry->base);
-    page_count = ROUND_UP(mmap.top, PAGE_SIZE) / PAGE_SIZE;
+    pages = MAKE_HHDM(mmap->biggest_entry->base);
+    page_count = ROUND_UP(mmap->top, PAGE_SIZE) / PAGE_SIZE;
     memset(pages, 0, page_count * sizeof(struct page));
     klog(INFO, "%zu pages used for page list", ROUND_UP(page_count * sizeof(struct page), PAGE_SIZE) / PAGE_SIZE);
 
-    for(size_t i = 0; i < mmap.mmap->entry_count; i++) {
-        struct limine_memmap_entry* entry = mmap.mmap->entries[i];
+    for(size_t i = 0; i < mmap->mmap->entry_count; i++) {
+        struct limine_memmap_entry* entry = mmap->mmap->entries[i];
 
         if(entry->type != MMAP_AVAILABLE)
             continue;
 
-        size_t first_usable_page = entry == mmap.biggest_entry
+        size_t first_usable_page = entry == mmap->biggest_entry
             ? ROUND_UP(entry->base + page_count * sizeof(struct page), PAGE_SIZE) / PAGE_SIZE
             : entry->base / PAGE_SIZE;
 
@@ -141,6 +139,20 @@ got_pages:
 
     spinlock_release(&memory_spinlock);
     return addr;
+}
+
+void pmm_release(void* addr) {
+    struct page* page = &pages[(uintptr_t) addr / PAGE_SIZE];
+    assert(page->refcount != 0);
+
+    uintmax_t new_refcount = __atomic_sub_fetch(&page->refcount, 1, __ATOMIC_SEQ_CST);
+    if(!new_refcount) {
+        spinlock_acquire(&memory_spinlock);
+        free_list_insert(page);
+        if(!page->backing)
+            page->flags |= PAGE_FLAGS_FREE;
+        spinlock_release(&memory_spinlock);
+    }
 }
 
 static void free_list_insert(struct page* page) {

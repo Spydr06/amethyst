@@ -2,6 +2,7 @@
 #define _AMETHYST_DRIVERS_CHAR_KEYBOARD_H
 
 #include <stdint.h>
+#include <x86_64/cpu/cpu.h>
 
 #define NUM_KEYS 128
 
@@ -51,7 +52,7 @@ enum ps2_scan_code : uint8_t {
     KEY_ALT_RELEASED = 0xb8
 };
 
-void keyboard_interrupt_handler(void);
+cpu_status_t* keyboard_interrupt_handler(cpu_status_t* status);
 
 // platform-specific:
 enum ps2_scan_code get_ps2_scan_code(void);

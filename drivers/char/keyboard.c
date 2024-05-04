@@ -1,6 +1,6 @@
-#include "kernelio.h"
-#include <ctype.h>
 #include <drivers/char/keyboard.h>
+#include <kernelio.h>
+#include <ctype.h>
 
 bool shift_active = false;
 bool capslock_active = false;
@@ -34,7 +34,7 @@ static const char convtab_default[] = {
     'b', 'n', 'm', ',', '.', '/', '\0', '\0', '\0', ' '
 };
 
-void keyboard_interrupt_handler(void) {
+cpu_status_t* keyboard_interrupt_handler(cpu_status_t* status) {
     enum ps2_scan_code scan_code = get_ps2_scan_code();
 
     switch(scan_code) {
@@ -57,7 +57,7 @@ void keyboard_interrupt_handler(void) {
             break;            
         default:
             if(scan_code >= NUM_KEYS)
-                return;
+                return status;
             char c;
             if(!capslock_active && !shift_active)
                 c = convtab_default[scan_code];
@@ -72,5 +72,7 @@ void keyboard_interrupt_handler(void) {
                 c = toupper(c) - 0x40;
             printk("%c", c); // TODO: handle input correctly
     }
+
+    return status;
 }
 

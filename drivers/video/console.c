@@ -34,7 +34,7 @@ static uint32_t vga_colors[16] = {
     0x7aa6da,
     0xc397d8,
     0x70c0b1,
-    0xb0b0b0,
+    0xe0e0e0,
     0x666666,
     0xff3334,
     0x9ec400,
@@ -62,7 +62,7 @@ void vga_console_init(uint8_t options) {
 
     vga_console.current_x = 0;
     vga_console.current_y = 0;
-    vga_console.cursor_x = 0;
+    vga_console.current_x = 0;
     vga_console.current_y = 0;
     vga_console.cursor_mode = VGA_CURSOR_HIDDEN;
 
@@ -214,27 +214,27 @@ static void move_cursor_sequence(int* nums, unsigned nums_len, enum cursor_movem
     for(unsigned i = 0; i < nums_len; i++) {
         switch(movement) {
         case CURSOR_UP:
-            vga_console.cursor_y = MAX(vga_console.cursor_y - nums[i], 0);
+            vga_console.current_y = MAX(vga_console.current_y - nums[i], 0);
             break;
         case CURSOR_DOWN:
-            vga_console.cursor_y = MIN(vga_console.cursor_y + nums[i], vga_console.height - 1);
+            vga_console.current_y = MIN(vga_console.current_y + nums[i], vga_console.height - 1);
             break;
         case CURSOR_BACKWARD:
-            vga_console.cursor_x = MAX(vga_console.cursor_x - nums[i], 0);
+            vga_console.current_x = MAX(vga_console.current_x - nums[i], 0);
             break;
         case CURSOR_FORWARD:
-            vga_console.cursor_x = MIN(vga_console.cursor_x + nums[i], vga_console.width - 1);
+            vga_console.current_x = MIN(vga_console.current_x + nums[i], vga_console.width - 1);
             break;
         case CURSOR_LINE_DOWN:
-            vga_console.cursor_y = MIN(vga_console.cursor_y + nums[i], vga_console.height - 1);
-            vga_console.cursor_x = 0;
+            vga_console.current_y = MIN(vga_console.current_y + nums[i], vga_console.height - 1);
+            vga_console.current_x = 0;
             break;
         case CURSOR_LINE_UP:
-            vga_console.cursor_y = MAX(vga_console.cursor_y - nums[i], 0);
-            vga_console.cursor_x = 0;
+            vga_console.current_y = MAX(vga_console.current_y - nums[i], 0);
+            vga_console.current_x = 0;
             break;
         case CURSOR_HORIZONTAL_ABSOLUTE:
-            vga_console.cursor_x = MAX(MIN(nums[i], vga_console.width - 1), 0);
+            vga_console.current_x = MAX(MIN(nums[i], vga_console.width - 1), 0);
             break;
         }
     }

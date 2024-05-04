@@ -50,7 +50,7 @@ static void init_indirect(struct scache* cache, struct slab* slab, void** base, 
 }
 
 static bool growcache(struct scache* cache) {
-	void* _slab = vmm_alloc(PAGE_SIZE, VMM_FLAGS_PRESENT | VMM_FLAGS_WRITE_ENABLE, nullptr);
+	void* _slab = vmm_map(nullptr, PAGE_SIZE, VMM_FLAGS_ALLOCATE, MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, nullptr);
 	if (_slab == nullptr)
 		return false;
 	struct slab* slab = GET_SLAB(_slab);
@@ -58,9 +58,9 @@ static bool growcache(struct scache* cache) {
 	if (cache->size < SLAB_INDIRECT_CUTOFF) {
 		init_direct(cache, slab, _slab);
 	} else {
-		void* base = vmm_alloc(cache->slab_obj_count*  cache->true_size, VMM_FLAGS_PRESENT | VMM_FLAGS_WRITE_ENABLE, nullptr);
+		void* base = vmm_map(nullptr, cache->slab_obj_count * cache->true_size, VMM_FLAGS_ALLOCATE, MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, nullptr);
 		if (base == nullptr) {
-			vmm_free(_slab, PAGE_SIZE, 0);
+			vmm_unmap(_slab, PAGE_SIZE, 0);
 			return false;
 		}
 		init_indirect(cache, slab, _slab, base);
@@ -264,9 +264,9 @@ static size_t purge(struct scache* cache, size_t maxcount){
 			next->prev = nullptr;
 
 		if (cache->size >= SLAB_INDIRECT_CUTOFF)
-			vmm_free(slab->base, cache->slab_obj_count*  cache->true_size, 0);
+			vmm_unmap(slab->base, cache->slab_obj_count * cache->true_size, 0);
 
-		vmm_free(slab, PAGE_SIZE, 0);
+		vmm_unmap(slab, PAGE_SIZE, 0);
 
 		slab = cache->empty;
 		cache->empty = next;

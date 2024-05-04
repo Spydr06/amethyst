@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <mem/mmap.h>
+
 #define MAKE_HHDM(x) ((void*) (((uintptr_t) (x)) + hhdm_base))
 #define FROM_HHDM(x) ((void*) (((uintptr_t) (x)) - hhdm_base))
 
@@ -29,11 +31,6 @@ struct page {
 
     uintmax_t offset;
 
-    struct page* hash_next;
-    struct page* hash_prev;
-    struct page* vnode_next;
-    struct page* vnode_prev;
-
     union {
         struct {
             struct page* free_next;
@@ -47,14 +44,16 @@ struct page {
 
     uintmax_t refcount;
     enum page_flags flags;
-} __attribute__((packed));
+};
 
 extern uintptr_t hhdm_base;
 
-void pmm_init(void);
+void pmm_init(struct mmap* mmap);
 
 void* pmm_alloc(size_t size, enum pmm_section_type section);
 void* pmm_alloc_page(enum pmm_section_type section);
+
+void pmm_release(void* vaddr);
 
 #endif /* _AMETHYST_MEM_PMM_H */
 

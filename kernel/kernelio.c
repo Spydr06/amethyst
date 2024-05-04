@@ -226,7 +226,12 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
 #undef WRITES
 }
 
+static bool last_was_inline = false;
+
 void __panic(const char* file, int line, const char* func, const char* error, ...) {
+    if(last_was_inline)
+        kernelio_writer('\n');
+
     printk("\e[91mPANIC [%s:%d in %s()] ", file, line, func); 
 
     va_list ap;
@@ -258,24 +263,41 @@ static void print_timestamp(const char* file) {
     printk("[%5lu.%03lu] %s: ", ms / 1000, ms % 1000, file); 
 }
 
-void __klog(enum klog_severity severity, const char* file, const char* format, ...) {
+static void __klog_impl(enum klog_severity severity, const char* file, const char* format, va_list ap) {
     if(severity < klog_min_severity) 
         return;
+
+    if(last_was_inline) {
+        kernelio_writer('\n');
+        last_was_inline = false;
+    }
 
     if(colors[severity])
         puts(colors[severity]);
 
     print_timestamp(file);
 
-    va_list ap;
-    va_start(ap, format);
     vprintk(format, ap);
-    va_end(ap);
 
     if(colors[severity])
         puts("\e[0m");
+}
 
-    kernelio_writer('\n'); 
+void __klog(enum klog_severity severity, const char *file, const char *format, ...) {
+     va_list ap;
+     va_start(ap, format);
+     __klog_impl(severity, file, format, ap);
+     va_end(ap);
+
+     kernelio_writer('\n');
+}
+
+void __klog_inl(enum klog_severity severity, const char* file, const char* format, ...) {
+    va_list ap;
+    va_start(ap, format);
+    __klog_impl(severity, file, format, ap); 
+    va_end(ap);
+    last_was_inline = true;
 }
 
 void stdin_push_char(char c) {

@@ -153,3 +153,13 @@ _idt_reload:
     sti
     ret
 
+.globl _interrupt_disable
+_interrupt_disable:
+    cli
+    ret
+
+.globl _interrupt_enable
+_interrupt_enable:
+    sti
+    ret
+
