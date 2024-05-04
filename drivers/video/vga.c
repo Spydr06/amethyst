@@ -1,3 +1,5 @@
+#include "mem/pmm.h"
+#include "mem/vmm.h"
 #include <cdefs.h>
 #include <stdint.h>
 #include <drivers/video/vga.h>
@@ -7,7 +9,9 @@
 
 #include <limine/limine.h>
 
-struct vga vga = {0};
+#include <mem/heap.h>
+
+struct vga vga;
 
 static volatile struct limine_framebuffer_request framebuffer_request = {
     .id = LIMINE_FRAMEBUFFER_REQUEST,
@@ -19,14 +23,18 @@ int vga_init(void) {
         return ENOMEM;
 
     struct limine_framebuffer* fb = framebuffer_request.response->framebuffers[0];
-
-    vga.address = fb->address;
+    
+    vga.mode = VGA_RGBA_FRAMEBUFFER; // TODO: check for this
     vga.pitch = fb->pitch;
     vga.bpp = fb->bpp;
     vga.memory_size = fb->pitch * fb->height;
     vga.width = fb->width;
     vga.height = fb->height;
     vga.phys_addr = (uintptr_t) fb->address;
+
+    vga.framebuffer = fb->address;
+    vga.address = vga.framebuffer;
+
 
     return 0;
 }
@@ -39,6 +47,11 @@ void vga_clear(uint32_t color) {
     uint32_t* fb = vga.address;    
     for(size_t i = 0; i < vga.memory_size / sizeof(uint32_t); i++)
         fb[i] = color;
+}
+
+static inline void memcpy64(uint64_t* dest, uint64_t* src, size_t n) {
+    for(size_t i = 0; i < n >> 3; i++)
+        dest[i] = src[i];
 }
 
 uint32_t vga_color_map[256] = {

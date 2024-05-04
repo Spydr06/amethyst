@@ -36,7 +36,7 @@ extern uint8_t _binary_fonts_default_psf_size;
 #endif
 
 enum PSF_version psf_get_version(uint8_t* font_start);
-uint8_t* psf_get_glyph(uint8_t symbol, uint8_t* font_start);
+uint8_t* psf_get_glyph(uint32_t symbol, uint8_t* font_start);
 uint32_t psf_get_width(uint8_t* font_start);
 uint32_t psf_get_height(uint8_t* font_start);
 

@@ -42,7 +42,7 @@ __noreturn void _start(void)
 {
     cpu_set(&init_cpu);
     early_console_init();
- 
+     
     klog(DEBUG, "_start() is at %p", (void*) _start);
 
     gdt_reload();
@@ -50,17 +50,21 @@ __noreturn void _start(void)
     pic_init();
     init_interrupts();
     
+    struct mmap mmap;
+    assert(mmap_parse(&mmap) == 0);
+    pmm_init(&mmap);
+    mmu_init(&mmap);
+    vmm_init(&mmap);
+
+    kernel_heap_init();
+
     int err = vga_init();
     if(err)
         klog(ERROR, "Failed initializing VGA driver: %s", strerror(err));
     else
         vga_console_init(VGACON_DEFAULT_OPTS);   
 
-    struct mmap mmap;
-    assert(mmap_parse(&mmap) == 0);
-    pmm_init(&mmap);
-    mmu_init(&mmap);
-    vmm_init(&mmap);
+    acpi_init();
 
 /*    if(!acpi_tag)
         panic("No ACPI tag received from bootloader.");

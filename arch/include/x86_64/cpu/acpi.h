@@ -5,8 +5,8 @@
 #include <stddef.h>
 
 enum RSDT_version : uint8_t {
-    RSDT_V1 = 14,
-    RSDT_V2
+    RSDT_V1,
+    RSDT_V2 = 2
 };
 
 struct ACPI_SDT_header {
@@ -30,7 +30,7 @@ struct RSDP_descriptor {
 } __attribute__((packed));
 
 struct RSDP_descriptor_20 {
-    struct RSDP_descriptor first_part;
+    struct RSDP_descriptor header;
 
     uint32_t length;
     uint64_t xsdt_address;
@@ -38,8 +38,8 @@ struct RSDP_descriptor_20 {
     uint8_t __reserved[3];
 } __attribute__((packed));
 
-bool acpi_parse_sdt(uintptr_t address, enum RSDT_version type);
 bool acpi_validate_sdt(uint8_t* descriptor, size_t size);
+void acpi_init(void);
 
 #endif /* _AMETHYST_X86_64_CPU_ACPI_H */
 

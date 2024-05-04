@@ -96,7 +96,7 @@ void pci_init(void) {
 
     pci_init_root_bus();
 
-    klog(INFO, "PCI Scan: found %zu devices:", pci_devices.size);
+    klog(INFO, "\e[95mPCI Scan:\e[0m found %zu devices:", pci_devices.size);
 
     for(size_t i = 0; i < pci_devices.size; i++) {
         struct pci_device* dev = dynarr_getelem(&pci_devices, i);

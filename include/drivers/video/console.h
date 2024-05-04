@@ -2,7 +2,9 @@
 #define _AMETHYST_VIDEO_CONSOLE_H
 
 #include <kernelio.h>
+
 #include <stdint.h>
+#include <stddef.h>
 
 #define VGACON_COLORED (1 << 0)
 #define VGACON_DEFAULT_OPTS (VGACON_COLORED)
@@ -27,6 +29,13 @@ enum esc_seq_status : uint8_t {
     VGA_ESC_SEQ_CSI
 };
 
+struct vga_console_char {
+    uint32_t ch;
+    uint32_t fg : 24;
+    uint32_t bg : 24;
+    uint8_t modifiers;
+} __attribute__((packed));
+
 struct vga_console {
     uint8_t* psf_font;
     uint8_t glyph_width;
@@ -38,14 +47,14 @@ struct vga_console {
     uint16_t cursor_x;
     uint16_t cursor_y;
 
-    uint16_t current_x;
-    uint16_t current_y;
-
-    uint16_t width; // width in chars
-    uint16_t height; // height in chars
+    uint16_t cols; // width in chars
+    uint16_t rows; // height in chars
     
     uint32_t fg;
     uint32_t bg;
+
+    size_t grid_offset;
+    struct vga_console_char* grid;
 
     kernelio_writer_t writer_before;
 
@@ -58,6 +67,7 @@ void vga_console_register(void);
 void vga_console_unregister(void);
 
 void vga_console_putchar(int c);
+void vga_console_flush(void);
 
 #endif /* _AMETHYST_VIDEO_CONSOLE_H */
 

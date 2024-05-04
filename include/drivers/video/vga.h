@@ -11,8 +11,15 @@
 #include <stdint.h>
 #include <limine/limine.h>
 
+enum vga_mode : uint8_t {
+    VGA_UNKNOWN = 0,
+    VGA_RGBA_FRAMEBUFFER,
+};
+
 struct vga {
+    enum vga_mode mode;
     void* address;
+    void* framebuffer;
     uint8_t bpp;
     uint32_t pitch;
     uint32_t memory_size;
@@ -26,6 +33,7 @@ extern struct vga vga;
 extern uint32_t vga_color_map[256];
 
 int vga_init(void);
+
 void vga_put_pixel(uint32_t x, uint32_t y, uint32_t color);
 void vga_clear(uint32_t color);
 

@@ -1,13 +1,17 @@
+#include <drivers/video/console.h>
+#include <drivers/video/vga.h>
+
+#include <mem/vmm.h>
+#include <ff/psf.h>
+#include <tty.h>
+
+#include <kernelio.h>
+#include <math.h>
 #include <ctype.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <drivers/video/console.h>
-#include <drivers/video/vga.h>
-#include <ff/psf.h>
-#include <tty.h>
-#include <kernelio.h>
-#include <math.h>
+#include <assert.h>
 
 #define TABSIZE 4
 
@@ -45,6 +49,8 @@ static uint32_t vga_colors[16] = {
     0xffffff
 };
 
+#define _GRID(x, y) ((vga_console.grid[((y) * vga_console.cols + (x) + vga_console.grid_offset) % (vga_console.rows * vga_console.cols)]))
+
 void vga_console_init(uint8_t options) {
     if(!vga.address)
         panic("Called vga_console_init() without intitializing the vga driver prior.");
@@ -56,21 +62,31 @@ void vga_console_init(uint8_t options) {
     vga_console.glyph_width = psf_get_width(vga_console.psf_font);
     vga_console.glyph_height = psf_get_height(vga_console.psf_font);
 
-    vga_console.width = vga.width / vga_console.glyph_width;
-    vga_console.height = vga.height / vga_console.glyph_height;
+    vga_console.cols = vga.width / vga_console.glyph_width;
+    vga_console.rows = vga.height / vga_console.glyph_height;
     vga_console.options = options;
 
-    vga_console.current_x = 0;
-    vga_console.current_y = 0;
-    vga_console.current_x = 0;
-    vga_console.current_y = 0;
+    vga_console.cursor_x = 0;
+    vga_console.cursor_y = 0;
     vga_console.cursor_mode = VGA_CURSOR_HIDDEN;
 
     vga_console.fg = DEFAULT_FG_COLOR;
     vga_console.bg = DEFAULT_BG_COLOR;
 
-    vga_clear(vga_console.bg);
+    vga_console.grid_offset = 0;
+    vga_console.grid = vmm_map(
+        nullptr,
+        vga_console.rows * vga_console.cols * sizeof(struct vga_console_char),
+        VMM_FLAGS_ALLOCATE,
+        MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, 
+        nullptr
+    );
     
+    assert(vga_console.grid);
+    memset(vga_console.grid, 0, vga_console.rows * vga_console.cols * sizeof(struct vga_console_char));
+
+    vga_clear(vga_console.bg);
+
     vga_console_register();
 }
 
@@ -214,27 +230,27 @@ static void move_cursor_sequence(int* nums, unsigned nums_len, enum cursor_movem
     for(unsigned i = 0; i < nums_len; i++) {
         switch(movement) {
         case CURSOR_UP:
-            vga_console.current_y = MAX(vga_console.current_y - nums[i], 0);
+            vga_console.cursor_y = MAX(vga_console.cursor_y - nums[i], 0);
             break;
         case CURSOR_DOWN:
-            vga_console.current_y = MIN(vga_console.current_y + nums[i], vga_console.height - 1);
+            vga_console.cursor_y = MIN(vga_console.cursor_y + nums[i], vga_console.rows - 1);
             break;
         case CURSOR_BACKWARD:
-            vga_console.current_x = MAX(vga_console.current_x - nums[i], 0);
+            vga_console.cursor_x = MAX(vga_console.cursor_x - nums[i], 0);
             break;
         case CURSOR_FORWARD:
-            vga_console.current_x = MIN(vga_console.current_x + nums[i], vga_console.width - 1);
+            vga_console.cursor_x = MIN(vga_console.cursor_x + nums[i], vga_console.cols - 1);
             break;
         case CURSOR_LINE_DOWN:
-            vga_console.current_y = MIN(vga_console.current_y + nums[i], vga_console.height - 1);
-            vga_console.current_x = 0;
+            vga_console.cursor_y = MIN(vga_console.cursor_y + nums[i], vga_console.cols - 1);
+            vga_console.cursor_x = 0;
             break;
         case CURSOR_LINE_UP:
-            vga_console.current_y = MAX(vga_console.current_y - nums[i], 0);
-            vga_console.current_x = 0;
+            vga_console.cursor_y = MAX(vga_console.cursor_y - nums[i], 0);
+            vga_console.cursor_x = 0;
             break;
         case CURSOR_HORIZONTAL_ABSOLUTE:
-            vga_console.current_x = MAX(MIN(nums[i], vga_console.width - 1), 0);
+            vga_console.cursor_x = MAX(MIN(nums[i], vga_console.cols - 1), 0);
             break;
         }
     }
@@ -294,26 +310,39 @@ static int parse_control_sequence(char c) {
     return 1;
 }
 
-static void __putchar(char c) {
-    uint8_t* glyph = psf_get_glyph(c, vga_console.psf_font);
+static inline void _fb_putchar(struct vga_console_char* ch, uint32_t cursor_x, uint32_t cursor_y) {
+    uint32_t x, y, line;
+    size_t offset = (cursor_y * vga_console.glyph_height * vga.pitch) + (cursor_x * vga_console.glyph_width * sizeof(uint32_t));
+    
+    if(!isprint(ch->ch)) {
+        for(y = 0; y < vga_console.glyph_height; y++) {
+            line = offset;
+            for(x = 0; x < vga_console.glyph_width; x++) {
+                *((uint32_t*) (vga.address + line)) = ch->bg;
+                line += vga.bpp >> 3;
+            }
+            offset += vga.pitch;
+        }
+        return;
+    }
+    
+    uint8_t* glyph = psf_get_glyph(ch->ch, vga_console.psf_font);
 
     size_t bytesperline = (vga_console.glyph_width + 7) / 8;
-    size_t offset = (vga_console.current_y * vga_console.glyph_height * vga.pitch) + (vga_console.current_x * vga_console.glyph_width * sizeof(uint32_t));
 
-    uint32_t x, line;
-    for(uint32_t y = 0; y < vga_console.glyph_height; y++) {
+    for(y = 0; y < vga_console.glyph_height; y++) {
         line = offset;
         for(x = 0; x < vga_console.glyph_width; x++) {
-            *((uint32_t*) (vga.address + line)) = glyph[x >> 3] & (0x80 >> (x & 7)) ? vga_console.fg : vga_console.bg;
+            *((uint32_t*) (vga.address + line)) = glyph[x >> 3] & (0x80 >> (x & 7)) ? ch->fg : ch->bg;
 
-            if(vga_console.modifiers & (VGACON_MOD_UNDERLINED | VGACON_MOD_CROSSED)) {
-                if(vga_console.modifiers & VGACON_MOD_UNDERLINED && y == (uint32_t) vga_console.glyph_height - 1)
+            if(ch->modifiers & (VGACON_MOD_UNDERLINED | VGACON_MOD_CROSSED)) {
+                if(vga_console.modifiers & VGACON_MOD_UNDERLINED && y == vga_console.glyph_height - 1)
                     *((uint32_t*) (vga.address + line)) = vga_console.fg;
                 else if(vga_console.modifiers & VGACON_MOD_CROSSED && y == vga_console.glyph_height / 2)
                     *((uint32_t*) (vga.address + line)) = vga_console.fg;
             }
 
-            line += vga.bpp / 8;
+            line += vga.bpp >> 3;
         }
 
         glyph += bytesperline;
@@ -338,49 +367,64 @@ static int parse_escape_sequence(char c) {
     }
 }
 
+static __always_inline void vga_console_flush_row(uint32_t y) {
+    for(uint32_t x = 0; x < vga_console.cols; x++) {
+        _fb_putchar(&_GRID(x, y), x, y);
+    }
+}
+
+
+void vga_console_flush(void) {
+    for(uint32_t y = 0; y < vga_console.rows; y++) {
+        vga_console_flush_row(y);
+    }
+}
+
 void vga_console_putchar(int c) {
     vga_console.writer_before(c);
     if(vga_console.esc_status && parse_escape_sequence(c))
         return;
 
+    bool flush_row = false;
     switch(c) {
         case '\n':
-            vga_console.current_y++;
-            vga_console.current_x = 0;
+            vga_console.cursor_y++;
+            vga_console.cursor_x = 0;
+            flush_row = true;
             break;
         case '\t':
-            vga_console.current_x += (vga_console.current_x + 1) % TABSIZE;
+            vga_console.cursor_x += (vga_console.cursor_x + 1) % TABSIZE;
            break;
         case '\r':
-            vga_console.current_x = 0;
+            vga_console.cursor_x = 0;
             break;
         case '\e':
             vga_console.esc_status = VGA_ESC_SEQ_BEGIN_PARSE;
             return;
         default:
-            __putchar(c);
-            vga_console.current_x++;
+            _GRID(vga_console.cursor_x, vga_console.cursor_y) = (struct vga_console_char) {
+                .ch = c,
+                .fg = vga_console.fg & 0x00ffffff,
+                .bg = vga_console.bg & 0x00ffffff,
+                .modifiers = vga_console.modifiers
+            };
+            vga_console.cursor_x++;
             break;
     }
 
-    if(vga_console.current_x >= vga_console.width) {
-        vga_console.current_x -= vga_console.width;
-        vga_console.current_y++;
+    if(vga_console.cursor_x >= vga_console.cols) {
+        vga_console.cursor_x -= vga_console.cols;
+        vga_console.cursor_y++;
     }
 
-    if(vga_console.current_y >= vga_console.height) {
-        memmove(
-            vga.address,
-            vga.address + (vga_console.glyph_height * vga.pitch),
-            vga.memory_size - (vga_console.glyph_height * vga.pitch)
-        );
-        for(
-            uint32_t* i = vga.address + vga.memory_size - vga_console.glyph_height * vga.pitch;
-            (uintptr_t) i < (uintptr_t) vga.address + vga.memory_size; i++) {
-            *i = vga_console.bg;
-        }
-        vga_console.current_y--;
+    if(vga_console.cursor_y >= vga_console.rows) {
+        vga_console.cursor_y--;
+        vga_console.grid_offset = (vga_console.grid_offset + vga_console.cols) % (vga_console.cols * vga_console.rows);
+        memset(&_GRID(0, vga_console.rows - 1), 0, vga_console.cols * sizeof(struct vga_console_char));
+        vga_console_flush();
     }
+    else if(flush_row)
+        vga_console_flush_row(vga_console.cursor_y - 1);
 }
 
 

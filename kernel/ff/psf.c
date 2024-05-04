@@ -1,5 +1,6 @@
 #include <ff/psf.h>
 #include <kernelio.h>
+
 enum PSF_version psf_get_version(uint8_t* font_start) {
     struct PSF1_header* v1 = (struct PSF1_header*) font_start;
     if(v1->magic == PSF1_FONT_MAGIC)
@@ -13,7 +14,7 @@ enum PSF_version psf_get_version(uint8_t* font_start) {
     return PSF_INVALID;
 }
 
-uint8_t* psf_get_glyph(uint8_t symbol, uint8_t* font_start) {
+uint8_t* psf_get_glyph(uint32_t symbol, uint8_t* font_start) {
     switch(psf_get_version(font_start)) {
         case PSF_V1: {
             struct PSF1_header* font = (struct PSF1_header*) font_start;

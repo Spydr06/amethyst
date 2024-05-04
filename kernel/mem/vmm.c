@@ -89,7 +89,15 @@ void* vmm_map(void* addr, size_t size, enum vmm_flags flags, enum mmu_flags mmu_
     }
 
     if(flags & VMM_FLAGS_PHYSICAL) {
-        unimplemented();
+        for(uintmax_t i = 0; i < size; i += PAGE_SIZE) {
+            if(mmu_map(_cpu()->vmm_context->page_table, (void*)((uintptr_t) private + i), (void*)((uintptr_t) start + i), mmu_flags))
+                continue;
+                
+            for(uintmax_t j = 0; j < size; j += PAGE_SIZE)
+                mmu_unmap(_cpu()->vmm_context->page_table, (void*)((uintptr_t) start + j)) ;
+
+            goto cleanup;
+        }
     }
     else if(flags & VMM_FLAGS_ALLOCATE) {
         for(uintmax_t i = 0; i < size; i += PAGE_SIZE) {

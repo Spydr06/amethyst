@@ -7,3 +7,4 @@ TIMEOUT=5
  
     # Path to the kernel to boot. boot:/// represents the partition on which limine.cfg is located.
     KERNEL_PATH=boot:///boot/@KERNEL_ELF@
+    KERNEL_CMDLINE=initrd
