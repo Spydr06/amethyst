@@ -174,7 +174,7 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
             if(low_pad >= 0)
                 precision = low_pad;
             // TODO: high padding
-            printed += fprintk(writer, "%ld.%lu", (long) d, (unsigned long) (d - (long) d) * (unsigned long) pow10(precision));
+            printed += fprintk(writer, "%ld.%lu", (long) d, (unsigned long) ((double) (d - (double) (long) d) * (double) pow10(precision)));
             break;
         }
         case 'h':

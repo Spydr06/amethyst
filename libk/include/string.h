@@ -16,6 +16,7 @@ char* itoa(int64_t num, char* str, int base);
 
 size_t strlen(const char* s);
 size_t strnlen(const char* s, size_t maxlen);
+char* strcpy(char* dest, const char* src);
 
 char* strerror(int errnum);
 

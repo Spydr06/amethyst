@@ -1,32 +1,25 @@
 #include <cpu/syscalls.h>
+
 #include <x86_64/cpu/idt.h>
+#include <x86_64/cpu/cpu.h>
+
 #include <kernelio.h>
 
-#define SYSCALL_IDT_VECTOR 0x80
+extern void _syscall_entry(void);
 
 bool syscalls_init(void)
 {
-    idt_set_descriptor(SYSCALL_IDT_VECTOR, isr_stub_table[SYSCALL_IDT_VECTOR], IDT_PRESENT_FLAG | IDT_INTERRUPT_TYPE_FLAG | IDT_DPL_USER_FLAG);
-    klog(DEBUG, "Syscalls enabled on interrupt 0x80");
-    return true;
-}
-
-cpu_status_t* syscall_dispatch(cpu_status_t* regs)
-{
-    uintptr_t ret = 0;
-    
-    switch(regs->rax) {
-        default:
-            klog(WARN, "unimplemented - syscall %zu\n", regs->rax);
-            break;
+    if(_cpu()->features.syscall_supported) {
+        uint64_t star = 0x13ul << 48 | 0x08ul << 32;
+        wrmsr(MSR_STAR, star);
+        wrmsr(MSR_LSTAR, (uintptr_t) _syscall_entry);
+        wrmsr(MSR_CSTAR, 0);
+        wrmsr(MSR_FMASK, 0x200);
+    }
+    else {
+        panic("No `syscall` support");
     }
 
-    regs->rax = ret;
-    return regs;
-}
-
-size_t execute_syscall(size_t syscall_num, size_t arg0, size_t arg1, size_t arg2)
-{
-    unimplemented();
+    return true;
 }
 

@@ -26,14 +26,28 @@ struct ist {
 	uint32_t iopb;
 };
 
+struct cpu_features {
+    bool sse_supported : 1;
+    bool sse2_supported : 1;
+    /*bool sse3_supported : 1;
+    bool sse4_1_supported : 1;
+    bool sse4_2_supported : 1;
+    bool sse4_a_supported : 1;*/
+
+    bool syscall_supported : 1;
+    bool x87_fpu_supported : 1;
+};
+
 struct cpu {
+    struct thread* thread;
+
     gdte_t gdt[GDT_NUM_ENTRIES];
     struct ist ist;
-    struct thread* thread;
     struct vmm_context* vmm_context;
 
     bool interrupt_status;
 
+    struct cpu_features features;
     struct cpu* this;
 };
 

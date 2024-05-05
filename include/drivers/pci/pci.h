@@ -3,6 +3,9 @@
 
 #include "dynarray.h"
 
+#define PCI_DATA_PORT    0x0cfc
+#define PCI_COMMAND_PORT 0x0cf8
+
 struct pci_device {
     int64_t parent;
     uint8_t bus;

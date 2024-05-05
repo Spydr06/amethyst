@@ -5,5 +5,7 @@
     #include <x86_64/cpu/cpu.h>
 #endif
 
+void cpu_enable_features(void);
+
 #endif /* _AMETHYST_CPU_H */
 

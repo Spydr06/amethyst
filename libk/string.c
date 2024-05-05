@@ -157,6 +157,11 @@ size_t strnlen(const char* s, size_t maxlen) {
     return l;
 }
 
+char* strcpy(char* dest, const char* src) {
+    for (; (*dest = *src); src++, dest++);
+    return dest;
+}
+
 char* strerror(int errnum) {
     switch(errnum) {
     case 0:           return "No error information";

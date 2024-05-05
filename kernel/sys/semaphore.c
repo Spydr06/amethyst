@@ -4,7 +4,9 @@
 
 #include <kernelio.h>
 
-int semaphore_wait(semaphore_t *sem, bool interruptible __attribute__((unused))) {
+int semaphore_wait(semaphore_t *sem, bool interruptible) {
+    (void) sem;
+    (void) interruptible;
 /*    if(!_cpu()->thread) {
         while(!semaphore_test(sem))
             pause();

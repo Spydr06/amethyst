@@ -2,43 +2,47 @@
 #define _AMETHYST_X86_64_CPU_ACPI_H
 
 #include <stdint.h>
-#include <stddef.h>
 
-enum RSDT_version : uint8_t {
-    RSDT_V1,
-    RSDT_V2 = 2
+enum ACPI_revision : uint8_t {
+    ACPI_V1,
+    ACPI_V2 = 2
 };
 
-struct ACPI_SDT_header {
-    char signature[4];
+struct RSDP {
+    char sig[8];
+    uint8_t checksum;
+    char oem[6];
+    enum ACPI_revision revision;
+    uint32_t rsdt;
+    uint32_t length;
+    uint64_t xsdt;
+    uint8_t xchecksum;
+    uint8_t reserved[3];
+} __attribute__((packed));
+
+struct SDT_header {
+    char sig[4];
     uint32_t length;
     uint8_t revision;
     uint8_t checksum;
-    char oemid[6];
-    char oemtableid[8];
+    char oem_id[6];
+    char oem_table_id[8];
     uint32_t oem_revision;
     uint32_t creator_id;
     uint32_t creator_revision;
 } __attribute__((packed));
 
-struct RSDP_descriptor {
-    char signature[8];
-    uint8_t checksum;
-    char oemid[6];
-    uint8_t revision;
-    uint32_t rsdt_address;
+struct XSDT {
+    struct SDT_header header;
+    uint64_t tables[];
 } __attribute__((packed));
 
-struct RSDP_descriptor_20 {
-    struct RSDP_descriptor header;
-
-    uint32_t length;
-    uint64_t xsdt_address;
-    uint8_t extended_checksum;
-    uint8_t __reserved[3];
+struct RSDT {
+    struct SDT_header header;
+    uint32_t tables[];
 } __attribute__((packed));
 
-bool acpi_validate_sdt(uint8_t* descriptor, size_t size);
+bool acpi_validate_sdt(struct SDT_header* header);
 void acpi_init(void);
 
 #endif /* _AMETHYST_X86_64_CPU_ACPI_H */

@@ -94,3 +94,10 @@ void kfree(void* ptr) {
     slab_free(cache, start);
 }
 
+void* kcalloc(size_t n, size_t size) {
+    void* ptr = kmalloc(n * size);
+    memset(ptr, 0, n * size);
+    return ptr;
+}
+
+

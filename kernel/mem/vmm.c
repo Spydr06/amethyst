@@ -22,6 +22,7 @@ static void free_range(struct vmm_range* range);
 static struct vmm_range* alloc_range(void);
 static void* get_free_range(struct vmm_space* space, void* addr, size_t offset);
 static void insert_range(struct vmm_space* space, struct vmm_range* range);
+static void unmap(struct vmm_space* space, void* addr, size_t size);
 
 void vmm_init(struct mmap* mmap) {
     mutex_init(&kernel_space.lock);
@@ -134,7 +135,25 @@ cleanup:
 }
 
 void vmm_unmap(void* addr, size_t size, enum vmm_flags flags) {
-    unimplemented();
+    addr = (void*) ROUND_DOWN((uintptr_t) addr, PAGE_SIZE);
+
+    if(flags & VMM_FLAGS_PAGESIZE)
+        size *= PAGE_SIZE;
+    else
+        size = ROUND_UP(size, PAGE_SIZE);
+
+    if(!size)
+        return;
+
+    struct vmm_space* space = get_space(addr);
+    if(!space)
+        return;
+
+    mutex_acquire(&space->pflock, false);
+    mutex_acquire(&space->lock, false);
+    unmap(space, addr, size);
+    mutex_release(&space->lock);
+    mutex_release(&space->pflock);
 }
 
 static struct vmm_cache* new_cache(void) {
@@ -306,5 +325,12 @@ fragmentation_check:
 
         free_range(new_range);
     }
+}
+
+static void unmap(struct vmm_space* space, void* addr, size_t size) {
+    (void) space;
+    (void) addr;
+    (void) size;
+    unimplemented();
 }
 

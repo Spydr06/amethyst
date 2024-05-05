@@ -107,7 +107,7 @@ static struct {
     [KEYBOARD_INTERRUPT] = {keyboard_interrupt_handler, pic_send_eoi},
     [PAGE_FAULT]         = {page_fault_handler,         nullptr     },
     [DOUBLE_FAULT]       = {double_fault_handler,       nullptr     },
-    [SYSCALL_INTERRUPT]  = {syscall_dispatch,           nullptr     },
+//    [SYSCALL_INTERRUPT]  = {syscall_dispatch,           nullptr     },
 };
 
 void idt_register_interrupt(uint8_t vector, cpu_status_t* (*handler)(cpu_status_t*), void (*eoi_handler)(uint32_t)) {
