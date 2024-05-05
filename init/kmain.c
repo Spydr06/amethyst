@@ -22,14 +22,14 @@ static void color_test(void) {
     }
     printk("\n\n");
 
- /*   for(int i = 0; i < 256; i++) {
+    for(int i = 0; i < 256; i++) {
         printk("\e[48;5;%hhum  \e[0m", i);
         
         if(i == 15 || (i > 15 && i < 232 && (i - 16) % 36 == 35) || i == 231)
             printk("\n");
     }
 
-    printk("\n\n");*/
+    printk("\n\n");
 }
 
 void kmain(size_t cmdline_size, const char* cmdline)
@@ -43,10 +43,6 @@ void kmain(size_t cmdline_size, const char* cmdline)
 
     greet();
     color_test();
-
-    for(int i = 0; i < 100; i++) {
-        klog(DEBUG, "%d", i);
-    }
 
     while(1);
 }

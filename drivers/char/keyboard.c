@@ -54,7 +54,7 @@ cpu_status_t* keyboard_interrupt_handler(cpu_status_t* status) {
             break;
         case KEY_CONTROL_RELEASED:
             ctrl_active = false;
-            break;            
+            break;
         default:
             if(scan_code >= NUM_KEYS)
                 return status;

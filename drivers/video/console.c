@@ -13,7 +13,7 @@
 #include <string.h>
 #include <assert.h>
 
-#define TABSIZE 4
+#define TABSIZE 8
 
 #define DEFAULT_FG_COLOR (vga_console.options & VGACON_COLORED ? vga_colors[7] : 0xffffffff)
 #define DEFAULT_BG_COLOR (vga_console.options & VGACON_COLORED ? vga_colors[0] : 0x00000000)
@@ -49,14 +49,14 @@ static uint32_t vga_colors[16] = {
     0xffffff
 };
 
-#define _GRID(x, y) ((vga_console.grid[((y) * vga_console.cols + (x) + vga_console.grid_offset) % (vga_console.rows * vga_console.cols)]))
+#define _GRID(x, y) ((vga_console.grid[((y) * vga_console.cols + (x) + vga_console.grid_offset) % vga_console.grid_size]))
 
 void vga_console_init(uint8_t options) {
     if(!vga.address)
         panic("Called vga_console_init() without intitializing the vga driver prior.");
 
     vga_console.psf_font = _binary_fonts_default_psf_start;
-    if(psf_get_version(vga_console.psf_font) == PSF_INVALID)
+    if((vga_console.psf_version = psf_get_version(vga_console.psf_font)) == PSF_INVALID)
         panic("Could not read builtin psf font at %p", vga_console.psf_font);
 
     vga_console.glyph_width = psf_get_width(vga_console.psf_font);
@@ -74,16 +74,17 @@ void vga_console_init(uint8_t options) {
     vga_console.bg = DEFAULT_BG_COLOR;
 
     vga_console.grid_offset = 0;
+    vga_console.grid_size = vga_console.rows * vga_console.cols;
     vga_console.grid = vmm_map(
         nullptr,
-        vga_console.rows * vga_console.cols * sizeof(struct vga_console_char),
+        vga_console.grid_size * sizeof(struct vga_console_char),
         VMM_FLAGS_ALLOCATE,
         MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, 
         nullptr
     );
     
     assert(vga_console.grid);
-    memset(vga_console.grid, 0, vga_console.rows * vga_console.cols * sizeof(struct vga_console_char));
+    memset(vga_console.grid, 0, vga_console.grid_size * sizeof(struct vga_console_char));
 
     vga_clear(vga_console.bg);
 
@@ -250,7 +251,7 @@ static void move_cursor_sequence(int* nums, unsigned nums_len, enum cursor_movem
             vga_console.cursor_x = 0;
             break;
         case CURSOR_HORIZONTAL_ABSOLUTE:
-            vga_console.cursor_x = MAX(MIN(nums[i], vga_console.cols - 1), 0);
+            vga_console.cursor_x = MAX(MIN(nums[i], (int32_t) vga_console.cols - 1), 0);
             break;
         }
     }
@@ -312,8 +313,9 @@ static int parse_control_sequence(char c) {
 
 static inline void _fb_putchar(struct vga_console_char* ch, uint32_t cursor_x, uint32_t cursor_y) {
     uint32_t x, y, line;
-    size_t offset = (cursor_y * vga_console.glyph_height * vga.pitch) + (cursor_x * vga_console.glyph_width * sizeof(uint32_t));
-    
+    size_t start_offset = (cursor_y * vga_console.glyph_height * vga.pitch) + (cursor_x * vga_console.glyph_width * sizeof(uint32_t));
+    size_t offset = start_offset;
+
     if(!isprint(ch->ch)) {
         for(y = 0; y < vga_console.glyph_height; y++) {
             line = offset;
@@ -321,32 +323,40 @@ static inline void _fb_putchar(struct vga_console_char* ch, uint32_t cursor_x, u
                 *((uint32_t*) (vga.address + line)) = ch->bg;
                 line += vga.bpp >> 3;
             }
+
             offset += vga.pitch;
         }
-        return;
     }
-    
-    uint8_t* glyph = psf_get_glyph(ch->ch, vga_console.psf_font);
+    else {
+        uint8_t* glyph = psf_get_glyph(ch->ch, vga_console.psf_font, vga_console.psf_version);
+        size_t bytesperline = (vga_console.glyph_width + 7) >> 3;
 
-    size_t bytesperline = (vga_console.glyph_width + 7) / 8;
-
-    for(y = 0; y < vga_console.glyph_height; y++) {
-        line = offset;
-        for(x = 0; x < vga_console.glyph_width; x++) {
-            *((uint32_t*) (vga.address + line)) = glyph[x >> 3] & (0x80 >> (x & 7)) ? ch->fg : ch->bg;
-
-            if(ch->modifiers & (VGACON_MOD_UNDERLINED | VGACON_MOD_CROSSED)) {
-                if(vga_console.modifiers & VGACON_MOD_UNDERLINED && y == vga_console.glyph_height - 1)
-                    *((uint32_t*) (vga.address + line)) = vga_console.fg;
-                else if(vga_console.modifiers & VGACON_MOD_CROSSED && y == vga_console.glyph_height / 2)
-                    *((uint32_t*) (vga.address + line)) = vga_console.fg;
+        for(y = 0; y < vga_console.glyph_height; y++) {
+            line = offset;
+            for(x = 0; x < vga_console.glyph_width; x++) {
+                *((uint32_t*) (vga.address + line)) = glyph[x >> 3] & (0x80 >> (x & 7)) ? ch->fg : ch->bg;
+                line += vga.bpp >> 3;
             }
 
+            glyph += bytesperline;
+            offset += vga.pitch;
+        }
+    }
+
+    if(vga_console.modifiers & VGACON_MOD_UNDERLINED) {
+        line = start_offset + vga.pitch * (vga_console.glyph_height - 1);
+        for(x = 0; x < vga_console.glyph_width; x++) {
+            *((uint32_t*) (vga.address + line)) = vga_console.fg;
             line += vga.bpp >> 3;
         }
+    }
 
-        glyph += bytesperline;
-        offset += vga.pitch;
+    if(vga_console.modifiers & VGACON_MOD_CROSSED) {
+        line = start_offset + vga.pitch * (vga_console.glyph_height >> 1);
+        for(x = 0; x < vga_console.glyph_width; x++) {
+            *((uint32_t*) (vga.address + line)) = vga_console.fg;
+            line += vga.bpp >> 3;
+        }
     }
 }
 
@@ -373,6 +383,26 @@ static __always_inline void vga_console_flush_row(uint32_t y) {
     }
 }
 
+static __always_inline void vga_console_flush_scroll(void) {
+    struct vga_console_char* ch;
+
+    for(uint32_t y = 0; y < vga_console.rows; y++) {
+        for(uint32_t x = 0; x < vga_console.cols; x++) {
+            ch = &_GRID(x, y);
+            if(!y || memcmp(ch, &_GRID(x, y - 1), sizeof(struct vga_console_char)))
+                _fb_putchar(ch, x, y);
+        }
+    }
+}
+
+static __always_inline void vga_console_put_next(struct vga_console_char* ch) {
+    struct vga_console_char* existing = &_GRID(vga_console.cursor_x, vga_console.cursor_y); 
+    if(memcmp(ch, existing, sizeof(struct vga_console_char)) != 0)
+        _fb_putchar(ch, vga_console.cursor_x, vga_console.cursor_y);
+
+    *existing = *ch;
+    vga_console.cursor_x++;
+}
 
 void vga_console_flush(void) {
     for(uint32_t y = 0; y < vga_console.rows; y++) {
@@ -385,16 +415,39 @@ void vga_console_putchar(int c) {
     if(vga_console.esc_status && parse_escape_sequence(c))
         return;
 
-    bool flush_row = false;
     switch(c) {
         case '\n':
             vga_console.cursor_y++;
             vga_console.cursor_x = 0;
-            flush_row = true;
+            break;
+        case '\b':
+            if(vga_console.cursor_x) {
+                vga_console.cursor_x--;
+                vga_console_put_next(&(struct vga_console_char){
+                    .ch = '\0',
+                    .fg = vga_console.fg,
+                    .bg = vga_console.bg,
+                    .modifiers = vga_console.modifiers,
+                });
+                vga_console.cursor_x--;
+            }
             break;
         case '\t':
-            vga_console.cursor_x += (vga_console.cursor_x + 1) % TABSIZE;
-           break;
+            if(vga_console.cursor_x + (vga_console.cursor_x + 1) % TABSIZE >= vga_console.cols) {
+                vga_console.cursor_y++;
+                vga_console.cursor_x = 0;
+            }
+            else {
+                for(uint32_t i = 0; i < (vga_console.cursor_x + 1) % TABSIZE; i++) {
+                    vga_console_put_next(&(struct vga_console_char) {
+                        .ch = ' ',
+                        .fg = vga_console.fg & 0x00ffffff,
+                        .bg = vga_console.bg & 0x00ffffff,
+                        .modifiers = vga_console.modifiers
+                    });
+                } 
+            }
+            break;
         case '\r':
             vga_console.cursor_x = 0;
             break;
@@ -402,13 +455,12 @@ void vga_console_putchar(int c) {
             vga_console.esc_status = VGA_ESC_SEQ_BEGIN_PARSE;
             return;
         default:
-            _GRID(vga_console.cursor_x, vga_console.cursor_y) = (struct vga_console_char) {
+            vga_console_put_next(&(struct vga_console_char) {
                 .ch = c,
                 .fg = vga_console.fg & 0x00ffffff,
                 .bg = vga_console.bg & 0x00ffffff,
                 .modifiers = vga_console.modifiers
-            };
-            vga_console.cursor_x++;
+            });
             break;
     }
 
@@ -419,12 +471,9 @@ void vga_console_putchar(int c) {
 
     if(vga_console.cursor_y >= vga_console.rows) {
         vga_console.cursor_y--;
-        vga_console.grid_offset = (vga_console.grid_offset + vga_console.cols) % (vga_console.cols * vga_console.rows);
+        vga_console.grid_offset = (vga_console.grid_offset + vga_console.cols) % vga_console.grid_size;
         memset(&_GRID(0, vga_console.rows - 1), 0, vga_console.cols * sizeof(struct vga_console_char));
-        vga_console_flush();
+        vga_console_flush_scroll();
     }
-    else if(flush_row)
-        vga_console_flush_row(vga_console.cursor_y - 1);
 }
-
 

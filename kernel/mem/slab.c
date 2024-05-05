@@ -81,17 +81,6 @@ static void* takeobject(struct scache* cache, struct slab* slab) {
 
 	void** objend = slab->free;
 
-#if SLAB_DEBUG != 0
-	if (cache->size < SLAB_INDIRECT_CUTOFF) {
-		void* addr = (void*)objend;
-		void* base = (void*)ROUND_DOWN((uintptr_t)slab, PAGE_SIZE);
-		assert(addr >= base && addr < (void*)slab);
-	} else {
-		void* addr = slab->base + ((uintptr_t)objend - ROUND_DOWN((uintptr_t)slab, PAGE_SIZE)) / sizeof(void**)*  cache->true_size;
-		assert(addr >= slab->base && (uintptr_t)addr < (uintptr_t)slab->base + cache->slab_obj_count*  cache->true_size);
-	}
-#endif
-
 	slab->free = *slab->free;
 	slab->used += 1;
 	*objend = nullptr;
@@ -248,7 +237,7 @@ struct scache* slab_newcache(size_t size, size_t align, void (*ctor)(struct scac
 	cache->partial = nullptr;
 	spinlock_init(cache->lock);
 
-	klog(WARN, "new cache: size %lu align %lu true_size %lu objcount %lu", cache->size, cache->align, cache->true_size, cache->slab_obj_count);
+	klog(WARN, "new cache: size: %lu -- align: %lu -- true_size: %lu -- objcount: %lu", cache->size, cache->align, cache->true_size, cache->slab_obj_count);
 
 	return cache;
 }

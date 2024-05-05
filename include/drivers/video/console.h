@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include <ff/psf.h>
+
 #define VGACON_COLORED (1 << 0)
 #define VGACON_DEFAULT_OPTS (VGACON_COLORED)
 
@@ -38,22 +40,25 @@ struct vga_console_char {
 
 struct vga_console {
     uint8_t* psf_font;
+    enum PSF_version psf_version;
+
     uint8_t glyph_width;
     uint8_t glyph_height;
 
     uint8_t options;
 
     enum cursor_mode cursor_mode;
-    uint16_t cursor_x;
-    uint16_t cursor_y;
+    uint32_t cursor_x;
+    uint32_t cursor_y;
 
-    uint16_t cols; // width in chars
-    uint16_t rows; // height in chars
+    uint32_t cols; // width in chars
+    uint32_t rows; // height in chars
     
     uint32_t fg;
     uint32_t bg;
 
     size_t grid_offset;
+    size_t grid_size;
     struct vga_console_char* grid;
 
     kernelio_writer_t writer_before;
