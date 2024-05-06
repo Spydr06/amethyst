@@ -99,6 +99,10 @@ static cpu_status_t* double_fault_handler(cpu_status_t* status) {
     return status;
 }
 
+static cpu_status_t* divide_error_handler(cpu_status_t* status) {
+    panic("Division by Zero (%lu).", status->error_code);
+}
+
 static struct {
     cpu_status_t* (*handler)(cpu_status_t*);
     void (*eoi_handler)(uint32_t);
@@ -107,6 +111,7 @@ static struct {
     [KEYBOARD_INTERRUPT] = {keyboard_interrupt_handler, pic_send_eoi},
     [PAGE_FAULT]         = {page_fault_handler,         nullptr     },
     [DOUBLE_FAULT]       = {double_fault_handler,       nullptr     },
+    [DIVIDE_ERROR]       = {divide_error_handler,       nullptr     },
 //    [SYSCALL_INTERRUPT]  = {syscall_dispatch,           nullptr     },
 };
 

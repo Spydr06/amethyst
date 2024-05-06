@@ -42,8 +42,10 @@ struct RSDT {
     uint32_t tables[];
 } __attribute__((packed));
 
-bool acpi_validate_sdt(struct SDT_header* header);
 void acpi_init(void);
+
+struct SDT_header* acpi_find_header(const char* sig);
+bool acpi_validate_sdt(struct SDT_header* header);
 
 #endif /* _AMETHYST_X86_64_CPU_ACPI_H */
 

@@ -1,3 +1,4 @@
+#include "x86_64/dev/hpet.h"
 #include <stdint.h>
 #include <tty.h>
 #include <kernelio.h>
@@ -65,6 +66,7 @@ __noreturn void _start(void)
         vga_console_init(VGACON_DEFAULT_OPTS);   
 
     acpi_init();
+    hpet_init();
 
 /*    if(!acpi_tag)
         panic("No ACPI tag received from bootloader.");

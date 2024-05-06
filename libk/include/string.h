@@ -18,6 +18,8 @@ size_t strlen(const char* s);
 size_t strnlen(const char* s, size_t maxlen);
 char* strcpy(char* dest, const char* src);
 
+int strncmp(const char* _l, const char* _r, size_t n);
+
 char* strerror(int errnum);
 
 #endif /* _AMETHYST_LIBC_STRING_H */

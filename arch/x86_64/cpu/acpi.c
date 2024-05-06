@@ -90,3 +90,15 @@ bool acpi_validate_sdt(struct SDT_header* header) {
     return sum == 0;
 }
 
+struct SDT_header* acpi_find_header(const char* sig) {
+    for(size_t i = 0; i < header_count; i++) {
+        if(!headers[i])
+            continue;
+        
+        if(!strncmp(sig, headers[i]->sig, 4))
+            return headers[i];
+    }
+
+    return nullptr;
+}
+
