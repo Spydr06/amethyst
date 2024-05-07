@@ -4,11 +4,10 @@
 #include <drivers/pci/pci.h>
 #include <mem/vmm.h>
 
-#include <abi.h>
+#include <time.h>
 
 #include <kernelio.h>
 #include <assert.h>
-#include <string.h>
 
 #define HPET_COUNTER_SIZE(hpet) (4 + (hpet)->counter_size * 4)
 
@@ -64,8 +63,6 @@ void hpet_init(void) {
         hpet->comparator_count,
         HPET_COUNTER_SIZE(hpet) * 8
     );
-
-    assert(HPET_COUNTER_SIZE(hpet) <= sizeof(uintmax_t)); // this should never fail.
 
     assert((hpet->addr & PAGE_SIZE) == 0);
     hpet->addr = (uint64_t) vmm_map(nullptr, PAGE_SIZE, VMM_FLAGS_PHYSICAL, MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, (void*) hpet->addr);

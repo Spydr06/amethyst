@@ -8,7 +8,7 @@
 #include <cpu/cpu.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include <timer.h>
+#include <sys/timer.h>
 
 kernelio_writer_t kernelio_writer = early_putchar;
 

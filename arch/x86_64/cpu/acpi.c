@@ -17,6 +17,7 @@ static volatile struct limine_rsdp_request rsdp_request = {
 
 static size_t header_count;
 static struct SDT_header** headers;
+static struct FADT* fadt;
 
 void acpi_init(void) {
     if(!rsdp_request.response)
@@ -79,6 +80,15 @@ void acpi_init(void) {
         klog(DEBUG, " %2zu) %.4s : %.6s : %.8s", i, headers[i]->sig, headers[i]->oem_id, headers[i]->oem_table_id);
     }
 #endif
+
+    struct SDT_header* fadt_header = acpi_find_header("FACP");
+    if(fadt_header) {
+        klog(DEBUG, "\"FACP\" table found.");
+        fadt = (struct FADT*) fadt_header;
+    }
+    else {
+        klog(DEBUG, "No \"FACP\" table found.");
+    }
 }
 
 bool acpi_validate_sdt(struct SDT_header* header) {
@@ -102,3 +112,6 @@ struct SDT_header* acpi_find_header(const char* sig) {
     return nullptr;
 }
 
+struct FADT* acpi_get_fadt(void) {
+    return fadt;
+}

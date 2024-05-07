@@ -21,11 +21,12 @@ SOURCES := $(shell find $(SOURCE_DIRS) $(SOURCE_PATTERN) | grep -v "arch/")
 INCLUDES := . include libk/include arch/include
 
 SSP := $(shell openssl rand -hex 8)
+CMOS_YEAR := $(shell date +"%Y")
 
 C_CXX_FLAGS += -Wall -Wextra -Wno-trigraphs \
 			   -ffreestanding -fstack-protector -fno-lto -fPIE \
 		       -g \
-			   -D__$(ARCH)__ -D__$(ARCH) -D_SSP=0x$(SSP) \
+			   -D__$(ARCH)__ -D__$(ARCH) -D_SSP=0x$(SSP) -D_CMOS_YEAR=$(CMOS_YEAR) \
 			   $(foreach i, $(INCLUDES), -I$(shell realpath $i))
 
 override CC := $(ARCH)-elf-gcc

@@ -1,3 +1,4 @@
+#include "x86_64/dev/cmos.h"
 #include "x86_64/dev/hpet.h"
 #include <stdint.h>
 #include <tty.h>
@@ -67,6 +68,11 @@ __noreturn void _start(void)
 
     acpi_init();
     hpet_init();
+
+    cmos_init();
+
+    struct tm tm;
+    cmos_read(&tm);
 
 /*    if(!acpi_tag)
         panic("No ACPI tag received from bootloader.");
