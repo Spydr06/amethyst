@@ -343,7 +343,7 @@ static inline void _fb_putchar(struct vga_console_char* ch, uint32_t cursor_x, u
         }
     }
 
-    if(vga_console.modifiers & VGACON_MOD_UNDERLINED) {
+    if(ch->modifiers & VGACON_MOD_UNDERLINED) {
         line = start_offset + vga.pitch * (vga_console.glyph_height - 1);
         for(x = 0; x < vga_console.glyph_width; x++) {
             *((uint32_t*) (vga.address + line)) = vga_console.fg;
@@ -351,7 +351,7 @@ static inline void _fb_putchar(struct vga_console_char* ch, uint32_t cursor_x, u
         }
     }
 
-    if(vga_console.modifiers & VGACON_MOD_CROSSED) {
+    if(ch->modifiers & VGACON_MOD_CROSSED) {
         line = start_offset + vga.pitch * (vga_console.glyph_height >> 1);
         for(x = 0; x < vga_console.glyph_width; x++) {
             *((uint32_t*) (vga.address + line)) = vga_console.fg;
@@ -476,4 +476,5 @@ void vga_console_putchar(int c) {
         vga_console_flush_scroll();
     }
 }
+
 
