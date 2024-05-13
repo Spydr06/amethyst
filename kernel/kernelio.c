@@ -9,11 +9,14 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <sys/timer.h>
+#include <sys/spinlock.h>
 
 kernelio_writer_t kernelio_writer = early_putchar;
 
 static char stdin_buffer[1024];
 static size_t stdin_buffer_size = 0;
+
+static spinlock_t io_lock = 0;
 
 static inline void puts(const char* str) {
     while(*str)
@@ -229,6 +232,7 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
 static bool last_was_inline = false;
 
 void __panic(const char* file, int line, const char* func, const char* error, ...) {
+    spinlock_release(&io_lock);
     if(last_was_inline)
         kernelio_writer('\n');
 
@@ -263,9 +267,11 @@ static void print_timestamp(const char* file) {
     printk("[%5lu.%03lu] %s: ", ms / 1000, ms % 1000, file); 
 }
 
-static void __klog_impl(enum klog_severity severity, const char* file, const char* format, va_list ap) {
+static void __klog_impl(enum klog_severity severity, bool newline, const char* file, const char* format, va_list ap) {
     if(severity < klog_min_severity) 
         return;
+
+    spinlock_acquire(&io_lock);
 
     if(last_was_inline) {
         kernelio_writer('\n');
@@ -281,23 +287,27 @@ static void __klog_impl(enum klog_severity severity, const char* file, const cha
 
     if(colors[severity])
         puts("\e[0m");
+
+    if(newline)
+        kernelio_writer('\n');
+    else
+        last_was_inline = true;
+
+    spinlock_release(&io_lock);
 }
 
 void __klog(enum klog_severity severity, const char *file, const char *format, ...) {
      va_list ap;
      va_start(ap, format);
-     __klog_impl(severity, file, format, ap);
+     __klog_impl(severity, true, file, format, ap);
      va_end(ap);
-
-     kernelio_writer('\n');
 }
 
 void __klog_inl(enum klog_severity severity, const char* file, const char* format, ...) {
     va_list ap;
     va_start(ap, format);
-    __klog_impl(severity, file, format, ap); 
+    __klog_impl(severity, false, file, format, ap); 
     va_end(ap);
-    last_was_inline = true;
 }
 
 void stdin_push_char(char c) {

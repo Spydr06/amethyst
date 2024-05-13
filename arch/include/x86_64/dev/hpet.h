@@ -5,6 +5,8 @@
 
 #include <x86_64/cpu/acpi.h>
 
+#include <time.h>
+
 struct HPET_addressing {
     uint8_t address_space_id;
     uint8_t register_bit_width;
@@ -34,6 +36,8 @@ struct HPET {
 } __attribute__((packed));
 
 void hpet_init(void);
+
+void hpet_wait_us(time_t us);
 
 #endif /* _AMETHYST_X86_64_DEV_HPET_H */
 

@@ -30,6 +30,7 @@ enum mmu_flags : uint64_t {
 typedef uint64_t* page_table_ptr_t;
 
 void mmu_init(struct mmap* mmap);
+void mmu_apswitch(void);
 page_table_ptr_t mmu_new_table(void);
 
 bool mmu_map(page_table_ptr_t table, void* paddr, void* vaddr, enum mmu_flags flags);

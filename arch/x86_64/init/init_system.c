@@ -1,25 +1,28 @@
-#include "x86_64/dev/cmos.h"
-#include "x86_64/dev/hpet.h"
-#include <stdint.h>
-#include <tty.h>
-#include <kernelio.h>
 #include <cpu/cpu.h>
-#include <version.h>
-#include <cdefs.h>
+#include <init/interrupts.h>
 #include <drivers/video/console.h>
 #include <drivers/video/vga.h>
-#include <init/interrupts.h>
-#include <mem/pmm.h>
-#include <mem/mmap.h>
-#include <x86_64/cpu/acpi.h>
-#include <x86_64/dev/pic.h>
-#include <x86_64/dev/pit.h>
-#include <x86_64/cpu/gdt.h>
 #include <drivers/pci/pci.h>
 #include <mem/heap.h>
 #include <mem/vmm.h>
+#include <mem/pmm.h>
+#include <mem/mmap.h>
+#include <sys/scheduler.h>
+#include <x86_64/cpu/acpi.h>
+#include <x86_64/cpu/gdt.h>
+#include <x86_64/cpu/smp.h>
+#include <x86_64/dev/pic.h>
+#include <x86_64/dev/apic.h>
+#include <x86_64/dev/cmos.h>
+#include <x86_64/dev/hpet.h>
+#include <x86_64/dev/pit.h>
 #include <limine/limine.h>
+#include <tty.h>
 
+#include <kernelio.h>
+#include <version.h>
+#include <cdefs.h>
+#include <stdint.h>
 #include <assert.h>
 
 extern void _start(void);
@@ -39,6 +42,11 @@ __noreturn void __stack_chk_fail(void) {
     // TODO: maybe recover?
     panic("Stack smashing detected");
 }
+
+static volatile struct limine_kernel_file_request kernel_file_request = {
+    .id = LIMINE_KERNEL_FILE_REQUEST,
+    .revision = 0
+};
 
 __noreturn void _start(void)
 {
@@ -74,16 +82,15 @@ __noreturn void _start(void)
     struct tm tm;
     cmos_read(&tm);
 
-/*    if(!acpi_tag)
-        panic("No ACPI tag received from bootloader.");
-    if(acpi_tag->type == MULTIBOOT_TAG_TYPE_ACPI_OLD)
-        acpi_parse_sdt((uintptr_t) (((struct multiboot_tag_old_acpi*) acpi_tag) + 1), MULTIBOOT_TAG_TYPE_ACPI_OLD);
+    apic_init();
+    scheduler_init();
+    smp_init();
+
+    if(kernel_file_request.response) {
+        const char* cmdline = kernel_file_request.response->kernel_file->cmdline;
+        kmain(strlen(cmdline), cmdline);
+    }
     else
-        acpi_parse_sdt((uintptr_t) (((struct multiboot_tag_new_acpi*) acpi_tag) + 1), MULTIBOOT_TAG_TYPE_ACPI_NEW);
-*/
-    //if(cmdline_tag)
-    //    kmain(cmdline_tag->size, cmdline_tag->string);
-    //else
         kmain(0, nullptr);
     
     hlt();

@@ -73,6 +73,8 @@ struct vmm_context {
 static_assert(sizeof(struct vmm_cache) <= PAGE_SIZE);
 
 void vmm_init(struct mmap* mmap);
+void vmm_apinit(void);
+
 void vmm_switch_context(struct vmm_context* context);
 
 void* vmm_map(void* addr, size_t size, enum vmm_flags flags, enum mmu_flags mmu_flags, void* private);

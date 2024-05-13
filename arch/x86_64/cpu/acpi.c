@@ -87,7 +87,7 @@ void acpi_init(void) {
         fadt = (struct FADT*) fadt_header;
     }
     else {
-        klog(DEBUG, "No \"FACP\" table found.");
+        klog(WARN, "No \"FACP\" table found.");
     }
 }
 
@@ -115,3 +115,4 @@ struct SDT_header* acpi_find_header(const char* sig) {
 struct FADT* acpi_get_fadt(void) {
     return fadt;
 }
+

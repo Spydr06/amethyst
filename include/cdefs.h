@@ -22,6 +22,7 @@
 #define __always_inline __inline __attribute__ ((__always_inline__))
 #define __noreturn _Noreturn
 
+#define __unused __attribute__((unused))
 #define __aligned(al) __attribute__((aligned(al)))
 #define __interrupt __attribute__ ((interrupt))
 
@@ -32,6 +33,8 @@
 #define __align8(ptr) ((void*) (((uintptr_t) (ptr) + 7) & ~7))
 
 #define __tmpvar(var) var##__LINE__
+
+#define __twice(a) a a
 
 #ifndef ASM_FILE
 

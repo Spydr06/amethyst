@@ -34,7 +34,7 @@ struct stat {
     struct timespec atim;
     struct timespec mtim;
     struct timespec ctim;
-    long __unused[3];
+    long __reserved[3];
 };
 
 struct dent {

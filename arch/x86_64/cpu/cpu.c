@@ -21,19 +21,19 @@ void cpu_enable_features(void) {
         wrmsr(MSR_EFER, efer);
     }
 
-    klog(DEBUG, "syscall support: %hhu", _cpu()->features.syscall_supported);
+    //klog(DEBUG, "syscall support: %hhu", _cpu()->features.syscall_supported);
      
     _cpu()->features.sse_supported = true; // must be supported on x86_64
     _cpu()->features.sse2_supported = true;
     _enable_sse();
 
-    klog(DEBUG, "SSE support: %hhu", _cpu()->features.sse_supported);
+    //klog(DEBUG, "SSE support: %hhu", _cpu()->features.sse_supported);
 
     // just assume the presence for now
     _cpu()->features.x87_fpu_supported = true;
     _enable_x87_fpu();
     _enable_fxsave();
 
-    klog(DEBUG, "x87 FPU support: %hhu", _cpu()->features.x87_fpu_supported);
+    //klog(DEBUG, "x87 FPU support: %hhu", _cpu()->features.x87_fpu_supported);
 }
 

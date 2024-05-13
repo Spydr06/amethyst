@@ -9,7 +9,7 @@
 #define INTERNAL_FREQUENCY 1193182ul
 #define INTERNAL_FREQUENCY_3X (INTERNAL_FREQUENCY * 3ul)
 
-#define SYSTEM_TICK_FREQUENCY 1000 /* millis */
+#define SYSTEM_TICK_FREQUENCY 1000 /* Hz */
 
 extern uint16_t __pit_divisor;
 extern uint32_t __pit_delta_time;

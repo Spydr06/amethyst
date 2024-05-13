@@ -76,3 +76,11 @@ void hpet_init(void) {
     write(hpet, HPET_REG_CONFIG, 1);
 }
 
+void hpet_wait_ticks(time_t ticks) {
+    uintmax_t target = read(hpet, HPET_REG_COUNTER) + ticks;
+    while(target > read(hpet, HPET_REG_COUNTER)) pause();
+}
+
+void hpet_wait_us(time_t us) {
+    hpet_wait_ticks(us * ticks_per_microsecond);
+}

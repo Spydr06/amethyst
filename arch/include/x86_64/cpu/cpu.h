@@ -7,7 +7,7 @@
 #include "msr.h"
 #include "gdt.h"
 
-#include <scheduler/thread.h>
+#include <sys/thread.h>
 
 struct ist {
     uint32_t reserved;
@@ -46,6 +46,8 @@ struct cpu {
     struct vmm_context* vmm_context;
 
     bool interrupt_status;
+
+    unsigned cpu_num;
 
     struct cpu_features features;
     struct cpu* this;

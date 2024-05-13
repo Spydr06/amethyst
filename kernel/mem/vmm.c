@@ -44,6 +44,10 @@ void vmm_init(struct mmap* mmap) {
     }
 }
 
+void vmm_apinit(void) {
+    vmm_switch_context(&kernel_context);
+}
+
 void vmm_switch_context(struct vmm_context* context) {
     if(_cpu()->thread)
         _cpu()->thread->vmm_context = context;

@@ -129,7 +129,7 @@ cpu_status_t* __interrupt_handler(cpu_status_t* status) {
     }
 
     if(status->interrupt_number < __len(exception_names))
-        panic("Unhandled Interrupt \"%s\".", exception_names[status->interrupt_number]);
+        panic("Unhandled Interrupt %llu: %s.", (unsigned long long) status->interrupt_number, exception_names[status->interrupt_number]);
     else
         panic("Unhandled Interrupt %llu.", (unsigned long long) status->interrupt_number);
 
@@ -152,3 +152,13 @@ bool interrupt_set(bool status) {
     return old;
 }
 
+void idt_change_eoi(void (*eoi_handler)(uint32_t isr)) {
+    bool before = interrupt_set(false);
+    
+    for(size_t i = 0; i < __len(interrupt_handlers); i++) {
+        if(interrupt_handlers[i].eoi_handler)
+            interrupt_handlers[i].eoi_handler = eoi_handler;
+    }
+
+    interrupt_set(before);
+}

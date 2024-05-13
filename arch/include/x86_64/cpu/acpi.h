@@ -90,23 +90,23 @@ struct FADT {
     uint8_t  day_alarm;
     uint8_t  month_alarm;
     uint8_t  century;
- 
+
     // reserved in ACPI 1.0; used since ACPI 2.0+
     uint16_t boot_architecture_flags;
- 
+
     uint8_t  __reserved2;
     uint32_t flags;
- 
+
     // 12 byte structure; see below for details
     struct ACPI_generic_address retset_reg;
- 
+
     uint8_t  reset_value;
     uint8_t  __reserved3[3];
- 
+
     // 64bit pointers - Available on ACPI 2.0+
     uint64_t                x_firmware_control;
     uint64_t                x_dsdt;
- 
+
     struct ACPI_generic_address x_pm1a_event_block;
     struct ACPI_generic_address x_pm1b_event_block;
     struct ACPI_generic_address x_pm1a_control_block;
@@ -116,6 +116,23 @@ struct FADT {
     struct ACPI_generic_address x_gpe0_block;
     struct ACPI_generic_address x_gpe1_block;
 } __attribute__((packed));
+
+struct MADT {
+    struct SDT_header header;
+    uint32_t addr;
+    uint32_t flags;
+    uint8_t entries[];
+} __attribute__((packed));
+
+enum MADT_entry_type : uint8_t {
+    MADT_TYPE_LAPIC,
+    MADT_TYPE_IOAPIC,
+    MADT_TYPE_OVERRIDE,
+    MADT_TYPE_IONMI,
+    MADT_TYPE_LANMI,
+    MADT_TYPE_64BITADDR,
+    MADT_TYPE_X2APIC = 9
+};
 
 void acpi_init(void);
 
