@@ -13,12 +13,12 @@ ISOROOT_DIR ?= $(BUILD_DIR)/iso
 ISO ?= amethyst.iso
 
 override ARCH_DIR := arch/$(ARCH)
-override SOURCE_DIRS := libk kernel init drivers $(ARCH_DIR)
+override SOURCE_DIRS := kernel init drivers $(ARCH_DIR)
 
 SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S" -or -name "*.ids"
 SOURCES := $(shell find $(SOURCE_DIRS) $(SOURCE_PATTERN) | grep -v "arch/")
 
-INCLUDES := . include libk/include arch/include
+INCLUDES := . include arch/include
 
 SSP := $(shell openssl rand -hex 8)
 CMOS_YEAR := $(shell date +"%Y")
