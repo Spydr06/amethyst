@@ -139,7 +139,7 @@ $(LIMINE_DIR):
 
 $(LIMINE_DIR)/limine: $(LIMINE_DIR)
 	@echo "  MAKE  $(LIMINE_DIR)"
-	@$(MAKE) -C $(LIMINE_DIR) limine
+	@$(MAKE) -C $(LIMINE_DIR) limine CC=gcc LD=ld
 
 $(ISO): $(KERNEL_ELF) | $(LIMINE_DIR)/limine $(ISOROOT_DIR)/boot/limine/limine.cfg
 	@echo "  CP    $< $(ISOROOT_DIR)/boot"
