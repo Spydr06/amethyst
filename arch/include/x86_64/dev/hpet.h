@@ -35,9 +35,10 @@ struct HPET {
     uint8_t page_protection;
 } __attribute__((packed));
 
-void hpet_init(void);
+time_t hpet_init(void);
 
 void hpet_wait_us(time_t us);
+time_t hpet_ticks(void);
 
 #endif /* _AMETHYST_X86_64_DEV_HPET_H */
 

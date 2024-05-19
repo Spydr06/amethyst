@@ -1,6 +1,7 @@
 #include "kernelio.h"
 #include "math.h"
 #include "string.h"
+#include "sys/timekeeper.h"
 
 #include <ctype.h>
 #include <stdint.h>
@@ -8,7 +9,6 @@
 #include <cpu/cpu.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include <sys/timer.h>
 #include <sys/spinlock.h>
 
 kernelio_writer_t kernelio_writer = early_putchar;
@@ -263,8 +263,8 @@ static const char* colors[__KLOG_MAX] = {
 };
 
 static void print_timestamp(const char* file) {
-    uint64_t ms = millis();
-    printk("[%5lu.%03lu] %s: ", ms / 1000, ms % 1000, file); 
+    struct timespec ts = timekeeper_time_from_boot();
+    printk("[%5lu.%03lu] %s: ", ts.s, ts.ns / 1'000'000, file); 
 }
 
 static void __klog_impl(enum klog_severity severity, bool newline, const char* file, const char* format, va_list ap) {

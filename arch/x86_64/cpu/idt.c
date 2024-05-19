@@ -17,7 +17,7 @@ extern void _interrupt_disable(void);
 
 //#define DOPENING_SAVE() _context_saveandcall(dopening, nullptr)
 
-extern uint64_t __millis;
+extern uint64_t _millis;
 
 __aligned(0x10) struct interrupt_descriptor idt[256];
 
@@ -90,7 +90,7 @@ void idt_reload(void) {
 }
 
 static cpu_status_t* tick(cpu_status_t* status) {
-    __millis++;
+    _millis++;
     return status;
 }
 

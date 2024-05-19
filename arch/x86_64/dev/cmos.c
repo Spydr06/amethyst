@@ -31,6 +31,10 @@ void cmos_init(void) {
     struct FADT* fadt = acpi_get_fadt();
     if(fadt)
         rtc_century_register = fadt->century;
+    
+    struct tm tm;
+    cmos_read(&tm);
+    klog(INFO, "\e[95mRTC Information:\e[0m %04d-%02d-%02d %02d:%02d:%02d", tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
 
 void cmos_read(struct tm* tm) {
@@ -68,7 +72,4 @@ void cmos_read(struct tm* tm) {
     }
 
     tm->tm_year = (tm->tm_year + century * 100) - 1900;
-
-    klog(INFO, "\e[95mRTC Information:\e[0m %04d-%02d-%02d %02d:%02d:%02d", tm->tm_year + 1900, tm->tm_mon, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
-
 }

@@ -8,6 +8,7 @@
 
 #include <kernelio.h>
 #include <assert.h>
+#include <errno.h>
 
 #define HPET_COUNTER_SIZE(hpet) (4 + (hpet)->counter_size * 4)
 
@@ -45,11 +46,11 @@ static __always_inline void write(struct HPET* hpet, unsigned reg, uintmax_t val
     }
 }
 
-void hpet_init(void) {
+time_t hpet_init(void) {
     struct SDT_header* header = acpi_find_header(HPET_ACPI_HEADER_SIG);
     if(!header) {
         klog(WARN, "HPET not supported on this device.");
-        return;
+        return -ENODEV;
     }
 
     hpet = (struct HPET*) header;
@@ -74,6 +75,8 @@ void hpet_init(void) {
     write(hpet, HPET_REG_CONFIG, 0);
     write(hpet, HPET_REG_COUNTER, 0);
     write(hpet, HPET_REG_CONFIG, 1);
+
+    return ticks_per_microsecond;
 }
 
 void hpet_wait_ticks(time_t ticks) {
@@ -83,4 +86,8 @@ void hpet_wait_ticks(time_t ticks) {
 
 void hpet_wait_us(time_t us) {
     hpet_wait_ticks(us * ticks_per_microsecond);
+}
+
+time_t hpet_ticks(void) {
+    return read(hpet, HPET_REG_COUNTER);
 }

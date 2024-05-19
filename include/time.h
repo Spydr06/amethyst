@@ -22,5 +22,14 @@ struct tm {
     int tm_isdst;
 };
 
+time_t mktime(struct tm* tm);
+
+static inline struct timespec timespec_add(struct timespec a, struct timespec b) {
+    return (struct timespec) {
+        .ns = (a.ns + b.ns) % 1'000'000'000,
+        .s = a.s + b.s + (a.ns + b.ns) / 1'000'000'000
+    };
+}
+
 #endif /* _AMETHYST_LIBK_TIME_H */
 

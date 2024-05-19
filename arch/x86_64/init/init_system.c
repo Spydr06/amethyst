@@ -11,13 +11,14 @@
 #include <x86_64/cpu/acpi.h>
 #include <x86_64/cpu/gdt.h>
 #include <x86_64/cpu/smp.h>
-#include <x86_64/dev/pic.h>
 #include <x86_64/dev/apic.h>
 #include <x86_64/dev/cmos.h>
 #include <x86_64/dev/hpet.h>
 #include <x86_64/dev/pit.h>
 #include <limine/limine.h>
 #include <sys/tty.h>
+#include <sys/early_timer.h>
+#include <sys/timekeeper.h>
 
 #include <kernelio.h>
 #include <version.h>
@@ -27,12 +28,6 @@
 
 extern void _start(void);
 extern void kmain(size_t cmdline_size, const char* cmdline);
-
-uint64_t __millis = 0;
-
-uint64_t millis(void) {
-    return __millis;
-}
 
 static struct cpu init_cpu;
 
@@ -57,7 +52,7 @@ __noreturn void _start(void)
 
     gdt_reload();
     init_pit(SYSTEM_TICK_FREQUENCY);   
-    pic_init();
+    early_timer_init();
     init_interrupts();
     
     struct mmap mmap;
@@ -75,12 +70,14 @@ __noreturn void _start(void)
         vga_console_init(VGACON_DEFAULT_OPTS);   
 
     acpi_init();
-    hpet_init();
+    time_t ticks_per_us = hpet_init();
 
     cmos_init();
-
-    struct tm tm;
-    cmos_read(&tm);
+    if(ticks_per_us > 0) {
+        struct tm tm;
+        cmos_read(&tm);
+        timekeeper_init(hpet_ticks, ticks_per_us, mktime(&tm));
+    }
 
     apic_init();
     scheduler_init();
