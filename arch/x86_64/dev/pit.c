@@ -6,7 +6,7 @@
 uint16_t __pit_divisor = 1;
 uint32_t __pit_delta_time = 0;
 
-void init_pit(uint32_t frequency)
+void pit_init(uint32_t frequency)
 {
     uint32_t count, remainder;
 
@@ -35,3 +35,4 @@ void init_pit(uint32_t frequency)
     outb(I8253_DATA_REG, __pit_divisor & 0xff); // LSB
     outb(I8253_DATA_REG, __pit_divisor >> 8); // MSB
 }
+

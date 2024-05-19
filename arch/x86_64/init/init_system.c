@@ -14,7 +14,7 @@
 #include <x86_64/dev/apic.h>
 #include <x86_64/dev/cmos.h>
 #include <x86_64/dev/hpet.h>
-#include <x86_64/dev/pit.h>
+#include <x86_64/dev/pic.h>
 #include <limine/limine.h>
 #include <sys/tty.h>
 #include <sys/early_timer.h>
@@ -51,8 +51,8 @@ __noreturn void _start(void)
     klog(DEBUG, "_start() is at %p", (void*) _start);
 
     gdt_reload();
-    init_pit(SYSTEM_TICK_FREQUENCY);   
     early_timer_init();
+    pic_init();
     init_interrupts();
     
     struct mmap mmap;

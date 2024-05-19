@@ -14,7 +14,7 @@
 extern uint16_t __pit_divisor;
 extern uint32_t __pit_delta_time;
 
-void init_pit(uint32_t frequency);
+void pit_init(uint32_t frequency);
 
 #endif /* _AMETHYST_X86_64_DEV_PIT_H */
 
