@@ -6,6 +6,9 @@
 #include <mem/heap.h>
 #include <init/cmdline.h>
 #include <filesystem/virtual.h>
+#include <filesystem/temporary.h>
+#include <filesystem/device.h>
+#include <sys/tty.h>
 
 #include <kernelio.h>
 #include <version.h>
@@ -40,9 +43,13 @@ void kmain(size_t cmdline_size, const char* cmdline)
      
     cmdline_parse(cmdline_size, cmdline);
 
-    pci_init();
     vfs_init();
+    tmpfs_init();
+    devfs_init();
 
+    tty_init();
+    pci_init();
+    
     greet();
     color_test();
 

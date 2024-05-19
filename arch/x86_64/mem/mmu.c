@@ -36,12 +36,12 @@ extern char _TEXT_START_[],   _TEXT_END_[],
 static void* kernel_addr[] = {
     &_TEXT_START_,
     &_TEXT_END_,
-    &_DATA_START_,
-    &_DATA_END_,
+    &_DATA_START_, // FIXME: .data and .bss must follow each other!
+    &_BSS_END_,
     &_RODATA_START_,
     &_RODATA_END_,
-    &_BSS_START_,
-    &_BSS_END_
+//    &_BSS_START_,
+//    &_BSS_END_
 };
 
 static_assert(__len(kernel_addr) % 2 == 0);
@@ -50,7 +50,7 @@ static enum mmu_flags kernel_flags[] = {
     MMU_FLAGS_READ,
     MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC,
     MMU_FLAGS_READ | MMU_FLAGS_NOEXEC,
-    MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC
+//    MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC
 };
 
 static_assert(__len(kernel_flags) == __len(kernel_addr) / 2);

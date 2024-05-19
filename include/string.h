@@ -19,6 +19,7 @@ size_t strnlen(const char* s, size_t maxlen);
 char* strcpy(char* dest, const char* src);
 
 int strncmp(const char* _l, const char* _r, size_t n);
+int strcmp(const char* _l, const char* _r);
 
 char* strerror(int errnum);
 

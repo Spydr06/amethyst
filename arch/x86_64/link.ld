@@ -68,11 +68,10 @@ SECTIONS
   . += CONSTANT(MAXPAGESIZE);
 
   /* Dynamic section for relocations, both in its own PHDR and inside data PHDR */
-  .dynamic : {
+  /* .dynamic : {
     *(.dynamic)
-  } :data :dynamic
+  } :data :dynamic */
 
-  PROVIDE(_LOAD_END_ = .);
 
   .bss : AT(ADDR(.bss) - KERNEL_BASE)
   {

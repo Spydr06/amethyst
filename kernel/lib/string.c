@@ -162,6 +162,11 @@ char* strcpy(char* dest, const char* src) {
     return dest;
 }
 
+int strcmp(const char* l, const char* r) {
+	for (; *l == *r && *l; l++, r++);
+	return *(unsigned char *) l - *(unsigned char *) r;
+}
+
 int strncmp(const char *_l, const char *_r, size_t n)
 {
 	const unsigned char *l=(void *)_l, *r=(void *)_r;

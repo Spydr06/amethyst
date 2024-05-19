@@ -82,20 +82,20 @@ struct vnode {
 
 struct polldata;
 
-typedef struct vops_t {
+typedef struct vops {
 	int (*open)(struct vnode **node, int flags, struct cred *cred);
 	int (*close)(struct vnode *node, int flags, struct cred *cred);
 	int (*read)(struct vnode *node, void *buffer, size_t size, uintmax_t offset, int flags, size_t *readc, struct cred *cred);
 	int (*write)(struct vnode *node, void *buffer, size_t size, uintmax_t offset, int flags, size_t *writec, struct cred *cred);
-	int (*lookup)(struct vnode *node, char *name, struct vnode **result, struct cred *cred);
-	int (*create)(struct vnode *parent, char *name, struct vattr *attr, int type, struct vnode **result, struct cred *cred);
+	int (*lookup)(struct vnode *node, const char *name, struct vnode **result, struct cred *cred);
+	int (*create)(struct vnode *parent, const char *name, struct vattr *attr, int type, struct vnode **result, struct cred *cred);
 	int (*getattr)(struct vnode *node, struct vattr *attr, struct cred *cred);
 	int (*setattr)(struct vnode *node, struct vattr *attr, struct cred *cred);
 	int (*poll)(struct vnode *node, struct polldata *, int events);
 	int (*access)(struct vnode *node, mode_t mode, struct cred *cred);
-	int (*unlink)(struct vnode *node, char *name, struct cred *cred);
-	int (*link)(struct vnode *node, struct vnode *dir, char *name, struct cred *cred);
-	int (*symlink)(struct vnode *parent, char *name, struct vattr *attr, char *path, struct cred *cred);
+	int (*unlink)(struct vnode *node, const char *name, struct cred *cred);
+	int (*link)(struct vnode *node, struct vnode *dir, const char *name, struct cred *cred);
+	int (*symlink)(struct vnode *parent, const char *name, struct vattr *attr, char *path, struct cred *cred);
 	int (*readlink)(struct vnode *parent, char **link, struct cred *cred);
 	int (*inactive)(struct vnode *node);
 	int (*mmap)(struct vnode *node, void *addr, uintmax_t offset, int flags, struct cred *cred);
@@ -108,7 +108,66 @@ typedef struct vops_t {
 	int (*rename)(struct vnode *source, char *oldname, struct vnode *target, char *newname, int flags);
 } vops_t;
 
+enum vfs_lookup_flags {
+    VFS_LOOKUP_PARENT = 0x20000000,
+    VFS_LOOKUP_NOLINK = 0x40000000,
+    VFS_LOOKUP_INTERNAL = 0x80000000
+};
+
+int vfs_lookup(struct vnode** dest, struct vnode* src, const char* path, char* last_comp, enum vfs_lookup_flags flags);
+
 void vfs_init(void);
+
+int vfs_register(struct vfsops* vfsops, const char* name);
+int vfs_create(struct vnode* ref, const char* path, struct vattr* attr, enum vtype type, struct vnode** node);
+
+void vfs_inactive(struct vnode* node);
+
+static inline void vop_lock(struct vnode* node) {
+    mutex_acquire(&node->lock, false);
+}
+
+static inline void vop_unlock(struct vnode* node) {
+    mutex_release(&node->lock);
+}
+
+static inline uintmax_t vop_hold(struct vnode* node) {
+    return __atomic_add_fetch(&node->refcount, 1, __ATOMIC_SEQ_CST);
+}
+
+static inline void vop_release(struct vnode** node) {
+    if(__atomic_sub_fetch(&(*node)->refcount, 1, __ATOMIC_SEQ_CST) == 0) {
+        vfs_inactive(*node);
+        *node = nullptr;
+    }
+}
+
+static inline int vop_lookup(struct vnode* node, const char* name, struct vnode** result, struct cred* cred) {
+    return node->ops->lookup(node, name, result, cred);
+}
+
+static inline int vop_create(struct vnode* node, const char* name, struct vattr* attr, int type, struct vnode** result, struct cred* cred) {
+    return node->ops->create(node, name, attr, type, result, cred);
+}
+
+static inline void vop_init(struct vnode* node, struct vops* vops, enum vfflags flags, enum vtype type, struct vfs* vfs) {
+    node->ops = vops;
+
+    mutex_init(&node->lock);
+    node->refcount = 1;
+    node->flags = flags;
+    node->type = type;
+    node->vfs = vfs;
+    node->vfsmounted = nullptr;
+}
+
+static inline int vop_setattr(struct vnode* node, struct vattr* attr, struct cred* cred) {
+    return node->ops->setattr(node, attr, cred);
+}
+
+static inline int vfs_get_root(struct vfs* vfs, struct vnode** r) {
+    return vfs->ops->root(vfs, r);
+}
 
 #endif /* _AMETHYST_FILESYSTEM_VIRTUAL_H */
 

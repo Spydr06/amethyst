@@ -17,7 +17,7 @@
 #include <x86_64/dev/hpet.h>
 #include <x86_64/dev/pit.h>
 #include <limine/limine.h>
-#include <tty.h>
+#include <sys/tty.h>
 
 #include <kernelio.h>
 #include <version.h>

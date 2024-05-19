@@ -4,7 +4,7 @@
 
 #include <ctype.h>
 #include <stdint.h>
-#include <tty.h>
+#include <sys/tty.h>
 #include <cpu/cpu.h>
 #include <stddef.h>
 #include <stdlib.h>

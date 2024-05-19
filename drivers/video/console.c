@@ -3,7 +3,7 @@
 
 #include <mem/vmm.h>
 #include <ff/psf.h>
-#include <tty.h>
+#include <sys/tty.h>
 
 #include <kernelio.h>
 #include <math.h>
