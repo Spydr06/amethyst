@@ -54,5 +54,7 @@ int devfs_mount(struct vfs** vfs, struct vnode* mount_point, struct vnode* backi
 int devfs_setattr(struct vnode* node, struct vattr* attr, struct cred* cred);
 int devfs_create(struct vnode* parent, const char* name, struct vattr* attr, int type, struct vnode** result, struct cred* cred);
 
+int devfs_getnode(struct vnode* physical, int major, int minor, struct vnode** node);
+
 #endif /* _AMETHYST_FILESYSTEM_DEVICE_H */
 

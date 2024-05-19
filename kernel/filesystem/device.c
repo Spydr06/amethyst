@@ -228,3 +228,32 @@ int devfs_create(struct vnode* parent, const char* name, struct vattr* attr, int
     return 0;
 }
 
+int devfs_getnode(struct vnode* physical, int major, int minor, struct vnode** node) {
+    int key[2] = {major, minor};
+
+    mutex_acquire(&table_mutex, false);
+    void* r;
+    int err = hashtable_get(&dev_table, &r, key, sizeof(int[2]));
+    mutex_release(&table_mutex);
+
+    if(err)
+        return err == ENOENT ? ENXIO : err;
+
+    struct dev_node* new_node = slab_alloc(node_cache);
+    if(!new_node)
+        return ENOMEM;
+
+    struct dev_node* master = r;
+    new_node->master = master;
+    vop_hold(&master->vnode);
+
+    if(physical) {
+        new_node->physical = physical;
+        vop_hold(physical);
+    }
+
+    *node = &new_node->vnode;
+    new_node->vnode.type = master->vnode.type;
+    return 0;
+}
+

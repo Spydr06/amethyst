@@ -213,7 +213,7 @@ char* strerror(int errnum) {
     case EPIPE:       return "Broken pipe";
     case EIO:         return "I/O error";
     case ENXIO:       return "No such device or address";
-//    case ENOTBLK:     return "Block device required";
+    case ENOTBLK:     return "Block device required";
     case ENODEV:      return "No such device";
     case ENOTDIR:     return "Not a directory";
     case EISDIR:      return "Is a directory";
@@ -248,14 +248,14 @@ char* strerror(int errnum) {
     case ENOLINK:     return "Link has been severed";
     case EPROTO:      return "Protocol error";
     case EBADMSG:     return "Bad message";
-//    case EBADFD:      return "File descriptor in bad state";
+    case EBADFD:      return "File descriptor in bad state";
     case ENOTSOCK:    return "Not a socket";
     case EDESTADDRREQ:return "Destination address required";
     case EMSGSIZE:    return "Message too large";
     case EPROTOTYPE:  return "Protocol wrong type for socket";
     case ENOPROTOOPT: return "Protocol not available";
     case EPROTONOSUPPORT: return "Protocol not supported";
-//    case ESOCKTNOSUPPORT: return "Socket type not supported";
+    case ESOCKTNOSUPPORT: return "Socket type not supported";
     case ENOTSUP:     return "Not supported";
     case EPFNOSUPPORT:return "Protocol family not supported";
     case EAFNOSUPPORT:return "Address family not supported by protocol";
@@ -267,19 +267,19 @@ char* strerror(int errnum) {
     case ENOBUFS:     return "No buffer space available";
     case EISCONN:     return "Socket is connected";
     case ENOTCONN:    return "Socket not connected";
-//    case ESHUTDOWN:   return "Cannot send after socket shutdown";
+    case ESHUTDOWN:   return "Cannot send after socket shutdown";
     case EALREADY:    return "Operation already in progress";
     case EINPROGRESS: return "Operation in progress";
     case ESTALE:      return "Stale file handle";
-//    case EREMOTEIO:   return "Remote I/O error";
+    case EREMOTEIO:   return "Remote I/O error";
     case EDQUOT:      return "Quota exceeded";
-//    case ENOMEDIUM:   return "No medium found";
-//    case EMEDIUMTYPE: return "Wrong medium type";
+    case ENOMEDIUM:   return "No medium found";
+    case EMEDIUMTYPE: return "Wrong medium type";
     case EMULTIHOP:   return "Multihop attempted";
-//    case ENOKEY:      return "Required key not available";
-//    case EKEYEXPIRED: return "Key has expired";
-//    case EKEYREVOKED: return "Key has been revoked";
-//    case EKEYREJECTED:return "Key was rejected by service";
+    case ENOKEY:      return "Required key not available";
+    case EKEYEXPIRED: return "Key has expired";
+    case EKEYREVOKED: return "Key has been revoked";
+    case EKEYREJECTED:return "Key was rejected by service";
     }
     return "Unknown error";
 }
