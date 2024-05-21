@@ -1,4 +1,4 @@
-# Test code
+-- Test code
 let
     msg = 'Hello, World';
 in
@@ -9,3 +9,4 @@ let
   v = { a = 1; };
 in
 f v
+
