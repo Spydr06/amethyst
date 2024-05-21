@@ -19,7 +19,7 @@ static const struct option cmdline_options[] = {
     {NULL,   0, NULL, 0  }
 };
 
-static void _Noreturn help(const char* progname)
+_Noreturn static void help(const char* progname)
 {
     printf("Usage: %s <input file> [OPTIONS]\n\n", progname);
     printf("Options:\n");
@@ -107,7 +107,8 @@ int main(int argc, char** argv) {
             .line = 1
         };
         
-        int num_errors = shard_run(&ctx, &src);
+        struct shard_value result;
+        int num_errors = shard_eval(&ctx, &src, &result);
         struct shard_error* errors = shard_get_errors(&ctx);
         for(int i = 0; i < num_errors; i++)
             print_error(&errors[i]);

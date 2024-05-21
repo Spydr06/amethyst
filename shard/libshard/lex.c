@@ -59,6 +59,7 @@ static const unsigned token_widths[] = {
     1,
     1,
     2,
+    2,
     1,
     1,
     1,
@@ -158,7 +159,7 @@ static int lex_ident(struct shard_context* ctx, struct shard_source* src, struct
     return 0;
 }
 
-static int lex_number(struct shard_context* __attribute__((unused)) ctx, struct shard_source* src, struct shard_token* token) {
+static int lex_number(struct shard_context* ctx __attribute__((unused)), struct shard_source* src, struct shard_token* token) {
     unsigned start = src->tell(src);
 
     bool floating = false;
@@ -270,7 +271,7 @@ static int lex_string(struct shard_context* ctx, struct shard_source* src, struc
 int shard_lex(struct shard_context* ctx, struct shard_source* src, struct shard_token* token) {
     int c;
 
-repeat:;
+repeat:
 
     while(isspace(c = src->getc(src))) {
         if(c == '\n')
@@ -300,6 +301,7 @@ repeat:;
                         switch(c) {
                             case '\n':
                                 src->line++;
+                                break;
                             case EOF:
                                 ERR_TOK(token, src, "unterminated block comment, expect `-}`");
                                 return EOVERFLOW;
@@ -358,7 +360,12 @@ repeat:;
             KEYWORD_TOK(token, src, QUESTIONMARK);
             break;
         case '!':
-            KEYWORD_TOK(token, src, EXCLAMATIONMARK);
+            if((c = src->getc(src)) == '=')
+                KEYWORD_TOK(token, src, NE);
+            else {
+                src->ungetc(c, src);
+                KEYWORD_TOK(token, src, EXCLAMATIONMARK);
+            }
             break;
         case '@':
             KEYWORD_TOK(token, src, AT);

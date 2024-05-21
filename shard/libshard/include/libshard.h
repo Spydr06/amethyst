@@ -5,17 +5,40 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+#include <assert.h>
 #include <stddef.h>
-#include <stdio.h>
+
+#define DYNARR_INIT_CAPACITY 16
 
 #define shard_dynarr(name, base) struct name {  \
     size_t count, capacity;                     \
     base* items;                                \
 }
 
+#define dynarr_append(ctx, arr, item) do {                                                      \
+    if((arr)->count >= (arr)->capacity) {                                                       \
+        (arr)->capacity = (arr)->capacity == 0 ? DYNARR_INIT_CAPACITY : (arr)->capacity * 2;    \
+        (arr)->items = (ctx)->realloc((arr)->items, (arr)->capacity * sizeof(*(arr)->items));   \
+        assert((arr)->items != NULL);                                                           \
+    }                                                                                           \
+    (arr)->items[(arr)->count++] = (item);                                                      \
+} while(0)
+
+#define dynarr_free(ctx, arr) do {      \
+    if((arr)->items) {                  \
+        (ctx)->free((arr)->items);      \
+        (arr)->items = NULL;            \
+        (arr)->capacity = 0;            \
+    }                                   \
+} while(0)
+
 struct shard_context;
 struct shard_arena;
 struct shard_source;
+struct shard_token;
+struct shard_expr;
+struct shard_value;
 
 struct shard_location {
     unsigned line, width, offset;
@@ -24,7 +47,8 @@ struct shard_location {
 
 struct shard_error {
     struct shard_location loc;
-    const char* err;
+    char* err;
+    bool heap;
     int _errno;
 };
 
@@ -39,8 +63,9 @@ struct shard_context {
     void* (*realloc)(void* ptr, size_t new_size);
     void (*free)(void* ptr);
 
-    struct shard_arena* idents;
+    struct shard_arena* idents; 
     struct shard_errors errors;
+
     struct shard_string_list string_literals;
 };
 
@@ -59,31 +84,7 @@ struct shard_source {
     unsigned line;
 };
 
-int shard_run(struct shard_context* context, struct shard_source* src);
-
-#ifdef _LIBSHARD_INTERNAL
-
-#include <stdint.h>
-#include <assert.h>
-
-#define DYNARR_INIT_CAPACITY 64
-
-#define dynarr_append(ctx, arr, item) do {                                                      \
-    if((arr)->count >= (arr)->capacity) {                                                       \
-        (arr)->capacity = (arr)->capacity == 0 ? DYNARR_INIT_CAPACITY : (arr)->capacity * 2;    \
-        (arr)->items = (ctx)->realloc((arr)->items, (arr)->capacity * sizeof(*(arr)->items));   \
-        assert((arr)->items != NULL);                                                           \
-    }                                                                                           \
-    (arr)->items[(arr)->count++] = (item);                                                      \
-} while(0)
-
-#define dynarr_free(ctx, arr) do {      \
-    if((arr)->items) {                  \
-        (ctx)->free((arr)->items);      \
-        (arr)->items = NULL;            \
-        (arr)->capacity = 0;            \
-    }                                   \
-} while(0)
+int shard_eval(struct shard_context* context, struct shard_source* src, struct shard_value* result);
 
 struct shard_arena {
     uint8_t *region;
@@ -112,6 +113,7 @@ enum shard_token_type {
     SHARD_TOK_RBRACE, // }
     SHARD_TOK_ASSIGN, // =
     SHARD_TOK_EQ, // ==
+    SHARD_TOK_NE, // !=
     SHARD_TOK_COLON, // :
     SHARD_TOK_SEMICOLON, // ;
     SHARD_TOK_PERIOD, // .
@@ -145,14 +147,52 @@ struct shard_token {
     struct shard_location location;
 
     union shard_token_value {
-        const char* string;
+        char* string;
         double number;
     } value;
 };
 
 int shard_lex(struct shard_context* ctx, struct shard_source* src, struct shard_token* token);
 
-#endif /* _LIBSHARD_INTERNAL */
+enum shard_expr_type {
+    SHARD_EXPR_IDENT,
+
+    SHARD_EXPR_NUMBER,
+    SHARD_EXPR_STRING,
+    SHARD_EXPR_TRUE,
+    SHARD_EXPR_FALSE
+};
+
+struct shard_expr {
+    enum shard_expr_type type;
+    struct shard_location loc;
+
+    union {
+        char* string;
+        const char* ident;
+        double number;
+
+        struct {
+            struct shard_expr* lhs;
+            struct shard_expr* rhs;
+        } binop;
+
+        struct {
+            struct shard_expr* expr;
+        } unaryop;
+    };
+};
+
+int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr);
+
+void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr);
+
+struct shard_value {
+    int a;
+};
+
+void shard_dump_token(char* dest, size_t n, const struct shard_token* tok);
+ptrdiff_t shard_dump_expr(char* dest, size_t n, const struct shard_expr* expr);
 
 #ifdef __cplusplus
 } /* extern "C" */
