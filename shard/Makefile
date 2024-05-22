@@ -11,7 +11,7 @@ AR ?= ar
 RANLIB ?= ranlib
 
 LDFLAGS +=
-CFLAGS += -Wall -Wextra -pedantic -std=c2x -g -I$(LIBSHARD_DIR)/include
+CFLAGS += -Wall -Wextra -pedantic -std=c2x -I$(LIBSHARD_DIR)/include
 
 .PHONY: all
 all: $(LIBSHARD) $(SHARD_BIN)
@@ -21,6 +21,11 @@ lib: $(LIBSHARD)
 
 .PHONY: bin
 bin: $(SHARD_BIN)
+
+.PHONY: debug
+debug: CFLAGS += -fsanitize=address,undefined -g
+debug: LDFLAGS += -lasan -lubsan
+debug: all
 
 $(BUILD_DIR):
 	@echo " MKDIR $(BUILD_DIR)"

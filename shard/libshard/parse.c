@@ -135,6 +135,8 @@ static int parse_string_lit(struct shard_context* ctx, struct shard_token* token
         }
     }
 
+    dynarr_append(ctx, &str, '\0');
+
     *expr = (struct shard_expr) {
         .type = SHARD_EXPR_STRING,
         .loc = token->location,
