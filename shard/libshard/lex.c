@@ -123,7 +123,7 @@ static inline bool is_ident_char(char c) {
 }
 
 static int lex_ident(struct shard_context* ctx, struct shard_source* src, struct shard_token* token) {
-    unsigned start = src->tell(src) - 1;
+    unsigned start = src->tell(src);
 
     int c, i = 0;
     while(is_ident_char(c = src->getc(src))) {

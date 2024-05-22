@@ -1,3 +1,2 @@
 -- Test code
-with 'A'; if true then 'Hello <3' else '??'
-
+with 'A'; if foo a ; c

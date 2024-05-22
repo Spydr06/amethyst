@@ -3,16 +3,19 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <getopt.h>
+#include <assert.h>
 
 #include <libshard.h>
 
-#define _(str) str
+#define EITHER(a, b) ((a) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 #define C_RED "\033[31m"
-#define C_BLACK "\033[37m"
+#define C_BLACK "\033[90m"
 
 #define C_BLD "\033[1m"
 #define C_RST "\033[0m"
+#define C_NOBLD "\033[22m"
 
 static const struct option cmdline_options[] = {
     {"help", 0, NULL, 'h'},
@@ -40,12 +43,53 @@ static int _tell(struct shard_source* src) {
 }
 
 void print_error(struct shard_error* error) {
-    fprintf(
-        stderr,
-        C_RED C_BLD "[Error]" C_RST " %s:%d:%d: %s\n",
-        error->loc.src->origin, error->loc.line, error->loc.offset + 1,
-        error->err
+    FILE* fd = error->loc.src->userp;
+    assert(fd);
+
+    size_t fd_pos = ftell(fd), line_start = error->loc.offset;
+
+    while(line_start > 0) {
+        fseek(fd, --line_start - 1, SEEK_SET);
+        if(fgetc(fd) == '\n')
+            break;
+    }
+
+    size_t line_end = error->loc.offset + error->loc.width - 1;
+    fseek(fd, line_end, SEEK_SET);
+
+    char c;
+    while((c = fgetc(fd)) != '\n' && c != EOF)
+        line_end++;
+
+    fseek(fd, line_start, SEEK_SET);
+
+    char* line_str = calloc(line_end - line_start + 1, sizeof(char));
+    fread(line_str, line_end - line_start, sizeof(char), fd);
+
+    size_t column = error->loc.offset - line_start;
+
+    fprintf(stderr, 
+        C_BLD C_RED "[Error]" C_RST C_BLD " %s:%u:%zu:" C_NOBLD " %s\n" C_RST,
+        error->loc.src->origin, error->loc.line, column, EITHER(error->err, strerror(error->_errno))
     );
+
+    fprintf(stderr,
+        C_BLD C_BLACK " %4d " C_NOBLD "| " C_RST,
+        error->loc.line
+    );
+
+    fwrite(line_str, sizeof(char), column, stderr);
+    fprintf(stderr, C_RED C_RST);
+    fwrite(line_str + column, sizeof(char), error->loc.width, stderr);
+    fprintf(stderr, C_RST "%s\n", line_str + column + error->loc.width);
+
+    fprintf(stderr, C_BLACK "      |" C_RST " %*s" C_RED, (int) column, "");
+
+    for(size_t i = 0; i < MAX(error->loc.width, 1); i++)
+        fputc('^', stderr);
+    fprintf(stderr, C_RST "\n");
+
+    fseek(fd, fd_pos, SEEK_SET);
 }
 
 int main(int argc, char** argv) {
