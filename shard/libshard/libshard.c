@@ -34,7 +34,7 @@ int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard
     if(err)
         goto finish;
 
-    char buf[1024];
+    char buf[BUFSIZ];
     shard_dump_expr(buf, sizeof(buf), &expr);
     printf("%s\n", buf);
 
@@ -58,6 +58,15 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
         case SHARD_EXPR_WITH:
             shard_free_expr(ctx, expr->binop.lhs);
             shard_free_expr(ctx, expr->binop.rhs);
+            break;
+        case SHARD_EXPR_NOT:
+        case SHARD_EXPR_NEGATE:
+            shard_free_expr(ctx, expr->unaryop.expr);
+            break;
+        case SHARD_EXPR_TERNARY:
+            shard_free_expr(ctx, expr->ternary.cond);
+            shard_free_expr(ctx, expr->ternary.if_branch);
+            shard_free_expr(ctx, expr->ternary.else_branch);
             break;
         default:
     }
@@ -131,6 +140,7 @@ void shard_dump_token(char* dest, size_t n, const struct shard_token* tok) {
 }
 
 size_t shard_dump_expr(char* dest, size_t n, const struct shard_expr* expr) {
+    size_t off;
     switch(expr->type) {
         case SHARD_EXPR_TRUE:
             return shard_stpncpy(dest, "true", n) - dest;
@@ -145,13 +155,26 @@ size_t shard_dump_expr(char* dest, size_t n, const struct shard_expr* expr) {
         case SHARD_EXPR_NUMBER:
             snprintf(dest, n, "%f", expr->number);
             return strlen(dest);
-        case SHARD_EXPR_WITH: {
-            size_t off = shard_stpncpy(dest, "with ", n) - dest;
+        case SHARD_EXPR_WITH:
+            off = shard_stpncpy(dest, "with ", n) - dest;
             off += shard_dump_expr(dest + off, n - off, expr->binop.lhs);
             off = shard_stpncpy(dest + off, "; ", n - off) - dest;
             off += shard_dump_expr(dest + off, n - off, expr->binop.rhs);
             return off;
-        }
+        case SHARD_EXPR_NEGATE:
+            off = shard_stpncpy(dest, "-", n) - dest;
+            return off + shard_dump_expr(dest + off, n - off, expr->unaryop.expr);
+        case SHARD_EXPR_NOT:
+            off = shard_stpncpy(dest, "!", n) - dest;
+            return off + shard_dump_expr(dest + off, n - off, expr->unaryop.expr);
+        case SHARD_EXPR_TERNARY:
+            off = shard_stpncpy(dest, "if ", n) - dest;
+            off += shard_dump_expr(dest + off, n - off, expr->ternary.cond);
+            off = shard_stpncpy(dest + off, " then ", n - off) - dest;
+            off += shard_dump_expr(dest + off, n - off, expr->ternary.if_branch);
+            off = shard_stpncpy(dest + off, " else ", n - off) - dest;
+            off += shard_dump_expr(dest + off, n - off, expr->ternary.else_branch);
+            return off;
         default:
             return strncpy(dest, "<unknown>", n) - dest;
     }

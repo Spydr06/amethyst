@@ -148,6 +148,10 @@ enum shard_expr_type {
     SHARD_EXPR_TRUE,
     SHARD_EXPR_FALSE,
 
+    SHARD_EXPR_NOT,
+    SHARD_EXPR_NEGATE,
+    SHARD_EXPR_TERNARY,
+
     SHARD_EXPR_WITH,
 };
 
@@ -168,6 +172,12 @@ struct shard_expr {
         struct {
             struct shard_expr* expr;
         } unaryop;
+
+        struct {
+            struct shard_expr* cond;
+            struct shard_expr* if_branch;
+            struct shard_expr* else_branch;
+        } ternary;
     };
 };
 

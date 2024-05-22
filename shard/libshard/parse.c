@@ -6,6 +6,13 @@
 #include <stdio.h>
 #include <string.h>
 
+enum precedence {
+    PREC_FUNCTION = 1,
+    PREC_ADDITION,
+    PREC_MULTIPLICATION,
+    PREC_UNARY,
+};
+
 static int error(struct shard_context* ctx, struct shard_location loc, char* msg) {
     dynarr_append(ctx, &ctx->errors, ((struct shard_error){
         .err = msg,
@@ -150,17 +157,52 @@ static int parse_with(struct shard_context* ctx, struct shard_source* src, struc
     expr->type = SHARD_EXPR_WITH;
     expr->loc = token->location;
     
-
     expr->binop.lhs = arena_malloc(ctx, ctx->ast, sizeof(struct shard_expr));
     expr->binop.rhs = arena_malloc(ctx, ctx->ast, sizeof(struct shard_expr));
 
-    int err[3] = {
+    int err[] = {
         shard_parse(ctx, src, expr->binop.lhs),
         consume(ctx, src, SHARD_TOK_SEMICOLON),
         shard_parse(ctx, src, expr->binop.rhs)
     };
 
     return EITHER(err[0], EITHER(err[1], err[2]));
+}
+
+static int parse_unary_op(struct shard_context* ctx, struct shard_source* src, struct shard_token* token, struct shard_expr* expr, enum shard_expr_type expr_type) {
+    expr->type = expr_type;
+    expr->loc = token->location;
+    
+    expr->unaryop.expr = arena_malloc(ctx, ctx->ast, sizeof(struct shard_expr));
+    return shard_parse(ctx, src, expr->unaryop.expr);
+}
+
+static int parse_compound(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr) {
+    int err[] = {
+        shard_parse(ctx, src, expr),
+        consume(ctx, src, SHARD_TOK_RPAREN)
+    };
+
+    return EITHER(err[0], err[1]);
+}
+
+static int parse_ternary(struct shard_context* ctx, struct shard_source* src, struct shard_token* token, struct shard_expr* expr) {
+    expr->type = SHARD_EXPR_TERNARY;
+    expr->loc = token->location;
+
+    expr->ternary.cond = arena_malloc(ctx, ctx->ast, sizeof(struct shard_expr));
+    expr->ternary.if_branch = arena_malloc(ctx, ctx->ast, sizeof(struct shard_expr));
+    expr->ternary.else_branch = arena_malloc(ctx, ctx->ast, sizeof(struct shard_expr));
+
+    int err[] = {
+        shard_parse(ctx, src, expr->ternary.cond),
+        consume(ctx, src, SHARD_TOK_THEN),
+        shard_parse(ctx, src, expr->ternary.if_branch),
+        consume(ctx, src, SHARD_TOK_ELSE),
+        shard_parse(ctx, src, expr->ternary.else_branch),
+    };
+
+    return EITHER(err[0], EITHER(err[1], EITHER(err[2], EITHER(err[3], err[4]))));
 }
 
 int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr) {
@@ -193,6 +235,14 @@ int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shar
             return parse_string_lit(ctx, &token, expr);
         case SHARD_TOK_WITH:
             return parse_with(ctx, src, &token, expr);
+        case SHARD_TOK_EXCLAMATIONMARK:
+            return parse_unary_op(ctx, src, &token, expr, SHARD_EXPR_NOT);
+        case SHARD_TOK_SUB:
+            return parse_unary_op(ctx, src, &token, expr, SHARD_EXPR_NEGATE);
+        case SHARD_TOK_LPAREN:
+            return parse_compound(ctx, src, expr);
+        case SHARD_TOK_IF:
+            return parse_ternary(ctx, src, &token, expr);
         default: {
             static char buf[1024];
             shard_dump_token(buf, sizeof(buf), &token);
