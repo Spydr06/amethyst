@@ -6,19 +6,6 @@
 #include <stdio.h>
 #include <string.h>
 
-static int next_token(struct shard_context* ctx, struct shard_source* src, struct shard_token* token) {
-    int err = shard_lex(ctx, src, token);
-    if(err) {
-        dynarr_append(ctx, &ctx->errors, ((struct shard_error){
-            .err = token->value.string,
-            .loc = token->location,
-            ._errno = err
-        }));
-    }
-
-    return err;
-}
-
 static int error(struct shard_context* ctx, struct shard_location loc, char* msg) {
     dynarr_append(ctx, &ctx->errors, ((struct shard_error){
         .err = msg,
@@ -46,6 +33,36 @@ static int errorf(struct shard_context* ctx, struct shard_location loc, const ch
     }));
 
     return EINVAL;
+}
+
+static int next_token(struct shard_context* ctx, struct shard_source* src, struct shard_token* token) {
+    int err = shard_lex(ctx, src, token);
+    if(err) {
+        dynarr_append(ctx, &ctx->errors, ((struct shard_error){
+            .err = token->value.string,
+            .loc = token->location,
+            ._errno = err
+        }));
+    }
+
+    return err;
+}
+
+static int consume(struct shard_context* ctx, struct shard_source* src, enum shard_token_type token_type) {
+    struct shard_token token;
+    int err = next_token(ctx, src, &token);
+    if(err)
+        return err;
+
+    if(token.type == token_type)
+        return 0;
+
+    return errorf(
+        ctx, token.location,
+        "unexpected token `%s`, expect token `%s`",
+        shard_token_type_to_str(token.type),
+        shard_token_type_to_str(token_type)
+    );
 }
 
 static int parse_escape_code(struct shard_context* ctx, struct shard_location loc, const char* ptr, char* c) {
@@ -127,8 +144,21 @@ static int parse_string_lit(struct shard_context* ctx, struct shard_token* token
     return 0;
 }
 
-static int parse_with(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr) {
+static int parse_with(struct shard_context* ctx, struct shard_source* src, struct shard_token* token, struct shard_expr* expr) {
+    expr->type = SHARD_EXPR_WITH;
+    expr->loc = token->location;
+    
 
+    expr->binop.lhs = arena_malloc(ctx, ctx->ast, sizeof(struct shard_expr));
+    expr->binop.rhs = arena_malloc(ctx, ctx->ast, sizeof(struct shard_expr));
+
+    int err[3] = {
+        shard_parse(ctx, src, expr->binop.lhs),
+        consume(ctx, src, SHARD_TOK_SEMICOLON),
+        shard_parse(ctx, src, expr->binop.rhs)
+    };
+
+    return EITHER(err[0], EITHER(err[1], err[2]));
 }
 
 int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr) {
@@ -160,7 +190,7 @@ int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shar
         case SHARD_TOK_STRING:
             return parse_string_lit(ctx, &token, expr);
         case SHARD_TOK_WITH:
-            return parse_with(ctx, &token, expr);
+            return parse_with(ctx, src, &token, expr);
         default: {
             static char buf[1024];
             shard_dump_token(buf, sizeof(buf), &token);

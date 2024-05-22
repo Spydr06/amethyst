@@ -6,32 +6,16 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-#include <assert.h>
 #include <stddef.h>
 
 #define DYNARR_INIT_CAPACITY 16
 
-#define shard_dynarr(name, base) struct name {  \
-    size_t count, capacity;                     \
-    base* items;                                \
+#define __shard_dynarr(name, base, ct) struct name {    \
+    ct count, capacity;                                 \
+    base* items;                                        \
 }
 
-#define dynarr_append(ctx, arr, item) do {                                                      \
-    if((arr)->count >= (arr)->capacity) {                                                       \
-        (arr)->capacity = (arr)->capacity == 0 ? DYNARR_INIT_CAPACITY : (arr)->capacity * 2;    \
-        (arr)->items = (ctx)->realloc((arr)->items, (arr)->capacity * sizeof(*(arr)->items));   \
-        assert((arr)->items != NULL);                                                           \
-    }                                                                                           \
-    (arr)->items[(arr)->count++] = (item);                                                      \
-} while(0)
-
-#define dynarr_free(ctx, arr) do {      \
-    if((arr)->items) {                  \
-        (ctx)->free((arr)->items);      \
-        (arr)->items = NULL;            \
-        (arr)->capacity = 0;            \
-    }                                   \
-} while(0)
+#define shard_dynarr(name, base) __shard_dynarr(name, base, size_t)
 
 struct shard_context;
 struct shard_arena;
@@ -63,7 +47,9 @@ struct shard_context {
     void* (*realloc)(void* ptr, size_t new_size);
     void (*free)(void* ptr);
 
-    struct shard_arena* idents; 
+    struct shard_arena* idents;
+    struct shard_arena* ast;
+
     struct shard_errors errors;
 
     struct shard_string_list string_literals;
@@ -160,7 +146,9 @@ enum shard_expr_type {
     SHARD_EXPR_NUMBER,
     SHARD_EXPR_STRING,
     SHARD_EXPR_TRUE,
-    SHARD_EXPR_FALSE
+    SHARD_EXPR_FALSE,
+
+    SHARD_EXPR_WITH,
 };
 
 struct shard_expr {
@@ -191,8 +179,51 @@ struct shard_value {
     int a;
 };
 
+const char* shard_token_type_to_str(enum shard_token_type token_type);
+
 void shard_dump_token(char* dest, size_t n, const struct shard_token* tok);
-ptrdiff_t shard_dump_expr(char* dest, size_t n, const struct shard_expr* expr);
+size_t shard_dump_expr(char* dest, size_t n, const struct shard_expr* expr);
+
+#ifdef _LIBSHARD_INTERNAL
+
+#include <assert.h>
+#include <string.h>
+
+#define dynarr_append(ctx, arr, item) do {                                                      \
+    if((arr)->count >= (arr)->capacity) {                                                       \
+        (arr)->capacity = (arr)->capacity == 0 ? DYNARR_INIT_CAPACITY : (arr)->capacity * 2;    \
+        (arr)->items = (ctx)->realloc((arr)->items, (arr)->capacity * sizeof(*(arr)->items));   \
+        assert((arr)->items != NULL);                                                           \
+    }                                                                                           \
+    (arr)->items[(arr)->count++] = (item);                                                      \
+} while(0)
+
+#define dynarr_free(ctx, arr) do {      \
+    if((arr)->items) {                  \
+        (ctx)->free((arr)->items);      \
+        (arr)->items = NULL;            \
+        (arr)->capacity = 0;            \
+    }                                   \
+} while(0)
+
+#define EITHER(a, b) ((a) ? (a) : (b))
+
+static inline size_t strnlen(const char *s, size_t n)
+{
+	const char *p = memchr(s, 0, n);
+	return p ? (size_t) (p - s) : n;
+}
+
+static inline char* shard_mempcpy(void *restrict dst, const void *restrict src, size_t n) {
+    return (char *)memcpy(dst, src, n) + n;
+}
+
+static inline char* shard_stpncpy(char *restrict dst, const char *restrict src, size_t dsize) {
+     size_t  dlen = strnlen(src, dsize);
+     return memset(shard_mempcpy(dst, src, dlen), 0, dsize - dlen);
+}
+
+#endif /* _LIBSHARD_INTERAL */
 
 #ifdef __cplusplus
 } /* extern "C" */
