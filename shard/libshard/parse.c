@@ -4,13 +4,20 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <string.h>
 
 enum precedence {
-    PREC_FUNCTION = 1,
+    PREC_LOWEST,
+    PREC_FUNCTION,
     PREC_ADDITION,
     PREC_MULTIPLICATION,
     PREC_UNARY,
+    PREC_HIGHEST
+};
+
+struct parser {
+    struct shard_context* ctx;
+    struct shard_source* src;
+    struct shard_token token;
 };
 
 static int error(struct shard_context* ctx, struct shard_location loc, char* msg) {
@@ -42,12 +49,19 @@ static int errorf(struct shard_context* ctx, struct shard_location loc, const ch
     return EINVAL;
 }
 
-static int next_token(struct shard_context* ctx, struct shard_source* src, struct shard_token* token) {
-    int err = shard_lex(ctx, src, token);
+static inline int any_err(int* errors, size_t len) {
+    for(register size_t i = 0; i < len; i++)
+         if(errors[i])
+             return errors[i];
+    return 0;
+}
+
+static int advance(struct parser* p) {
+    int err = shard_lex(p->ctx, p->src, &p->token);
     if(err) {
-        dynarr_append(ctx, &ctx->errors, ((struct shard_error){
-            .err = token->value.string,
-            .loc = token->location,
+        dynarr_append(p->ctx, &p->ctx->errors, ((struct shard_error){
+            .err = p->token.value.string,
+            .loc = p->token.location,
             ._errno = err
         }));
     }
@@ -55,24 +69,21 @@ static int next_token(struct shard_context* ctx, struct shard_source* src, struc
     return err;
 }
 
-static int consume(struct shard_context* ctx, struct shard_source* src, enum shard_token_type token_type) {
-    struct shard_token token;
-    int err = next_token(ctx, src, &token);
-    if(err)
-        return err;
-
-    if(token.type == token_type)
-        return 0;
+static int consume(struct parser* p, enum shard_token_type token_type) {
+    if(p->token.type == token_type)
+        return advance(p);
 
     return errorf(
-        ctx, token.location,
+        p->ctx, p->token.location,
         "unexpected token `%s`, expect token `%s`",
-        shard_token_type_to_str(token.type),
+        shard_token_type_to_str(p->token.type),
         shard_token_type_to_str(token_type)
     );
 }
 
-static int parse_escape_code(struct shard_context* ctx, struct shard_location loc, const char* ptr, char* c) {
+static int parse_expr(struct parser* p, struct shard_expr* expr, enum precedence prec);
+
+static int parse_escape_code(struct parser* p, const char* ptr, char* c) {
     switch(*ptr) {
         case 'e':
             *c = 33;
@@ -114,142 +125,212 @@ static int parse_escape_code(struct shard_context* ctx, struct shard_location lo
             *c = '\r';
             break;
         default:
-            return errorf(ctx, loc, "invalid escape code: `\\%c`", *ptr);
+            return errorf(p->ctx, p->token.location, "invalid escape code: `\\%c`", *ptr);
     }
     return 0;
 }
 
-static int parse_string_lit(struct shard_context* ctx, struct shard_token* token, struct shard_expr* expr) {
+static int parse_string_lit(struct parser* p, struct shard_expr* expr) {
     struct shard_string str = {0};
 
     int err = 0;
-    for(const char* ptr = token->value.string; *ptr; ptr++) {
+    for(const char* ptr = p->token.value.string; *ptr; ptr++) {
         switch(*ptr) {
             case '\\': {
                 char c;
-                err = parse_escape_code(ctx, token->location, ++ptr, &c);
+                err = parse_escape_code(p, ++ptr, &c);
                 if(err) {
-                    dynarr_append(ctx, &str, '\\');
-                    dynarr_append(ctx, &str, *ptr);
+                    dynarr_append(p->ctx, &str, '\\');
+                    dynarr_append(p->ctx, &str, *ptr);
                 }
                 else
-                    dynarr_append(ctx, &str, c);
+                    dynarr_append(p->ctx, &str, c);
             } break;
             case '$':
                 break;
             default:
-                dynarr_append(ctx, &str, *ptr);
+                dynarr_append(p->ctx, &str, *ptr);
         }
     }
 
-    dynarr_append(ctx, &str, '\0');
+    dynarr_append(p->ctx, &str, '\0');
 
     *expr = (struct shard_expr) {
         .type = SHARD_EXPR_STRING,
-        .loc = token->location,
+        .loc = p->token.location,
         .string = str.items
     };
 
-    return 0;
+    return advance(p);
 }
 
-static int parse_with(struct shard_context* ctx, struct shard_source* src, struct shard_token* token, struct shard_expr* expr) {
+static int parse_with(struct parser* p, struct shard_expr* expr) {
     expr->type = SHARD_EXPR_WITH;
-    expr->loc = token->location;
+    expr->loc = p->token.location;
     
-    expr->binop.lhs = arena_malloc(ctx, ctx->ast, sizeof(struct shard_expr));
-    expr->binop.rhs = arena_malloc(ctx, ctx->ast, sizeof(struct shard_expr));
+    expr->binop.lhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->binop.rhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
 
     int err[] = {
-        shard_parse(ctx, src, expr->binop.lhs),
-        consume(ctx, src, SHARD_TOK_SEMICOLON),
-        shard_parse(ctx, src, expr->binop.rhs)
+        advance(p),
+        parse_expr(p, expr->binop.lhs, PREC_LOWEST),
+        consume(p, SHARD_TOK_SEMICOLON),
+        parse_expr(p, expr->binop.rhs, PREC_LOWEST)
     };
 
-    return EITHER(err[0], EITHER(err[1], err[2]));
+    return any_err(err, LEN(err));
 }
 
-static int parse_unary_op(struct shard_context* ctx, struct shard_source* src, struct shard_token* token, struct shard_expr* expr, enum shard_expr_type expr_type) {
+static int parse_unary_op(struct parser* p, struct shard_expr* expr, enum shard_expr_type expr_type) {
     expr->type = expr_type;
-    expr->loc = token->location;
+    expr->loc = p->token.location; 
+    expr->unaryop.expr = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+
+    int err[] = {
+        advance(p),
+        parse_expr(p, expr->unaryop.expr, PREC_UNARY),
+    };
     
-    expr->unaryop.expr = arena_malloc(ctx, ctx->ast, sizeof(struct shard_expr));
-    return shard_parse(ctx, src, expr->unaryop.expr);
+    return any_err(err, LEN(err));
 }
 
-static int parse_compound(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr) {
+static int parse_compound(struct parser* p, struct shard_expr* expr) {
     int err[] = {
-        shard_parse(ctx, src, expr),
-        consume(ctx, src, SHARD_TOK_RPAREN)
+        advance(p),
+        parse_expr(p, expr, PREC_LOWEST),
+        consume(p, SHARD_TOK_RPAREN)
     };
 
-    return EITHER(err[0], err[1]);
+    return any_err(err, LEN(err));
 }
 
-static int parse_ternary(struct shard_context* ctx, struct shard_source* src, struct shard_token* token, struct shard_expr* expr) {
+static int parse_ternary(struct parser* p, struct shard_expr* expr) {
     expr->type = SHARD_EXPR_TERNARY;
-    expr->loc = token->location;
+    expr->loc = p->token.location;
 
-    expr->ternary.cond = arena_malloc(ctx, ctx->ast, sizeof(struct shard_expr));
-    expr->ternary.if_branch = arena_malloc(ctx, ctx->ast, sizeof(struct shard_expr));
-    expr->ternary.else_branch = arena_malloc(ctx, ctx->ast, sizeof(struct shard_expr));
+    expr->ternary.cond = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->ternary.if_branch = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->ternary.else_branch = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
 
     int err[] = {
-        shard_parse(ctx, src, expr->ternary.cond),
-        consume(ctx, src, SHARD_TOK_THEN),
-        shard_parse(ctx, src, expr->ternary.if_branch),
-        consume(ctx, src, SHARD_TOK_ELSE),
-        shard_parse(ctx, src, expr->ternary.else_branch),
+        advance(p),
+        parse_expr(p, expr->ternary.cond, PREC_LOWEST),
+        consume(p, SHARD_TOK_THEN),
+        parse_expr(p, expr->ternary.if_branch, PREC_LOWEST),
+        consume(p, SHARD_TOK_ELSE),
+        parse_expr(p, expr->ternary.else_branch, PREC_LOWEST),
     };
 
-    return EITHER(err[0], EITHER(err[1], EITHER(err[2], EITHER(err[3], err[4]))));
+    return any_err(err, LEN(err));
 }
 
-int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr) {
-    struct shard_token token;
-    int err = next_token(ctx, src, &token);
-    if(err)
-        return errorf(ctx, token.location, "lexer error: %s", token.value.string);
-
-    switch(token.type) {
+static int parse_prefix_expr(struct parser* p, struct shard_expr* expr) {
+    switch(p->token.type) {
         case SHARD_TOK_NUMBER:
             *expr = (struct shard_expr) {
                 .type = SHARD_EXPR_NUMBER,
-                .loc = token.location,
-                .number = token.value.number
+                .loc = p->token.location,
+                .number = p->token.value.number
             };
-            break;
+            return advance(p);
         case SHARD_TOK_TRUE:
             *expr = (struct shard_expr) {
                 .type = SHARD_EXPR_TRUE,
-                .loc = token.location,
+                .loc = p->token.location,
             };
-            break;
+            return advance(p);
         case SHARD_TOK_FALSE:
             *expr = (struct shard_expr) {
                 .type = SHARD_EXPR_FALSE,
-                .loc = token.location,
+                .loc = p->token.location,
             };
-            break;
+            return advance(p);
         case SHARD_TOK_STRING:
-            return parse_string_lit(ctx, &token, expr);
+            return parse_string_lit(p, expr);
         case SHARD_TOK_WITH:
-            return parse_with(ctx, src, &token, expr);
+            return parse_with(p, expr);
         case SHARD_TOK_EXCLAMATIONMARK:
-            return parse_unary_op(ctx, src, &token, expr, SHARD_EXPR_NOT);
+            return parse_unary_op(p, expr, SHARD_EXPR_NOT);
         case SHARD_TOK_SUB:
-            return parse_unary_op(ctx, src, &token, expr, SHARD_EXPR_NEGATE);
+            return parse_unary_op(p, expr, SHARD_EXPR_NEGATE);
         case SHARD_TOK_LPAREN:
-            return parse_compound(ctx, src, expr);
+            return parse_compound(p, expr);
         case SHARD_TOK_IF:
-            return parse_ternary(ctx, src, &token, expr);
+            return parse_ternary(p, expr);
         default: {
             static char buf[1024];
-            shard_dump_token(buf, sizeof(buf), &token);
-            return errorf(ctx, token.location, "unexpected token `%s`, expect expression", buf);
+            shard_dump_token(buf, sizeof(buf), &p->token);
+            return errorf(p->ctx, p->token.location, "unexpected token `%s`, expect expression", buf);
         }
     }
 
     return 0;
+}
+
+static int parse_addition(struct parser* p, struct shard_expr* expr, struct shard_expr* left) {
+    expr->type = p->token.type == SHARD_TOK_ADD ? SHARD_EXPR_ADD : SHARD_EXPR_SUB;
+    expr->binop.lhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->binop.rhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    
+    *expr->binop.lhs = *left;
+
+    int err[] = {
+        advance(p),
+        parse_expr(p, expr->binop.rhs, PREC_ADDITION)
+    };
+
+    return any_err(err, LEN(err));
+}
+
+static enum precedence get_precedence(enum shard_token_type type) {
+    switch(type) {
+        case SHARD_TOK_ADD:
+        case SHARD_TOK_SUB:
+            return PREC_ADDITION;
+        default:
+            return PREC_LOWEST;
+    }
+}
+
+static int parse_infix_expr(struct parser* p, struct shard_expr* expr, struct shard_expr* left) {
+    switch(p->token.type) {
+        case SHARD_TOK_ADD:
+        case SHARD_TOK_SUB:
+            return parse_addition(p, expr, left);
+        default: {
+            static char buf[1024];
+            shard_dump_token(buf, sizeof(buf), &p->token);
+            return errorf(p->ctx, p->token.location, "unexpected token `%s`, expect infix expression", buf);
+        }
+    }
+}
+
+static int parse_expr(struct parser* p, struct shard_expr* expr, enum precedence prec) {
+    struct shard_expr tmp;
+    int err = parse_prefix_expr(p, expr);
+
+    while(prec < get_precedence(p->token.type)) {
+        int err = parse_infix_expr(p, &tmp, expr);
+        if(err)
+            return err;
+        *expr = tmp;
+    }
+
+    return err;
+}
+
+int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr) {
+    struct parser p = {
+        .ctx = ctx,
+        .src = src,
+        .token = {0}
+    };
+
+    int err[] = {
+        advance(&p),
+        parse_expr(&p, expr, PREC_LOWEST)
+    };
+
+    return any_err(err, LEN(err));
 }
 

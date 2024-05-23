@@ -11,7 +11,7 @@ AR ?= ar
 RANLIB ?= ranlib
 
 LDFLAGS +=
-CFLAGS += -Wall -Wextra -pedantic -std=c2x -I$(LIBSHARD_DIR)/include
+CFLAGS += -Wall -Wextra -pedantic -std=c2x -I$(LIBSHARD_DIR)/include -g
 
 .PHONY: all
 all: $(LIBSHARD) $(SHARD_BIN)

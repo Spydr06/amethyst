@@ -140,7 +140,7 @@ void shard_dump_token(char* dest, size_t n, const struct shard_token* tok) {
 }
 
 size_t shard_dump_expr(char* dest, size_t n, const struct shard_expr* expr) {
-    size_t off;
+    size_t off = 0;
     switch(expr->type) {
         case SHARD_EXPR_TRUE:
             return shard_stpncpy(dest, "true", n) - dest;
@@ -174,6 +174,12 @@ size_t shard_dump_expr(char* dest, size_t n, const struct shard_expr* expr) {
             off += shard_dump_expr(dest + off, n - off, expr->ternary.if_branch);
             off = shard_stpncpy(dest + off, " else ", n - off) - dest;
             off += shard_dump_expr(dest + off, n - off, expr->ternary.else_branch);
+            return off;
+        case SHARD_EXPR_ADD:
+        case SHARD_EXPR_SUB:
+            off += shard_dump_expr(dest, n, expr->binop.lhs);
+            off = shard_stpncpy(dest + off, expr->type == SHARD_EXPR_ADD ? " + " : " - ", n - off) - dest;
+            off += shard_dump_expr(dest + off, n - off, expr->binop.rhs);
             return off;
         default:
             return strncpy(dest, "<unknown>", n) - dest;

@@ -1,2 +1,2 @@
 -- Test code
-with 'A'; if foo a ; c
+with 'A'; if 10 + 2 then 69 else 420

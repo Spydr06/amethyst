@@ -152,6 +152,9 @@ enum shard_expr_type {
     SHARD_EXPR_NEGATE,
     SHARD_EXPR_TERNARY,
 
+    SHARD_EXPR_ADD,
+    SHARD_EXPR_SUB,
+
     SHARD_EXPR_WITH,
 };
 
@@ -217,6 +220,7 @@ size_t shard_dump_expr(char* dest, size_t n, const struct shard_expr* expr);
 } while(0)
 
 #define EITHER(a, b) ((a) ? (a) : (b))
+#define LEN(arr) (sizeof((arr)) / sizeof((arr)[0]))
 
 static inline size_t strnlen(const char *s, size_t n)
 {

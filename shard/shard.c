@@ -42,7 +42,19 @@ static int _tell(struct shard_source* src) {
     return ftell(src->userp);
 }
 
-void print_error(struct shard_error* error) {
+static void print_basic_error(struct shard_error* error) {
+    fprintf(stderr, 
+        C_BLD C_RED "[Error]" C_RST C_BLD " %s:%u:" C_NOBLD " %s\n" C_RST,
+        error->loc.src->origin, error->loc.line, EITHER(error->err, strerror(error->_errno))
+    );
+}
+
+static void print_error(struct shard_error* error) {
+    if(error->loc.src->getc != _getc) {
+        print_basic_error(error);
+        return;
+    }
+
     FILE* fd = error->loc.src->userp;
     assert(fd);
 
