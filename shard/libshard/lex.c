@@ -65,8 +65,13 @@ static const unsigned token_widths[] = {
     2,
     2,
     1,
+    2,
+    1,
+    2,
     1,
     1,
+    1,
+    3,
     2,
     2,
     1,
@@ -74,6 +79,11 @@ static const unsigned token_widths[] = {
     1,
     1,
     1,
+    1,
+    1,
+    2,
+    2,
+    2,
     3,
     4,
     5,
@@ -400,17 +410,34 @@ repeat:
             KEYWORD_TOK(token, src, RBRACE);
             break;
         case '+':
-            KEYWORD_TOK(token, src, ADD);
+            if((c = src->getc(src)) == '+')
+                KEYWORD_TOK(token, src, CONCAT);
+            else {
+                src->ungetc(c, src);
+                KEYWORD_TOK(token, src, ADD);
+            }
             break;
         case '-':
-            KEYWORD_TOK(token, src, SUB);
+            if((c = src->getc(src)) == '>')
+                KEYWORD_TOK(token, src, LOGIMPL);
+            else {
+                src->ungetc(c, src);
+                KEYWORD_TOK(token, src, SUB);
+            }
+            break;
+        case '*':
+            KEYWORD_TOK(token, src, MUL);
             break;
         case '/':
             if((c = src->getc(src)) == '/')
                 KEYWORD_TOK(token, src, MERGE);
-            else {
+            else if(!isspace(c)) {
                 src->ungetc(c, src);
                 return lex_string(ctx, src, token, isspace, PATH_ABS);
+            }
+            else {
+                src->ungetc(c, src);
+                KEYWORD_TOK(token, src, DIV);
             }
             break;
         case '~':
@@ -421,16 +448,40 @@ repeat:
         case ';':
             KEYWORD_TOK(token, src, SEMICOLON);
             break;
-        case '.':
-            if((c = src->getc(src)) == '.')
-                KEYWORD_TOK(token, src, ELLIPSE);
-            else if(c == '/')
-                return lex_string(ctx, src, token, isspace, PATH_REL);
+        case '&':
+            if((c = src->getc(src)) == '&')
+                KEYWORD_TOK(token, src, LOGAND);
             else {
+                src->ungetc(c, src);
+                ERR_TOK(token, src, "unknown token `&`, did you mean `&&`?");
+                return EINVAL;
+            }
+            break;
+        case '|':
+            if((c = src->getc(src)) == '|')
+                KEYWORD_TOK(token, src, LOGOR);
+            else {
+                src->ungetc(c, src);
+                ERR_TOK(token, src, "unknownt token `|`, did you mean `||`?");
+                return EINVAL;
+            }
+            break;
+        case '.': {
+            int c2 = -2;
+            if((c = src->getc(src)) == '.' && (c2 = src->getc(src)) == '.')
+                KEYWORD_TOK(token, src, ELLIPSE);
+            else if(c == '/') {
+                if(c2 != -2)
+                    src->ungetc(c2, src);
+                return lex_string(ctx, src, token, isspace, PATH_REL);
+            }
+            else {
+                if(c2 != -2)
+                    src->ungetc(c2, src);
                 src->ungetc(c, src);
                 KEYWORD_TOK(token, src, PERIOD);
             }
-            break;
+        } break;
         case '?':
             KEYWORD_TOK(token, src, QUESTIONMARK);
             break;
@@ -440,6 +491,26 @@ repeat:
             else {
                 src->ungetc(c, src);
                 KEYWORD_TOK(token, src, EXCLAMATIONMARK);
+            }
+            break;
+        case '>':
+            if((c = src->getc(src)) == '=')
+                KEYWORD_TOK(token, src, GE);
+            else {
+                src->ungetc(c, src);
+                KEYWORD_TOK(token, src, GT);
+            }
+            break;
+        case '<':
+            if((c = src->getc(src)) == '=')
+                KEYWORD_TOK(token, src, LE);
+            else if(!isspace(c)) {
+                src->ungetc(c, src);
+                return lex_string(ctx, src, token, is_gt_sign, PATH_INC);
+            }
+            else {
+                src->ungetc(c, src);
+                KEYWORD_TOK(token, src, LT);
             }
             break;
         case '@':
@@ -462,8 +533,6 @@ repeat:
             }
         case '\"':
             return lex_string(ctx, src, token, is_double_quote, PATH_NONE);
-        case '<':
-            return lex_string(ctx, src, token, is_gt_sign, PATH_INC);
         default:
             if(isdigit(c)) {
                 src->ungetc(c, src);

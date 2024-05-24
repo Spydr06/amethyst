@@ -62,8 +62,10 @@ struct shard_context {
     struct shard_string_list include_dirs;
 };
 
-int shard_init(struct shard_context* context);
-void shard_deinit(struct shard_context* context);
+int shard_init(struct shard_context* ctx);
+void shard_include_dir(struct shard_context* ctx, char* path);
+
+void shard_deinit(struct shard_context* ctx);
 
 // TODO: add other sources like memory buffers
 struct shard_source {
@@ -108,16 +110,26 @@ enum shard_token_type {
     SHARD_TOK_ASSIGN, // =
     SHARD_TOK_EQ, // ==
     SHARD_TOK_NE, // !=
+    SHARD_TOK_GT, // >
+    SHARD_TOK_GE, // >=
+    SHARD_TOK_LT, // <
+    SHARD_TOK_LE, // <=
     SHARD_TOK_COLON, // :
     SHARD_TOK_SEMICOLON, // ;
     SHARD_TOK_PERIOD, // .
-    SHARD_TOK_ELLIPSE, // ..
-    SHARD_TOK_MERGE, // ++
+    SHARD_TOK_ELLIPSE, // ...
+    SHARD_TOK_MERGE, // //
+    SHARD_TOK_CONCAT, // ++
     SHARD_TOK_QUESTIONMARK, // ?
     SHARD_TOK_EXCLAMATIONMARK, // !
     SHARD_TOK_AT, // @
     SHARD_TOK_ADD, // +
     SHARD_TOK_SUB, // -
+    SHARD_TOK_MUL, // *
+    SHARD_TOK_DIV, // /
+    SHARD_TOK_LOGAND, // &&
+    SHARD_TOK_LOGOR, // ||
+    SHARD_TOK_LOGIMPL, // ->
 
     // keywords
     SHARD_TOK_NULL,
@@ -166,9 +178,25 @@ enum shard_expr_type {
 
     SHARD_EXPR_ADD,
     SHARD_EXPR_SUB,
+    SHARD_EXPR_MUL,
+    SHARD_EXPR_DIV,
+    SHARD_EXPR_EQ,
+    SHARD_EXPR_NE,
+    SHARD_EXPR_GT,
+    SHARD_EXPR_GE,
+    SHARD_EXPR_LT,
+    SHARD_EXPR_LE,
+    SHARD_EXPR_MERGE,
+    SHARD_EXPR_CONCAT,
+    SHARD_EXPR_ATTR_TEST,
+    SHARD_EXPR_ATTR_SEL,
+    SHARD_EXPR_LOGOR,
+    SHARD_EXPR_LOGAND,
+    SHARD_EXPR_LOGIMPL,
 
     SHARD_EXPR_CALL,
     SHARD_EXPR_WITH,
+    SHARD_EXPR_ASSERT,
 
     SHARD_EXPR_LIST,
 };

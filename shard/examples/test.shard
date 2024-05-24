@@ -1,1 +1,1 @@
-~/foo
+assert true -> false || 3 * 5 && 2; "foo"

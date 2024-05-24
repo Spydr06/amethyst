@@ -31,6 +31,10 @@ void shard_deinit(struct shard_context* ctx) {
     dynarr_free(ctx, &ctx->include_dirs);
 }
 
+void shard_include_dir(struct shard_context* ctx, char* path) {
+    dynarr_append(ctx, &ctx->include_dirs, path);
+}
+
 int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard_value* result) {
     struct shard_expr expr;
     int err = shard_parse(ctx, src, &expr);
@@ -63,8 +67,11 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
             ctx->free(expr->string);
             break;
         case SHARD_EXPR_WITH:
+        case SHARD_EXPR_ASSERT:
         case SHARD_EXPR_ADD:
         case SHARD_EXPR_SUB:
+        case SHARD_EXPR_EQ:
+        case SHARD_EXPR_NE:
         case SHARD_EXPR_CALL:
             shard_free_expr(ctx, expr->binop.lhs);
             shard_free_expr(ctx, expr->binop.rhs);
@@ -104,16 +111,26 @@ static const char* token_type_strings[_SHARD_TOK_LEN] = {
     E(ASSIGN) = "=",
     E(EQ) = "==",
     E(NE) = "!=",
+    E(GT) = ">",
+    E(GE) = ">=",
+    E(LT) = "<",
+    E(LE) = "<=",
     E(COLON) = ":",
     E(SEMICOLON) = ";",
     E(PERIOD) = ".",
     E(ELLIPSE) = "..",
-    E(MERGE) = "++",
+    E(MERGE) = "//",
+    E(CONCAT) = "++",
     E(QUESTIONMARK) = "?",
     E(EXCLAMATIONMARK) = "!",
     E(AT) = "@",
     E(ADD) = "+",
     E(SUB) = "-",
+    E(MUL) = "*",
+    E(DIV) = "/",
+    E(LOGAND) = "&&",
+    E(LOGOR) = "||",
+    E(LOGIMPL) = "->",
     E(NULL) = "null",
     E(TRUE) = "true",
     E(FALSE) = "false",
@@ -159,6 +176,12 @@ void shard_dump_token(char* dest, size_t n, const struct shard_token* tok) {
     }
 }
 
+#define BOP(name, _str) case SHARD_EXPR_##name:                     \
+        shard_dump_expr(ctx, str, expr->binop.lhs);                 \
+        dynarr_append_many(ctx, str, " " _str " ", LEN(_str) + 1);  \
+        shard_dump_expr(ctx, str, expr->binop.rhs);                 \
+        break
+
 void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const struct shard_expr* expr) {
     dynarr_append(ctx, str, '(');
     
@@ -198,6 +221,12 @@ void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const 
             dynarr_append_many(ctx, str, "; ", 2);
             shard_dump_expr(ctx, str, expr->binop.rhs);
             break;
+        case SHARD_EXPR_ASSERT:
+            dynarr_append_many(ctx, str, "assert ", 7);
+            shard_dump_expr(ctx, str, expr->binop.lhs);
+            dynarr_append_many(ctx, str, "; ", 2);
+            shard_dump_expr(ctx, str, expr->binop.rhs);
+            break;
         case SHARD_EXPR_NEGATE:
             dynarr_append(ctx, str, '-');
             shard_dump_expr(ctx, str, expr->unaryop.expr);
@@ -214,12 +243,23 @@ void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const 
             dynarr_append_many(ctx, str, " else ", 6);
             shard_dump_expr(ctx, str, expr->ternary.else_branch);
             break;
-        case SHARD_EXPR_ADD:
-        case SHARD_EXPR_SUB:
-            shard_dump_expr(ctx, str, expr->binop.lhs);
-            dynarr_append_many(ctx, str, expr->type == SHARD_EXPR_ADD ? " + " : " - ", 3);
-            shard_dump_expr(ctx, str, expr->binop.rhs);
-            break;
+        BOP(ADD, "+");
+        BOP(SUB, "-");
+        BOP(MUL, "*");
+        BOP(DIV, "/");
+        BOP(EQ, "==");
+        BOP(NE, "!=");
+        BOP(GT, ">");
+        BOP(GE, ">=");
+        BOP(LT, "<");
+        BOP(LE, "<=");
+        BOP(MERGE, "//");
+        BOP(CONCAT, "++");
+        BOP(ATTR_TEST, "?");
+//        BOP(ATTR_SEL, ".");
+        BOP(LOGOR, "||");
+        BOP(LOGAND, "&&");
+        BOP(LOGIMPL, "->");
         case SHARD_EXPR_CALL:
             shard_dump_expr(ctx, str, expr->binop.lhs);
             dynarr_append(ctx, str, ' ');
@@ -240,4 +280,6 @@ void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const 
 
     dynarr_append(ctx, str, ')');
 }
+
+#undef BOP
 

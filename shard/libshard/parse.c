@@ -7,12 +7,22 @@
 
 enum precedence {
     PREC_LOWEST,
-    PREC_FUNCTION,
+    
+    PREC_LOGIMPL,
+    PREC_LOGOR,
+    PREC_LOGAND,
+    PREC_EQUALITY,
+    PREC_COMPARISON,
+    PREC_MERGE,
+    PREC_NOT,
     PREC_ADDITION,
     PREC_MULTIPLICATION,
-    PREC_UNARY,
+    PREC_CONCATENATION,
+    PREC_ATTRIBUTE_TEST,
+    PREC_NEGATION,
     PREC_CALL,
-    PREC_LIST,
+    PREC_ATTRIBUTE_SELECTION,
+    
     PREC_HIGHEST
 };
 
@@ -178,14 +188,31 @@ static int parse_with(struct parser* p, struct shard_expr* expr) {
     return any_err(err, LEN(err));
 }
 
-static int parse_unary_op(struct parser* p, struct shard_expr* expr, enum shard_expr_type expr_type) {
+static int parse_assert(struct parser* p, struct shard_expr* expr) {
+    expr->type = SHARD_EXPR_ASSERT;
+    expr->loc = p->token.location;
+    
+    expr->binop.lhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->binop.rhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+
+    int err[] = {
+        advance(p),
+        parse_expr(p, expr->binop.lhs, PREC_LOWEST),
+        consume(p, SHARD_TOK_SEMICOLON),
+        parse_expr(p, expr->binop.rhs, PREC_LOWEST)
+    };
+
+    return any_err(err, LEN(err));
+}
+
+static int parse_unary_op(struct parser* p, struct shard_expr* expr, enum shard_expr_type expr_type, enum precedence prec) {
     expr->type = expr_type;
     expr->loc = p->token.location; 
     expr->unaryop.expr = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
 
     int err[] = {
         advance(p),
-        parse_expr(p, expr->unaryop.expr, PREC_UNARY),
+        parse_expr(p, expr->unaryop.expr, prec),
     };
     
     return any_err(err, LEN(err));
@@ -213,7 +240,7 @@ static int parse_list(struct parser* p, struct shard_expr* expr) {
         if(p->token.type == SHARD_TOK_EOF)
             return errorf(p, "unexpected end of file, expect expression or `]`");
 
-        int err2 = parse_expr(p, &elem, PREC_LIST);
+        int err2 = parse_expr(p, &elem, PREC_HIGHEST);
         if(err2)
             err = err2;
         dynarr_append(p->ctx, &expr->list.elems, elem);
@@ -288,10 +315,12 @@ static int parse_prefix_expr(struct parser* p, struct shard_expr* expr) {
             return parse_string_lit(p, expr);
         case SHARD_TOK_WITH:
             return parse_with(p, expr);
+        case SHARD_TOK_ASSERT:
+            return parse_assert(p, expr);
         case SHARD_TOK_EXCLAMATIONMARK:
-            return parse_unary_op(p, expr, SHARD_EXPR_NOT);
+            return parse_unary_op(p, expr, SHARD_EXPR_NOT, PREC_NOT);
         case SHARD_TOK_SUB:
-            return parse_unary_op(p, expr, SHARD_EXPR_NEGATE);
+            return parse_unary_op(p, expr, SHARD_EXPR_NEGATE, PREC_NEGATION);
         case SHARD_TOK_LPAREN:
             return parse_compound(p, expr);
         case SHARD_TOK_LBRACKET:
@@ -311,8 +340,8 @@ static int parse_prefix_expr(struct parser* p, struct shard_expr* expr) {
     return 0;
 }
 
-static int parse_addition(struct parser* p, struct shard_expr* expr, struct shard_expr* left) {
-    expr->type = p->token.type == SHARD_TOK_ADD ? SHARD_EXPR_ADD : SHARD_EXPR_SUB;
+static int parse_binop(struct parser* p, struct shard_expr* expr, struct shard_expr* left, enum shard_expr_type type, enum precedence prec) {
+    expr->type = type;
     expr->binop.lhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
     expr->binop.rhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
     
@@ -320,7 +349,7 @@ static int parse_addition(struct parser* p, struct shard_expr* expr, struct shar
 
     int err[] = {
         advance(p),
-        parse_expr(p, expr->binop.rhs, PREC_ADDITION)
+        parse_expr(p, expr->binop.rhs, prec)
     };
 
     return any_err(err, LEN(err));
@@ -334,6 +363,14 @@ static int parse_call(struct parser* p, struct shard_expr* expr, struct shard_ex
     *expr->binop.lhs = *left;
 
     return parse_expr(p, expr->binop.rhs, PREC_CALL);
+}
+
+static int parse_attribute_selection(struct parser* p, struct shard_expr* expr, struct shard_expr* set) {
+    return EINVAL;
+}
+
+static int parse_attribute_test(struct parser* p, struct shard_expr* expr, struct shard_expr* set) {
+    return EINVAL;
 }
 
 static inline bool token_terminates_expr(enum shard_token_type type) {
@@ -354,9 +391,34 @@ static inline bool token_terminates_expr(enum shard_token_type type) {
 
 static enum precedence get_precedence(enum shard_token_type type) {
     switch(type) {
+        case SHARD_TOK_LOGIMPL:
+            return PREC_LOGIMPL;
+        case SHARD_TOK_LOGOR:
+            return PREC_LOGOR;
+        case SHARD_TOK_LOGAND:
+            return PREC_LOGAND;
+        case SHARD_TOK_EQ:
+        case SHARD_TOK_NE:
+            return PREC_EQUALITY;
+        case SHARD_TOK_GE:
+        case SHARD_TOK_GT:
+        case SHARD_TOK_LE:
+        case SHARD_TOK_LT:
+            return PREC_COMPARISON;
+        case SHARD_TOK_MERGE:
+            return PREC_MERGE;
         case SHARD_TOK_ADD:
         case SHARD_TOK_SUB:
             return PREC_ADDITION;
+        case SHARD_TOK_MUL:
+        case SHARD_TOK_DIV:
+            return PREC_MULTIPLICATION;
+        case SHARD_TOK_CONCAT:
+            return PREC_CONCATENATION;
+        case SHARD_TOK_QUESTIONMARK:
+            return PREC_ATTRIBUTE_TEST;
+        case SHARD_TOK_PERIOD:
+            return PREC_ATTRIBUTE_SELECTION;
         default:
             return token_terminates_expr(type) ? PREC_LOWEST : PREC_CALL;
     }
@@ -365,8 +427,31 @@ static enum precedence get_precedence(enum shard_token_type type) {
 static int parse_infix_expr(struct parser* p, struct shard_expr* expr, struct shard_expr* left) {
     switch(p->token.type) {
         case SHARD_TOK_ADD:
+            return parse_binop(p, expr, left, SHARD_EXPR_ADD, PREC_ADDITION);
         case SHARD_TOK_SUB:
-            return parse_addition(p, expr, left);
+            return parse_binop(p, expr, left, SHARD_EXPR_SUB, PREC_ADDITION);
+        case SHARD_TOK_MUL:
+            return parse_binop(p, expr, left, SHARD_EXPR_MUL, PREC_MULTIPLICATION);
+        case SHARD_TOK_DIV:
+            return parse_binop(p, expr, left, SHARD_EXPR_DIV, PREC_MULTIPLICATION);
+        case SHARD_TOK_EQ:
+            return parse_binop(p, expr, left, SHARD_EXPR_EQ, PREC_EQUALITY);
+        case SHARD_TOK_NE:
+            return parse_binop(p, expr, left, SHARD_EXPR_NE, PREC_EQUALITY);
+        case SHARD_TOK_LOGIMPL:
+            return parse_binop(p, expr, left, SHARD_EXPR_LOGIMPL, PREC_LOGIMPL);
+        case SHARD_TOK_LOGOR:
+            return parse_binop(p, expr, left, SHARD_EXPR_LOGOR, PREC_LOGOR);
+        case SHARD_TOK_LOGAND:
+            return parse_binop(p, expr, left, SHARD_EXPR_LOGAND, PREC_LOGAND);
+        case SHARD_TOK_MERGE:
+            return parse_binop(p, expr, left, SHARD_EXPR_MERGE, PREC_MERGE);
+        case SHARD_TOK_CONCAT:
+            return parse_binop(p, expr, left, SHARD_EXPR_CONCAT, PREC_CONCATENATION);
+        case SHARD_TOK_PERIOD:
+            return parse_attribute_selection(p, expr, left);
+        case SHARD_TOK_QUESTIONMARK:
+            return parse_attribute_test(p, expr, left);
         default:
             if(!token_terminates_expr(p->token.type))
                 return parse_call(p, expr, left);

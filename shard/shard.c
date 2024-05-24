@@ -14,7 +14,6 @@
 #include <getopt.h>
 #include <libgen.h>
 
-#define _LIBSHARD_INTERNAL
 #include <libshard.h>
 
 #define EITHER(a, b) ((a) ? (a) : (b))
@@ -160,7 +159,7 @@ int main(int argc, char** argv) {
 
     char* path = getenv("SHARD_PATH");
     if(path)
-        dynarr_append(&ctx, &ctx.include_dirs, path);
+        shard_include_dir(&ctx, path);
 
     int ret = EXIT_SUCCESS;
     for(; optind < argc; optind++) {
