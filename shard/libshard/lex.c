@@ -8,6 +8,8 @@
 #include <ctype.h>
 #include <stddef.h>
 
+#define PATH_MAX 4096
+
 #define LOC_FROM_SOURCE(src, w) (           \
     (struct shard_location) {               \
         .src = (src),                       \
@@ -41,10 +43,11 @@ enum path_mode {
     PATH_NONE,
     PATH_INC,
     PATH_REL,
-    PATH_ABS
+    PATH_ABS,
+    PATH_HOME,
 };
 
-static char tmpbuf[BUFSIZ + 1];
+static char tmpbuf[PATH_MAX + 1];
 
 static const unsigned token_widths[] = {
     0,
@@ -130,9 +133,9 @@ static int lex_ident(struct shard_context* ctx, struct shard_source* src, struct
 
     int c, i = 0;
     while(is_ident_char(c = src->getc(src))) {
-        if(i >= BUFSIZ) {
+        if(i >= (int) LEN(tmpbuf)) {
             ERR_TOK(token, src, "identifier too long");
-            return EOVERFLOW;
+            return ENAMETOOLONG;
         }
 
         tmpbuf[i++] = (char) c;
@@ -168,9 +171,9 @@ static int lex_number(struct shard_context* ctx __attribute__((unused)), struct 
     bool floating = false;
     int c, i = 0;
     while(isdigit(c = src->getc(src)) || c == '\'' || c == '.') {
-        if(i >= BUFSIZ) {
+        if(i >= (int) LEN(tmpbuf)) {
             ERR_TOK(token, src, "floating literal too long");
-            return EOVERFLOW;
+            return ENAMETOOLONG;
         }
 
         switch(c) {
@@ -233,6 +236,41 @@ static int lex_string(struct shard_context* ctx, struct shard_source* src, struc
     
     struct shard_string str = {0};
 
+    switch(pmode) {
+        case PATH_NONE:
+        case PATH_ABS:
+            break;
+        case PATH_REL: {
+            if(!ctx->realpath || !ctx->dirname || !src->origin) {
+                ERR_TOK(token, src, "relative paths are disabled");
+                return EINVAL;
+            }
+
+            char* current_path = ctx->malloc(strlen(src->origin) + 1);
+            strcpy(current_path, src->origin);
+            ctx->dirname(current_path);
+
+            if(!ctx->realpath(current_path, tmpbuf)) {
+                ERR_TOK(token, src, "could not resolve relative path");
+                return errno;
+            }
+
+            dynarr_append_many(ctx, &str, tmpbuf, strlen(tmpbuf));
+            dynarr_append(ctx, &str, '/');
+            ctx->free(current_path);
+        } break;
+        case PATH_INC:
+            break;
+        case PATH_HOME:
+            if(!ctx->home_dir) {
+                ERR_TOK(token, src, "no home directory specified; Home paths are disabled");
+                return EINVAL;
+            }
+
+            dynarr_append_many(ctx, &str, ctx->home_dir, strlen(ctx->home_dir));
+            break;
+    }
+
     bool escaped = false;
     int c;
     while(!is_end_quote(c = src->getc(src)) || escaped) {
@@ -254,19 +292,8 @@ static int lex_string(struct shard_context* ctx, struct shard_source* src, struc
         }
     }
 
-    switch(pmode) {
-        case PATH_NONE:
-        case PATH_ABS:
-            break;
-        case PATH_REL:
-            // TODO: relative to absolute path
-            break;
-        case PATH_INC:
-            // TODO: include path to absolute path
-            break;
-    }
-
     dynarr_append(ctx, &str, '\0');
+
     dynarr_append(ctx, &ctx->string_literals, str.items);
 
     unsigned end = src->tell(src);
@@ -386,6 +413,8 @@ repeat:
                 return lex_string(ctx, src, token, isspace, PATH_ABS);
             }
             break;
+        case '~':
+            return lex_string(ctx, src, token, isspace, PATH_HOME);
         case ':':
             KEYWORD_TOK(token, src, COLON);
             break;

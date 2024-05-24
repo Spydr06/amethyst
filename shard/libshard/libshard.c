@@ -11,6 +11,7 @@ int shard_init(struct shard_context* ctx) {
     ctx->ast = arena_init(ctx);
     ctx->errors = (struct shard_errors){0};
     ctx->string_literals = (struct shard_string_list){0};
+    ctx->include_dirs = (struct shard_string_list){0};
     return 0;
 }
 
@@ -26,6 +27,8 @@ void shard_deinit(struct shard_context* ctx) {
     for(size_t i = 0; i < ctx->string_literals.count; i++)
         ctx->free(ctx->string_literals.items[i]);
     dynarr_free(ctx, &ctx->string_literals);
+
+    dynarr_free(ctx, &ctx->include_dirs);
 }
 
 int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard_value* result) {

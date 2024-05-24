@@ -1,10 +1,20 @@
+#if __STDC_VERSION__ >= 199901L
+#define _XOPEN_SOURCE 600
+#else
+#define _XOPEN_SOURCE 500
+#endif /* __STDC_VERSION__ */
+
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
-#include <getopt.h>
 #include <assert.h>
 
+#include <unistd.h>
+#include <getopt.h>
+#include <libgen.h>
+
+#define _LIBSHARD_INTERNAL
 #include <libshard.h>
 
 #define EITHER(a, b) ((a) ? (a) : (b))
@@ -136,13 +146,21 @@ int main(int argc, char** argv) {
         .malloc = malloc,
         .realloc = realloc,
         .free = free,
+        .realpath = realpath,
+        .dirname = dirname,
+        .access = access,
+        .home_dir = getenv("HOME"),
     };
-
+    
     int err = shard_init(&ctx);
     if(err) {
         fprintf(stderr, "%s: error initializing libshard: %s\n", argv[0], strerror(err));
         exit(EXIT_FAILURE);
     }
+
+    char* path = getenv("SHARD_PATH");
+    if(path)
+        dynarr_append(&ctx, &ctx.include_dirs, path);
 
     int ret = EXIT_SUCCESS;
     for(; optind < argc; optind++) {

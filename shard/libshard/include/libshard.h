@@ -47,6 +47,11 @@ struct shard_context {
     void* (*malloc)(size_t size);
     void* (*realloc)(void* ptr, size_t new_size);
     void (*free)(void* ptr);
+    char* (*realpath)(const char* restrict path, char* restrict resolved_path);
+    char* (*dirname)(char* path);
+    int (*access)(const char* pathname, int mode);
+
+    const char* home_dir;
 
     struct shard_arena* idents;
     struct shard_arena* ast;
@@ -54,6 +59,7 @@ struct shard_context {
     struct shard_errors errors;
 
     struct shard_string_list string_literals;
+    struct shard_string_list include_dirs;
 };
 
 int shard_init(struct shard_context* context);
