@@ -39,6 +39,7 @@ struct shard_error {
 shard_dynarr(shard_errors, struct shard_error);
 shard_dynarr(shard_string, char);
 shard_dynarr(shard_string_list, char*);
+shard_dynarr(shard_expr_list, struct shard_expr);
 
 struct shard_error* shard_get_errors(struct shard_context* context);
 
@@ -88,7 +89,8 @@ enum shard_token_type {
     // primitives
     SHARD_TOK_IDENT,
     SHARD_TOK_STRING,
-    SHARD_TOK_NUMBER,
+    SHARD_TOK_INT,
+    SHARD_TOK_FLOAT,
 
     // symbols
     SHARD_TOK_LPAREN, // (
@@ -112,6 +114,7 @@ enum shard_token_type {
     SHARD_TOK_SUB, // -
 
     // keywords
+    SHARD_TOK_NULL,
     SHARD_TOK_TRUE,
     SHARD_TOK_FALSE,
     SHARD_TOK_REC,
@@ -134,7 +137,8 @@ struct shard_token {
 
     union shard_token_value {
         char* string;
-        double number;
+        double floating;
+        int64_t integer;
     } value;
 };
 
@@ -143,8 +147,10 @@ int shard_lex(struct shard_context* ctx, struct shard_source* src, struct shard_
 enum shard_expr_type {
     SHARD_EXPR_IDENT,
 
-    SHARD_EXPR_NUMBER,
+    SHARD_EXPR_INT,
+    SHARD_EXPR_FLOAT,
     SHARD_EXPR_STRING,
+    SHARD_EXPR_NULL,
     SHARD_EXPR_TRUE,
     SHARD_EXPR_FALSE,
 
@@ -155,7 +161,10 @@ enum shard_expr_type {
     SHARD_EXPR_ADD,
     SHARD_EXPR_SUB,
 
+    SHARD_EXPR_CALL,
     SHARD_EXPR_WITH,
+
+    SHARD_EXPR_LIST,
 };
 
 struct shard_expr {
@@ -165,7 +174,8 @@ struct shard_expr {
     union {
         char* string;
         const char* ident;
-        double number;
+        double floating;
+        int64_t integer;
 
         struct {
             struct shard_expr* lhs;
@@ -181,6 +191,10 @@ struct shard_expr {
             struct shard_expr* if_branch;
             struct shard_expr* else_branch;
         } ternary;
+
+        struct {
+            struct shard_expr_list elems;
+        } list;
     };
 };
 
@@ -195,7 +209,7 @@ struct shard_value {
 const char* shard_token_type_to_str(enum shard_token_type token_type);
 
 void shard_dump_token(char* dest, size_t n, const struct shard_token* tok);
-size_t shard_dump_expr(char* dest, size_t n, const struct shard_expr* expr);
+void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const struct shard_expr* expr);
 
 #ifdef _LIBSHARD_INTERNAL
 
@@ -210,6 +224,21 @@ size_t shard_dump_expr(char* dest, size_t n, const struct shard_expr* expr);
     }                                                                                           \
     (arr)->items[(arr)->count++] = (item);                                                      \
 } while(0)
+
+#define dynarr_append_many(ctx, arr, new_items, new_items_count) do {                           \
+        if ((arr)->count + (new_items_count) > (arr)->capacity) {                                 \
+            if ((arr)->capacity == 0) {                                                          \
+                (arr)->capacity = DYNARR_INIT_CAPACITY;                                      \
+            }                                                                                   \
+            while ((arr)->count + (new_items_count) > (arr)->capacity) {                          \
+                (arr)->capacity *= 2;                                                            \
+            }                                                                                   \
+            (arr)->items = (ctx)->realloc((arr)->items, (arr)->capacity*sizeof(*(arr)->items));     \
+            assert((arr)->items != NULL && "Buy more RAM lol");                                 \
+        }                                                                                       \
+        memcpy((arr)->items + (arr)->count, (new_items), (new_items_count)*sizeof(*(arr)->items)); \
+        (arr)->count += (new_items_count);                                                       \
+    } while (0)
 
 #define dynarr_free(ctx, arr) do {      \
     if((arr)->items) {                  \

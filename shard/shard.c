@@ -70,7 +70,7 @@ static void print_error(struct shard_error* error) {
     fseek(fd, line_end, SEEK_SET);
 
     char c;
-    while((c = fgetc(fd)) != '\n' && c != EOF)
+    while(((c = fgetc(fd)) != '\n') && c != EOF)
         line_end++;
 
     fseek(fd, line_start, SEEK_SET);

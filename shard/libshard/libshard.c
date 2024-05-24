@@ -34,9 +34,13 @@ int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard
     if(err)
         goto finish;
 
-    char buf[BUFSIZ];
-    shard_dump_expr(buf, sizeof(buf), &expr);
-    printf("%s\n", buf);
+    struct shard_string str = {0};
+    shard_dump_expr(ctx, &str, &expr);
+    dynarr_append(ctx, &str, '\0');
+
+    printf("%s\n", str.items);
+
+    dynarr_free(ctx, &str);
 
     shard_free_expr(ctx, &expr);
 finish:
@@ -56,6 +60,9 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
             ctx->free(expr->string);
             break;
         case SHARD_EXPR_WITH:
+        case SHARD_EXPR_ADD:
+        case SHARD_EXPR_SUB:
+        case SHARD_EXPR_CALL:
             shard_free_expr(ctx, expr->binop.lhs);
             shard_free_expr(ctx, expr->binop.rhs);
             break;
@@ -68,6 +75,11 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
             shard_free_expr(ctx, expr->ternary.if_branch);
             shard_free_expr(ctx, expr->ternary.else_branch);
             break;
+        case SHARD_EXPR_LIST:
+            for(size_t i = 0; i < expr->list.elems.count; i++)
+                shard_free_expr(ctx, &expr->list.elems.items[i]);
+            dynarr_free(ctx, &expr->list.elems);
+            break;
         default:
     }
 }
@@ -78,7 +90,8 @@ static const char* token_type_strings[_SHARD_TOK_LEN] = {
     E(EOF) = "<end of file>",
     E(IDENT) = "identifier",
     E(STRING) = "string literal",
-    E(NUMBER) = "number literal",
+    E(INT) = "integer literal",
+    E(FLOAT) = "floating literal",
     E(LPAREN) = "(",
     E(RPAREN) = ")",
     E(LBRACKET) = "[",
@@ -98,6 +111,7 @@ static const char* token_type_strings[_SHARD_TOK_LEN] = {
     E(AT) = "@",
     E(ADD) = "+",
     E(SUB) = "-",
+    E(NULL) = "null",
     E(TRUE) = "true",
     E(FALSE) = "false",
     E(REC) = "rec",
@@ -128,8 +142,11 @@ void shard_dump_token(char* dest, size_t n, const struct shard_token* tok) {
         case SHARD_TOK_STRING:
             snprintf(dest, n, "\"%s\"", tok->value.string);
             break;
-        case SHARD_TOK_NUMBER:
-            snprintf(dest, n, "%f", tok->value.number);
+        case SHARD_TOK_FLOAT:
+            snprintf(dest, n, "%f", tok->value.floating);
+            break;
+        case SHARD_TOK_INT:
+            snprintf(dest, n, "%ld", tok->value.integer);
             break;
         default:
             if(token_type_strings[tok->type])
@@ -139,50 +156,85 @@ void shard_dump_token(char* dest, size_t n, const struct shard_token* tok) {
     }
 }
 
-size_t shard_dump_expr(char* dest, size_t n, const struct shard_expr* expr) {
-    size_t off = 0;
+void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const struct shard_expr* expr) {
+    dynarr_append(ctx, str, '(');
+    
     switch(expr->type) {
+        case SHARD_EXPR_NULL:
+            dynarr_append_many(ctx, str, "null", 4);
+            break;
         case SHARD_EXPR_TRUE:
-            return shard_stpncpy(dest, "true", n) - dest;
+            dynarr_append_many(ctx, str, "true", 4);
             break;
         case SHARD_EXPR_FALSE:
-            return shard_stpncpy(dest, "false", n) - dest;
+            dynarr_append_many(ctx, str, "false", 5);
+            break;
         case SHARD_EXPR_IDENT:
-            return shard_stpncpy(dest, expr->ident, n) - dest;
+            dynarr_append_many(ctx, str, expr->string, strlen(expr->string));
+            break;
         case SHARD_EXPR_STRING:
-            snprintf(dest, n, "\"%s\"", expr->string);
-            return strlen(dest);
-        case SHARD_EXPR_NUMBER:
-            snprintf(dest, n, "%f", expr->number);
-            return strlen(dest);
+            dynarr_append(ctx, str, '"');
+            dynarr_append_many(ctx, str, expr->string, strlen(expr->string));
+            dynarr_append(ctx, str, '"');
+            break;
+        case SHARD_EXPR_FLOAT: {
+            char buf[32];
+            snprintf(buf, 32, "%f", expr->floating);
+            dynarr_append_many(ctx, str, buf, strlen(buf));
+            break;
+        }
+        case SHARD_EXPR_INT: {
+            char buf[32];
+            snprintf(buf, 32, "%ld", expr->integer);
+            dynarr_append_many(ctx, str, buf, strlen(buf));
+            break;
+        }
         case SHARD_EXPR_WITH:
-            off = shard_stpncpy(dest, "with ", n) - dest;
-            off += shard_dump_expr(dest + off, n - off, expr->binop.lhs);
-            off = shard_stpncpy(dest + off, "; ", n - off) - dest;
-            off += shard_dump_expr(dest + off, n - off, expr->binop.rhs);
-            return off;
+            dynarr_append_many(ctx, str, "with ", 5);
+            shard_dump_expr(ctx, str, expr->binop.lhs);
+            dynarr_append_many(ctx, str, "; ", 2);
+            shard_dump_expr(ctx, str, expr->binop.rhs);
+            break;
         case SHARD_EXPR_NEGATE:
-            off = shard_stpncpy(dest, "-", n) - dest;
-            return off + shard_dump_expr(dest + off, n - off, expr->unaryop.expr);
+            dynarr_append(ctx, str, '-');
+            shard_dump_expr(ctx, str, expr->unaryop.expr);
+            break;
         case SHARD_EXPR_NOT:
-            off = shard_stpncpy(dest, "!", n) - dest;
-            return off + shard_dump_expr(dest + off, n - off, expr->unaryop.expr);
+            dynarr_append(ctx, str, '-');
+            shard_dump_expr(ctx, str, expr->unaryop.expr);
+            break;
         case SHARD_EXPR_TERNARY:
-            off = shard_stpncpy(dest, "if ", n) - dest;
-            off += shard_dump_expr(dest + off, n - off, expr->ternary.cond);
-            off = shard_stpncpy(dest + off, " then ", n - off) - dest;
-            off += shard_dump_expr(dest + off, n - off, expr->ternary.if_branch);
-            off = shard_stpncpy(dest + off, " else ", n - off) - dest;
-            off += shard_dump_expr(dest + off, n - off, expr->ternary.else_branch);
-            return off;
+            dynarr_append_many(ctx, str, "if ", 3);
+            shard_dump_expr(ctx, str, expr->ternary.cond);
+            dynarr_append_many(ctx, str, " then ", 6);
+            shard_dump_expr(ctx, str, expr->ternary.if_branch);
+            dynarr_append_many(ctx, str, " else ", 6);
+            shard_dump_expr(ctx, str, expr->ternary.else_branch);
+            break;
         case SHARD_EXPR_ADD:
         case SHARD_EXPR_SUB:
-            off += shard_dump_expr(dest, n, expr->binop.lhs);
-            off = shard_stpncpy(dest + off, expr->type == SHARD_EXPR_ADD ? " + " : " - ", n - off) - dest;
-            off += shard_dump_expr(dest + off, n - off, expr->binop.rhs);
-            return off;
+            shard_dump_expr(ctx, str, expr->binop.lhs);
+            dynarr_append_many(ctx, str, expr->type == SHARD_EXPR_ADD ? " + " : " - ", 3);
+            shard_dump_expr(ctx, str, expr->binop.rhs);
+            break;
+        case SHARD_EXPR_CALL:
+            shard_dump_expr(ctx, str, expr->binop.lhs);
+            dynarr_append(ctx, str, ' ');
+            shard_dump_expr(ctx, str, expr->binop.rhs);
+            break;
+        case SHARD_EXPR_LIST:
+            dynarr_append(ctx, str, '[');
+            dynarr_append(ctx, str, ' ');
+            for(size_t i = 0; i < expr->list.elems.count; i++) {
+                shard_dump_expr(ctx, str, &expr->list.elems.items[i]);
+                dynarr_append(ctx, str, ' ');
+            }
+            dynarr_append(ctx, str, ']');
+            break;
         default:
-            return strncpy(dest, "<unknown>", n) - dest;
+            dynarr_append_many(ctx, str, "<unknown>", 9);
     }
+
+    dynarr_append(ctx, str, ')');
 }
 

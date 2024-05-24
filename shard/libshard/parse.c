@@ -11,6 +11,8 @@ enum precedence {
     PREC_ADDITION,
     PREC_MULTIPLICATION,
     PREC_UNARY,
+    PREC_CALL,
+    PREC_LIST,
     PREC_HIGHEST
 };
 
@@ -19,42 +21,6 @@ struct parser {
     struct shard_source* src;
     struct shard_token token;
 };
-
-static int error(struct shard_context* ctx, struct shard_location loc, char* msg) {
-    dynarr_append(ctx, &ctx->errors, ((struct shard_error){
-        .err = msg,
-        .heap = false,
-        .loc = loc,
-        ._errno = EINVAL
-    }));
-
-    return EINVAL;
-}
-
-static int errorf(struct shard_context* ctx, struct shard_location loc, const char* fmt, ...) {
-    char* buffer = ctx->malloc(256);
-    
-    va_list ap;
-    va_start(ap, fmt);
-    vsnprintf(buffer, 1024, fmt, ap);
-    va_end(ap);
-
-    dynarr_append(ctx, &ctx->errors, ((struct shard_error){
-        .err = buffer,
-        .heap = true,
-        .loc = loc,
-        ._errno = EINVAL
-    }));
-
-    return EINVAL;
-}
-
-static inline int any_err(int* errors, size_t len) {
-    for(register size_t i = 0; i < len; i++)
-         if(errors[i])
-             return errors[i];
-    return 0;
-}
 
 static int advance(struct parser* p) {
     int err = shard_lex(p->ctx, p->src, &p->token);
@@ -69,12 +35,40 @@ static int advance(struct parser* p) {
     return err;
 }
 
+static int errorf(struct parser* p, const char* fmt, ...) {
+    char* buffer = p->ctx->malloc(256);
+    
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buffer, 1024, fmt, ap);
+    va_end(ap);
+
+    dynarr_append(p->ctx, &p->ctx->errors, ((struct shard_error){
+        .err = buffer,
+        .heap = true,
+        .loc = p->token.location,
+        ._errno = EINVAL
+    }));
+
+    advance(p);
+    return EINVAL;
+}
+
+static inline int any_err(int* errors, size_t len) {
+    for(register size_t i = 0; i < len; i++)
+         if(errors[i])
+             return errors[i];
+    return 0;
+}
+
 static int consume(struct parser* p, enum shard_token_type token_type) {
     if(p->token.type == token_type)
         return advance(p);
 
+    if(p->token.type == SHARD_TOK_ERR)
+        return EINVAL;
     return errorf(
-        p->ctx, p->token.location,
+        p,
         "unexpected token `%s`, expect token `%s`",
         shard_token_type_to_str(p->token.type),
         shard_token_type_to_str(token_type)
@@ -106,6 +100,9 @@ static int parse_escape_code(struct parser* p, const char* ptr, char* c) {
         case '\'':
             *c = '\'';
             break;
+        case '"':
+            *c = '"';
+            break;
         case 'f':
             *c = '\f';
             break;
@@ -125,7 +122,7 @@ static int parse_escape_code(struct parser* p, const char* ptr, char* c) {
             *c = '\r';
             break;
         default:
-            return errorf(p->ctx, p->token.location, "invalid escape code: `\\%c`", *ptr);
+            return errorf(p, "invalid escape code: `\\%c`", *ptr ? *ptr : '0');
     }
     return 0;
 }
@@ -204,6 +201,28 @@ static int parse_compound(struct parser* p, struct shard_expr* expr) {
     return any_err(err, LEN(err));
 }
 
+static int parse_list(struct parser* p, struct shard_expr* expr) {
+    expr->type = SHARD_EXPR_LIST;
+    expr->loc = p->token.location;
+    expr->list.elems = (struct shard_expr_list){0};
+
+    int err = advance(p);
+    
+    struct shard_expr elem;
+    while(p->token.type != SHARD_TOK_RBRACKET) {
+        if(p->token.type == SHARD_TOK_EOF)
+            return errorf(p, "unexpected end of file, expect expression or `]`");
+
+        int err2 = parse_expr(p, &elem, PREC_LIST);
+        if(err2)
+            err = err2;
+        dynarr_append(p->ctx, &expr->list.elems, elem);
+    }
+
+    int err3 = advance(p);
+    return err ? err : err3;
+}
+
 static int parse_ternary(struct parser* p, struct shard_expr* expr) {
     expr->type = SHARD_EXPR_TERNARY;
     expr->loc = p->token.location;
@@ -226,11 +245,31 @@ static int parse_ternary(struct parser* p, struct shard_expr* expr) {
 
 static int parse_prefix_expr(struct parser* p, struct shard_expr* expr) {
     switch(p->token.type) {
-        case SHARD_TOK_NUMBER:
+        case SHARD_TOK_IDENT:
             *expr = (struct shard_expr) {
-                .type = SHARD_EXPR_NUMBER,
+                .type = SHARD_EXPR_IDENT,
+                    .loc = p->token.location,
+                    .string = p->token.value.string
+            };
+            return advance(p);
+        case SHARD_TOK_INT:
+            *expr = (struct shard_expr) {
+                .type = SHARD_EXPR_INT,
                 .loc = p->token.location,
-                .number = p->token.value.number
+                .floating = p->token.value.floating
+            };
+            return advance(p);
+        case SHARD_TOK_FLOAT:
+            *expr = (struct shard_expr) {
+                .type = SHARD_EXPR_FLOAT,
+                .loc = p->token.location,
+                .floating = p->token.value.floating
+            };
+            return advance(p);
+        case SHARD_TOK_NULL:
+            *expr = (struct shard_expr) {
+                .type = SHARD_EXPR_NULL,
+                .loc = p->token.location,
             };
             return advance(p);
         case SHARD_TOK_TRUE:
@@ -255,12 +294,17 @@ static int parse_prefix_expr(struct parser* p, struct shard_expr* expr) {
             return parse_unary_op(p, expr, SHARD_EXPR_NEGATE);
         case SHARD_TOK_LPAREN:
             return parse_compound(p, expr);
+        case SHARD_TOK_LBRACKET:
+            return parse_list(p, expr);
         case SHARD_TOK_IF:
             return parse_ternary(p, expr);
         default: {
+            if(p->token.type == SHARD_TOK_ERR)
+                return EINVAL;
+
             static char buf[1024];
             shard_dump_token(buf, sizeof(buf), &p->token);
-            return errorf(p->ctx, p->token.location, "unexpected token `%s`, expect expression", buf);
+            return errorf(p, "unexpected token `%s`, expect expression", buf);
         }
     }
 
@@ -282,13 +326,39 @@ static int parse_addition(struct parser* p, struct shard_expr* expr, struct shar
     return any_err(err, LEN(err));
 }
 
+static int parse_call(struct parser* p, struct shard_expr* expr, struct shard_expr* left) {
+    expr->type = SHARD_EXPR_CALL;
+    expr->binop.lhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->binop.rhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+
+    *expr->binop.lhs = *left;
+
+    return parse_expr(p, expr->binop.rhs, PREC_CALL);
+}
+
+static inline bool token_terminates_expr(enum shard_token_type type) {
+    switch(type) {
+        case SHARD_TOK_RPAREN:
+        case SHARD_TOK_RBRACE:
+        case SHARD_TOK_RBRACKET:
+        case SHARD_TOK_SEMICOLON:
+        case SHARD_TOK_COLON:
+        case SHARD_TOK_EOF:
+        case SHARD_TOK_ELSE:
+        case SHARD_TOK_THEN:
+            return true;
+        default:
+            return false;
+    }
+}
+
 static enum precedence get_precedence(enum shard_token_type type) {
     switch(type) {
         case SHARD_TOK_ADD:
         case SHARD_TOK_SUB:
             return PREC_ADDITION;
         default:
-            return PREC_LOWEST;
+            return token_terminates_expr(type) ? PREC_LOWEST : PREC_CALL;
     }
 }
 
@@ -297,11 +367,17 @@ static int parse_infix_expr(struct parser* p, struct shard_expr* expr, struct sh
         case SHARD_TOK_ADD:
         case SHARD_TOK_SUB:
             return parse_addition(p, expr, left);
-        default: {
-            static char buf[1024];
-            shard_dump_token(buf, sizeof(buf), &p->token);
-            return errorf(p->ctx, p->token.location, "unexpected token `%s`, expect infix expression", buf);
-        }
+        default:
+            if(!token_terminates_expr(p->token.type))
+                return parse_call(p, expr, left);
+            else {
+                if(p->token.type == SHARD_TOK_ERR)
+                    return EINVAL;
+
+                static char buf[1024];
+                shard_dump_token(buf, sizeof(buf), &p->token);
+                return errorf(p, "unexpected token `%s`, expect infix expression", buf);
+            }
     }
 }
 

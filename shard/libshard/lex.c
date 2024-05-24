@@ -51,6 +51,7 @@ static const unsigned token_widths[] = {
     0,
     0,
     0,
+    0,
     1,
     1,
     1,
@@ -70,6 +71,7 @@ static const unsigned token_widths[] = {
     1,
     1,
     1,
+    3,
     4,
     5,
     3,
@@ -89,6 +91,7 @@ static const struct {
     const char* keyword;
     enum shard_token_type type;
 } keywords[] = {
+    {"null", SHARD_TOK_NULL},
     {"true", SHARD_TOK_TRUE},
     {"false", SHARD_TOK_FALSE},
     {"rec", SHARD_TOK_REC},
@@ -166,7 +169,7 @@ static int lex_number(struct shard_context* ctx __attribute__((unused)), struct 
     int c, i = 0;
     while(isdigit(c = src->getc(src)) || c == '\'' || c == '.') {
         if(i >= BUFSIZ) {
-            ERR_TOK(token, src, "number literal too long");
+            ERR_TOK(token, src, "floating literal too long");
             return EOVERFLOW;
         }
 
@@ -175,7 +178,7 @@ static int lex_number(struct shard_context* ctx __attribute__((unused)), struct 
                 break;
             case '.':
                 if(floating) {
-                    ERR_TOK(token, src, "more than one period (`.`) in number literal");
+                    ERR_TOK(token, src, "more than one period (`.`) in floating literal");
                     return EINVAL;
                 }
                 floating = true;
@@ -190,13 +193,6 @@ static int lex_number(struct shard_context* ctx __attribute__((unused)), struct 
     
     unsigned end = src->tell(src);
 
-    errno = 0;
-    double d = strtod(tmpbuf, NULL);
-    if(errno) {
-        ERR_TOK(token, src, strerror(errno));
-        return errno;
-    }
-
     struct shard_location loc = {
         .src = src,
         .line = src->line,
@@ -204,16 +200,28 @@ static int lex_number(struct shard_context* ctx __attribute__((unused)), struct 
         .width = end - start
     };
 
-    init_token(token, SHARD_TOK_NUMBER, loc, (union shard_token_value){.number = d});
+    errno = 0;
+    if(floating) {
+        double d = strtod(tmpbuf, NULL);
+        if(errno) {
+            ERR_TOK(token, src, strerror(errno));
+            return errno;
+        }
+        init_token(token, SHARD_TOK_FLOAT, loc, (union shard_token_value){.floating = d});
+    }
+    else {
+        int64_t i = (int64_t) strtoull(tmpbuf, NULL, 10);
+        if(errno) {
+            ERR_TOK(token, src, strerror(errno));
+            return errno;
+        }
+        init_token(token, SHARD_TOK_INT, loc, (union shard_token_value){.integer = i});
+    }
     return 0;
 }
 
 static int is_double_quote(int c) {
     return c == '"';
-}
-
-static int is_single_quote(int c) {
-    return c == '\'';
 }
 
 static int is_gt_sign(int c) {
@@ -225,14 +233,19 @@ static int lex_string(struct shard_context* ctx, struct shard_source* src, struc
     
     struct shard_string str = {0};
 
-    int last = 0, c;
-    while(!is_end_quote(c = src->getc(src)) || last == '\\') {
+    bool escaped = false;
+    int c;
+    while(!is_end_quote(c = src->getc(src)) || escaped) {
         dynarr_append(ctx, &str, c);
-        last = c;
 
+        escaped = false;
         switch(c) {
+        case '\\':
+            escaped = true;
+            break;
         case '\n':
             src->line++;
+            ERR_TOK(token, src, "unterminated string literal before newline");
             break;
         case EOF:
             dynarr_free(ctx, &str);
@@ -268,6 +281,61 @@ static int lex_string(struct shard_context* ctx, struct shard_source* src, struc
     return 0;
 }
 
+static int lex_multiline_string(struct shard_context* ctx, struct shard_source* src, struct shard_token* token) {
+    unsigned start = src->tell(src) - 1;
+
+    struct shard_string str = {0};
+
+    bool escaped[3] = {0};
+    int c[2] = {0, 0};
+    for(;;) {
+        c[1] = c[0];
+        c[0] = src->getc(src);
+
+        escaped[2] = escaped[1];
+        escaped[1] = escaped[0];
+        escaped[0] = false;
+        
+        switch(c[0]) {
+            case '\'':
+                if(escaped[1] || escaped[2])
+                    dynarr_append(ctx, &str, '\'');
+                else if(c[1] == '\'')
+                    goto break_loop;
+                break;
+            case '\n':
+                dynarr_append(ctx, &str, '\n');
+                break;
+            case '\\':
+                escaped[0] = true;
+                dynarr_append(ctx, &str, '\\');
+                break;
+            case EOF:
+                dynarr_free(ctx, &str);
+                ERR_TOK(token, src, "unterminated multiline string literal, expect `''`");
+                return EINVAL;
+            default:
+                dynarr_append(ctx, &str, c[0]);
+        }
+    }
+
+break_loop:
+
+    dynarr_append(ctx, &str, '\0');
+    dynarr_append(ctx, &ctx->string_literals, str.items);
+
+    unsigned end = src->tell(src);
+    struct shard_location loc = {
+        .src = src,
+        .line = src->line,
+        .offset = start - 1,
+        .width = end - start + 1
+    };
+
+    STRING_TOK(token, src, str.items, loc);
+    return 0;
+}
+
 int shard_lex(struct shard_context* ctx, struct shard_source* src, struct shard_token* token) {
     int c;
 
@@ -282,6 +350,10 @@ repeat:
         case EOF:
             EOF_TOK(token, src);
             break;
+        case '#':
+            while((c = src->getc(src)) != '\n' && c != EOF);
+            src->line++;
+            goto repeat;
         case '(':
             KEYWORD_TOK(token, src, LPAREN);
             break;
@@ -295,51 +367,25 @@ repeat:
             KEYWORD_TOK(token, src, RBRACKET);
             break;
         case '{':
-            if((c = src->getc(src)) == '-') {
-                for(;;) {
-                    while((c = src->getc(src)) != '-') {
-                        switch(c) {
-                            case '\n':
-                                src->line++;
-                                break;
-                            case EOF:
-                                ERR_TOK(token, src, "unterminated block comment, expect `-}`");
-                                return EOVERFLOW;
-                        }
-                    }
-                    if((c = src->getc(src)) == '}')
-                        goto repeat;
-                }
-            }
-            else {
-                src->ungetc(c, src);
-                KEYWORD_TOK(token, src, LBRACE);
-            }
+            KEYWORD_TOK(token, src, LBRACE);
             break;
         case '}':
             KEYWORD_TOK(token, src, RBRACE);
             break;
         case '+':
-            if((c = src->getc(src)) == '+')
+            KEYWORD_TOK(token, src, ADD);
+            break;
+        case '-':
+            KEYWORD_TOK(token, src, SUB);
+            break;
+        case '/':
+            if((c = src->getc(src)) == '/')
                 KEYWORD_TOK(token, src, MERGE);
             else {
                 src->ungetc(c, src);
-                KEYWORD_TOK(token, src, ADD);
+                return lex_string(ctx, src, token, isspace, PATH_ABS);
             }
             break;
-        case '-':
-            if((c = src->getc(src)) == '-') {
-                while((c = src->getc(src)) != '\n' && c != EOF);
-                src->line++;
-                goto repeat;
-            }
-            else {
-                src->ungetc(c, src);
-                KEYWORD_TOK(token, src, SUB);
-            }
-            break;
-        case '/':
-            return lex_string(ctx, src, token, isspace, PATH_ABS);
         case ':':
             KEYWORD_TOK(token, src, COLON);
             break;
@@ -379,7 +425,12 @@ repeat:
             }
             break;
         case '\'':
-            return lex_string(ctx, src, token, is_single_quote, PATH_NONE);
+            if((c = src->getc(src)) == '\'')
+                return lex_multiline_string(ctx, src, token);
+            else {
+                ERR_TOK(token, src, "unexpected character, expect second `'` for multiline string");
+                return EINVAL;
+            }
         case '\"':
             return lex_string(ctx, src, token, is_double_quote, PATH_NONE);
         case '<':
