@@ -24,8 +24,8 @@
         (union shard_token_value){.string = NULL}   \
     ))
 
-#define STRING_TOK(tok, src, str, loc) (            \
-    init_token((tok), SHARD_TOK_STRING,             \
+#define STRING_TOK(tok, src, type, str, loc) (      \
+    init_token((tok), (type),                       \
         (loc),                                      \
         (union shard_token_value){.string = (str)}  \
     ))
@@ -50,6 +50,7 @@ enum path_mode {
 static char tmpbuf[PATH_MAX + 1];
 
 static const unsigned token_widths[] = {
+    0,
     0,
     0,
     0,
@@ -314,7 +315,7 @@ static int lex_string(struct shard_context* ctx, struct shard_source* src, struc
         .width = end - start + 1
     };
 
-    STRING_TOK(token, src, str.items, loc);
+    STRING_TOK(token, src, pmode == PATH_NONE ? SHARD_TOK_STRING : SHARD_TOK_PATH, str.items, loc);
     return 0;
 }
 
@@ -369,7 +370,7 @@ break_loop:
         .width = end - start + 1
     };
 
-    STRING_TOK(token, src, str.items, loc);
+    STRING_TOK(token, src, SHARD_TOK_STRING, str.items, loc);
     return 0;
 }
 

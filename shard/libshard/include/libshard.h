@@ -22,7 +22,9 @@ struct shard_arena;
 struct shard_source;
 struct shard_token;
 struct shard_expr;
+struct shard_pattern;
 struct shard_value;
+struct shard_list;
 
 struct shard_location {
     unsigned line, width, offset;
@@ -97,6 +99,7 @@ enum shard_token_type {
     // primitives
     SHARD_TOK_IDENT,
     SHARD_TOK_STRING,
+    SHARD_TOK_PATH,
     SHARD_TOK_INT,
     SHARD_TOK_FLOAT,
 
@@ -168,6 +171,7 @@ enum shard_expr_type {
     SHARD_EXPR_INT,
     SHARD_EXPR_FLOAT,
     SHARD_EXPR_STRING,
+    SHARD_EXPR_PATH,
     SHARD_EXPR_NULL,
     SHARD_EXPR_TRUE,
     SHARD_EXPR_FALSE,
@@ -249,13 +253,68 @@ struct shard_expr {
     };
 };
 
+enum shard_pattern_type {
+    SHARD_PAT_IDENT,
+    SHARD_PAT_SET
+};
+
+struct shard_pattern {
+    enum shard_pattern_type type;
+
+    union {
+        shard_ident_t ident;
+
+    };
+};
+
 int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr);
 
 void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr);
 
-struct shard_value {
-    int a;
+enum shard_value_type {
+    SHARD_VAL_NULL,
+    SHARD_VAL_BOOL,
+    SHARD_VAL_INT,
+    SHARD_VAL_FLOAT,
+    SHARD_VAL_STRING,
+    SHARD_VAL_PATH,
+    SHARD_VAL_LIST,
+    SHARD_VAL_SET,
+    SHARD_VAL_FUNCTION
 };
+
+struct shard_value {
+    enum shard_value_type type;
+
+    union {
+        bool boolean;
+        int64_t integer;
+        double floating;
+        const char* string;
+        const char* path;
+
+        struct {
+            struct shard_list* head;
+        } list;
+
+        struct {
+            unsigned set_size;
+            // todo
+        } set;
+
+        struct {
+            struct shard_pattern* arg;
+            struct shard_expr* body;
+        } function;
+    };
+};
+
+struct shard_list {
+    struct shard_value* value;
+    struct shard_list* next;
+};
+
+void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* value);
 
 const char* shard_token_type_to_str(enum shard_token_type token_type);
 

@@ -126,6 +126,7 @@ void shard_attr_path_init(struct shard_context* ctx, struct shard_attr_path* pat
 static const char* token_type_strings[_SHARD_TOK_LEN] = {
     E(EOF) = "<end of file>",
     E(IDENT) = "identifier",
+    E(PATH) = "path literal",
     E(STRING) = "string literal",
     E(INT) = "integer literal",
     E(FLOAT) = "floating literal",
@@ -189,6 +190,9 @@ void shard_dump_token(char* dest, size_t n, const struct shard_token* tok) {
         case SHARD_TOK_STRING:
             snprintf(dest, n, "\"%s\"", tok->value.string);
             break;
+        case SHARD_TOK_PATH:
+            strncpy(dest, tok->value.string, n);
+            break;
         case SHARD_TOK_FLOAT:
             snprintf(dest, n, "%f", tok->value.floating);
             break;
@@ -229,6 +233,9 @@ void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const 
             dynarr_append(ctx, str, '"');
             dynarr_append_many(ctx, str, expr->string, strlen(expr->string));
             dynarr_append(ctx, str, '"');
+            break;
+        case SHARD_EXPR_PATH:
+            dynarr_append_many(ctx, str, expr->string, strlen(expr->string));
             break;
         case SHARD_EXPR_FLOAT: {
             char buf[32];

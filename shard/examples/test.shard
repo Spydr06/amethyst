@@ -1,1 +1,1 @@
-"foo" . bar or 69 ? foo.bar.baz
+"foo" . bar or ./foo ? foo.bar.baz

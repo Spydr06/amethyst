@@ -137,7 +137,7 @@ static int parse_escape_code(struct parser* p, const char* ptr, char* c) {
     return 0;
 }
 
-static int parse_string_lit(struct parser* p, struct shard_expr* expr) {
+static int parse_string_lit(struct parser* p, struct shard_expr* expr, enum shard_expr_type type) {
     struct shard_string str = {0};
 
     int err = 0;
@@ -163,7 +163,7 @@ static int parse_string_lit(struct parser* p, struct shard_expr* expr) {
     dynarr_append(p->ctx, &str, '\0');
 
     *expr = (struct shard_expr) {
-        .type = SHARD_EXPR_STRING,
+        .type = type,
         .loc = p->token.location,
         .string = str.items
     };
@@ -312,7 +312,9 @@ static int parse_prefix_expr(struct parser* p, struct shard_expr* expr) {
             };
             return advance(p);
         case SHARD_TOK_STRING:
-            return parse_string_lit(p, expr);
+            return parse_string_lit(p, expr, SHARD_EXPR_STRING);
+        case SHARD_TOK_PATH:
+            return parse_string_lit(p, expr, SHARD_EXPR_PATH);
         case SHARD_TOK_WITH:
             return parse_with(p, expr);
         case SHARD_TOK_ASSERT:
