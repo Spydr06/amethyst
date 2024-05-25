@@ -70,8 +70,19 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
         case SHARD_EXPR_ASSERT:
         case SHARD_EXPR_ADD:
         case SHARD_EXPR_SUB:
+        case SHARD_EXPR_MUL:
+        case SHARD_EXPR_DIV:
+        case SHARD_EXPR_CONCAT:
+        case SHARD_EXPR_MERGE:
         case SHARD_EXPR_EQ:
         case SHARD_EXPR_NE:
+        case SHARD_EXPR_GT:
+        case SHARD_EXPR_GE:
+        case SHARD_EXPR_LT:
+        case SHARD_EXPR_LE:
+        case SHARD_EXPR_LOGAND:
+        case SHARD_EXPR_LOGOR:
+        case SHARD_EXPR_LOGIMPL:
         case SHARD_EXPR_CALL:
             shard_free_expr(ctx, expr->binop.lhs);
             shard_free_expr(ctx, expr->binop.rhs);
@@ -90,8 +101,24 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
                 shard_free_expr(ctx, &expr->list.elems.items[i]);
             dynarr_free(ctx, &expr->list.elems);
             break;
+        case SHARD_EXPR_ATTR_TEST:
+            shard_free_expr(ctx, expr->attr_test.set);
+            dynarr_free(ctx, &expr->attr_test.path);
+            break;
+        case SHARD_EXPR_ATTR_SEL:
+            shard_free_expr(ctx, expr->attr_sel.set);
+            if(expr->attr_sel.default_value)
+                shard_free_expr(ctx, expr->attr_sel.default_value);
+            dynarr_free(ctx, &expr->attr_sel.path);
+            break;
         default:
     }
+}
+
+void shard_attr_path_init(struct shard_context* ctx, struct shard_attr_path* path) {
+    path->items = ctx->malloc(sizeof(shard_ident_t));
+    path->count = 0;
+    path->capacity = 1;
 }
 
 #define E(t) [SHARD_TOK_##t]
@@ -255,8 +282,6 @@ void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const 
         BOP(LE, "<=");
         BOP(MERGE, "//");
         BOP(CONCAT, "++");
-        BOP(ATTR_TEST, "?");
-//        BOP(ATTR_SEL, ".");
         BOP(LOGOR, "||");
         BOP(LOGAND, "&&");
         BOP(LOGIMPL, "->");
@@ -273,6 +298,18 @@ void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const 
                 dynarr_append(ctx, str, ' ');
             }
             dynarr_append(ctx, str, ']');
+            break;
+        case SHARD_EXPR_ATTR_SEL:
+            shard_dump_expr(ctx, str, expr->attr_sel.set);
+            dynarr_append_many(ctx, str, " . <attr path>", 14);
+            if(expr->attr_sel.default_value) {
+                dynarr_append_many(ctx, str, " or ", 4);
+                shard_dump_expr(ctx, str, expr->attr_sel.default_value);
+            }
+            break;
+        case SHARD_EXPR_ATTR_TEST:
+            shard_dump_expr(ctx, str, expr->attr_test.set);
+            dynarr_append_many(ctx, str, " . <attr path>", 14);
             break;
         default:
             dynarr_append_many(ctx, str, "<unknown>", 9);

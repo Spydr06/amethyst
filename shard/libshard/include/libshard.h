@@ -201,6 +201,12 @@ enum shard_expr_type {
     SHARD_EXPR_LIST,
 };
 
+typedef const char* shard_ident_t;
+
+shard_dynarr(shard_attr_path, shard_ident_t);
+
+void shard_attr_path_init(struct shard_context* ctx, struct shard_attr_path* path);
+
 struct shard_expr {
     enum shard_expr_type type;
     struct shard_location loc;
@@ -229,6 +235,17 @@ struct shard_expr {
         struct {
             struct shard_expr_list elems;
         } list;
+
+        struct {
+            struct shard_expr* set;
+            struct shard_attr_path path;
+        } attr_test;
+
+        struct {
+            struct shard_expr* set;
+            struct shard_attr_path path;
+            struct shard_expr* default_value;
+        } attr_sel;
     };
 };
 

@@ -342,6 +342,7 @@ static int parse_prefix_expr(struct parser* p, struct shard_expr* expr) {
 
 static int parse_binop(struct parser* p, struct shard_expr* expr, struct shard_expr* left, enum shard_expr_type type, enum precedence prec) {
     expr->type = type;
+    expr->loc = p->token.location;
     expr->binop.lhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
     expr->binop.rhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
     
@@ -357,6 +358,7 @@ static int parse_binop(struct parser* p, struct shard_expr* expr, struct shard_e
 
 static int parse_call(struct parser* p, struct shard_expr* expr, struct shard_expr* left) {
     expr->type = SHARD_EXPR_CALL;
+    expr->loc = p->token.location;
     expr->binop.lhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
     expr->binop.rhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
 
@@ -365,12 +367,54 @@ static int parse_call(struct parser* p, struct shard_expr* expr, struct shard_ex
     return parse_expr(p, expr->binop.rhs, PREC_CALL);
 }
 
+static int parse_attribute_path(struct parser* p, struct shard_attr_path* path) {
+    shard_attr_path_init(p->ctx, path);
+
+    int err = 0, e;
+    do {
+        e = advance(p);
+        if(e)
+            err = e;
+        dynarr_append(p->ctx, path, p->token.value.string);
+        e = consume(p, SHARD_TOK_IDENT);
+        if(e)
+            err = e;
+    } while(p->token.type == SHARD_TOK_PERIOD);
+
+    return err;
+}
+
 static int parse_attribute_selection(struct parser* p, struct shard_expr* expr, struct shard_expr* set) {
-    return EINVAL;
+    expr->type = SHARD_EXPR_ATTR_SEL;
+    expr->loc = p->token.location;
+
+    expr->attr_sel.set = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->attr_sel.default_value = NULL;
+    *expr->attr_sel.set = *set;
+
+    int err[] = {
+        parse_attribute_path(p, &expr->attr_sel.path),
+        0,
+        0
+    };
+
+    if(p->token.type == SHARD_TOK_OR) {
+        err[1] = advance(p);
+        expr->attr_sel.default_value = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+        err[2] = parse_expr(p, expr->attr_sel.default_value, PREC_ATTRIBUTE_SELECTION);
+    }
+    
+    return any_err(err, LEN(err));
 }
 
 static int parse_attribute_test(struct parser* p, struct shard_expr* expr, struct shard_expr* set) {
-    return EINVAL;
+    expr->type = SHARD_EXPR_ATTR_TEST;
+    expr->loc = p->token.location;
+
+    expr->attr_test.set = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    *expr->attr_test.set = *set;
+
+    return parse_attribute_path(p, &expr->attr_test.path);
 }
 
 static inline bool token_terminates_expr(enum shard_token_type type) {
@@ -383,6 +427,7 @@ static inline bool token_terminates_expr(enum shard_token_type type) {
         case SHARD_TOK_EOF:
         case SHARD_TOK_ELSE:
         case SHARD_TOK_THEN:
+        case SHARD_TOK_OR:
             return true;
         default:
             return false;
