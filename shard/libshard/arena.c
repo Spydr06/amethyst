@@ -23,11 +23,11 @@ static struct shard_arena* _arena_init(const struct shard_context* ctx, size_t s
     return arena;
 }
 
-struct shard_arena* arena_init(const struct shard_context* ctx) {
+struct shard_arena* shard_arena_init(const struct shard_context* ctx) {
     return _arena_init(ctx, PAGE_SIZE);
 }
 
-void* arena_malloc(const struct shard_context* ctx, struct shard_arena* arena, size_t size) {
+void* shard_arena_malloc(const struct shard_context* ctx, struct shard_arena* arena, size_t size) {
     struct shard_arena* last = arena;
 
     do {
@@ -47,7 +47,7 @@ void* arena_malloc(const struct shard_context* ctx, struct shard_arena* arena, s
     return next->region;
 }
 
-void arena_free(const struct shard_context* ctx, struct shard_arena* arena) {
+void shard_arena_free(const struct shard_context* ctx, struct shard_arena* arena) {
     struct shard_arena* next, *last = arena;
     do {
         next = last->next;

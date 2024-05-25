@@ -175,8 +175,8 @@ static int parse_with(struct parser* p, struct shard_expr* expr) {
     expr->type = SHARD_EXPR_WITH;
     expr->loc = p->token.location;
     
-    expr->binop.lhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
-    expr->binop.rhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->binop.lhs = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->binop.rhs = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
 
     int err[] = {
         advance(p),
@@ -192,8 +192,8 @@ static int parse_assert(struct parser* p, struct shard_expr* expr) {
     expr->type = SHARD_EXPR_ASSERT;
     expr->loc = p->token.location;
     
-    expr->binop.lhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
-    expr->binop.rhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->binop.lhs = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->binop.rhs = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
 
     int err[] = {
         advance(p),
@@ -208,7 +208,7 @@ static int parse_assert(struct parser* p, struct shard_expr* expr) {
 static int parse_unary_op(struct parser* p, struct shard_expr* expr, enum shard_expr_type expr_type, enum precedence prec) {
     expr->type = expr_type;
     expr->loc = p->token.location; 
-    expr->unaryop.expr = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->unaryop.expr = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
 
     int err[] = {
         advance(p),
@@ -254,9 +254,9 @@ static int parse_ternary(struct parser* p, struct shard_expr* expr) {
     expr->type = SHARD_EXPR_TERNARY;
     expr->loc = p->token.location;
 
-    expr->ternary.cond = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
-    expr->ternary.if_branch = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
-    expr->ternary.else_branch = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->ternary.cond = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->ternary.if_branch = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->ternary.else_branch = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
 
     int err[] = {
         advance(p),
@@ -345,8 +345,8 @@ static int parse_prefix_expr(struct parser* p, struct shard_expr* expr) {
 static int parse_binop(struct parser* p, struct shard_expr* expr, struct shard_expr* left, enum shard_expr_type type, enum precedence prec) {
     expr->type = type;
     expr->loc = p->token.location;
-    expr->binop.lhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
-    expr->binop.rhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->binop.lhs = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->binop.rhs = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
     
     *expr->binop.lhs = *left;
 
@@ -361,8 +361,8 @@ static int parse_binop(struct parser* p, struct shard_expr* expr, struct shard_e
 static int parse_call(struct parser* p, struct shard_expr* expr, struct shard_expr* left) {
     expr->type = SHARD_EXPR_CALL;
     expr->loc = p->token.location;
-    expr->binop.lhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
-    expr->binop.rhs = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->binop.lhs = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->binop.rhs = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
 
     *expr->binop.lhs = *left;
 
@@ -390,7 +390,7 @@ static int parse_attribute_selection(struct parser* p, struct shard_expr* expr, 
     expr->type = SHARD_EXPR_ATTR_SEL;
     expr->loc = p->token.location;
 
-    expr->attr_sel.set = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->attr_sel.set = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
     expr->attr_sel.default_value = NULL;
     *expr->attr_sel.set = *set;
 
@@ -402,7 +402,7 @@ static int parse_attribute_selection(struct parser* p, struct shard_expr* expr, 
 
     if(p->token.type == SHARD_TOK_OR) {
         err[1] = advance(p);
-        expr->attr_sel.default_value = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+        expr->attr_sel.default_value = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
         err[2] = parse_expr(p, expr->attr_sel.default_value, PREC_ATTRIBUTE_SELECTION);
     }
     
@@ -413,7 +413,7 @@ static int parse_attribute_test(struct parser* p, struct shard_expr* expr, struc
     expr->type = SHARD_EXPR_ATTR_TEST;
     expr->loc = p->token.location;
 
-    expr->attr_test.set = arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    expr->attr_test.set = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
     *expr->attr_test.set = *set;
 
     return parse_attribute_path(p, &expr->attr_test.path);
