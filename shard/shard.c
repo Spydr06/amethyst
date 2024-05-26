@@ -36,6 +36,7 @@ _Noreturn static void help(const char* progname)
     printf("Usage: %s <input file> [OPTIONS]\n\n", progname);
     printf("Options:\n");
     printf("  -h, --help        Print this help text and exit.\n");
+    printf("  -I <include path> Add a directory to the include path list.\n");
     exit(EXIT_SUCCESS);
 }
 
@@ -114,8 +115,24 @@ static void print_error(struct shard_error* error) {
 }
 
 int main(int argc, char** argv) {
+    struct shard_context ctx = {
+        .malloc = malloc,
+        .realloc = realloc,
+        .free = free,
+        .realpath = realpath,
+        .dirname = dirname,
+        .access = access,
+        .home_dir = getenv("HOME"),
+    };
+    
+    int err = shard_init(&ctx);
+    if(err) {
+        fprintf(stderr, "%s: error initializing libshard: %s\n", argv[0], strerror(err));
+        exit(EXIT_FAILURE);
+    }
+
     int ch, long_index;
-    while((ch = getopt_long(argc, argv, "h", cmdline_options, &long_index)) != EOF) {
+    while((ch = getopt_long(argc, argv, "hI:", cmdline_options, &long_index)) != EOF) {
         switch(ch) {
         case 0:
             if(strcmp(cmdline_options[long_index].name, "help") == 0)
@@ -123,6 +140,9 @@ int main(int argc, char** argv) {
             break;
         case 'h':
             help(argv[0]);
+            break;
+        case 'I':
+            shard_include_dir(&ctx, optarg);
             break;
         case '?':
             fprintf(stderr, "%s: unrecognized option -- %s\n", argv[0], argv[optind]);
@@ -138,22 +158,6 @@ int main(int argc, char** argv) {
 
     if(optind >= argc) {
         fprintf(stderr, "%s: no input files provided.\n", argv[0]);
-        exit(EXIT_FAILURE);
-    }
-
-    struct shard_context ctx = {
-        .malloc = malloc,
-        .realloc = realloc,
-        .free = free,
-        .realpath = realpath,
-        .dirname = dirname,
-        .access = access,
-        .home_dir = getenv("HOME"),
-    };
-    
-    int err = shard_init(&ctx);
-    if(err) {
-        fprintf(stderr, "%s: error initializing libshard: %s\n", argv[0], strerror(err));
         exit(EXIT_FAILURE);
     }
 

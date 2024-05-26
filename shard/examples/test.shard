@@ -1,1 +1,2 @@
-"foo" . bar or ./foo ? foo.bar.baz
+rec { a.b = "foo"; a.c = "bar"; d.e.f = "foo"; }
+

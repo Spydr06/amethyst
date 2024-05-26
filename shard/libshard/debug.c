@@ -188,6 +188,24 @@ void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const 
             }
             dynarr_append(ctx, str, ']');
             break;
+        case SHARD_EXPR_SET:
+            if(expr->set.recursive)
+                dynarr_append_many(ctx, str, "rec ", 4);
+            dynarr_append(ctx, str, '{');
+            dynarr_append(ctx, str, ' ');
+            for(size_t i = 0; i < expr->set.attrs.alloc; i++) {
+                const struct shard_hashpair* pair = &expr->set.attrs.pairs[i];
+                if(!pair->value)
+                    continue;
+                
+                dynarr_append_many(ctx, str, pair->key, strlen(pair->key));
+                dynarr_append_many(ctx, str, " = ", 3);
+                shard_dump_expr(ctx, str, pair->value);
+                dynarr_append(ctx, str, ';');
+                dynarr_append(ctx, str, ' ');
+            }
+            dynarr_append(ctx, str, '}');
+            break;
         case SHARD_EXPR_ATTR_SEL:
             shard_dump_expr(ctx, str, expr->attr_sel.set);
             dynarr_append_many(ctx, str, " . <attr path>", 14);

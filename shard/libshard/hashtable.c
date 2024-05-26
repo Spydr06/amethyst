@@ -74,7 +74,7 @@ static inline void rehash(const struct shard_context* ctx, struct shard_hashmap*
         if(!pair->key)
             continue;
 
-        struct shard_hashpair* new_pair = find_pair(map, pair->key, false);
+        struct shard_hashpair* new_pair = find_pair(map, pair->key, true);
         assert(new_pair != NULL);
         *new_pair = *pair;
     }
@@ -103,7 +103,7 @@ int shard_hashmap_put(const struct shard_context* ctx, struct shard_hashmap* map
 
     size_t map_size = calc_size(map);
 
-    if(map_size > map->size) 
+    if(map_size > map->alloc) 
         rehash(ctx, map, map_size);
 
     struct shard_hashpair* pair = find_pair(map, key, true);
@@ -120,7 +120,7 @@ int shard_hashmap_put(const struct shard_context* ctx, struct shard_hashmap* map
     return 0;
 }
 
-void* hashmap_get(const struct shard_hashmap* map, const char* key) {
+void* shard_hashmap_get(const struct shard_hashmap* map, const char* key) {
     struct shard_hashpair* pair = find_pair(map, key, false);
     return pair ? pair->value : NULL;
 }

@@ -109,7 +109,7 @@ void shard_hashmap_init(const struct shard_context* ctx, struct shard_hashmap* m
 void shard_hashmap_free(const struct shard_context* ctx, struct shard_hashmap* map);
 
 int shard_hashmap_put(const struct shard_context* ctx, struct shard_hashmap* map, const char* key, void* value);
-void* hashmap_get(const struct shard_hashmap* map, const char* key);
+void* shard_hashmap_get(const struct shard_hashmap* map, const char* key);
 
 enum shard_token_type {
     SHARD_TOK_EOF = 0,
@@ -221,6 +221,7 @@ enum shard_expr_type {
     SHARD_EXPR_ASSERT,
 
     SHARD_EXPR_LIST,
+    SHARD_EXPR_SET,
 };
 
 typedef const char* shard_ident_t;
@@ -257,6 +258,11 @@ struct shard_expr {
         struct {
             struct shard_expr_list elems;
         } list;
+
+        struct {
+            bool recursive;
+            struct shard_hashmap attrs;
+        } set;
 
         struct {
             struct shard_expr* set;

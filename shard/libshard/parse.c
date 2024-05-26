@@ -247,7 +247,71 @@ static int parse_list(struct parser* p, struct shard_expr* expr) {
     }
 
     int err3 = advance(p);
-    return err ? err : err3;
+    return EITHER(err, err3);
+}
+
+static int parse_set(struct parser* p, struct shard_expr* expr, bool recursive) {
+    expr->type = SHARD_EXPR_SET;
+    expr->loc = p->token.location;
+    expr->set.recursive = recursive;
+    shard_hashmap_init(p->ctx, &expr->set.attrs, 8);
+    
+    if(recursive)
+        advance(p);
+
+    int err = consume(p, SHARD_TOK_LBRACE);
+
+    while(p->token.type != SHARD_TOK_RBRACE) {
+        if(p->token.type == SHARD_TOK_EOF)
+            return errorf(p, "unexpected end of file, expect set attribute or `]`");
+
+        struct shard_expr* set = expr;
+        const char* key = p->token.value.string;
+        struct shard_expr* value = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+
+        if(consume(p, SHARD_TOK_IDENT))
+            err = EINVAL;
+        
+        while(p->token.type == SHARD_TOK_PERIOD) {
+            err = advance(p);
+            if(err)
+                break;
+
+            struct shard_expr* attr = shard_hashmap_get(&set->set.attrs, key);
+            if(attr) {
+                set = attr;
+                if(attr->type != SHARD_EXPR_SET) {
+                    err = errorf(p, "set attribute `%s` is not a set itself", key);
+                    break;
+                }
+            }
+            else {
+                attr = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+                attr->type = SHARD_EXPR_SET;
+                attr->loc = p->token.location;
+                attr->set.recursive = recursive;
+                shard_hashmap_init(p->ctx, &attr->set.attrs, 8);
+
+                shard_hashmap_put(p->ctx, &set->set.attrs, key, attr);
+                set = attr;
+            }
+
+            key = p->token.value.string;
+            err = consume(p, SHARD_TOK_IDENT);
+            if(err)
+                break;
+        }
+
+        if(consume(p, SHARD_TOK_ASSIGN) || parse_expr(p, value, PREC_LOWEST) || consume(p, SHARD_TOK_SEMICOLON)) {
+            err = EINVAL;
+            break;
+        }
+        
+        shard_hashmap_put(p->ctx, &set->set.attrs, key, value);
+    }
+
+    int err3 = advance(p);
+    return EITHER(err, err3);
 }
 
 static int parse_ternary(struct parser* p, struct shard_expr* expr) {
@@ -327,6 +391,10 @@ static int parse_prefix_expr(struct parser* p, struct shard_expr* expr) {
             return parse_compound(p, expr);
         case SHARD_TOK_LBRACKET:
             return parse_list(p, expr);
+        case SHARD_TOK_LBRACE:
+            return parse_set(p, expr, false);
+        case SHARD_TOK_REC:
+            return parse_set(p, expr, true);
         case SHARD_TOK_IF:
             return parse_ternary(p, expr);
         default: {
@@ -430,6 +498,7 @@ static inline bool token_terminates_expr(enum shard_token_type type) {
         case SHARD_TOK_ELSE:
         case SHARD_TOK_THEN:
         case SHARD_TOK_OR:
+        case SHARD_TOK_ASSIGN:
             return true;
         default:
             return false;

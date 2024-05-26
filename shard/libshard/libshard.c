@@ -100,6 +100,12 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
                 shard_free_expr(ctx, &expr->list.elems.items[i]);
             dynarr_free(ctx, &expr->list.elems);
             break;
+        case SHARD_EXPR_SET:
+            for(size_t i = 0; i < expr->set.attrs.alloc; i++)
+                if(expr->set.attrs.pairs[i].value)
+                    shard_free_expr(ctx, expr->set.attrs.pairs[i].value);
+            shard_hashmap_free(ctx, &expr->set.attrs);
+            break;
         case SHARD_EXPR_ATTR_TEST:
             shard_free_expr(ctx, expr->attr_test.set);
             dynarr_free(ctx, &expr->attr_test.path);
