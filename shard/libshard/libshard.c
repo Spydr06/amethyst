@@ -59,9 +59,9 @@ struct shard_error* shard_get_errors(struct shard_context* ctx) {
 
 static void shard_free_pattern(struct shard_context* ctx, struct shard_pattern* pattern) {
     for(size_t i = 0; i < pattern->attrs.count; i++) {
-        struct shard_pattern_attr attr = pattern->attrs.items[i];
-        if(attr.default_value)
-            shard_free_expr(ctx, attr.default_value);
+        struct shard_binding attr = pattern->attrs.items[i];
+        if(attr.value)
+            shard_free_expr(ctx, attr.value);
     }
     dynarr_free(ctx, &pattern->attrs);
 }
@@ -128,6 +128,12 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
         case SHARD_EXPR_FUNCTION:
             shard_free_pattern(ctx, expr->func.arg);
             shard_free_expr(ctx, expr->func.body);
+            break;
+        case SHARD_EXPR_LET:
+            for(size_t i = 0; i < expr->let.bindings.count; i++)
+                shard_free_expr(ctx, expr->let.bindings.items[i].value);
+            dynarr_free(ctx, &expr->let.bindings);
+            shard_free_expr(ctx, expr->let.expr);
             break;
         default:
     }

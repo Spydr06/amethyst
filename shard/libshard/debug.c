@@ -226,6 +226,20 @@ void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const 
             dynarr_append(ctx, str, ' ');
             shard_dump_expr(ctx, str, expr->func.body);
             break;
+        case SHARD_EXPR_LET:
+            dynarr_append_many(ctx, str, "let ", 4);
+            for(size_t i = 0; i < expr->let.bindings.count; i++) {
+                struct shard_binding binding = expr->let.bindings.items[i];
+                
+                dynarr_append_many(ctx, str, binding.ident, strlen(binding.ident));
+                dynarr_append_many(ctx, str, " = ", 3);
+                shard_dump_expr(ctx, str, binding.value);
+                dynarr_append(ctx, str, ';');
+                dynarr_append(ctx, str, ' ');
+            }
+            dynarr_append_many(ctx, str, "in ", 3);
+            shard_dump_expr(ctx, str, expr->let.expr);
+            break;
         default:
             dynarr_append_many(ctx, str, "<unknown>", 9);
     }
@@ -244,12 +258,12 @@ void shard_dump_pattern(struct shard_context* ctx, struct shard_string* str, con
             dynarr_append(ctx, str, '{');
             dynarr_append(ctx, str, ' ');
             for(size_t i = 0; i < pattern->attrs.count; i++) {
-                struct shard_pattern_attr* attr = &pattern->attrs.items[i];
+                struct shard_binding* attr = &pattern->attrs.items[i];
                 dynarr_append_many(ctx, str, attr->ident, strlen(attr->ident));
                 
-                if(attr->default_value) {
+                if(attr->value) {
                     dynarr_append_many(ctx, str, " ? ", 3);
-                    shard_dump_expr(ctx, str, attr->default_value);
+                    shard_dump_expr(ctx, str, attr->value);
                 }
 
                 if(pattern->attrs.count - i > 1)

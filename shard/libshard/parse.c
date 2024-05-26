@@ -244,7 +244,7 @@ static int parse_set_pattern(struct parser* p, struct shard_pattern* pattern, sh
     pattern->ellipsis = false;
     pattern->ident = prefix;
     pattern->loc = p->token.location;
-    pattern->attrs = (struct shard_pattern_attrs){0};
+    pattern->attrs = (struct shard_binding_list){0};
 
     int err = skip_lbrace ? 0 : advance(p);
 
@@ -257,9 +257,9 @@ static int parse_set_pattern(struct parser* p, struct shard_pattern* pattern, sh
             break;
         }
 
-        struct shard_pattern_attr attr = {
+        struct shard_binding attr = {
             .ident = first_attr,
-            .default_value = NULL
+            .value = NULL
         };
 
         if(!first_iter || !first_attr) {
@@ -276,8 +276,8 @@ static int parse_set_pattern(struct parser* p, struct shard_pattern* pattern, sh
             if(advance(p))
                 err = EINVAL;
 
-            attr.default_value = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
-            int err2 = parse_expr(p, attr.default_value, PREC_LOWEST);
+            attr.value = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+            int err2 = parse_expr(p, attr.value, PREC_LOWEST);
             if(err2)
                 err = err2;
         }
@@ -563,6 +563,46 @@ static int parse_ternary(struct parser* p, struct shard_expr* expr) {
     return any_err(err, LEN(err));
 }
 
+static int parse_let_binding(struct parser* p, struct shard_binding* binding) {
+    binding->loc = p->token.location;
+    binding->ident = p->token.value.string;
+    binding->value = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+
+    int err[] = {
+        consume(p, SHARD_TOK_IDENT),
+        consume(p, SHARD_TOK_ASSIGN),
+        parse_expr(p, binding->value, PREC_LOWEST),
+        consume(p, SHARD_TOK_SEMICOLON)
+    };
+
+    return any_err(err, LEN(err));
+}
+
+static int parse_let(struct parser* p, struct shard_expr* expr) {
+    expr->type = SHARD_EXPR_LET;
+    expr->loc = p->token.location;
+    expr->let.bindings = (struct shard_binding_list){0};
+    expr->let.expr = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+
+    int err = advance(p);
+    while(p->token.type != SHARD_TOK_IN) {
+        struct shard_binding binding;
+        int err2 = parse_let_binding(p, &binding);
+        dynarr_append(p->ctx, &expr->let.bindings, binding);
+
+        if(err2)
+            err = err2;
+    }
+
+    int errs[] = {
+        err,
+        advance(p),
+        parse_expr(p, expr->let.expr, PREC_LOWEST)
+    };
+
+    return any_err(errs, LEN(errs));
+}
+
 static int parse_prefix_expr(struct parser* p, struct shard_expr* expr) {
     switch(p->token.type) {
         case SHARD_TOK_IDENT:
@@ -621,6 +661,8 @@ static int parse_prefix_expr(struct parser* p, struct shard_expr* expr) {
             return parse_set(p, expr, true);
         case SHARD_TOK_IF:
             return parse_ternary(p, expr);
+        case SHARD_TOK_LET:
+            return parse_let(p, expr);
         default: {
             if(p->token.type == SHARD_TOK_ERR)
                 return EINVAL;

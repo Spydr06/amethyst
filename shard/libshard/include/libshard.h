@@ -185,6 +185,18 @@ struct shard_token {
 
 int shard_lex(struct shard_context* ctx, struct shard_source* src, struct shard_token* token);
 
+typedef const char* shard_ident_t;
+
+shard_dynarr(shard_attr_path, shard_ident_t);
+
+struct shard_binding {
+    struct shard_location loc;
+    shard_ident_t ident;
+    struct shard_expr* value;
+};
+
+shard_dynarr(shard_binding_list, struct shard_binding);
+
 enum shard_expr_type {
     SHARD_EXPR_IDENT,
 
@@ -224,13 +236,9 @@ enum shard_expr_type {
 
     SHARD_EXPR_LIST,
     SHARD_EXPR_SET,
-    SHARD_EXPR_INHERIT,
     SHARD_EXPR_FUNCTION,
+    SHARD_EXPR_LET
 };
-
-typedef const char* shard_ident_t;
-
-shard_dynarr(shard_attr_path, shard_ident_t);
 
 void shard_attr_path_init(struct shard_context* ctx, struct shard_attr_path* path);
 
@@ -283,6 +291,11 @@ struct shard_expr {
             struct shard_pattern* arg;
             struct shard_expr* body;
         } func;
+
+        struct {
+            struct shard_binding_list bindings;
+            struct shard_expr* expr;
+        } let;
     };
 };
 
@@ -291,19 +304,12 @@ enum shard_pattern_type {
     SHARD_PAT_SET
 };
 
-struct shard_pattern_attr {
-    shard_ident_t ident;
-    struct shard_expr* default_value;
-};
-
-shard_dynarr(shard_pattern_attrs, struct shard_pattern_attr);
-
 struct shard_pattern {
     enum shard_pattern_type type;
     struct shard_location loc;
 
     bool ellipsis; 
-    struct shard_pattern_attrs attrs; 
+    struct shard_binding_list attrs; 
     shard_ident_t ident;
 };
 
