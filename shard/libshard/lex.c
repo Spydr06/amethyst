@@ -469,6 +469,9 @@ repeat:
                 return EINVAL;
             }
             break;
+        case ',':
+            KEYWORD_TOK(token, src, COMMA);
+            break;
         case '.': {
             int c2 = -2;
             if((c = src->getc(src)) == '.' && (c2 = src->getc(src)) == '.')

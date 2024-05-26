@@ -290,13 +290,20 @@ enum shard_pattern_type {
     SHARD_PAT_SET
 };
 
+struct shard_pattern_attr {
+    shard_ident_t ident;
+    struct shard_expr* default_value;
+};
+
+shard_dynarr(shard_pattern_attrs, struct shard_pattern_attr);
+
 struct shard_pattern {
     enum shard_pattern_type type;
+    struct shard_location loc;
 
-    union {
-        shard_ident_t ident;
-
-    };
+    bool ellipsis; 
+    struct shard_pattern_attrs attrs; 
+    shard_ident_t ident;
 };
 
 int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr);

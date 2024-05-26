@@ -27,8 +27,9 @@ static const char* token_type_strings[_SHARD_TOK_LEN] = {
     E(LE) = "<=",
     E(COLON) = ":",
     E(SEMICOLON) = ";",
+    E(COMMA) = ",",
     E(PERIOD) = ".",
-    E(ELLIPSE) = "..",
+    E(ELLIPSE) = "...",
     E(MERGE) = "//",
     E(CONCAT) = "++",
     E(QUESTIONMARK) = "?",
@@ -237,6 +238,33 @@ void shard_dump_pattern(struct shard_context* ctx, struct shard_string* str, con
     switch(pattern->type) {
         case SHARD_PAT_IDENT:
             dynarr_append_many(ctx, str, pattern->ident, strlen(pattern->ident));
+            break;
+        case SHARD_PAT_SET:
+            dynarr_append(ctx, str, '{');
+            dynarr_append(ctx, str, ' ');
+            for(size_t i = 0; i < pattern->attrs.count; i++) {
+                struct shard_pattern_attr* attr = &pattern->attrs.items[i];
+                dynarr_append_many(ctx, str, attr->ident, strlen(attr->ident));
+                
+                if(attr->default_value) {
+                    dynarr_append_many(ctx, str, " ? ", 3);
+                    shard_dump_expr(ctx, str, attr->default_value);
+                }
+
+                if(pattern->attrs.count - i > 1)
+                    dynarr_append(ctx, str, ',');
+                dynarr_append(ctx, str, ' ');
+            }
+
+            if(pattern->ellipsis)
+                dynarr_append_many(ctx, str, "... ", 4);
+
+            dynarr_append(ctx, str, '}');
+
+            if(pattern->ident) {
+                dynarr_append_many(ctx, str, " @ ", 3);
+                dynarr_append_many(ctx, str, pattern->ident, strlen(pattern->ident));
+            }
             break;
         default:
             dynarr_append_many(ctx, str, "<unknown pattern>", 17);

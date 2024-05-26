@@ -112,6 +112,7 @@ static void print_error(struct shard_error* error) {
     fprintf(stderr, C_RST "\n");
 
     fseek(fd, fd_pos, SEEK_SET);
+    free(line_str);
 }
 
 int main(int argc, char** argv) {

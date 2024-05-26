@@ -77,6 +77,8 @@ static int consume(struct parser* p, enum shard_token_type token_type) {
 
     if(p->token.type == SHARD_TOK_ERR)
         return EINVAL;
+
+    advance(p);
     return errorf(
         p,
         "unexpected token `%s`, expect token `%s`",
@@ -237,7 +239,82 @@ static int parse_function(struct parser* p, struct shard_expr* expr, struct shar
     return parse_expr(p, expr->func.body, PREC_LOWEST);
 }
 
+static int parse_set_pattern(struct parser* p, struct shard_pattern* pattern, shard_ident_t prefix, bool skip_lbrace, shard_ident_t first_attr) {
+    pattern->type = SHARD_PAT_SET;
+    pattern->ellipsis = false;
+    pattern->ident = prefix;
+    pattern->loc = p->token.location;
+    pattern->attrs = (struct shard_pattern_attrs){0};
+
+    int err = skip_lbrace ? 0 : advance(p);
+
+    bool first_iter = true;
+    while(p->token.type != SHARD_TOK_RBRACE) {
+        if(p->token.type == SHARD_TOK_ELLIPSE) {
+            pattern->ellipsis = true;
+            if(advance(p))
+                err = EINVAL;
+            break;
+        }
+
+        struct shard_pattern_attr attr = {
+            .ident = first_attr,
+            .default_value = NULL
+        };
+
+        if(!first_iter || !first_attr) {
+            attr.ident = p->token.value.string;
+            if(consume(p, SHARD_TOK_IDENT)) {
+                err = EINVAL;
+                break;
+            }
+        }
+
+        first_iter = false;
+
+        if(p->token.type == SHARD_TOK_QUESTIONMARK) {
+            if(advance(p))
+                err = EINVAL;
+
+            attr.default_value = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+            int err2 = parse_expr(p, attr.default_value, PREC_LOWEST);
+            if(err2)
+                err = err2;
+        }
+
+        dynarr_append(p->ctx, &pattern->attrs, attr);
+
+        if(p->token.type != SHARD_TOK_RBRACE) {
+            int err2 = consume(p, SHARD_TOK_COMMA);
+            if(err2) {
+                err = err2;
+                break;
+            }
+        }
+    }
+
+    if(consume(p, SHARD_TOK_RBRACE))
+        err = EINVAL;
+
+    if(p->token.type == SHARD_TOK_AT) {
+        if(prefix)
+            err = errorf(p, "`@` pattern already applied before the set");
+        
+        if(advance(p))
+            err = EINVAL;
+
+        shard_ident_t ident = p->token.value.string;
+        if(consume(p, SHARD_TOK_IDENT))
+            return EINVAL;
+
+        pattern->ident = ident;
+    }
+
+    return err;
+}
+
 static int parse_ident(struct parser* p, struct shard_expr* expr) {
+    struct shard_location ident_loc = p->token.location;
     char* ident = p->token.value.string;
     int err = advance(p);
 
@@ -246,7 +323,8 @@ static int parse_ident(struct parser* p, struct shard_expr* expr) {
             struct shard_pattern* arg = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_pattern));
             arg->type = SHARD_PAT_IDENT;
             arg->ident = ident;
-                
+            arg->loc = ident_loc;
+
             int err2[] = {
                 err,
                 advance(p),
@@ -254,10 +332,21 @@ static int parse_ident(struct parser* p, struct shard_expr* expr) {
             };
             return any_err(err2, LEN(err2));
         } break;
+        case SHARD_TOK_AT: {
+            struct shard_pattern* arg = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_pattern));
+            int err2[] = {
+                err,
+                advance(p),
+                parse_set_pattern(p, arg, ident, false, NULL),
+                consume(p, SHARD_TOK_COLON),
+                parse_function(p, expr, arg)
+            };
+            return any_err(err2, LEN(err2));
+        } break;
         default:
             *expr = (struct shard_expr) {
                 .type = SHARD_EXPR_IDENT,
-                    .loc = p->token.location,
+                    .loc = ident_loc,
                     .string = ident
             };
             return err;
@@ -297,17 +386,47 @@ static int parse_set(struct parser* p, struct shard_expr* expr, bool recursive) 
 
     int err = consume(p, SHARD_TOK_LBRACE);
 
+    bool first_iter = true;
     while(p->token.type != SHARD_TOK_RBRACE) {
         if(p->token.type == SHARD_TOK_EOF)
             return errorf(p, "unexpected end of file, expect set attribute or `]`");
 
-        struct shard_expr* set = expr;
-        const char* key = p->token.value.string;
-        struct shard_expr* value = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+        if(first_iter && p->token.type == SHARD_TOK_ELLIPSE) {
+            shard_hashmap_free(p->ctx, &expr->set.attrs);
+
+            struct shard_pattern* arg = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_pattern));
+            int err2[] = {
+                err,
+                parse_set_pattern(p, arg, NULL, true, NULL),
+                consume(p, SHARD_TOK_COLON),
+                parse_function(p, expr, arg)
+            };
+            return any_err(err2, LEN(err2));
+        }
+
+        shard_ident_t key = p->token.value.string;
 
         if(consume(p, SHARD_TOK_IDENT))
             err = EINVAL;
         
+        if(first_iter && (p->token.type == SHARD_TOK_COMMA || p->token.type == SHARD_TOK_QUESTIONMARK)) {
+            shard_hashmap_free(p->ctx, &expr->set.attrs);
+
+            struct shard_pattern* arg = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_pattern));
+            int err2[] = {
+                err,
+                parse_set_pattern(p, arg, NULL, true, key),
+                consume(p, SHARD_TOK_COLON),
+                parse_function(p, expr, arg)
+            };
+            return any_err(err2, LEN(err2));
+        }
+
+        first_iter = false;
+
+        struct shard_expr* set = expr;
+        struct shard_expr* value = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+
         while(p->token.type == SHARD_TOK_PERIOD) {
             err = advance(p);
             if(err)
@@ -534,6 +653,7 @@ static inline bool token_terminates_expr(enum shard_token_type type) {
         case SHARD_TOK_THEN:
         case SHARD_TOK_OR:
         case SHARD_TOK_ASSIGN:
+        case SHARD_TOK_COMMA:
             return true;
         default:
             return false;
