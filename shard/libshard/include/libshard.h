@@ -27,62 +27,12 @@ struct shard_pattern;
 struct shard_value;
 struct shard_list;
 
+typedef const char* shard_ident_t;
+
 struct shard_location {
     unsigned line, width, offset;
     struct shard_source* src;
 };
-
-struct shard_error {
-    struct shard_location loc;
-    char* err;
-    bool heap;
-    int _errno;
-};
-
-shard_dynarr(shard_errors, struct shard_error);
-shard_dynarr(shard_string, char);
-shard_dynarr(shard_string_list, char*);
-shard_dynarr(shard_expr_list, struct shard_expr);
-
-struct shard_error* shard_get_errors(struct shard_context* context);
-
-struct shard_context {
-    void* (*malloc)(size_t size);
-    void* (*realloc)(void* ptr, size_t new_size);
-    void (*free)(void* ptr);
-    char* (*realpath)(const char* restrict path, char* restrict resolved_path);
-    char* (*dirname)(char* path);
-    int (*access)(const char* pathname, int mode);
-
-    const char* home_dir;
-
-    struct shard_arena* idents;
-    struct shard_arena* ast;
-
-    struct shard_errors errors;
-
-    struct shard_string_list string_literals;
-    struct shard_string_list include_dirs;
-};
-
-int shard_init(struct shard_context* ctx);
-void shard_include_dir(struct shard_context* ctx, char* path);
-
-void shard_deinit(struct shard_context* ctx);
-
-// TODO: add other sources like memory buffers
-struct shard_source {
-    void* userp;
-    const char* origin;
-
-    int (*getc)(struct shard_source* self);
-    int (*ungetc)(int c, struct shard_source* self);
-    int (*tell)(struct shard_source* self);
-
-    unsigned line;
-};
-
-int shard_eval(struct shard_context* context, struct shard_source* src, struct shard_value* result);
 
 struct shard_arena {
     uint8_t *region;
@@ -110,6 +60,62 @@ void shard_hashmap_free(const struct shard_context* ctx, struct shard_hashmap* m
 
 int shard_hashmap_put(const struct shard_context* ctx, struct shard_hashmap* map, const char* key, void* value);
 void* shard_hashmap_get(const struct shard_hashmap* map, const char* key);
+
+struct shard_error {
+    struct shard_location loc;
+    char* err;
+    bool heap;
+    int _errno;
+};
+
+shard_dynarr(shard_errors, struct shard_error);
+shard_dynarr(shard_string, char);
+shard_dynarr(shard_string_list, char*);
+shard_dynarr(shard_expr_list, struct shard_expr);
+
+struct shard_error* shard_get_errors(struct shard_context* context);
+
+struct shard_context {
+    void* (*malloc)(size_t size);
+    void* (*realloc)(void* ptr, size_t new_size);
+    void (*free)(void* ptr);
+    char* (*realpath)(const char* restrict path, char* restrict resolved_path);
+    char* (*dirname)(char* path);
+    int (*access)(const char* pathname, int mode);
+
+    const char* home_dir;
+
+    struct shard_arena* ast;
+    struct shard_string_list include_dirs;
+
+    struct shard_arena* ident_arena;
+    struct shard_hashmap idents;
+
+    struct shard_errors errors;
+
+    struct shard_string_list string_literals;
+};
+
+int shard_init(struct shard_context* ctx);
+void shard_include_dir(struct shard_context* ctx, char* path);
+
+void shard_deinit(struct shard_context* ctx);
+
+shard_ident_t shard_get_ident(struct shard_context* ctx, const char* ident);
+
+// TODO: add other sources like memory buffers
+struct shard_source {
+    void* userp;
+    const char* origin;
+
+    int (*getc)(struct shard_source* self);
+    int (*ungetc)(int c, struct shard_source* self);
+    int (*tell)(struct shard_source* self);
+
+    unsigned line;
+};
+
+int shard_eval(struct shard_context* context, struct shard_source* src, struct shard_value* result);
 
 enum shard_token_type {
     SHARD_TOK_EOF = 0,
@@ -184,8 +190,6 @@ struct shard_token {
 };
 
 int shard_lex(struct shard_context* ctx, struct shard_source* src, struct shard_token* token);
-
-typedef const char* shard_ident_t;
 
 shard_dynarr(shard_attr_path, shard_ident_t);
 

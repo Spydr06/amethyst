@@ -162,8 +162,7 @@ static int lex_ident(struct shard_context* ctx, struct shard_source* src, struct
 
     enum shard_token_type type = get_keyword(tmpbuf);
     if(type == SHARD_TOK_IDENT) {
-        char* word = shard_arena_malloc(ctx, ctx->idents, end - start);
-        memcpy(word, tmpbuf, end - start);
+        shard_ident_t ident = shard_get_ident(ctx, tmpbuf);
 
         struct shard_location loc = {
             .src = src,
@@ -172,7 +171,7 @@ static int lex_ident(struct shard_context* ctx, struct shard_source* src, struct
             .width = end - start - 1
         };
 
-        init_token(token, type, loc, (union shard_token_value){.string = word});
+        init_token(token, type, loc, (union shard_token_value){.string = (char*) ident});
     }
     else
         BASIC_TOK(token, src, type);
