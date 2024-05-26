@@ -218,6 +218,12 @@ void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const 
             shard_dump_expr(ctx, str, expr->attr_test.set);
             dynarr_append_many(ctx, str, " . <attr path>", 14);
             break;
+        case SHARD_EXPR_FUNCTION:
+            shard_dump_pattern(ctx, str, expr->func.arg);
+            dynarr_append(ctx, str, ':');
+            dynarr_append(ctx, str, ' ');
+            shard_dump_expr(ctx, str, expr->func.body);
+            break;
         default:
             dynarr_append_many(ctx, str, "<unknown>", 9);
     }
@@ -227,3 +233,12 @@ void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const 
 
 #undef BOP
 
+void shard_dump_pattern(struct shard_context* ctx, struct shard_string* str, const struct shard_pattern* pattern) {
+    switch(pattern->type) {
+        case SHARD_PAT_IDENT:
+            dynarr_append_many(ctx, str, pattern->ident, strlen(pattern->ident));
+            break;
+        default:
+            dynarr_append_many(ctx, str, "<unknown pattern>", 17);
+    }
+}

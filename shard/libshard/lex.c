@@ -72,6 +72,7 @@ static const unsigned token_widths[] = {
     1,
     1,
     1,
+    1,
     3,
     2,
     2,
@@ -96,7 +97,8 @@ static const unsigned token_widths[] = {
     6,
     3,
     2,
-    4
+    4,
+    7,
 };
 
 static_assert((sizeof(token_widths) / sizeof(unsigned)) == _SHARD_TOK_LEN);

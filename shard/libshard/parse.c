@@ -60,7 +60,7 @@ static int errorf(struct parser* p, const char* fmt, ...) {
         ._errno = EINVAL
     }));
 
-    advance(p);
+//    advance(p);
     return EINVAL;
 }
 
@@ -228,6 +228,42 @@ static int parse_compound(struct parser* p, struct shard_expr* expr) {
     return any_err(err, LEN(err));
 }
 
+static int parse_function(struct parser* p, struct shard_expr* expr, struct shard_pattern* arg) {
+    expr->type = SHARD_EXPR_FUNCTION;
+    expr->loc = p->token.location;
+
+    expr->func.arg = arg;
+    expr->func.body = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    return parse_expr(p, expr->func.body, PREC_LOWEST);
+}
+
+static int parse_ident(struct parser* p, struct shard_expr* expr) {
+    char* ident = p->token.value.string;
+    int err = advance(p);
+
+    switch(p->token.type) {
+        case SHARD_TOK_COLON: {
+            struct shard_pattern* arg = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_pattern));
+            arg->type = SHARD_PAT_IDENT;
+            arg->ident = ident;
+                
+            int err2[] = {
+                err,
+                advance(p),
+                parse_function(p, expr, arg),
+            };
+            return any_err(err2, LEN(err2));
+        } break;
+        default:
+            *expr = (struct shard_expr) {
+                .type = SHARD_EXPR_IDENT,
+                    .loc = p->token.location,
+                    .string = ident
+            };
+            return err;
+    }
+}
+
 static int parse_list(struct parser* p, struct shard_expr* expr) {
     expr->type = SHARD_EXPR_LIST;
     expr->loc = p->token.location;
@@ -302,6 +338,10 @@ static int parse_set(struct parser* p, struct shard_expr* expr, bool recursive) 
                 break;
         }
 
+        if(shard_hashmap_get(&set->set.attrs, key)) {
+            err = errorf(p, "attribute `%s` already defined for this set", key);
+        }
+
         if(consume(p, SHARD_TOK_ASSIGN) || parse_expr(p, value, PREC_LOWEST) || consume(p, SHARD_TOK_SEMICOLON)) {
             err = EINVAL;
             break;
@@ -337,12 +377,7 @@ static int parse_ternary(struct parser* p, struct shard_expr* expr) {
 static int parse_prefix_expr(struct parser* p, struct shard_expr* expr) {
     switch(p->token.type) {
         case SHARD_TOK_IDENT:
-            *expr = (struct shard_expr) {
-                .type = SHARD_EXPR_IDENT,
-                    .loc = p->token.location,
-                    .string = p->token.value.string
-            };
-            return advance(p);
+            return parse_ident(p, expr);
         case SHARD_TOK_INT:
             *expr = (struct shard_expr) {
                 .type = SHARD_EXPR_INT,

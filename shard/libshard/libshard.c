@@ -116,6 +116,9 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
                 shard_free_expr(ctx, expr->attr_sel.default_value);
             dynarr_free(ctx, &expr->attr_sel.path);
             break;
+        case SHARD_EXPR_FUNCTION:
+            shard_free_expr(ctx, expr->func.body);
+            break;
         default:
     }
 }

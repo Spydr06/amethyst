@@ -137,6 +137,7 @@ enum shard_token_type {
     SHARD_TOK_LE, // <=
     SHARD_TOK_COLON, // :
     SHARD_TOK_SEMICOLON, // ;
+    SHARD_TOK_COMMA, // ,
     SHARD_TOK_PERIOD, // .
     SHARD_TOK_ELLIPSE, // ...
     SHARD_TOK_MERGE, // //
@@ -165,6 +166,7 @@ enum shard_token_type {
     SHARD_TOK_LET,
     SHARD_TOK_IN,
     SHARD_TOK_WITH,
+    SHARD_TOK_INHERIT,
 
     _SHARD_TOK_LEN,
     SHARD_TOK_ERR = -1
@@ -222,6 +224,7 @@ enum shard_expr_type {
 
     SHARD_EXPR_LIST,
     SHARD_EXPR_SET,
+    SHARD_EXPR_FUNCTION,
 };
 
 typedef const char* shard_ident_t;
@@ -274,6 +277,11 @@ struct shard_expr {
             struct shard_attr_path path;
             struct shard_expr* default_value;
         } attr_sel;
+
+        struct {
+            struct shard_pattern* arg;
+            struct shard_expr* body;
+        } func;
     };
 };
 
@@ -342,6 +350,7 @@ void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, 
 
 const char* shard_token_type_to_str(enum shard_token_type token_type);
 
+void shard_dump_pattern(struct shard_context* ctx, struct shard_string* str, const struct shard_pattern* pattern);
 void shard_dump_token(char* dest, size_t n, const struct shard_token* tok);
 void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const struct shard_expr* expr);
 
