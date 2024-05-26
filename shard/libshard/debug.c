@@ -53,7 +53,8 @@ static const char* token_type_strings[_SHARD_TOK_LEN] = {
     E(ASSERT) = "assert",
     E(LET) = "let",
     E(IN) = "in",
-    E(WITH) = "with"
+    E(WITH) = "with",
+    E(INHERIT) = "inherit",
 };
 
 #undef E

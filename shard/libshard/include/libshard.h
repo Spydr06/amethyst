@@ -224,6 +224,7 @@ enum shard_expr_type {
 
     SHARD_EXPR_LIST,
     SHARD_EXPR_SET,
+    SHARD_EXPR_INHERIT,
     SHARD_EXPR_FUNCTION,
 };
 

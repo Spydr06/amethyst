@@ -375,6 +375,63 @@ static int parse_list(struct parser* p, struct shard_expr* expr) {
     return EITHER(err, err3);
 }
 
+static int parse_set_inherit(struct parser* p, struct shard_hashmap* attrs) {
+    struct shard_expr* base = NULL;
+
+    int err = advance(p);
+
+    if(p->token.type == SHARD_TOK_LPAREN) {
+        base = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+
+        int err2[] = {
+            advance(p),
+            parse_expr(p, base, PREC_LOWEST),
+            consume(p, SHARD_TOK_RPAREN)
+        };
+
+        int err3 = any_err(err2, LEN(err2));
+        if(err3)
+            err = err3;
+    }
+
+    while(p->token.type == SHARD_TOK_IDENT) {
+        shard_ident_t key = p->token.value.string;
+        
+        if(shard_hashmap_get(attrs, key))
+            err = errorf(p, "attribute `%s` already defined for this set", key);
+
+        struct shard_expr* value = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+        if(base) {
+            value->type = SHARD_EXPR_ATTR_SEL;
+            value->loc = p->token.location;
+            value->attr_sel.default_value = NULL;
+            value->attr_sel.set = base;
+
+            struct shard_attr_path path = {
+                .count = 1,
+                .capacity = 1,
+                .items = p->ctx->malloc(sizeof(shard_ident_t))
+            };
+            
+            ((shard_ident_t*) path.items)[0] = key;
+
+            value->attr_sel.path = path;
+        }
+        else {
+            value->type = SHARD_EXPR_IDENT,
+            value->loc = p->token.location;
+            value->ident = key;
+        }
+
+        shard_hashmap_put(p->ctx, attrs, key, value);
+
+        if(advance(p))
+            err = EINVAL;
+    }
+
+    return err;
+}
+
 static int parse_set(struct parser* p, struct shard_expr* expr, bool recursive) {
     expr->type = SHARD_EXPR_SET;
     expr->loc = p->token.location;
@@ -390,6 +447,19 @@ static int parse_set(struct parser* p, struct shard_expr* expr, bool recursive) 
     while(p->token.type != SHARD_TOK_RBRACE) {
         if(p->token.type == SHARD_TOK_EOF)
             return errorf(p, "unexpected end of file, expect set attribute or `]`");
+
+        if(p->token.type == SHARD_TOK_INHERIT) {
+            int err2[] = {
+                parse_set_inherit(p, &expr->set.attrs),
+                consume(p, SHARD_TOK_SEMICOLON)
+            };
+
+            int err3 = any_err(err2, LEN(err2));
+            if(err3)
+                err = err3;
+            first_iter = false;
+            continue;
+        }
 
         if(first_iter && p->token.type == SHARD_TOK_ELLIPSE) {
             shard_hashmap_free(p->ctx, &expr->set.attrs);

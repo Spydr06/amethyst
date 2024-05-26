@@ -119,6 +119,7 @@ static const struct {
     {"let", SHARD_TOK_LET},
     {"in", SHARD_TOK_IN},
     {"with", SHARD_TOK_WITH},
+    {"inherit", SHARD_TOK_INHERIT},
     {NULL, SHARD_TOK_EOF},
 };
 
