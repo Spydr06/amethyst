@@ -1,3 +1,4 @@
+#include <asm-generic/errno.h>
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
 
@@ -434,6 +435,22 @@ repeat:
         case '/':
             if((c = src->getc(src)) == '/')
                 KEYWORD_TOK(token, src, MERGE);
+            else if(c == '*') {
+                for(;;) {
+                    while((c = src->getc(src)) != '*') {
+                        switch(c) {
+                            case '\n':
+                                src->line++;
+                                break;
+                            case EOF:
+                                ERR_TOK(token, src, "unterminated multiline comment, expect `*/`");
+                                return EOVERFLOW;
+                        }
+                    }
+                    if((c = src->getc(src)) == '/')
+                        goto repeat;
+                }
+            }
             else if(!isspace(c)) {
                 src->ungetc(c, src);
                 return lex_string(ctx, src, token, isspace, PATH_ABS);
