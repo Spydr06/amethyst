@@ -1,8 +1,6 @@
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
 
-#include <stdio.h>
-
 int shard_init(struct shard_context* ctx) {
     assert(ctx->malloc && ctx->realloc && ctx->free);
     ctx->ast = shard_arena_init(ctx);
@@ -34,25 +32,6 @@ void shard_deinit(struct shard_context* ctx) {
 
 void shard_include_dir(struct shard_context* ctx, char* path) {
     dynarr_append(ctx, &ctx->include_dirs, path);
-}
-
-int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard_value* result) {
-    struct shard_expr expr;
-    int err = shard_parse(ctx, src, &expr);
-    if(err)
-        goto finish;
-
-    struct shard_string str = {0};
-    shard_dump_expr(ctx, &str, &expr);
-    dynarr_append(ctx, &str, '\0');
-
-    printf("%s\n", str.items);
-
-    dynarr_free(ctx, &str);
-
-    shard_free_expr(ctx, &expr);
-finish:
-    return ctx->errors.count;
 }
 
 struct shard_error* shard_get_errors(struct shard_context* ctx) {

@@ -94,12 +94,16 @@ struct shard_error {
     int _errno;
 };
 
+struct shard_error* shard_get_errors(struct shard_context* context);
+
 shard_dynarr(shard_errors, struct shard_error);
 shard_dynarr(shard_string, char);
 shard_dynarr(shard_string_list, char*);
 shard_dynarr(shard_expr_list, struct shard_expr);
 
-struct shard_error* shard_get_errors(struct shard_context* context);
+void shard_string_append(struct shard_context* ctx, struct shard_string* str, const char* str2);
+void shard_string_push(struct shard_context* ctx, struct shard_string* str, char c);
+void shard_string_free(struct shard_context* ctx, struct shard_string* str);
 
 struct shard_context {
     void* (*malloc)(size_t size);
@@ -228,7 +232,7 @@ struct shard_binding {
 shard_dynarr(shard_binding_list, struct shard_binding);
 
 enum shard_expr_type {
-    SHARD_EXPR_IDENT,
+    SHARD_EXPR_IDENT = 1,
 
     SHARD_EXPR_INT,
     SHARD_EXPR_FLOAT,
@@ -348,15 +352,15 @@ int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shar
 void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr);
 
 enum shard_value_type {
-    SHARD_VAL_NULL,
-    SHARD_VAL_BOOL,
-    SHARD_VAL_INT,
-    SHARD_VAL_FLOAT,
-    SHARD_VAL_STRING,
-    SHARD_VAL_PATH,
-    SHARD_VAL_LIST,
-    SHARD_VAL_SET,
-    SHARD_VAL_FUNCTION
+    SHARD_VAL_NULL     = 1 << 0,
+    SHARD_VAL_BOOL     = 1 << 1,
+    SHARD_VAL_INT      = 1 << 2,
+    SHARD_VAL_FLOAT    = 1 << 3,
+    SHARD_VAL_STRING   = 1 << 4,
+    SHARD_VAL_PATH     = 1 << 5,
+    SHARD_VAL_LIST     = 1 << 6,
+    SHARD_VAL_SET      = 1 << 7,
+    SHARD_VAL_FUNCTION = 1 << 8
 };
 
 struct shard_value {

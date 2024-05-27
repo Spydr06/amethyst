@@ -40,14 +40,6 @@
 #define KEYWORD_TOK(tok, src, kind) BASIC_TOK(tok, src, SHARD_TOK_##kind)
 #define EOF_TOK(tok, kind) KEYWORD_TOK(tok, src, EOF);
 
-enum path_mode {
-    PATH_NONE,
-    PATH_INC,
-    PATH_REL,
-    PATH_ABS,
-    PATH_HOME,
-};
-
 static char tmpbuf[PATH_MAX + 1];
 
 static const unsigned token_widths[] = {
@@ -245,45 +237,10 @@ static int is_gt_sign(int c) {
     return c == '>';
 }
 
-static int lex_string(struct shard_context* ctx, struct shard_source* src, struct shard_token* token, int (*is_end_quote)(int), enum path_mode pmode) {
+static int lex_string(struct shard_context* ctx, struct shard_source* src, struct shard_token* token, int (*is_end_quote)(int), bool is_path) {
     unsigned start = src->tell(src) - 1;
     
     struct shard_string str = {0};
-
-    switch(pmode) {
-        case PATH_NONE:
-        case PATH_ABS:
-            break;
-        case PATH_REL: {
-            if(!ctx->realpath || !ctx->dirname || !src->origin) {
-                ERR_TOK(token, src, "relative paths are disabled");
-                return EINVAL;
-            }
-
-            char* current_path = ctx->malloc(strlen(src->origin) + 1);
-            strcpy(current_path, src->origin);
-            ctx->dirname(current_path);
-
-            if(!ctx->realpath(current_path, tmpbuf)) {
-                ERR_TOK(token, src, "could not resolve relative path");
-                return errno;
-            }
-
-            dynarr_append_many(ctx, &str, tmpbuf, strlen(tmpbuf));
-            dynarr_append(ctx, &str, '/');
-            ctx->free(current_path);
-        } break;
-        case PATH_INC:
-            break;
-        case PATH_HOME:
-            if(!ctx->home_dir) {
-                ERR_TOK(token, src, "no home directory specified; Home paths are disabled");
-                return EINVAL;
-            }
-
-            dynarr_append_many(ctx, &str, ctx->home_dir, strlen(ctx->home_dir));
-            break;
-    }
 
     bool escaped = false;
     int c;
@@ -318,7 +275,7 @@ static int lex_string(struct shard_context* ctx, struct shard_source* src, struc
         .width = end - start + 1
     };
 
-    STRING_TOK(token, src, pmode == PATH_NONE ? SHARD_TOK_STRING : SHARD_TOK_PATH, str.items, loc);
+    STRING_TOK(token, src, is_path ? SHARD_TOK_PATH : SHARD_TOK_STRING, str.items, loc);
     return 0;
 }
 
@@ -453,7 +410,8 @@ repeat:
             }
             else if(!isspace(c)) {
                 src->ungetc(c, src);
-                return lex_string(ctx, src, token, isspace, PATH_ABS);
+                src->ungetc('/', src);
+                return lex_string(ctx, src, token, isspace, true);
             }
             else {
                 src->ungetc(c, src);
@@ -461,7 +419,8 @@ repeat:
             }
             break;
         case '~':
-            return lex_string(ctx, src, token, isspace, PATH_HOME);
+            src->ungetc(c, src);
+            return lex_string(ctx, src, token, isspace, true);
         case ':':
             KEYWORD_TOK(token, src, COLON);
             break;
@@ -496,7 +455,9 @@ repeat:
             else if(c == '/') {
                 if(c2 != -2)
                     src->ungetc(c2, src);
-                return lex_string(ctx, src, token, isspace, PATH_REL);
+                src->ungetc('/', src);
+                src->ungetc('.', src);
+                return lex_string(ctx, src, token, isspace, true);
             }
             else {
                 if(c2 != -2)
@@ -529,7 +490,7 @@ repeat:
                 KEYWORD_TOK(token, src, LE);
             else if(!isspace(c)) {
                 src->ungetc(c, src);
-                return lex_string(ctx, src, token, is_gt_sign, PATH_INC);
+                return lex_string(ctx, src, token, is_gt_sign, true);
             }
             else {
                 src->ungetc(c, src);
@@ -555,7 +516,7 @@ repeat:
                 return EINVAL;
             }
         case '\"':
-            return lex_string(ctx, src, token, is_double_quote, PATH_NONE);
+            return lex_string(ctx, src, token, is_double_quote, false);
         default:
             if(isdigit(c)) {
                 src->ungetc(c, src);
