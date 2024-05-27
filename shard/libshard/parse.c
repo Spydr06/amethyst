@@ -45,7 +45,8 @@ static int advance(struct parser* p) {
     return err;
 }
 
-static int errorf(struct parser* p, const char* fmt, ...) {
+static __attribute__((format(printf, 2, 3)))
+int errorf(struct parser* p, const char* fmt, ...) {
     char* buffer = p->ctx->malloc(256);
     
     va_list ap;

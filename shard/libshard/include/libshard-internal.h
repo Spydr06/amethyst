@@ -58,5 +58,12 @@ static inline char* shard_stpncpy(char *restrict dst, const char *restrict src, 
      return memset(shard_mempcpy(dst, src, dlen), 0, dsize - dlen);
 }
 
+#ifdef RUNTIME_DEBUG
+    #include <stdio.h>
+    #define DBG_PRINTF(...) printf(__VA_ARGS__)
+#else
+    #define DBG_PRINTF(...)
+#endif
+
 #endif /* _LIBSHARD_INTERNAL_H */
 

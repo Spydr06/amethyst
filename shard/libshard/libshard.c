@@ -81,6 +81,7 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
             shard_free_expr(ctx, expr->let.expr);
             break;
         default:
+            break;
     }
 }
 
