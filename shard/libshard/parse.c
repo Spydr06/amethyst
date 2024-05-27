@@ -670,7 +670,9 @@ static int parse_prefix_expr(struct parser* p, struct shard_expr* expr) {
 
             static char buf[1024];
             shard_dump_token(buf, sizeof(buf), &p->token);
-            return errorf(p, "unexpected token `%s`, expect expression", buf);
+            int err = errorf(p, "unexpected token `%s`, expect expression", buf);
+            advance(p);
+            return err;
         }
     }
 
@@ -845,7 +847,9 @@ static int parse_infix_expr(struct parser* p, struct shard_expr* expr, struct sh
 
                 static char buf[1024];
                 shard_dump_token(buf, sizeof(buf), &p->token);
-                return errorf(p, "unexpected token `%s`, expect infix expression", buf);
+                int err = errorf(p, "unexpected token `%s`, expect infix expression", buf);
+                advance(p);
+                return err;
             }
     }
 }

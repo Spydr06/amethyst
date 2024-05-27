@@ -14,17 +14,7 @@
 #include <getopt.h>
 #include <libgen.h>
 
-#include <libshard.h>
-
-#define EITHER(a, b) ((a) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-
-#define C_RED "\033[31m"
-#define C_BLACK "\033[90m"
-
-#define C_BLD "\033[1m"
-#define C_RST "\033[0m"
-#define C_NOBLD "\033[22m"
+#include "shard.h"
 
 static const struct option cmdline_options[] = {
     {"help",   0, NULL, 'h'},
@@ -56,7 +46,7 @@ static int _tell(struct shard_source* src) {
 
 static void print_basic_error(struct shard_error* error) {
     fprintf(stderr, 
-        C_BLD C_RED "[Error]" C_RST C_BLD " %s:%u:" C_NOBLD " %s\n" C_RST,
+        C_BLD C_RED "error: " C_RST C_BLD " %s:%u:" C_NOBLD " %s\n" C_RST,
         error->loc.src->origin, error->loc.line, EITHER(error->err, strerror(error->_errno))
     );
 }
@@ -93,8 +83,9 @@ static void print_error(struct shard_error* error) {
     size_t column = error->loc.offset - line_start;
 
     fprintf(stderr, 
-        C_BLD C_RED "[Error]" C_RST C_BLD " %s:%u:%zu:" C_NOBLD " %s\n" C_RST,
-        error->loc.src->origin, error->loc.line, column, EITHER(error->err, strerror(error->_errno))
+        C_BLD C_RED "error:" C_RST C_RST " %s\n " C_BLD C_BLUE "       at " C_PURPLE "%s:%u:%zu:\n" C_RST,
+        EITHER(error->err, strerror(error->_errno)),
+        error->loc.src->origin, error->loc.line, column
     );
 
     fprintf(stderr,
@@ -115,6 +106,43 @@ static void print_error(struct shard_error* error) {
 
     fseek(fd, fd_pos, SEEK_SET);
     free(line_str);
+}
+
+static int eval_file(struct shard_context* ctx, const char* progname, const char* input_file, bool echo_result) {
+    FILE* fd = fopen(input_file, "r");
+    if(!fd) {
+        fprintf(stderr, "%s: could not read file `%s`: %s\n", progname, input_file, strerror(errno));
+        return EXIT_FAILURE;
+    }
+
+    struct shard_source src = {
+        .userp = fd,
+        .origin = input_file,
+        .getc = _getc,
+        .ungetc = _ungetc,
+        .tell = _tell,
+        .line = 1
+    };
+
+    struct shard_value result;
+    int num_errors = shard_eval(ctx, &src, &result);
+    struct shard_error* errors = shard_get_errors(ctx);
+    for(int i = 0; i < num_errors; i++)
+        print_error(&errors[i]);
+
+    if(!num_errors && echo_result) {
+        struct shard_string str = {0};
+        shard_value_to_string(ctx, &str, &result);
+        shard_string_push(ctx, &str, '\0');
+
+        puts(str.items);
+
+        shard_string_free(ctx, &str);
+    }
+
+    fclose(fd);
+
+    return num_errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
 int main(int argc, char** argv) {
@@ -172,53 +200,22 @@ int main(int argc, char** argv) {
     if(path)
         shard_include_dir(&ctx, path);
 
-    int ret = EXIT_SUCCESS;
+    int ret = 0;
     for(; optind < argc; optind++) {
         const char* input_file = argv[optind];
-        FILE* fd = fopen(input_file, "r");
-        if(!fd) {
-            fprintf(stderr, "%s: could not read file `%s`: %s\n", argv[0], input_file, strerror(errno));
-            ret = EXIT_FAILURE;
-            goto finish;
-        }
+        if(strcmp(input_file, "repl") == 0)
+            ret = shard_repl(&ctx, echo_result);
+        else
+            ret = eval_file(&ctx, argv[0], input_file, echo_result);
 
-        struct shard_source src = {
-            .userp = fd,
-            .origin = input_file,
-            .getc = _getc,
-            .ungetc = _ungetc,
-            .tell = _tell,
-            .line = 1
-        };
-        
-        struct shard_value result;
-        int num_errors = shard_eval(&ctx, &src, &result);
-        struct shard_error* errors = shard_get_errors(&ctx);
-        for(int i = 0; i < num_errors; i++)
-            print_error(&errors[i]);
-
-        if(!num_errors && echo_result) {
-            struct shard_string str = {0};
-            shard_value_to_string(&ctx, &str, &result);
-            shard_string_push(&ctx, &str, '\0');
-
-            puts(str.items);
-
-            shard_string_free(&ctx, &str);
-        }
-
-        fclose(fd);
-
-        if(num_errors > 0) {
-            ret = EXIT_FAILURE;
-            goto finish;
-        }
+        if(ret)
+            break;
     }
 
-finish:
     shard_deinit(&ctx);
     if(ret)
         fputs("execution terminated.\n", stderr);
 
     return ret;
 }
+

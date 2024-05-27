@@ -26,18 +26,22 @@ struct scope {
 
 struct evaluator {
     struct shard_context* ctx;
+    struct shard_gc gc;
+
     struct scope* scope;
     jmp_buf* exception;
 };
 
-static void evaluator_init(volatile struct evaluator* eval, struct shard_context* ctx, jmp_buf* exception) {
+static void evaluator_init(volatile struct evaluator* eval, struct shard_context* ctx, jmp_buf* exception, void* stack_bottom) {
     memset((void*) eval, 0, sizeof(struct evaluator));
     eval->ctx = ctx;
     eval->exception = exception;
+
+    shard_gc_begin(&eval->gc, ctx, stack_bottom);
 }
 
 static void evaluator_free(volatile struct evaluator* eval) {
-    
+    shard_gc_end(&eval->gc);
 }
 
 static _Noreturn __attribute__((format(printf, 3, 4))) 
@@ -139,8 +143,8 @@ int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard
 
     jmp_buf exception;
     volatile struct evaluator e;
-    evaluator_init(&e, ctx, &exception);
-    
+    evaluator_init(&e, ctx, &exception, __builtin_frame_address(0));
+
     if(setjmp(*e.exception) == 0)
         *result = eval(&e, &expr);
 

@@ -97,25 +97,24 @@ struct shard_gc {
     size_t min_size;
 };
 
-#define gc_begin(gc, ctx, stack_base) (shard_gc_begin_ext((gc), (ctx), (stack_base), 1024, 1024, 0.2, 0.8, 0.5))
-#define gc_begin_here(gc, ctx) gc_begin(gc, ctx, __builtin_frame_address(0))
+#define shard_gc_begin(gc, ctx, stack_base) (shard_gc_begin_ext((gc), (ctx), (stack_base), 1024, 1024, 0.2, 0.8, 0.5))
 
-void shard_gc_begin_ext(struct shard_gc* gc, struct shard_context* ctx, void* stack_bottom, size_t init_cap, size_t min_cap, double downsize_load_factor, double upsize_load_factor, double sweep_factor);
-size_t shard_gc_end(struct shard_gc* gc);
+void shard_gc_begin_ext(volatile struct shard_gc* gc, struct shard_context* ctx, void* stack_bottom, size_t init_cap, size_t min_cap, double downsize_load_factor, double upsize_load_factor, double sweep_factor);
+size_t shard_gc_end(volatile struct shard_gc* gc);
 
-void shard_gc_pause(struct shard_gc* gc);
-void shard_gc_resume(struct shard_gc* gc);
+void shard_gc_pause(volatile struct shard_gc* gc);
+void shard_gc_resume(volatile struct shard_gc* gc);
 
-size_t shard_gc_run(struct shard_gc* gc);
-void* shard_gc_make_static(struct shard_gc* gc, void* ptr);
+size_t shard_gc_run(volatile struct shard_gc* gc);
+void* shard_gc_make_static(volatile struct shard_gc* gc, void* ptr);
 
 #define shard_gc_malloc(gc, size) (gc_malloc_ext((gc), (size), NULL))
 #define shard_gc_calloc(gc, nmemb, size) (gc_malloc_ext((gc), (nmemb), (size), NULL))
 
-void* shard_gc_malloc_ext(struct shard_gc* gc, size_t size, void (*dtor)(void*));
-void* shard_gc_calloc_ext(struct shard_gc* gc, size_t nmemb, size_t size, void (*dtor)(void*));
-void* shard_gc_realloc(struct shard_gc* gc, void* ptr, size_t size);
-void shard_gc_free(struct shard_gc* gc, void* ptr);
+void* shard_gc_malloc_ext(volatile struct shard_gc* gc, size_t size, void (*dtor)(void*));
+void* shard_gc_calloc_ext(volatile struct shard_gc* gc, size_t nmemb, size_t size, void (*dtor)(void*));
+void* shard_gc_realloc(volatile struct shard_gc* gc, void* ptr, size_t size);
+void shard_gc_free(volatile struct shard_gc* gc, void* ptr);
 
 struct shard_error {
     struct shard_location loc;

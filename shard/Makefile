@@ -31,7 +31,7 @@ $(BUILD_DIR):
 	@echo " MKDIR $(BUILD_DIR)"
 	@mkdir -p $(BUILD_DIR)
 
-$(SHARD_BIN): $(OBJECTS) $(BUILD_DIR)/shard.o
+$(SHARD_BIN): $(OBJECTS) $(BUILD_DIR)/shard.o $(BUILD_DIR)/repl.o
 	@echo " LD    $@"
 	@$(CC) $(LDFLAGS) $^ -o $@
 

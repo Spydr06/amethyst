@@ -233,7 +233,7 @@ static void gc_allocation_map_remove(struct shard_context* ctx, struct shard_all
         gc_allocation_map_resize_to_fit(ctx, map);
 }
 
-static inline void* gc_mcalloc(struct shard_gc* gc, size_t count, size_t size) {
+static inline void* gc_mcalloc(volatile struct shard_gc* gc, size_t count, size_t size) {
     if(!count)
         return gc->ctx->malloc(size);
     void* ptr = gc->ctx->malloc(count * size);
@@ -242,11 +242,11 @@ static inline void* gc_mcalloc(struct shard_gc* gc, size_t count, size_t size) {
     return ptr;
 }
 
-static inline bool gc_needs_sweep(struct shard_gc* gc) {
+static inline bool gc_needs_sweep(volatile struct shard_gc* gc) {
     return gc->allocs->size > gc->allocs->sweep_limit;
 }
 
-static void* allocate(struct shard_gc* gc, size_t count, size_t size, void (*dtor)(void*)) {
+static void* allocate(volatile struct shard_gc* gc, size_t count, size_t size, void (*dtor)(void*)) {
     if(gc_needs_sweep(gc) && !gc->paused) {
 #ifdef RUNTIME_DEBUG
         size_t freed_mem = gc_run(gc);
@@ -281,7 +281,7 @@ static void* allocate(struct shard_gc* gc, size_t count, size_t size, void (*dto
     }
 }
 
-static void make_root(struct shard_gc* gc, void* ptr)
+static void make_root(volatile struct shard_gc* gc, void* ptr)
 {
     struct gc_allocation* alloc = gc_allocation_map_get(gc->allocs, ptr);
     if(alloc)
@@ -289,7 +289,7 @@ static void make_root(struct shard_gc* gc, void* ptr)
 }
 
 void shard_gc_begin_ext(
-        struct shard_gc* gc,
+        volatile struct shard_gc* gc,
         struct shard_context* ctx,
         void* stack_bottom,
         size_t initial_capacity, size_t min_capacity, 
@@ -298,6 +298,7 @@ void shard_gc_begin_ext(
     double downsize_limit = downsize_load_factor > 0.0 ? downsize_load_factor : 0.2;
     double upsize_limit = upsize_load_factor > 0.0 ? upsize_load_factor : 0.8;
     sweep_factor = sweep_factor > 0.0 ? sweep_factor : 0.5;
+    gc->ctx = ctx;
     gc->paused = false;
     gc->stack_bottom = stack_bottom;
     initial_capacity = initial_capacity < min_capacity ? min_capacity : initial_capacity;
@@ -306,23 +307,23 @@ void shard_gc_begin_ext(
     DBG_PRINTF("created new garbage collector (cap=%ld, size=%ld)\n", gc->allocs->capacity, gc->allocs->size);
 }
 
-void shard_gc_pause(struct shard_gc* gc) {
+void shard_gc_pause(volatile struct shard_gc* gc) {
     gc->paused = true;
 }
 
-void shard_gc_resume(struct shard_gc* gc) {
+void shard_gc_resume(volatile struct shard_gc* gc) {
     gc->paused = false;
 }
 
-void* shard_gc_malloc_ext(struct shard_gc* gc, size_t size, void (*dtor)(void*)) {
+void* shard_gc_malloc_ext(volatile struct shard_gc* gc, size_t size, void (*dtor)(void*)) {
     return allocate(gc, 0, size, dtor);
 }
 
-void* shard_gc_calloc_ext(struct shard_gc* gc, size_t nmemb, size_t size, void (*dtor)(void*)) {
+void* shard_gc_calloc_ext(volatile struct shard_gc* gc, size_t nmemb, size_t size, void (*dtor)(void*)) {
     return allocate(gc, nmemb, size, dtor);
 }
 
-void* shard_gc_realloc(struct shard_gc* gc, void* p, size_t size) {
+void* shard_gc_realloc(volatile struct shard_gc* gc, void* p, size_t size) {
     struct gc_allocation* alloc = gc_allocation_map_get(gc->allocs, p);
     if(p && !alloc) {
         // the user passed an unknown pointer
@@ -351,12 +352,12 @@ void* shard_gc_realloc(struct shard_gc* gc, void* p, size_t size) {
     return q;
 }
 
-void* shard_gc_make_static(struct shard_gc* gc, void* ptr) {
+void* shard_gc_make_static(volatile struct shard_gc* gc, void* ptr) {
     make_root(gc, ptr);
     return ptr;
 }
 
-void shard_gc_free(struct shard_gc* gc, void* ptr)
+void shard_gc_free(volatile struct shard_gc* gc, void* ptr)
 {
     struct gc_allocation* alloc = gc_allocation_map_get(gc->allocs, ptr);
     if(!alloc) {
@@ -370,7 +371,7 @@ void shard_gc_free(struct shard_gc* gc, void* ptr)
     gc->ctx->free(ptr);
 }
 
-static void mark_alloc(struct shard_gc* gc, void* ptr) {
+static void mark_alloc(volatile struct shard_gc* gc, void* ptr) {
     struct gc_allocation* alloc = gc_allocation_map_get(gc->allocs, ptr);
     if(!alloc || alloc->tag & GC_TAG_MARK)
         return;
@@ -386,7 +387,7 @@ static void mark_alloc(struct shard_gc* gc, void* ptr) {
     }
 }
 
-static void mark_stack(struct shard_gc* gc) {
+static void mark_stack(volatile struct shard_gc* gc) {
     DBG_PRINTF("marking the stack (gc@%p) in increments of %ld\n", (void*) gc, sizeof(uint8_t));
     void* stack_top = __builtin_frame_address(0);
     void* stack_bottom = gc->stack_bottom;
@@ -397,7 +398,7 @@ static void mark_stack(struct shard_gc* gc) {
     }
 }
 
-static void mark_roots(struct shard_gc* gc) {
+static void mark_roots(volatile struct shard_gc* gc) {
     DBG_PRINTF("marking roots\n");
     for(size_t i = 0; i < gc->allocs->capacity; i++) {
         struct gc_allocation* chunk = gc->allocs->allocs[i];
@@ -411,19 +412,19 @@ static void mark_roots(struct shard_gc* gc) {
     }
 }
 
-static void mark(struct shard_gc* gc) {
+static void mark(volatile struct shard_gc* gc) {
     DBG_PRINTF("initiating GC mark (gc@%p)\n", (void*) gc);
     mark_roots(gc);
 
     // dump registers onto stack and scan the stack
-    void (*volatile _mark_stack)(struct shard_gc*) = mark_stack;
+    void (*volatile _mark_stack)(volatile struct shard_gc*) = mark_stack;
     jmp_buf ctx;
     memset(&ctx, 0, sizeof(jmp_buf));
     setjmp(ctx);
     _mark_stack(gc);
 }
 
-static size_t sweep(struct shard_gc* gc) {
+static size_t sweep(volatile struct shard_gc* gc) {
     DBG_PRINTF("initiating GC sweep (gc@%p)\n", (void*) gc);
     size_t total = 0;
 
@@ -457,7 +458,7 @@ static size_t sweep(struct shard_gc* gc) {
     return total;
 }
 
-static void unroot(struct shard_gc* gc) {
+static void unroot(volatile struct shard_gc* gc) {
     DBG_PRINTF("Unmarking roots\n");
     
     for(size_t i = 0; i < gc->allocs->capacity; ++i) {
@@ -470,14 +471,14 @@ static void unroot(struct shard_gc* gc) {
     }
 }
 
-size_t shard_gc_end(struct shard_gc *gc) {
+size_t shard_gc_end(volatile struct shard_gc *gc) {
     unroot(gc);
     size_t collected = sweep(gc);
     gc_allocation_map_delete(gc->ctx, gc->allocs);
     return collected;
 }
 
-size_t shard_gc_run(struct shard_gc* gc)
+size_t shard_gc_run(volatile struct shard_gc* gc)
 {
     DBG_PRINTF("initiating GC run (gc@%p)\n", (void*) gc);
     mark(gc);
