@@ -24,7 +24,7 @@ void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, 
             dynarr_append_many(ctx, str, buf, strlen(buf));
             break;
         case SHARD_VAL_STRING:
-            snprintf(buf, LEN(buf), "\"%s\"", val->string);
+            snprintf(buf, LEN(buf), "\"%.*s\"", (int) strlen(val->string), val->string);
             dynarr_append_many(ctx, str, buf, strlen(buf));
             break;
         case SHARD_VAL_PATH:

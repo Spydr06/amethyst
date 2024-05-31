@@ -108,8 +108,8 @@ void shard_gc_resume(volatile struct shard_gc* gc);
 size_t shard_gc_run(volatile struct shard_gc* gc);
 void* shard_gc_make_static(volatile struct shard_gc* gc, void* ptr);
 
-#define shard_gc_malloc(gc, size) (gc_malloc_ext((gc), (size), NULL))
-#define shard_gc_calloc(gc, nmemb, size) (gc_malloc_ext((gc), (nmemb), (size), NULL))
+#define shard_gc_malloc(gc, size) (shard_gc_malloc_ext((gc), (size), NULL))
+#define shard_gc_calloc(gc, nmemb, size) (shard_gc_malloc_ext((gc), (nmemb), (size), NULL))
 
 void* shard_gc_malloc_ext(volatile struct shard_gc* gc, size_t size, void (*dtor)(void*));
 void* shard_gc_calloc_ext(volatile struct shard_gc* gc, size_t nmemb, size_t size, void (*dtor)(void*));
@@ -399,8 +399,16 @@ struct shard_value {
         bool boolean;
         int64_t integer;
         double floating;
-        const char* string;
-        const char* path;
+        
+        struct {
+            const char* string;
+            size_t strlen;
+        };
+
+        struct {
+            const char* path;
+            size_t pathlen;
+        };
 
         struct {
             struct shard_list* head;

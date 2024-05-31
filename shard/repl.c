@@ -62,10 +62,10 @@ static int handle_help(struct shard_context* __unused, char* __unused, bool* __u
     char buf[20];
     for(size_t i = 0; i < LEN(commands); i++) {
         memset(buf, 0, sizeof(buf));
-        strncat(buf, commands[i].cmd_short, LEN(buf));
+        strncat(buf, commands[i].cmd_short, LEN(buf) - 1);
         if(commands[i].cmd_long) {
-            strncat(buf, ", ", LEN(buf));
-            strncat(buf, commands[i].cmd_long, LEN(buf));
+            strncat(buf, ", ", LEN(buf) - 1);
+            strncat(buf, commands[i].cmd_long, LEN(buf) - 1);
         }
 
         for(size_t i = strlen(buf); i < LEN(buf); i++)

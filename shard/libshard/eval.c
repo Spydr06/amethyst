@@ -18,7 +18,7 @@
 #define BOOL_VAL(b) ((struct shard_value) { .type = SHARD_VAL_BOOL, .boolean = (bool)(b) })
 #define INT_VAL(i) ((struct shard_value) { .type = SHARD_VAL_INT, .integer = (int64_t)(i) })
 #define FLOAT_VAL(f) ((struct shard_value) { .type = SHARD_VAL_FLOAT, .floating = (double)(f) })
-#define STRING_VAL(s) ((struct shard_value) { .type = SHARD_VAL_STRING, .string = (s) })
+#define STRING_VAL(s, l) ((struct shard_value) { .type = SHARD_VAL_STRING, .string = (s), .strlen = (l) })
 
 struct scope {
     struct scope* outer;
@@ -43,6 +43,11 @@ static void evaluator_init(volatile struct evaluator* eval, struct shard_context
 static void evaluator_free(volatile struct evaluator* eval) {
     shard_gc_end(&eval->gc);
 }
+
+#define assert_type(e, loc, a, b, ...)  do {    \
+        if(!((a) & (b)))                        \
+            throw((e), (loc), __VA_ARGS__);     \
+    while(0)
 
 static _Noreturn __attribute__((format(printf, 3, 4))) 
 void throw(volatile struct evaluator* e, struct shard_location loc, const char* fmt, ...) {
@@ -110,8 +115,107 @@ static inline struct shard_value eval_path(volatile struct evaluator* e, struct 
     // TODO: register `path` with garbage collector
     return (struct shard_value) {
         .type = SHARD_VAL_PATH,
-        .path = path.items
+        .path = path.items,
+        .pathlen = path.count
     };
+}
+
+static struct shard_value eval(volatile struct evaluator* e, struct shard_expr* expr);
+
+static inline struct shard_value eval_eq(volatile struct evaluator* e, struct shard_expr* expr, bool negate) {
+    struct shard_value values[] = {
+        eval(e, expr->binop.lhs),
+        eval(e, expr->binop.rhs)
+    };
+
+    if(values[0].type != values[1].type)
+        return BOOL_VAL(false ^ negate);
+
+    switch(values[0].type) {
+        case SHARD_VAL_NULL:
+            return BOOL_VAL(true ^ negate);
+        case SHARD_VAL_INT:
+            return BOOL_VAL((values[0].integer == values[1].integer) ^ negate);
+        case SHARD_VAL_FLOAT:
+            return BOOL_VAL((values[0].floating == values[1].floating) ^ negate);
+        case SHARD_VAL_BOOL:
+            return BOOL_VAL((values[0].boolean == values[1].boolean) ^ negate);
+        case SHARD_VAL_PATH:
+            return BOOL_VAL((strcmp(values[0].path, values[1].path) == 0) ^ negate);
+        case SHARD_VAL_STRING:
+            return BOOL_VAL((strcmp(values[0].string, values[1].string) == 0) ^ negate);
+        case SHARD_VAL_FUNCTION:
+            return BOOL_VAL((memcmp(&values[0].function, &values[1].function, sizeof(values[0].function)) == 0) ^ negate);
+        case SHARD_VAL_SET:
+        case SHARD_VAL_LIST:
+            throw(e, expr->loc, "unimplemented");
+    }
+}
+
+static inline struct shard_value eval_addition(volatile struct evaluator* e, struct shard_expr* expr) {
+    struct shard_value values[] = {
+        eval(e, expr->binop.lhs),
+        eval(e, expr->binop.rhs)
+    };
+
+    bool left = false;
+    switch(values[0].type) {
+        case SHARD_VAL_INT: {
+            int64_t sum = values[0].integer;
+            switch(values[1].type) {
+                case SHARD_VAL_INT:
+                    sum += values[1].integer;
+                    break;
+                case SHARD_VAL_FLOAT:
+                    sum += (int64_t) values[1].floating;
+                    break;
+                default:
+                    goto fail;
+            }
+
+            return INT_VAL(sum);
+        }
+
+        case SHARD_VAL_FLOAT: {
+            double sum = values[0].floating;
+            switch(values[1].type) {
+                case SHARD_VAL_INT:
+                    sum += (double) values[1].integer;
+                    break;
+                case SHARD_VAL_FLOAT:
+                    sum += values[1].floating;
+                    break;
+                default:
+                    goto fail;
+            }
+
+            return FLOAT_VAL(sum);
+        }
+        
+        case SHARD_VAL_STRING: {
+            char* sum = 0;
+            size_t len = 0;
+            switch(values[1].type) {
+                case SHARD_VAL_STRING:
+                    len = values[0].strlen + values[1].strlen;
+                    sum = shard_gc_malloc(&e->gc, (len + 1) * sizeof(char));
+                    sum[0] = '\0';
+                    strcat(sum, values[0].string);
+                    strcat(sum, values[1].string);
+                    break;
+                default:
+                    goto fail;
+            }
+            return STRING_VAL(sum, len);
+        }
+        
+        default:
+            left = true;
+            break;
+    }
+
+fail:
+    throw(e, expr->loc, "`+`: %s operand is not of a numeric type", left ? "left" : "right");
 }
 
 static struct shard_value eval(volatile struct evaluator* e, struct shard_expr* expr) {
@@ -127,9 +231,15 @@ static struct shard_value eval(volatile struct evaluator* e, struct shard_expr* 
         case SHARD_EXPR_FALSE:
             return FALSE_VAL();
         case SHARD_EXPR_STRING:
-            return STRING_VAL(expr->string);
+            return STRING_VAL(expr->string, strlen(expr->string));
         case SHARD_EXPR_PATH:
             return eval_path(e, expr);
+        case SHARD_EXPR_EQ:
+            return eval_eq(e, expr, false);
+        case SHARD_EXPR_NE:
+            return eval_eq(e, expr, true);
+        case SHARD_EXPR_ADD:
+            return eval_addition(e, expr);
         default:
             throw(e, expr->loc, "unimplemented expression `%d`.", expr->type);
     }
