@@ -218,47 +218,58 @@ fail:
     throw(e, expr->loc, "`+`: %s operand is not of a numeric type", left ? "left" : "right");
 }
 
-static struct shard_value eval_subtraction(volatile struct evaluator* e, struct shard_expr* expr) {
-    struct shard_value left = eval(e, expr->binop.lhs),
-                      right = eval(e, expr->binop.rhs);
+#define ARITH_OP_INT_FLT(op) \
+    struct shard_value left = eval(e, expr->binop.lhs), \
+                      right = eval(e, expr->binop.rhs); \
+ \
+    bool left_err = false; \
+    switch(left.type) { \
+        case SHARD_VAL_INT: { \
+            int64_t sum = left.integer; \
+            switch(right.type) { \
+                case SHARD_VAL_INT: \
+                    sum = sum op right.integer; \
+                    break; \
+                case SHARD_VAL_FLOAT: \
+                    sum = sum op (double) right.floating; \
+                    break; \
+                default: \
+                    goto fail; \
+            } \
+            return INT_VAL(sum); \
+        } break; \
+        case SHARD_VAL_FLOAT: { \
+            double sum = left.floating; \
+            switch(right.type) { \
+                case SHARD_VAL_INT: \
+                    sum = sum op (double) right.integer; \
+                    break; \
+                case SHARD_VAL_FLOAT: \
+                    sum = sum op right.floating; \
+                    break; \
+                default: \
+                    goto fail; \
+            } \
+            return FLOAT_VAL(sum); \
+        } break; \
+        default: \
+            left_err = true; \
+            break; \
+    } \
+ \
+fail: \
+    throw(e, expr->loc, "`" #op "`: %s operand is not of a numeric type", left_err ? "left" : "right"); \
 
-    bool left_err = false;
-    switch(left.type) {
-        case SHARD_VAL_INT: {
-            int64_t sum = left.integer;
-            switch(right.type) {
-                case SHARD_VAL_INT:
-                    sum -= right.integer;
-                    break;
-                case SHARD_VAL_FLOAT:
-                    sum -= (double) right.floating;
-                    break;
-                default:
-                    goto fail;
-            }
-            return INT_VAL(sum);
-        } break;
-        case SHARD_VAL_FLOAT: {
-            double sum = left.floating;
-            switch(right.type) {
-                case SHARD_VAL_INT:
-                    sum -= (double) right.integer;
-                    break;
-                case SHARD_VAL_FLOAT:
-                    sum -= right.floating;
-                    break;
-                default:
-                    goto fail;
-            }
-            return FLOAT_VAL(sum);
-        } break;
-        default:
-            left_err = true;
-            break;
-    }
+static inline struct shard_value eval_subtraction(volatile struct evaluator* e, struct shard_expr* expr) {
+    ARITH_OP_INT_FLT(-)
+}
 
-fail:
-    throw(e, expr->loc, "`-`: %s operand is not of a numeric type", left_err ? "left" : "right");
+static inline struct shard_value eval_multiplication(volatile struct evaluator* e, struct shard_expr* expr) {
+    ARITH_OP_INT_FLT(*)
+}
+
+static inline struct shard_value eval_division(volatile struct evaluator* e, struct shard_expr* expr) {
+    ARITH_OP_INT_FLT(/) // TODO: handle zero-division
 }
 
 static struct shard_value eval(volatile struct evaluator* e, struct shard_expr* expr) {
@@ -285,6 +296,10 @@ static struct shard_value eval(volatile struct evaluator* e, struct shard_expr* 
             return eval_addition(e, expr);
         case SHARD_EXPR_SUB:
             return eval_subtraction(e, expr);
+        case SHARD_EXPR_MUL:
+            return eval_multiplication(e, expr);
+        case SHARD_EXPR_DIV:
+            return eval_division(e, expr);
         default:
             throw(e, expr->loc, "unimplemented expression `%d`.", expr->type);
     }
