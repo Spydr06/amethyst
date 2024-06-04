@@ -1,8 +1,8 @@
-BUILD_DIR := build
+BUILD_DIR ?= build
 LIBSHARD_DIR := libshard
 
-SHARD_BIN := build/shard
-LIBSHARD := build/libshard.a
+SHARD_BIN := $(BUILD_DIR)/shard
+LIBSHARD := $(BUILD_DIR)/libshard.a
 
 SOURCES := $(shell find $(LIBSHARD_DIR) -name '*.c')
 OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SOURCES))

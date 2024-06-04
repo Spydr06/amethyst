@@ -2,6 +2,7 @@ ARCH ?= x86_64
 VERSION ?= 0.0.1
 
 BUILD_DIR ?= build
+SHARD_BUILD_DIR ?= $(BUILD_DIR)/shard
 
 LIMINE_DIR ?= limine
 LIMINE_LOADERS := $(LIMINE_DIR)/limine-bios.sys $(LIMINE_DIR)/limine-bios-cd.bin $(LIMINE_DIR)/limine-uefi-cd.bin
@@ -83,7 +84,7 @@ OBJECTS := $(patsubst %, $(BUILD_DIR)/%.o, $(SOURCES))
 VERSION_H := include/version.h
 
 .PHONY: all
-all: $(ISO)
+all: $(ISO) shard
 
 .PHONY: kernel
 kernel: $(KERNEL_ELF)
@@ -186,9 +187,12 @@ debug: $(ISO)
 	$(QEMU) $(QEMUFLAGS) -cdrom $< -boot order=d -s -S &
 	$(GDB) $(GDBFLAGS)
 
+.PHONY: shard
+shard:
+	$(MAKE) -C shard BUILD_DIR=$(shell realpath $(SHARD_BUILD_DIR))
+
 .PHONY: clean
 clean:
 	rm -rf $(BUILD_DIR)
 	rm -rf $(ISOROOT_DIR)
 	rm -f $(VERSION_H)
-

@@ -22,6 +22,7 @@
 
 struct scope {
     struct scope* outer;
+    struct shard_hashmap* idents;
 };
 
 struct evaluator {
@@ -42,6 +43,33 @@ static void evaluator_init(volatile struct evaluator* eval, struct shard_context
 
 static void evaluator_free(volatile struct evaluator* eval) {
     shard_gc_end(&eval->gc);
+}
+
+static inline void scope_push(volatile struct evaluator* e, struct scope* scope) {
+    scope->outer = e->scope;
+    e->scope = scope;
+}
+
+static inline struct scope* scope_pop(volatile struct evaluator* e) {
+    if(!e->scope)
+        return NULL;
+    
+    struct scope* scope = e->scope;
+    e->scope = scope->outer;
+    return scope;
+}
+
+static inline void* lookup_var(volatile struct evaluator* e, shard_ident_t ident) {
+    struct scope* scope = e->scope;
+    void* found = NULL;
+    while(scope) {
+        found = shard_hashmap_get(scope->idents, ident);
+        if(found)
+            return found;
+        scope = scope->outer;
+    }
+
+    return NULL;
 }
 
 #define assert_type(e, loc, a, b, ...)  do {    \

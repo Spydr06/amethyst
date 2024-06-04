@@ -347,8 +347,8 @@ static int parse_ident(struct parser* p, struct shard_expr* expr) {
         default:
             *expr = (struct shard_expr) {
                 .type = SHARD_EXPR_IDENT,
-                    .loc = ident_loc,
-                    .string = ident
+                .loc = ident_loc,
+                .string = ident
             };
             return err;
     }
