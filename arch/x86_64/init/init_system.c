@@ -49,6 +49,8 @@ __noreturn void _start(void)
     early_console_init();
      
     klog(DEBUG, "_start() is at %p", (void*) _start);
+    
+    cpu_enable_features();
 
     gdt_reload();
     early_timer_init();
@@ -78,7 +80,6 @@ __noreturn void _start(void)
         cmos_read(&tm);
         timekeeper_init(hpet_ticks, ticks_per_us, mktime(&tm));
     }
-
     apic_init();
     scheduler_init();
     smp_init();

@@ -344,7 +344,7 @@ static inline void _fb_putchar(struct vga_console_char* ch, uint32_t cursor_x, u
     }
 
     if(ch->modifiers & VGACON_MOD_UNDERLINED) {
-        line = start_offset + vga.pitch * (vga_console.glyph_height - 1);
+        line = start_offset + vga.pitch * (vga_console.glyph_height - 3);
         for(x = 0; x < vga_console.glyph_width; x++) {
             *((uint32_t*) (vga.address + line)) = vga_console.fg;
             line += vga.bpp >> 3;

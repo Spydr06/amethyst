@@ -38,7 +38,6 @@ static void color_test(void) {
 
 void kmain(size_t cmdline_size, const char* cmdline)
 {
-    cpu_enable_features();
     syscalls_init(); 
      
     cmdline_parse(cmdline_size, cmdline);

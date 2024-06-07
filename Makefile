@@ -26,6 +26,10 @@ INCLUDES := . include arch/include
 SSP := $(shell openssl rand -hex 8)
 CMOS_YEAR := $(shell date +"%Y")
 
+override SAVED_CFLAGS := $(CFLAGS)
+override SAVED_C_CXX_FLAGS := $(C_CXX_FLAGS)
+override SAVED_LDFLAGS := $(LDFLAGS)
+
 C_CXX_FLAGS += -Wall -Wextra -Wno-trigraphs \
 			   -ffreestanding -fstack-protector -fno-lto -fPIE \
 		       -g \
@@ -191,7 +195,8 @@ debug: $(ISO)
 
 .PHONY: shard
 shard:
-	$(MAKE) -C shard BUILD_DIR=$(shell realpath $(SHARD_BUILD_DIR))
+	C_CXX_FLAGS=$(SAVED_C_CXX_FLAGS) CFLAGS=$(SAVED_CFLAGS) LDFLAGS=$(SAVED_LDFLAGS) \
+		$(MAKE) -C shard BUILD_DIR=$(shell realpath $(SHARD_BUILD_DIR))
 
 .PHONY: clean
 clean:
