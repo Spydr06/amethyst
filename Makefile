@@ -13,6 +13,8 @@ KERNEL_SYM ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).sym
 ISOROOT_DIR ?= $(BUILD_DIR)/iso
 ISO ?= amethyst.iso
 
+TOOLPREFIX ?= $(ARCH)-elf-
+
 override ARCH_DIR := arch/$(ARCH)
 override SOURCE_DIRS := kernel init drivers $(ARCH_DIR)
 
@@ -30,10 +32,10 @@ C_CXX_FLAGS += -Wall -Wextra -Wno-trigraphs \
 			   -D__$(ARCH)__ -D__$(ARCH) -D_SSP=0x$(SSP) -D_CMOS_YEAR=$(CMOS_YEAR) \
 			   $(foreach i, $(INCLUDES), -I$(shell realpath $i))
 
-override CC := $(ARCH)-elf-gcc
-override CXX := $(ARCH)-elf-g++
+override CC := $(TOOLPREFIX)gcc
+override CXX := $(TOOLPREFIX)g++
 
-override AS := $(ARCH)-elf-as
+override AS := $(TOOLPREFIX)as
 ASFLAGS += -am -g
 
 ifeq (, $(findstring gcc, $(CC)))
@@ -49,12 +51,12 @@ endif
 
 override LDSCRIPT := $(ARCH_DIR)/link.ld
 
-override LD := $(ARCH)-elf-ld
+override LD := $(TOOLPREFIX)ld
 LDFLAGS += -m elf_$(ARCH) -nostdlib \
 		   -static -no-pie --no-dynamic-linker -z max-page-size=0x1000 \
 		   -T $(LDSCRIPT)
 
-override OBJCOPY := $(ARCH)-elf-objcopy
+override OBJCOPY := $(TOOLPREFIX)objcopy
 
 CONSOLEFONT_OBJECT ?= $(BUILD_DIR)/default.psf.o
 CONSOLEFONT ?= fonts/default.psf

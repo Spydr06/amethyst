@@ -32,17 +32,17 @@ $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
 
 $(SHARD_BIN): $(OBJECTS) $(BUILD_DIR)/shard.o $(BUILD_DIR)/repl.o
-	@echo " LD    $@"
+	@echo "  LD    $@"
 	@$(CC) $(LDFLAGS) $^ -o $@
 
 $(LIBSHARD): $(OBJECTS) | $(BUILD_DIR)
-	@echo " AR    $@"	
+	@echo "  AR    $@"	
 	@$(AR) -ru $@ $<
 	@echo " RANLIB	$@"
 	@$(RANLIB) $@
 
 $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
-	@echo " CC    $^"
+	@echo "  CC    $^"
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.o=%.d)" -c $^ -o $@
 
