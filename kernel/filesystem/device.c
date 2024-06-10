@@ -26,7 +26,8 @@ static struct vfsops vfsops = {
 
 static struct vops vnode_ops = {
     .create = devfs_create,
-    .setattr = devfs_setattr
+    .setattr = devfs_setattr,
+    .inactive = devfs_inactive,
 };
 
 static void ctor(struct scache* cache __unused, void* obj) {
@@ -257,3 +258,20 @@ int devfs_getnode(struct vnode* physical, int major, int minor, struct vnode** n
     return 0;
 }
 
+int devfs_inactive(struct vnode* node) {
+    vop_lock(node);
+
+    struct dev_node* dev_node = (struct dev_node*) node;
+    struct vnode* master = (struct vnode*) dev_node->master;
+
+    if(dev_node->physical && dev_node->physical != node)
+        vop_release(&dev_node->physical);
+    if(dev_node->master)
+        vop_release(&master);
+
+    if(dev_node->devops && dev_node->devops->inactive)
+        dev_node->devops->inactive(dev_node->vattr.rdev_minor);
+
+    slab_free(node_cache, node);
+    return 0;
+}

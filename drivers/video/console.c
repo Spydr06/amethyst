@@ -91,6 +91,15 @@ void vga_console_init(uint8_t options) {
     vga_console_register();
 }
 
+void vga_console_winsize(struct winsize* dest) {
+    assert(dest);
+
+    dest->ws_col = vga_console.cols;
+    dest->ws_row = vga_console.rows;
+    dest->ws_xpixel = vga.width;
+    dest->ws_ypixel = vga.height;
+}
+
 void vga_console_register(void) {
     vga_console.writer_before = kernelio_writer;
     kernelio_writer = vga_console_putchar;
@@ -410,8 +419,13 @@ void vga_console_flush(void) {
     }
 }
 
+void vga_console_disable_writer_propagation(void) {
+    vga_console.writer_before = nullptr;
+}
+
 void vga_console_putchar(int c) {
-    vga_console.writer_before(c);
+    if(vga_console.writer_before)
+        vga_console.writer_before(c);
     if(vga_console.esc_status && parse_escape_sequence(c))
         return;
 
@@ -477,4 +491,8 @@ void vga_console_putchar(int c) {
     }
 }
 
-
+size_t vga_console_ttywrite(void* __unused internal, const char* str, size_t count) {
+    for(size_t i = 0; i < count; i++)
+        vga_console_putchar(str[i]);
+    return count;
+}

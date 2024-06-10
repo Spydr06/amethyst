@@ -2,6 +2,7 @@
 #define _AMETHYST_X86_64_EARLY_SERIAL_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #define X86_EFLAGS_CF_BIT 0 /* carry flag */
 #define X86_EFLAGS_CF _BITUL(X86_EFLAGS_CF_BIT)
@@ -19,6 +20,8 @@
 #define DLH 1 /*  Divisor latch High        */
 
 extern int32_t early_serial_base;
+
+size_t early_serial_ttywrite(void* internal, const char* str, size_t count);
 
 #endif /* _AMETHYST_X86_64_EARLY_SERIAL_H */
 

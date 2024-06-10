@@ -1,5 +1,9 @@
 #include <ctype.h>
 
+int isctrl(int c) {
+    return c < 32 && c != '\n' && c != '\r' && c != '\b' && c != '\t' && c != '\e';
+}
+
 int isalnum(int ch)
 {
     return isalpha(ch) || isdigit(ch);

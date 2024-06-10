@@ -1,6 +1,8 @@
 #ifndef _AMETHYST_LIBK_CTYPE_H
 #define _AMETHYST_LIBK_CTYPE_H
 
+int isctrl(int ch);
+
 int isalnum(int ch);
 int isalpha(int ch);
 int islower(int ch);

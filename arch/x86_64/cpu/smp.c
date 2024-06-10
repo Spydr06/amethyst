@@ -28,14 +28,13 @@ static volatile struct limine_smp_request smp_request = {
 
 static void __noreturn cpu_wakeup(struct limine_smp_info* smp_info) {
     cpu_set((struct cpu*) smp_info->extra_argument);
+    cpu_enable_features();
 
     gdt_reload();
     idt_reload();
 
     mmu_apswitch();
     vmm_apinit();
-
-    cpu_enable_features();
 
     klog(INFO, "Hello from cpu %u", _cpu()->cpu_num);
 

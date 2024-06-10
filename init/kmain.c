@@ -9,6 +9,7 @@
 #include <filesystem/temporary.h>
 #include <filesystem/device.h>
 #include <sys/tty.h>
+#include <io/tty.h>
 
 #include <kernelio.h>
 #include <version.h>
@@ -47,13 +48,15 @@ void kmain(size_t cmdline_size, const char* cmdline)
     devfs_init();
 
     tty_init();
+
     pci_init();
     
     greet();
     color_test();
 
-    klog(INFO, "\e[4mHello, World\e[24m %.02f", 3.14);
-    
+    create_ttys();
+    klog(INFO, "\e[4mHello, World\e[24m %.02f", 3.14); 
+
     while(1);
 }
 

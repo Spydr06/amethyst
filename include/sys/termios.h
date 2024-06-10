@@ -1,14 +1,29 @@
 #ifndef _AMETHYST_SYS_TERMIOS_H
 #define _AMETHYST_SYS_TERMIOS_H
 
-#define VINTR 0
+#define VINTR    0
+#define VQUIT    1
+#define VERASE   2
+#define VKILL    3
+#define VEOF     4
+#define VTIME    5
+#define VMIN     6
+#define VSWTC    7
+#define VSTART   8
+#define VSTOP    9
+#define VSUSP    10
+#define VEOL     11
+#define VREPRINT 12
+#define VDISCARD 13
+#define VWERASE  14
+#define VLNEXT   15
+#define VEOL2    16
+
+#define INLCR 0000100
 #define ISIG 0000001
 #define NCCS 32
 #define ECHO 0000010
 #define ICANON 0000002
-#define VTIME 5
-#define VMIN 6
-#define INLCR 0000100
 #define IGNCR 0000200
 #define ICRNL 0000400
 #define OCRNL 0000010

@@ -2,6 +2,7 @@
 #define _AMETHYST_VIDEO_CONSOLE_H
 
 #include <kernelio.h>
+#include <sys/termios.h>
 
 #include <stdint.h>
 #include <stddef.h>
@@ -71,8 +72,13 @@ void vga_console_init(uint8_t options);
 void vga_console_register(void);
 void vga_console_unregister(void);
 
+void vga_console_winsize(struct winsize* dest);
+void vga_console_disable_writer_propagation(void);
+
 void vga_console_putchar(int c);
 void vga_console_flush(void);
+
+size_t vga_console_ttywrite(void* internal, const char* str, size_t count);
 
 #endif /* _AMETHYST_VIDEO_CONSOLE_H */
 

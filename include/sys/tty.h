@@ -23,11 +23,15 @@ struct tty {
     ttydev_write_fn_t write_to_device;
     tty_inactive_fn_t inactive_device;
 
+    struct winsize winsize;
     void* device_internal;
 };
 
 void tty_init(void);
 struct tty* tty_create(const char* name, ttydev_write_fn_t write_fn, tty_inactive_fn_t inactive_fn, void* internal);
+void tty_destroy(struct tty* tty);
+
+void tty_process(struct tty* tty, char c);
 
 void early_putchar(int ch);
 void early_console_init(void);
