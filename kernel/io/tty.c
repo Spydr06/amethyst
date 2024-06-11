@@ -1,6 +1,7 @@
 #include <io/tty.h>
 
 #include <sys/tty.h>
+#include <io/keyboard.h>
 #include <drivers/video/console.h>
 
 #ifdef __x86_64__
@@ -9,6 +10,8 @@
 
 #include <assert.h>
 #include <stddef.h>
+#include <string.h>
+#include <ctype.h>
 
 #define NUM_VGA_TTYS 1
 #define NUM_SERIAL_TTYS 1
@@ -27,6 +30,63 @@ static void tty_putchar(int c) {
     tty_process(vga_ttys[0], (char) c);
 }
 
+static void tty_keyboard_handler(struct keyboard_event event) {
+    if(event.flags & KB_FLAGS_RELEASED)
+        return;
+
+    if(event.ascii) {
+        if(event.flags & KB_FLAGS_CTRL) {
+            if(!(isalpha(event.ascii) || event.ascii == '[' || event.ascii == '\\'))
+                return;
+
+            event.ascii = event.ascii >= 'a' ? event.ascii - 0x60 : event.ascii - 0x40;
+        }
+
+        tty_process(vga_ttys[selected_vga_tty], event.ascii);
+        return;
+    }
+
+    const char* tmp;
+    switch(event.keycode) {
+        case KEY_HOME:
+            tmp = "\e[1~";
+            break;
+        case KEY_INSERT:
+            tmp = "\e[2~";
+            break;
+        case KEY_DELETE:
+            tmp = "\e[3~";
+            break;
+        case KEY_END:
+            tmp = "\e[4~";
+            break;
+        case KEY_PAGE_UP:
+            tmp = "\e[5~";
+            break;
+        case KEY_PAGE_DOWN:
+            tmp = "\e[6~";
+            break;
+        case KEY_UP:
+            tmp = "\e[A";
+            break;
+        case KEY_DOWN:
+            tmp = "\e[B";
+            break;
+        case KEY_RIGHT:
+            tmp = "\e[C";
+            break;
+        case KEY_LEFT:
+            tmp = "\e[D";
+            break;
+        default:
+            return;
+    }
+
+    size_t len = strlen(tmp);
+    for(size_t i = 0; i < len; i++)
+        tty_process(vga_ttys[selected_vga_tty], tmp[i]);
+} 
+
 void create_ttys(void) {
     vga_console_disable_writer_propagation();
     for(size_t i = 0; i < NUM_VGA_TTYS; i++) {
@@ -35,6 +95,8 @@ void create_ttys(void) {
 
         vga_console_winsize(&vga_ttys[i]->winsize);
     }
+
+    keyboard_set_event_handler(tty_keyboard_handler);
 
 #ifdef __x86_64__
     for(size_t i = 0; i < NUM_SERIAL_TTYS; i++) {

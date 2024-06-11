@@ -2,9 +2,11 @@
 #include <kernelio.h>
 #include <ctype.h>
 
-bool shift_active = false;
-bool capslock_active = false;
-bool ctrl_active = false;
+#ifdef __x86_64__
+    #include <x86_64/cpu/idt.h>
+#endif
+
+#include <io/keyboard.h>
 
 static const char convtab_capslock[] = {
     '\0', '\e', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b', '\t',
@@ -34,45 +36,77 @@ static const char convtab_default[] = {
     'b', 'n', 'm', ',', '.', '/', '\0', '\0', '\0', ' '
 };
 
-cpu_status_t* keyboard_interrupt_handler(cpu_status_t* status) {
-    enum ps2_scan_code scan_code = get_ps2_scan_code();
+static void empty_handler(struct keyboard_event __unused) {}
+static void (*keyboard_handler)(struct keyboard_event) = empty_handler;
 
-    switch(scan_code) {
+static enum keyboard_flags flags = 0; 
+
+cpu_status_t* keyboard_interrupt_handler(cpu_status_t* status) {
+    bool interrup_state = interrupt_set(false);
+
+    enum ps2_scan_code scan_code = get_ps2_scan_code();
+    if(scan_code > 0x80) {
+        scan_code -= 0x80;
+        flags |= KB_FLAGS_RELEASED;
+    }
+    else 
+        flags &= ~KB_FLAGS_RELEASED;
+
+    keycode_t keycode = scan_code;
+    char ascii = 0;
+    switch((uint8_t) scan_code) {
         case KEY_LEFT_SHIFT:
-        case KEY_RIGHT_SHIFT:
-            shift_active = true;
+            if(flags & KB_FLAGS_RELEASED)
+                flags &= ~KB_FLAGS_LSHIFT;
+            else
+                flags |= KB_FLAGS_LSHIFT;
             break;
-        case KEY_LEFT_SHIFT_RELEASED:
-        case KEY_RIGHT_SHIFT_RELEASED:
-            shift_active = false;
+        case KEY_RIGHT_SHIFT:
+            if(flags & KB_FLAGS_RELEASED)
+                flags &= ~KB_FLAGS_RSHIFT;
+            else
+                flags |= KB_FLAGS_RSHIFT;
             break;
         case KEY_CAPS_LOCK:
-            capslock_active = !capslock_active;
+            if(!(flags & KB_FLAGS_RELEASED))
+                flags ^= KB_FLAGS_CAPSLOCK;
             break;
-        case KEY_CONTROL:
-            ctrl_active = true;
+        case KEY_LEFT_CTRL:
+            if(flags & KB_FLAGS_RELEASED)
+                flags &= ~KB_FLAGS_LCTRL;
+            else
+                flags |= KB_FLAGS_LCTRL;
             break;
-        case KEY_CONTROL_RELEASED:
-            ctrl_active = false;
+        case KEY_LEFT_ALT:
+            if(flags & KB_FLAGS_RELEASED)
+                flags &= ~KB_FLAGS_LALT;
+            else
+                flags |= KB_FLAGS_LALT;
             break;
+        case 0xe0:
+            goto finish; // TODO: handle extended keyset
         default:
-            if(scan_code >= NUM_KEYS)
-                return status;
-            char c;
-            if(!capslock_active && !shift_active)
-                c = convtab_default[scan_code];
-            else if(!capslock_active && shift_active)
-                c = convtab_shift[scan_code];
-            else if(capslock_active && !shift_active)
-                c = convtab_capslock[scan_code];
-            else if(capslock_active && shift_active)
-                c = convtab_shift_capslock[scan_code];
-
-            if(ctrl_active)
-                c = toupper(c) - 0x40;
-            printk("%c", c); // TODO: handle input correctly
+            if(flags & KB_FLAGS_CAPSLOCK && flags & KB_FLAGS_SHIFT)
+                ascii = convtab_shift_capslock[scan_code];
+            else if(flags & KB_FLAGS_SHIFT)
+                ascii = convtab_shift[scan_code];
+            else if(flags & KB_FLAGS_CAPSLOCK)
+                ascii = convtab_capslock[scan_code];
+            else 
+                ascii = convtab_default[scan_code];
     }
 
+    keyboard_handler((struct keyboard_event){
+        .ascii = ascii,
+        .keycode = keycode,
+        .flags = flags
+    });
+    
+finish:
+    interrupt_set(interrup_state);
     return status;
 }
 
+void keyboard_set_event_handler(void (*handler)(struct keyboard_event)) {
+    keyboard_handler = handler;
+}

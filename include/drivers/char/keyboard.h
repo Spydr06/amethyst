@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <x86_64/cpu/cpu.h>
 
-#define NUM_KEYS 128
-
 // PS2 scan codes
 enum ps2_scan_code : uint8_t {
     KEY_NULL = 0,
@@ -17,7 +15,7 @@ enum ps2_scan_code : uint8_t {
     KEY_Q, KEY_W, KEY_E, KEY_R, KEY_T, KEY_Y, KEY_U, KEY_I, KEY_O, KEY_P,
     KEY_LEFT_BRACKET, KEY_RIGHT_BRACKET,
     KEY_ENTER,
-    KEY_CONTROL,
+    KEY_LEFT_CTRL,
     KEY_A, KEY_S, KEY_D, KEY_F, KEY_G, KEY_H, KEY_J, KEY_K, KEY_L,
     KEY_SEMICOLON, KEY_APOSTROPHE, KEY_BACKTICK,
     KEY_LEFT_SHIFT,
@@ -26,7 +24,7 @@ enum ps2_scan_code : uint8_t {
     KEY_COMMA, KEY_PERIOD, KEY_SLASH,
     KEY_RIGHT_SHIFT,
     KEY_ASTERISK,
-    KEY_ALT,
+    KEY_LEFT_ALT,
     KEY_SPACE,
     KEY_CAPS_LOCK,
     KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_F10,
@@ -44,15 +42,15 @@ enum ps2_scan_code : uint8_t {
     KEY_DELETE,
     KEY_UNKNOWN2, KEY_UNKNOWN3, KEY_UNKNOWN4,
     KEY_F11, KEY_F12,
-    KEY_UNDEFINED,
 
-    KEY_LEFT_SHIFT_RELEASED = 0xaa,
-    KEY_RIGHT_SHIFT_RELEASED = 0xb6,
-    KEY_CONTROL_RELEASED = 0x9d,
-    KEY_ALT_RELEASED = 0xb8
+    KEY_UNDEFINED,
 };
 
+struct keyboard_event;
+
 cpu_status_t* keyboard_interrupt_handler(cpu_status_t* status);
+
+void keyboard_set_event_handler(void (*handler)(struct keyboard_event));
 
 // platform-specific:
 enum ps2_scan_code get_ps2_scan_code(void);
