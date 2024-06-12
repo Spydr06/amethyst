@@ -13,6 +13,9 @@ KERNEL_SYM ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).sym
 ISOROOT_DIR ?= $(BUILD_DIR)/iso
 ISO ?= amethyst.iso
 
+SYSROOT_DIR ?= sysroot
+INITRD ?= $(ISOROOT_DIR)/boot/initrd
+
 TOOLPREFIX ?= $(ARCH)-elf-
 
 override ARCH_DIR := arch/$(ARCH)
@@ -138,6 +141,12 @@ $(CONSOLEFONT_OBJECT): $(CONSOLEFONT)
 	@echo "  LD    $^"
 	@$(LD) -r -b binary -o $@ $<
 
+.PHONY: initrd
+initrd: $(INITRD)
+
+$(INITRD):
+	$(MAKE) -C $(SYSROOT_DIR) initrd INITRD=$(shell realpath $(shell pwd))/$(INITRD) BUILD_DIR=$(shell realpath $(BUILD_DIR))
+
 .PHONY: iso
 iso: $(ISO)
 
@@ -148,7 +157,7 @@ $(LIMINE_DIR)/limine: $(LIMINE_DIR)
 	@echo "  MAKE  $(LIMINE_DIR)"
 	@$(MAKE) -C $(LIMINE_DIR) limine CC=gcc LD=ld
 
-$(ISO): $(KERNEL_ELF) | $(LIMINE_DIR)/limine $(ISOROOT_DIR)/boot/limine/limine.cfg
+$(ISO): $(KERNEL_ELF) | $(LIMINE_DIR)/limine $(INITRD) $(ISOROOT_DIR)/boot/limine/limine.cfg
 	@echo "  CP    $< $(ISOROOT_DIR)/boot"
 	@cp $< $(ISOROOT_DIR)/boot
 	
@@ -201,5 +210,6 @@ shard:
 .PHONY: clean
 clean:
 	rm -rf $(BUILD_DIR)
+	rm -rf $(LIMINE_DIR)/boot
 	rm -rf $(ISOROOT_DIR)
 	rm -f $(VERSION_H)

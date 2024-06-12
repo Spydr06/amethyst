@@ -8,6 +8,7 @@
 #include <filesystem/virtual.h>
 #include <filesystem/temporary.h>
 #include <filesystem/device.h>
+#include <filesystem/initrd.h>
 #include <sys/tty.h>
 #include <io/tty.h>
 
@@ -55,7 +56,10 @@ void kmain(size_t cmdline_size, const char* cmdline)
     color_test();
 
     create_ttys();
+    
     klog(INFO, "\e[4mHello, World\e[24m %.02f", 3.14); 
+
+    initrd_unpack();
 
     while(1);
 }

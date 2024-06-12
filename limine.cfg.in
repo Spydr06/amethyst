@@ -4,7 +4,8 @@ TIMEOUT=5
 :amethyst @VERSION@
     # We use the Limine boot protocol.
     PROTOCOL=limine
- 
+
     # Path to the kernel to boot. boot:/// represents the partition on which limine.cfg is located.
     KERNEL_PATH=boot:///boot/@KERNEL_ELF@
-    KERNEL_CMDLINE=initrd
+    MODULE_PATH=boot:///boot/initrd
+    KERNEL_CMDLINE=initrd=/boot/initrd

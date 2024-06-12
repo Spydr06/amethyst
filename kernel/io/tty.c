@@ -1,3 +1,4 @@
+#include "init/cmdline.h"
 #include <io/tty.h>
 
 #include <sys/tty.h>
@@ -18,13 +19,13 @@
 
 static const char* const vga_tty_names[NUM_VGA_TTYS] = { "tty0" };
 static struct tty* vga_ttys[NUM_VGA_TTYS];
-static unsigned selected_vga_tty = 0;
 
 #ifdef __x86_64__
 static const char* const serial_tty_names[NUM_SERIAL_TTYS] = { "ttyS0" };
 static struct tty* serial_ttys[NUM_SERIAL_TTYS];
-static unsigned selected_serial_tty = 0;
 #endif
+
+static struct tty* selected_tty;
 
 static void tty_putchar(int c) {
     tty_process(vga_ttys[0], (char) c);
@@ -42,7 +43,7 @@ static void tty_keyboard_handler(struct keyboard_event event) {
             event.ascii = event.ascii >= 'a' ? event.ascii - 0x60 : event.ascii - 0x40;
         }
 
-        tty_process(vga_ttys[selected_vga_tty], event.ascii);
+        tty_process(selected_tty, event.ascii);
         return;
     }
 
@@ -84,7 +85,7 @@ static void tty_keyboard_handler(struct keyboard_event event) {
 
     size_t len = strlen(tmp);
     for(size_t i = 0; i < len; i++)
-        tty_process(vga_ttys[selected_vga_tty], tmp[i]);
+        tty_process(selected_tty, tmp[i]);
 } 
 
 void create_ttys(void) {
@@ -103,7 +104,9 @@ void create_ttys(void) {
         serial_ttys[i] = tty_create(serial_tty_names[i], early_serial_ttywrite, nullptr, nullptr);
         assert(serial_ttys[i]);
     }
+
 #endif
 
+    selected_tty = vga_ttys[0];
     kernelio_writer = tty_putchar;
 }
