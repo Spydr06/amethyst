@@ -4,6 +4,7 @@
 #include <cpu/cpu.h>
 #include <cpu/syscalls.h>
 #include <mem/heap.h>
+#include <mem/vmm.h>
 #include <init/cmdline.h>
 #include <filesystem/virtual.h>
 #include <filesystem/temporary.h>
@@ -44,6 +45,8 @@ void kmain(size_t cmdline_size, const char* cmdline)
      
     cmdline_parse(cmdline_size, cmdline);
 
+    vmm_cache_init();
+
     vfs_init();
     tmpfs_init();
     devfs_init();
@@ -59,7 +62,7 @@ void kmain(size_t cmdline_size, const char* cmdline)
     
     klog(INFO, "\e[4mHello, World\e[24m %.02f", 3.14); 
 
-    initrd_unpack();
+//    initrd_unpack();
 
     while(1);
 }

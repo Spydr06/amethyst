@@ -2,6 +2,7 @@
 #define _AMETHYST_MEM_VMM_H
 
 #include <mem/mmap.h>
+#include <mem/pmm.h>
 
 #include <sys/mutex.h>
 
@@ -79,6 +80,10 @@ void vmm_switch_context(struct vmm_context* context);
 
 void* vmm_map(void* addr, size_t size, enum vmm_flags flags, enum mmu_flags mmu_flags, void* private);
 void vmm_unmap(void* addr, size_t size, enum vmm_flags flags);
+
+void vmm_cache_init(void);
+
+int vmm_cache_get_page(struct vnode* vnode, uintptr_t offset, struct page** res);
 
 #endif /* _AMETHYST_MEM_VMM_H */
 

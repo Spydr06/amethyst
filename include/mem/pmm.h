@@ -28,8 +28,10 @@ enum page_flags : uint8_t {
 
 struct page {
     struct vnode* backing;
-
     uintmax_t offset;
+
+    struct page* hash_next;
+    struct page* hash_prev;
 
     union {
         struct {
@@ -54,6 +56,7 @@ void* pmm_alloc(size_t size, enum pmm_section_type section);
 void* pmm_alloc_page(enum pmm_section_type section);
 
 void pmm_release(void* vaddr);
+void pmm_makefree(void* addr, size_t count);
 
 #endif /* _AMETHYST_MEM_PMM_H */
 

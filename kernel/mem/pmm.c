@@ -18,6 +18,7 @@
     assert((page_id) * PAGE_SIZE < (uintptr_t) pages || (page_id) * PAGE_SIZE >= (uintptr_t) &pages[page_count])
 
 uintptr_t hhdm_base;
+static size_t memory_size;
 
 static volatile struct limine_hhdm_request hhdm_request = {
     .id = LIMINE_HHDM_REQUEST,
@@ -46,8 +47,8 @@ void pmm_init(struct mmap* mmap) {
     assert(hhdm_request.response);
     hhdm_base = hhdm_request.response->offset;
 
-
     klog(INFO, "total memory: 0x%zx bytes", mmap->memory_size);
+    memory_size = mmap->memory_size;
 
     pages = MAKE_HHDM(mmap->biggest_entry->base);
     page_count = ROUND_UP(mmap->top, PAGE_SIZE) / PAGE_SIZE;
@@ -152,6 +153,19 @@ void pmm_release(void* addr) {
         if(!page->backing)
             page->flags |= PAGE_FLAGS_FREE;
         spinlock_release(&memory_spinlock);
+    }
+}
+
+void pmm_makefree(void* addr, size_t count) {
+    memory_size += PAGE_SIZE * count;
+    assert(((uintptr_t) addr % PAGE_SIZE) == 0);
+
+    uintptr_t base_id = (uintptr_t) addr / PAGE_SIZE;
+    for(size_t i = 0; i < count; i++) {
+        uintptr_t page_id = base_id + 1;
+        PAGE_BOUNDCHK(page_id);
+        struct page* page = &pages[page_id];
+        free_list_insert(page);
     }
 }
 

@@ -2,11 +2,13 @@
 
 #include <cpu/cpu.h>
 #include <mem/heap.h>
+#include <mem/vmm.h>
 #include <sys/spinlock.h>
 
 #include <kernelio.h>
 #include <assert.h>
 #include <errno.h>
+#include <math.h>
 #include <hashtable.h>
 
 #define MAX_LINK_DEPTH 64
@@ -67,6 +69,12 @@ static struct vnode* lowest_node_in_mp(struct vnode* node) {
     while(node->flags & V_FLAGS_ROOT)
         node = node->vfs->node_covered;
     return node;
+}
+
+static inline void bytes_to_pages(uintptr_t offset, size_t size, uintmax_t* page_offset, size_t* page_count, uintptr_t* start_offset) {
+    *page_offset = offset / PAGE_SIZE;
+    *start_offset = offset % PAGE_SIZE;
+    *page_count = ROUND_UP(offset + size, PAGE_SIZE) / PAGE_SIZE - *page_offset;
 }
 
 int vfs_lookup(struct vnode** dest, struct vnode* src, const char* path, char* last_comp, enum vfs_lookup_flags flags) {
@@ -214,38 +222,75 @@ cleanup:
     return err;
 }
 
-/*size_t vfs_read(struct fs_node* node, size_t offset, size_t size, uint8_t* buffer) {
-    if(node->read)
-        return node->read(node, offset, size, buffer);
-    return 0;
+int vfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset, size_t* written, int flags) {
+    if(node->type != V_TYPE_REGULAR && node->type != V_TYPE_BLKDEV) {
+        // when `node` is a speical file, don't buffer
+        return vop_write(node, buffer, size, offset, flags, written, get_cred());
+    }
+    
+    *written = 0;
+    if(!size)
+        return 0;
+    
+
+    // overflow
+    if(size + offset < offset) {
+        return EINVAL;
+    }
+
+    int err = 0;
+    mutex_acquire(&node->size_lock, false);
+    struct vattr attr;
+    if((err = vop_getattr(node, &attr, get_cred())))
+        goto leave;
+
+    size_t new_size = size + offset > attr.size ? size + offset : 0;
+
+    if(node->type == V_TYPE_REGULAR && new_size) {
+        if((err = vop_resize(node, new_size, get_cred() /* ? */)))
+            goto leave;
+    }
+    else if(node->type == V_TYPE_BLKDEV) {
+        // TODO: write to block devices
+        unimplemented();
+    }
+
+    uintptr_t page_offset, page_count, start_offset;
+    bytes_to_pages(offset, size, &page_offset, &page_count, &start_offset);
+    
+    struct page* page;
+
+    unimplemented();
+
+leave:
+    mutex_release(&node->size_lock);
+    return err;
 }
 
-size_t vfs_write(struct fs_node* node, size_t offset, size_t size, const uint8_t* buffer) {
-    if(node->write)
-        return node->write(node, offset, size, buffer);
-    return 0;
+int vfs_link(struct vnode* dest_ref, const char* dest_path, struct vnode* link_ref, const char* link_path, enum vtype type, struct vattr* attr) {
+    if(type != V_TYPE_LINK && type != V_TYPE_REGULAR)
+        return EINVAL;
+
+    char* component = kmalloc(strlen(link_path) + 1);
+    struct vnode* parent = nullptr;
+    int err = vfs_lookup(&parent, link_ref, link_path, component, VFS_LOOKUP_PARENT);
+    if(err)
+        goto cleanup;
+
+    if(type == V_TYPE_REGULAR) {
+        struct vnode* target_node = nullptr;
+        err = vfs_lookup(&target_node, dest_ref, dest_path, nullptr, 0);
+        if(err) {
+            vop_release(&parent);
+            goto cleanup;
+        }
+        err = vop_link(target_node, parent, component, get_cred());
+        vop_release(&target_node);
+    }
+    else
+        err = vop_symlink(parent, component, attr, dest_path, get_cred());
+
+cleanup:
+    kfree(component);
+    return err;
 }
-
-void vfs_open(struct fs_node* node, uint8_t read, uint8_t write) {
-    // TODO: check readable/writable
-    if(node->open)
-        node->open(node);
-}
-
-void vfs_close(struct fs_node* node) {
-    if(node->close)
-        node->close(node);
-}
-
-struct dirent* vfs_readdir(struct fs_node* node, size_t index) {
-    if((node->flags & 0x7) == FS_DIRECTORY && node->readdir)
-        return node->readdir(node, index);
-    return nullptr;
-}
-
-struct fs_node* vfs_finddir(struct fs_node* node, const char* name) {
-    if((node->flags & 0x7) == FS_DIRECTORY && node->finddir)
-        return node->finddir(node, name);
-    return nullptr;
-}*/
-

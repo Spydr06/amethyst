@@ -72,6 +72,7 @@ struct vfsops {
 struct vnode {
     struct vops* ops;
     mutex_t lock;
+    mutex_t size_lock;
     int refcount;
     enum vfflags flags;
     enum vtype type;
@@ -95,7 +96,7 @@ typedef struct vops {
 	int (*access)(struct vnode *node, mode_t mode, struct cred *cred);
 	int (*unlink)(struct vnode *node, const char *name, struct cred *cred);
 	int (*link)(struct vnode *node, struct vnode *dir, const char *name, struct cred *cred);
-	int (*symlink)(struct vnode *parent, const char *name, struct vattr *attr, char *path, struct cred *cred);
+	int (*symlink)(struct vnode *parent, const char *name, struct vattr *attr, const char *path, struct cred *cred);
 	int (*readlink)(struct vnode *parent, char **link, struct cred *cred);
 	int (*inactive)(struct vnode *node);
 	int (*mmap)(struct vnode *node, void *addr, uintmax_t offset, int flags, struct cred *cred);
@@ -114,12 +115,16 @@ enum vfs_lookup_flags {
     VFS_LOOKUP_INTERNAL = 0x80000000
 };
 
+extern struct vnode* vfs_root;
+
 int vfs_lookup(struct vnode** dest, struct vnode* src, const char* path, char* last_comp, enum vfs_lookup_flags flags);
 
 void vfs_init(void);
 
 int vfs_register(struct vfsops* vfsops, const char* name);
 int vfs_create(struct vnode* ref, const char* path, struct vattr* attr, enum vtype type, struct vnode** node);
+int vfs_link(struct vnode* dest_ref, const char* dest_path, struct vnode* link_ref, const char* link_path, enum vtype type, struct vattr* attr);
+int vfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset, size_t* written, int flags);
 
 void vfs_inactive(struct vnode* node);
 
@@ -150,6 +155,22 @@ static inline int vop_create(struct vnode* node, const char* name, struct vattr*
     return node->ops->create(node, name, attr, type, result, cred);
 }
 
+static inline int vop_getattr(struct vnode *node, struct vattr *attr, struct cred *cred) {
+    return node->ops->getattr(node, attr, cred);
+}
+
+static inline int vop_write(struct vnode *node, void *buffer, size_t size, uintmax_t offset, int flags, size_t *writec, struct cred *cred) {
+    return node->ops->write(node, buffer, size, offset, flags, writec, cred);
+}
+
+static inline int vop_link(struct vnode* node, struct vnode* dir, const char* name, struct cred* cred) {
+    return node->ops->link(node, dir, name, cred);
+}
+
+static inline int vop_symlink(struct vnode* node, const char* name, struct vattr* attr, const char* path, struct cred* cred) {
+    return node->ops->symlink(node, name, attr, path, cred);
+}
+
 static inline void vop_init(struct vnode* node, struct vops* vops, enum vfflags flags, enum vtype type, struct vfs* vfs) {
     node->ops = vops;
 
@@ -165,6 +186,10 @@ static inline int vop_setattr(struct vnode* node, struct vattr* attr, struct cre
     return node->ops->setattr(node, attr, cred);
 }
 
+static inline int vop_resize(struct vnode *node, size_t newsize, struct cred *cred) {
+    return node->ops->resize(node, newsize, cred);
+}
+ 
 static inline int vfs_get_root(struct vfs* vfs, struct vnode** r) {
     return vfs->ops->root(vfs, r);
 }

@@ -29,6 +29,7 @@
 #define __low_ptr(ptr) ((void*) (((uintptr_t) (ptr)) + _KERNEL_BASE_)) 
 
 #define __len(arr) (sizeof((arr)) / sizeof(*(arr)))
+#define __last(arr) ((arr)[__len(arr) - 1])
 
 #define __align8(ptr) ((void*) (((uintptr_t) (ptr) + 7) & ~7))
 
