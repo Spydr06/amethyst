@@ -7,7 +7,10 @@
 #include "msr.h"
 #include "gdt.h"
 
-#include <sys/thread.h>
+#define CPU_SP(ctx) ((ctx)->rsp)
+#define CPU_IP(ctx) ((ctx)->rip)
+
+typedef uint64_t register_t;
 
 struct ist {
     uint32_t reserved;
@@ -46,42 +49,76 @@ struct cpu {
     struct vmm_context* vmm_context;
 
     bool interrupt_status;
-
     unsigned cpu_num;
+    
+    struct thread* idle_thread;
+
+    void* scheduler_stack;
 
     struct cpu_features features;
     struct cpu* this;
 };
 
-typedef struct {
-    uint64_t r15;
-    uint64_t r14;
-    uint64_t r13;
-    uint64_t r12;
-    uint64_t r11;
-    uint64_t r10;
-    uint64_t r9;
-    uint64_t r8;
-    uint64_t rdi;
-    uint64_t rsi;
-    uint64_t rbp;
-    uint64_t rdx;
-    uint64_t rcx;
-    uint64_t rbx;
-    uint64_t rax;
-    
-    uint64_t interrupt_number;
-    uint64_t error_code;
-    
-    uint64_t rip;
-    uint64_t cs;
-    uint64_t rflags;
-    uint64_t rsp;
-    uint64_t ss;
-} __attribute__((__packed__)) cpu_status_t;
+struct cpu_context {
+    uint64_t cr2;
+	uint64_t gs;
+	uint64_t fs;
+	uint64_t es;
+	uint64_t ds;
+	uint64_t rax;
+	uint64_t rbx;
+	uint64_t rcx;
+	uint64_t rdx;
+	uint64_t r8;
+	uint64_t r9;
+	uint64_t r10;
+	uint64_t r11;
+	uint64_t r12;
+	uint64_t r13;
+	uint64_t r14;
+	uint64_t r15;
+	uint64_t rdi;
+	uint64_t rsi;
+	uint64_t rbp;
 
-extern void _context_saveandcall(void (*fn)(cpu_status_t*), void* stack);
-extern void _context_switch(cpu_status_t* status);
+	uint64_t error_code;
+	
+    uint64_t rip;
+	uint64_t cs;
+	uint64_t rflags;
+	uint64_t rsp;
+	uint64_t ss;
+} __attribute__((__packed__));
+
+struct cpu_extra_context {
+    uint64_t gs_base;
+    uint64_t fs_base;
+    __attribute__((aligned(16))) uint8_t fx[512];
+    uint32_t mxcsr;
+} __attribute__((packed));
+
+extern void _context_saveandcall(void (*fn)(struct cpu_context*), void* stack);
+extern void _context_switch(struct cpu_context* ctx);
+
+static __always_inline void cpu_ctx_init(struct cpu_context* ctx, bool u, bool interrupts) {
+    if(u) {
+        ctx->cs = 0x23;
+        ctx->ds = ctx->es = ctx->ss = 0x1b;
+    }
+    else {
+        ctx->cs = 0x8;
+        ctx->ds = ctx->es = ctx->ss = 0x10;
+    }
+    ctx->rflags = interrupts ? 0x200 : 0;
+}
+
+static __always_inline void cpu_extra_ctx_init(struct cpu_extra_context* ctx) {
+    // init x87 FPU state
+    ctx->mxcsr = 0x1f80;
+    *((uint16_t*) &ctx->fx[0]) = 0x37f;
+    *((uint16_t*) &ctx->fx[2]) = 0;
+    ctx->fx[4] = 0;
+}
 
 static __always_inline void cpu_set(struct cpu* ptr) {
     ptr->this = ptr;

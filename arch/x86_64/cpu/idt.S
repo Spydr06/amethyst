@@ -2,9 +2,21 @@
 
 .macro isr_err_stub num
 isr_stub_\num:
-    push $\num
     save_context
     mov %rsp, %rdi
+    mov $\num, %rsi
+    cld
+    call __interrupt_handler
+    restore_context
+    iretq
+.endm
+
+.macro isr_no_err_stub num
+isr_stub_\num:
+    push $0
+    save_context
+    mov %rsp, %rdi
+    mov $\num, %rsi
     cld
     call __interrupt_handler
     restore_context
@@ -12,54 +24,55 @@ isr_stub_\num:
     iretq
 .endm
 
-.macro isr_no_err_stub num
-isr_stub_\num:
-    push $0
-    push $\num
-    save_context
-    mov %rsp, %rdi
-    cld
-    call __interrupt_handler
-    mov %rax, %rsp
-    restore_context
-    add $16, %rsp
-    iretq
-.endm
-
 .macro save_context
-    push %rax
-    push %rbx
-    push %rcx
-    push %rdx
     push %rbp
     push %rsi
     push %rdi
-    push %r8
-    push %r9
-    push %r10
-    push %r11
-    push %r12
-    push %r13
-    push %r14
     push %r15
+    push %r14
+    push %r13
+    push %r12
+    push %r11
+    push %r10
+    push %r9
+    push %r8
+    push %rdx
+    push %rcx
+    push %rbx
+    push %rax
+    mov %ds, %rax
+    push %rax
+    mov %es, %rax
+    push %rax
+    mov %fs, %rax
+    push %rax
+    mov %gs, %rax
+    push %rax
+    mov %cr2, %rdi
+    push %rdi
 .endm
 
 .macro restore_context
-    pop %r15
-    pop %r14
-    pop %r13
-    pop %r12
-    pop %r11
-    pop %r10
-    pop %r9
+    add $24, %rsp // skip cr2, gs and fs
+    pop %rax
+    mov %rax, %es
+    pop %rax
+    mov %rax, %ds
+    pop %rax
+    pop %rbx
+    pop %rcx
+    pop %rdx
     pop %r8
+    pop %r9
+    pop %r10
+    pop %r11
+    pop %r12
+    pop %r13
+    pop %r14
+    pop %r15
     pop %rdi
     pop %rsi
     pop %rbp
-    pop %rdx
-    pop %rcx
-    pop %rbx
-    pop %rax
 .endm
 
 .section .text

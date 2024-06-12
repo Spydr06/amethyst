@@ -4,6 +4,8 @@
 #include <mem/heap.h>
 #include <mem/vmm.h>
 #include <sys/spinlock.h>
+#include <sys/thread.h>
+#include <sys/scheduler.h>
 
 #include <kernelio.h>
 #include <assert.h>
@@ -53,8 +55,7 @@ static struct cred* get_cred(void) {
     if(!_cpu()->thread /* || !_cpu()->thread->proc */)
         return &kernel_cred;
     else
-//        return &_cpu()->thread->proc->cred;
-        unimplemented();
+        return &_cpu()->thread->proc->cred;
 }
 
 static int highest_node_in_mp(struct vnode* node, struct vnode** dst) {

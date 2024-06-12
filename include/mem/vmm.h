@@ -73,6 +73,8 @@ struct vmm_context {
 
 static_assert(sizeof(struct vmm_cache) <= PAGE_SIZE);
 
+extern struct vmm_context vmm_kernel_context;
+
 void vmm_init(struct mmap* mmap);
 void vmm_apinit(void);
 

@@ -89,22 +89,22 @@ void idt_reload(void) {
     _idt_reload(&idtr);
 }
 
-static cpu_status_t* tick(cpu_status_t* status) {
+static struct cpu_context* tick(struct cpu_context* status) {
     _millis++;
     return status;
 }
 
-static cpu_status_t* double_fault_handler(cpu_status_t* status) {
+static struct cpu_context* double_fault_handler(struct cpu_context* status) {
     klog(ERROR, "Double Fault at %p.", (void*) status->error_code);
     return status;
 }
 
-static cpu_status_t* divide_error_handler(cpu_status_t* status) {
+static struct cpu_context* divide_error_handler(struct cpu_context* status) {
     panic("Division by Zero (%lu).", status->error_code);
 }
 
 static struct {
-    cpu_status_t* (*handler)(cpu_status_t*);
+    struct cpu_context* (*handler)(struct cpu_context*);
     void (*eoi_handler)(uint32_t);
 } interrupt_handlers[UINT8_MAX] = {
     [PIT_INTERRUPT]      = {tick,                       pic_send_eoi},
@@ -115,25 +115,25 @@ static struct {
 //    [SYSCALL_INTERRUPT]  = {syscall_dispatch,           nullptr     },
 };
 
-void idt_register_interrupt(uint8_t vector, cpu_status_t* (*handler)(cpu_status_t*), void (*eoi_handler)(uint32_t)) {
+void idt_register_interrupt(uint8_t vector, struct cpu_context* (*handler)(struct cpu_context*), void (*eoi_handler)(uint32_t)) {
     interrupt_handlers[vector].handler = handler;
     interrupt_handlers[vector].eoi_handler = eoi_handler;
 }
 
-cpu_status_t* __interrupt_handler(cpu_status_t* status) {
-    if(interrupt_handlers[status->interrupt_number].handler) {
-        cpu_status_t* new_status = interrupt_handlers[status->interrupt_number].handler(status);
-        if(interrupt_handlers[status->interrupt_number].eoi_handler)
-            interrupt_handlers[status->interrupt_number].eoi_handler(status->interrupt_number - APIC_TIMER_INTERRUPT);
-        return new_status;
+void __interrupt_handler(struct cpu_context* status, uint64_t interrupt_number) {
+    if(interrupt_handlers[interrupt_number].handler) {
+        interrupt_handlers[interrupt_number].handler(status);
+        if(interrupt_handlers[interrupt_number].eoi_handler)
+            interrupt_handlers[interrupt_number].eoi_handler(interrupt_number - APIC_TIMER_INTERRUPT);
+        return;
     }
 
-    if(status->interrupt_number < __len(exception_names))
-        panic("Unhandled Interrupt %llu: %s.", (unsigned long long) status->interrupt_number, exception_names[status->interrupt_number]);
+    if(interrupt_number < __len(exception_names))
+        panic("Unhandled Interrupt %llu: %s.", (unsigned long long) interrupt_number, exception_names[interrupt_number]);
     else
-        panic("Unhandled Interrupt %llu.", (unsigned long long) status->interrupt_number);
+        panic("Unhandled Interrupt %llu.", (unsigned long long) interrupt_number);
 
-    return status; 
+    return; 
 }
 
 bool interrupt_set(bool status) {

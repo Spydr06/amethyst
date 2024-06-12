@@ -43,8 +43,6 @@ void kmain(size_t cmdline_size, const char* cmdline)
 {
     syscalls_init(); 
      
-    cmdline_parse(cmdline_size, cmdline);
-
     vmm_cache_init();
 
     vfs_init();
@@ -55,15 +53,16 @@ void kmain(size_t cmdline_size, const char* cmdline)
 
     pci_init();
     
+    cmdline_parse(cmdline_size, cmdline);
+    
+    create_ttys(); 
+//    initrd_unpack();
+
     greet();
     color_test();
 
-    create_ttys();
-    
     klog(INFO, "\e[4mHello, World\e[24m %.02f", 3.14); 
-
-//    initrd_unpack();
-
+    
     while(1);
 }
 

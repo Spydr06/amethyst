@@ -65,7 +65,7 @@ void init_interrupts(void);
 
 void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags);
 void idt_reload(void);
-void idt_register_interrupt(uint8_t vector, cpu_status_t* (*handler)(cpu_status_t*), void (*eoi_handler)(uint32_t));
+void idt_register_interrupt(uint8_t vector, struct cpu_context* (*handler)(struct cpu_context*), void (*eoi_handler)(uint32_t));
 
 void idt_change_eoi(void (*eoi_handler)(uint32_t isr));
 

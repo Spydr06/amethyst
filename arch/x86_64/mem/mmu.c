@@ -147,14 +147,14 @@ static uint64_t* get_page(page_table_ptr_t top, void* vaddr) {
     return pt + pt_offset;
 }
 
-static cpu_status_t* pfisr(cpu_status_t* status) {
+static struct cpu_context* pfisr(struct cpu_context* status) {
     // TODO
 //    panic("Page fault");
     klog(ERROR, __FILE__ ":pfisr() called");
     return status;
 }
 
-cpu_status_t* mmu_tlbipi(cpu_status_t* status) {
+struct cpu_context* mmu_tlbipi(struct cpu_context* status) {
     __asm__ volatile(
         "invlpg (%%rax)"
         :: "a"(mmu_page)
@@ -259,7 +259,7 @@ void* mmu_get_physical(page_table_ptr_t table, void* vaddr) {
     return (void*) (*entry & ADDRMASK);
 }
 
-__noreturn cpu_status_t* page_fault_handler(cpu_status_t* status) {
+__noreturn struct cpu_context* page_fault_handler(struct cpu_context* status) {
     uint64_t cr2 = 0;
     __asm__ volatile (
         "mov %%cr2, %0"

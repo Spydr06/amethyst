@@ -1,13 +1,15 @@
 #include <mem/vmm.h>
 #include <mem/pmm.h>
 
+#include <sys/thread.h>
+
 #include <kernelio.h>
 #include <assert.h>
 #include <math.h>
 
 #define RANGE_TOP(range) ((void*) ((uintptr_t) (range)->start + (range)->size))
 
-static struct vmm_context kernel_context;
+struct vmm_context vmm_kernel_context;
 static struct vmm_space kernel_space = {
     .start = KERNELSPACE_START,
     .end = KERNELSPACE_END
@@ -29,13 +31,13 @@ void vmm_init(struct mmap* mmap) {
     mutex_init(&kernel_space.pflock);
 
     cache_list = new_cache();
-    kernel_context.page_table = mmu_new_table();
-    assert(cache_list && kernel_context.page_table);
+    vmm_kernel_context.page_table = mmu_new_table();
+    assert(cache_list && vmm_kernel_context.page_table);
 
-    kernel_context.space.start = USERSPACE_START;
-    kernel_context.space.end = USERSPACE_END;
+    vmm_kernel_context.space.start = USERSPACE_START;
+    vmm_kernel_context.space.end = USERSPACE_END;
 
-    vmm_switch_context(&kernel_context);
+    vmm_switch_context(&vmm_kernel_context);
 
     // map hhdm
     for(uint64_t i = 0; i < mmap->mmap->entry_count; i++) {
@@ -45,7 +47,7 @@ void vmm_init(struct mmap* mmap) {
 }
 
 void vmm_apinit(void) {
-    vmm_switch_context(&kernel_context);
+    vmm_switch_context(&vmm_kernel_context);
 }
 
 void vmm_switch_context(struct vmm_context* context) {

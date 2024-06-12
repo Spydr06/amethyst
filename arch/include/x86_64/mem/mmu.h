@@ -41,7 +41,7 @@ void* mmu_get_physical(page_table_ptr_t table, void* vaddr);
 void mmu_tlb_shootdown(void* page);
 void mmu_invalidate(void* vaddr);
 
-__noreturn cpu_status_t* page_fault_handler(cpu_status_t* status);
+__noreturn struct cpu_context* page_fault_handler(struct cpu_context* status);
 
 static __always_inline void mmu_switch(page_table_ptr_t table) {
     __asm__ volatile(
