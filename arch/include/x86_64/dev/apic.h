@@ -89,7 +89,8 @@ void apic_timer_init(void);
 void apic_send_eoi(uint32_t irq);
 
 size_t apic_lapic_count(void);
-
 size_t apic_get_lapic_entries(struct lapic_entry* entries, size_t n);
+
+void ioapic_register_interrupt(uint8_t irq, uint8_t vector, uint8_t proc, bool masked);
 
 #endif /* _AMETHYST_X86_64_APIC_H */

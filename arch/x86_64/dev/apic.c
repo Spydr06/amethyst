@@ -6,6 +6,7 @@
 #include <x86_64/cpu/idt.h>
 #include <x86_64/cpu/cpu.h>
 
+#include <sys/timer.h>
 #include <mem/heap.h>
 #include <mem/vmm.h>
 
@@ -14,6 +15,7 @@
 #include <assert.h>
 
 #define LVT_MASK 0x10000
+#define LVT_DELIVERY_NMI 0x400
 
 static struct MADT* madt;
 static struct apic_list_header *list_start, *list_end; 
@@ -121,9 +123,9 @@ void apic_init(void) {
             iored_write(io_apics[i].addr, j - io_apics[i].base, 0xfe, 0, 0, 0, 0, 1, 0);
     }
 
-//    apic_initap();
+    apic_initap();
 
-  //  idt_change_eoi(apic_send_eoi);
+    idt_change_eoi(apic_send_eoi);
 }
 
 static void spurious(struct cpu_context* ctx __unused) {
@@ -156,6 +158,15 @@ void apic_initap(void) {
     }
 
     klog(DEBUG, "processor id: %u (APIC) %u (ACPI)", _cpu()->id, _cpu()->acpiid);
+
+    struct isr* nmi_isr = interrupt_allocate(nmi, nullptr, IPL_MAX);
+    assert(nmi_isr);
+
+    for(size_t i = 0; i < lapic_nmi_count; i++) {
+        struct lapic_nmi_entry* entry = (struct lapic_nmi_entry*) get_entry(MADT_TYPE_LANMI, i);
+        if(entry->acpiid == _cpu()->acpiid || entry->acpiid == 0xff)
+            lapic_write(APIC_LVT_LINT0 + 0x10 * entry->lint, (nmi_isr->id & 0xff) | LVT_DELIVERY_NMI | (entry->flags << 12));
+    }
 }
 
 static void timer_isr(struct cpu_context* ctx __unused)  {
@@ -164,8 +175,21 @@ static void timer_isr(struct cpu_context* ctx __unused)  {
     klog(ERROR, "here");
 }
 
+static time_t stop_timer(void) {
+    time_t remaining = lapic_read(APIC_TIMER_COUNT);
+    time_t initial = lapic_read(APIC_TIMER_INITIAL_COUNT);
+
+    lapic_write(APIC_TIMER_INITIAL_COUNT, 0);
+    return initial - remaining;
+}
+
+static void arm_timer(time_t ticks) {
+    lapic_write(APIC_TIMER_INITIAL_COUNT, ticks);
+}
+
 void apic_timer_init(void) {
     struct isr* isr = interrupt_allocate(timer_isr, apic_send_eoi, IPL_TIMER); 
+    assert(isr);
     uint8_t vec = isr->id & 0xff;
 
     assert(hpet_exists());
@@ -181,8 +205,7 @@ void apic_timer_init(void) {
 
     lapic_write(APIC_LVT_TIMER, vec);
 
-    // TODO: thread-local idts
-    // TODO: timer
+    assert(_cpu()->timer = timer_init(ticks_per_us, arm_timer, stop_timer));
 }
 
 void apic_send_eoi(__unused uint32_t irq) {

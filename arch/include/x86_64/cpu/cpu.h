@@ -65,6 +65,8 @@ struct cpu {
 
     struct cpu_features features;
     struct cpu* this;
+
+    struct timer* timer;
 };
 
 struct cpu_context {
