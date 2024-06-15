@@ -7,6 +7,7 @@
 #include <cpu/cpu.h>
 #include <mem/vmm.h>
 #include <cdefs.h>
+#include <string.h>
 #include <stdint.h>
 
 #include <kernelio.h>
@@ -61,6 +62,7 @@ static const char *exception_names[] = {
   "Reserved"
 };
 
+static void load_default(void);
 
 void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags) {
     idt[vector].offset_1 = (uintptr_t) isr & 0xffff;
@@ -81,6 +83,14 @@ void init_interrupts(void) {
         idt_set_descriptor(i, isr_stub_table[i], IDT_PRESENT_FLAG | IDT_INTERRUPT_TYPE_FLAG);
     }
     idt_set_descriptor(255, isr_stub_table[255], IDT_PRESENT_FLAG | IDT_INTERRUPT_TYPE_FLAG);
+    load_default();
+    
+    interrupts_apinit();
+}
+
+void interrupts_apinit(void) {
+    load_default();
+
     _idt_reload(&idtr);
     interrupt_set(true);
 }
@@ -89,42 +99,40 @@ void idt_reload(void) {
     _idt_reload(&idtr);
 }
 
-static struct cpu_context* tick(struct cpu_context* status) {
+static void tick(struct cpu_context* status) {
     _millis++;
-    return status;
 }
 
-static struct cpu_context* double_fault_handler(struct cpu_context* status) {
+static void double_fault_handler(struct cpu_context* status) {
     klog(ERROR, "Double Fault at %p.", (void*) status->error_code);
-    return status;
 }
 
-static struct cpu_context* divide_error_handler(struct cpu_context* status) {
+static void divide_error_handler(struct cpu_context* status) {
     panic("Division by Zero (%lu).", status->error_code);
 }
 
-static struct {
-    struct cpu_context* (*handler)(struct cpu_context*);
-    void (*eoi_handler)(uint32_t);
-} interrupt_handlers[UINT8_MAX] = {
-    [PIT_INTERRUPT]      = {tick,                       pic_send_eoi},
-    [KEYBOARD_INTERRUPT] = {keyboard_interrupt_handler, pic_send_eoi},
-    [PAGE_FAULT]         = {page_fault_handler,         nullptr     },
-    [DOUBLE_FAULT]       = {double_fault_handler,       nullptr     },
-    [DIVIDE_ERROR]       = {divide_error_handler,       nullptr     },
-//    [SYSCALL_INTERRUPT]  = {syscall_dispatch,           nullptr     },
-};
+static void load_default(void) {
+    struct interrupt_handler* handlers = _cpu()->interrupt_handlers;
+    memset(handlers, 0, sizeof(struct interrupt_handler) * 0x100);
 
-void idt_register_interrupt(uint8_t vector, struct cpu_context* (*handler)(struct cpu_context*), void (*eoi_handler)(uint32_t)) {
-    interrupt_handlers[vector].handler = handler;
-    interrupt_handlers[vector].eoi_handler = eoi_handler;
+//    [KEYBOARD_INTERRUPT] = {keyboard_interrupt_handler, pic_send_eoi},
+
+    handlers[PIT_INTERRUPT] = (struct interrupt_handler){tick, pic_send_eoi};
+    handlers[PAGE_FAULT] = (struct interrupt_handler){page_fault_handler, nullptr};
+    handlers[DOUBLE_FAULT] = (struct interrupt_handler){double_fault_handler, nullptr};
+    handlers[DIVIDE_ERROR] = (struct interrupt_handler){divide_error_handler, nullptr};
+}
+
+void idt_register_interrupt(uint8_t vector, void (*handler)(struct cpu_context*), void (*eoi_handler)(uint32_t)) {
+    _cpu()->interrupt_handlers[vector].handler = handler;
+    _cpu()->interrupt_handlers[vector].eoi_handler = eoi_handler;
 }
 
 void __interrupt_handler(struct cpu_context* status, uint64_t interrupt_number) {
-    if(interrupt_handlers[interrupt_number].handler) {
-        interrupt_handlers[interrupt_number].handler(status);
-        if(interrupt_handlers[interrupt_number].eoi_handler)
-            interrupt_handlers[interrupt_number].eoi_handler(interrupt_number - APIC_TIMER_INTERRUPT);
+    if(_cpu()->interrupt_handlers[interrupt_number].handler) {
+        _cpu()->interrupt_handlers[interrupt_number].handler(status);
+        if(_cpu()->interrupt_handlers[interrupt_number].eoi_handler)
+            _cpu()->interrupt_handlers[interrupt_number].eoi_handler(interrupt_number - APIC_TIMER_INTERRUPT);
         return;
     }
 
@@ -154,10 +162,12 @@ bool interrupt_set(bool status) {
 
 void idt_change_eoi(void (*eoi_handler)(uint32_t isr)) {
     bool before = interrupt_set(false);
-    
-    for(size_t i = 0; i < __len(interrupt_handlers); i++) {
-        if(interrupt_handlers[i].eoi_handler)
-            interrupt_handlers[i].eoi_handler = eoi_handler;
+       
+    struct interrupt_handler* handlers = _cpu()->interrupt_handlers;
+
+    for(size_t i = 0; i < 0x100; i++) {
+        if(handlers[i].eoi_handler)
+            handlers[i].eoi_handler = eoi_handler;
     }
 
     interrupt_set(before);

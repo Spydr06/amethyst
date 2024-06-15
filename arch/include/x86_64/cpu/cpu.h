@@ -6,6 +6,7 @@
 
 #include "msr.h"
 #include "gdt.h"
+#include "idt.h"
 
 #define CPU_SP(ctx) ((ctx)->rsp)
 #define CPU_IP(ctx) ((ctx)->rip)
@@ -50,6 +51,8 @@ struct cpu {
 
     bool interrupt_status;
     unsigned cpu_num;
+
+    struct interrupt_handler interrupt_handlers[0x100];
     
     struct thread* idle_thread;
 

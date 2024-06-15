@@ -147,20 +147,18 @@ static uint64_t* get_page(page_table_ptr_t top, void* vaddr) {
     return pt + pt_offset;
 }
 
-static struct cpu_context* pfisr(struct cpu_context* status) {
+static void pfisr(struct cpu_context* status __unused) {
     // TODO
 //    panic("Page fault");
     klog(ERROR, __FILE__ ":pfisr() called");
-    return status;
 }
 
-struct cpu_context* mmu_tlbipi(struct cpu_context* status) {
+void mmu_tlbipi(struct cpu_context* status __unused) {
     __asm__ volatile(
         "invlpg (%%rax)"
         :: "a"(mmu_page)
     );
     __atomic_sub_fetch(&remaining, 1, __ATOMIC_SEQ_CST);
-    return status;
 }
 
 void mmu_apswitch(void) {
@@ -259,7 +257,7 @@ void* mmu_get_physical(page_table_ptr_t table, void* vaddr) {
     return (void*) (*entry & ADDRMASK);
 }
 
-__noreturn struct cpu_context* page_fault_handler(struct cpu_context* status) {
+__noreturn void page_fault_handler(struct cpu_context* status) {
     uint64_t cr2 = 0;
     __asm__ volatile (
         "mov %%cr2, %0"

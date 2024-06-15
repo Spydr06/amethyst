@@ -66,12 +66,20 @@ enum lapic_register : uint32_t {
 	APIC_REG_SPURIOUS = 0xF0,
 	APIC_REG_ICR_LO = 0x300,
 	APIC_REG_ICR_LO_STATUS = 0x1000,
-	APIC_REG_ICR_HI = 0x310
+	APIC_REG_ICR_HI = 0x310,
+
+    APIC_LVT_TIMER = 0x320,
+
+    APIC_TIMER_INITIAL_COUNT = 0x380,
+    APIC_TIMER_COUNT = 0x390,
+    APIC_TIMER_DIVIDE = 0x3e0
 };
 
 extern void *lapic_addr, *lapic_phys_addr;
 
 void apic_init(void);
+void apic_timer_init(void);
+
 void apic_send_eoi(uint32_t irq);
 
 size_t apic_lapic_count(void);

@@ -2,6 +2,7 @@
 #define _AMETHYST_SYS_SCHEDULER
 
 #include <stddef.h>
+#include <cdefs.h>
 
 #include <filesystem/virtual.h>
 
@@ -13,6 +14,7 @@ struct proc {
 };
 
 void scheduler_init(void);
+void scheduler_apentry(void);
 
 struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack);
 

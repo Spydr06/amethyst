@@ -91,3 +91,8 @@ void hpet_wait_us(time_t us) {
 time_t hpet_ticks(void) {
     return read(hpet, HPET_REG_COUNTER);
 }
+
+bool hpet_exists(void) {
+    return (bool) hpet;
+}
+

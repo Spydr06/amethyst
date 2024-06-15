@@ -9,6 +9,8 @@
 
 #include <cpu/cpu.h>
 
+#include <sys/scheduler.h>
+
 #include <mem/vmm.h>
 #include <mem/pmm.h>
 
@@ -31,15 +33,20 @@ static void __noreturn cpu_wakeup(struct limine_smp_info* smp_info) {
     cpu_enable_features();
 
     gdt_reload();
-    idt_reload();
+    interrupts_apinit();
 
     mmu_apswitch();
     vmm_apinit();
 
+    apic_timer_init();
+
     klog(INFO, "Hello from cpu %u", _cpu()->cpu_num);
 
     __atomic_add_fetch(&cpus_awake, 1, __ATOMIC_SEQ_CST);
-    hlt();
+
+    scheduler_apentry();
+    //hlt();
+    while(1);
 }
 
 void smp_init(void) {

@@ -1,4 +1,4 @@
-#include "kernelio.h"
+#include "x86_64/mem/mmu.h"
 #include <sys/scheduler.h>
 #include <sys/thread.h>
 #include <sys/mutex.h>
@@ -48,6 +48,15 @@ void scheduler_init(void) {
     assert(_cpu()->thread);
 
     // TODO: timer init
+}
+
+void scheduler_apentry(void) {
+    _cpu()->scheduler_stack = vmm_map(nullptr, SCHEDULER_STACK_SIZE, VMM_FLAGS_ALLOCATE, MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, nullptr);
+    assert(_cpu()->scheduler_stack);
+    _cpu()->scheduler_stack = (void*)((uintptr_t) _cpu()->scheduler_stack + SCHEDULER_STACK_SIZE);
+
+    _cpu()->idle_thread = sched_new_thread(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr);
+    assert(_cpu()->idle_thread);
 }
 
 struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack) {

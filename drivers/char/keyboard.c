@@ -41,7 +41,7 @@ static void (*keyboard_handler)(struct keyboard_event) = empty_handler;
 
 static enum keyboard_flags flags = 0; 
 
-struct cpu_context* keyboard_interrupt_handler(struct cpu_context* status) {
+void keyboard_interrupt_handler(struct cpu_context* status) {
     bool interrup_state = interrupt_set(false);
 
     enum ps2_scan_code scan_code = get_ps2_scan_code();
@@ -103,8 +103,7 @@ struct cpu_context* keyboard_interrupt_handler(struct cpu_context* status) {
     });
     
 finish:
-    interrupt_set(interrup_state);
-    return status;
+    interrupt_set(interrup_state); 
 }
 
 void keyboard_set_event_handler(void (*handler)(struct keyboard_event)) {

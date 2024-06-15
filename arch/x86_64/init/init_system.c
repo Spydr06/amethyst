@@ -2,6 +2,7 @@
 #include <init/interrupts.h>
 #include <drivers/video/console.h>
 #include <drivers/video/vga.h>
+#include <drivers/char/keyboard.h>
 #include <drivers/pci/pci.h>
 #include <mem/heap.h>
 #include <mem/vmm.h>
@@ -15,6 +16,7 @@
 #include <x86_64/dev/cmos.h>
 #include <x86_64/dev/hpet.h>
 #include <x86_64/dev/pic.h>
+#include <x86_64/cpu/idt.h>
 #include <limine/limine.h>
 #include <sys/tty.h>
 #include <sys/early_timer.h>
@@ -56,6 +58,7 @@ __noreturn void _start(void)
     early_timer_init();
     pic_init();
     init_interrupts();
+    idt_register_interrupt(KEYBOARD_INTERRUPT, keyboard_interrupt_handler, pic_send_eoi);
     
     struct mmap mmap;
     assert(mmap_parse(&mmap) == 0);

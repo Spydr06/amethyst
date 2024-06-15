@@ -1,5 +1,10 @@
 #include <x86_64/dev/apic.h>
+
+#include <x86_64/dev/hpet.h>
+
 #include <x86_64/cpu/acpi.h>
+#include <x86_64/cpu/idt.h>
+#include <x86_64/cpu/cpu.h>
 
 #include <mem/heap.h>
 #include <mem/vmm.h>
@@ -73,6 +78,11 @@ static void lapic_write(enum lapic_register reg, uint32_t value) {
     *ptr = value;
 }
 
+static uint32_t lapic_read(enum lapic_register reg) {
+    volatile uint32_t* ptr = (void*) ((uintptr_t) lapic_addr + reg);
+    return *ptr;
+}
+
 void apic_init(void) {
     madt = (struct MADT*) acpi_find_header("APIC");
     assert(madt);
@@ -100,7 +110,7 @@ void apic_init(void) {
 
         assert((entry->addr % PAGE_SIZE) == 0);
         io_apics[i].addr = vmm_map(nullptr, PAGE_SIZE, VMM_FLAGS_PHYSICAL, MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, (void*) (uintptr_t) entry->addr);
-        assert(io_apics[i].addr);
+        assert(io_apics[i].addr); // HERE
 
         io_apics[i].base = entry->intbase;
         io_apics[i].top = io_apics[i].base + ((ioapic_read(io_apics[i].addr, IOAPIC_REG_ENTRYCOUNT) >> 16) & 0xff) + 1;
@@ -108,6 +118,33 @@ void apic_init(void) {
         for(int j = io_apics[i].base; j < io_apics[i].top; j++)
             iored_write(io_apics[i].addr, j - io_apics[i].base, 0xfe, 0, 0, 0, 0, 1, 0);
     }
+}
+
+static void timer_isr(struct cpu_context* ctx __unused)  {
+    // TODO: timer isr
+
+    klog(DEBUG, "here");
+}
+
+void apic_timer_init(void) {
+    int vec = APIC_TIMER_INTERRUPT;
+    idt_register_interrupt(vec, timer_isr, apic_send_eoi); 
+
+    assert(hpet_exists());
+    
+    lapic_write(APIC_TIMER_INITIAL_COUNT, 0xffffffff);
+    hpet_wait_us(1000);
+
+    time_t ticks_per_us = (0xffffffff - lapic_read(APIC_TIMER_COUNT)) / 1000;
+
+    lapic_write(APIC_TIMER_INITIAL_COUNT, 0);
+
+    klog(INFO, "cpu %u: local apic timer calibrated to %lu ticks per us", _cpu()->cpu_num, ticks_per_us);
+
+    lapic_write(APIC_LVT_TIMER, vec);
+
+    // TODO: thread-local idts
+    // TODO: timer
 }
 
 void apic_send_eoi(__unused uint32_t irq) {

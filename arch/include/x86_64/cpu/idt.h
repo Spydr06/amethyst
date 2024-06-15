@@ -1,7 +1,6 @@
 #ifndef _AMETHYST_X86_64_IDT_H
 #define _AMETHYST_X86_64_IDT_H
 
-#include "x86_64/cpu/cpu.h"
 #include <stdint.h>
 
 #define IDT_PRESENT_FLAG 0x80
@@ -38,6 +37,8 @@
 
 #define SYSCALL_INTERRUPT 0x80
 
+struct cpu_context;
+
 struct interrupt_descriptor {
     uint16_t offset_1;
     uint16_t selector;
@@ -55,17 +56,19 @@ struct idtr {
     uintptr_t idt;
 } __attribute__((packed));
 
-struct interrupt_frame {
-
-} __attribute__((packed));
+struct interrupt_handler {
+    void (*handler)(struct cpu_context*);
+    void (*eoi_handler)(uint32_t);
+};
 
 extern void* isr_stub_table[0x100];
 
 void init_interrupts(void);
+void interrupts_apinit(void);
 
 void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags);
 void idt_reload(void);
-void idt_register_interrupt(uint8_t vector, struct cpu_context* (*handler)(struct cpu_context*), void (*eoi_handler)(uint32_t));
+void idt_register_interrupt(uint8_t vector, void (*handler)(struct cpu_context*), void (*eoi_handler)(uint32_t));
 
 void idt_change_eoi(void (*eoi_handler)(uint32_t isr));
 

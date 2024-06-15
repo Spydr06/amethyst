@@ -36,6 +36,7 @@ struct HPET {
 } __attribute__((packed));
 
 time_t hpet_init(void);
+bool hpet_exists(void);
 
 void hpet_wait_us(time_t us);
 time_t hpet_ticks(void);

@@ -48,7 +48,7 @@ enum ps2_scan_code : uint8_t {
 
 struct keyboard_event;
 
-struct cpu_context* keyboard_interrupt_handler(struct cpu_context* status);
+void keyboard_interrupt_handler(struct cpu_context* status);
 
 void keyboard_set_event_handler(void (*handler)(struct keyboard_event));
 
