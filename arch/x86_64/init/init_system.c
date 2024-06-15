@@ -57,8 +57,8 @@ __noreturn void _start(void)
     gdt_reload();
     early_timer_init();
     pic_init();
+    interrupt_register(KEYBOARD_INTERRUPT, keyboard_interrupt_handler, pic_send_eoi, IPL_KEYBOARD);
     init_interrupts();
-    idt_register_interrupt(KEYBOARD_INTERRUPT, keyboard_interrupt_handler, pic_send_eoi);
     
     struct mmap mmap;
     assert(mmap_parse(&mmap) == 0);

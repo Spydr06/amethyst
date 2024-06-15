@@ -13,6 +13,8 @@
 #include <kernelio.h>
 #include <assert.h>
 
+#define LVT_MASK 0x10000
+
 static struct MADT* madt;
 static struct apic_list_header *list_start, *list_end; 
 
@@ -118,17 +120,53 @@ void apic_init(void) {
         for(int j = io_apics[i].base; j < io_apics[i].top; j++)
             iored_write(io_apics[i].addr, j - io_apics[i].base, 0xfe, 0, 0, 0, 0, 1, 0);
     }
+
+//    apic_initap();
+
+  //  idt_change_eoi(apic_send_eoi);
+}
+
+static void spurious(struct cpu_context* ctx __unused) {
+    panic("Spurious interrupt!");
+}
+
+static void nmi(struct cpu_context* ctx __unused) {
+    panic("NMI interrupt!");
+}
+
+void apic_initap(void) {
+    lapic_write(APIC_LVT_THERMAL, LVT_MASK);
+    lapic_write(APIC_LVT_PERFORMANCE, LVT_MASK);
+    lapic_write(APIC_LVT_LINT0, LVT_MASK);
+    lapic_write(APIC_LVT_LINT1, LVT_MASK);
+    lapic_write(APIC_LVT_ERROR, LVT_MASK);
+    lapic_write(APIC_LVT_TIMER, LVT_MASK);
+
+    interrupt_register(0xff, spurious, nullptr, IPL_NORMAL);
+    lapic_write(APIC_REG_SPURIOUS, 0x1ff);
+
+    _cpu()->id = lapic_read(APIC_REG_ID) >> 24;
+    
+    for(size_t i = 0; i < lapic_count; i++) {
+        struct lapic_entry* current = (struct lapic_entry*) get_entry(MADT_TYPE_LAPIC, i);
+        if(_cpu()->id == current->lapicid) {
+            _cpu()->acpiid = current->acpiid;
+            break;
+        }
+    }
+
+    klog(DEBUG, "processor id: %u (APIC) %u (ACPI)", _cpu()->id, _cpu()->acpiid);
 }
 
 static void timer_isr(struct cpu_context* ctx __unused)  {
     // TODO: timer isr
 
-    klog(DEBUG, "here");
+    klog(ERROR, "here");
 }
 
 void apic_timer_init(void) {
-    int vec = APIC_TIMER_INTERRUPT;
-    idt_register_interrupt(vec, timer_isr, apic_send_eoi); 
+    struct isr* isr = interrupt_allocate(timer_isr, apic_send_eoi, IPL_TIMER); 
+    uint8_t vec = isr->id & 0xff;
 
     assert(hpet_exists());
     
@@ -139,7 +177,7 @@ void apic_timer_init(void) {
 
     lapic_write(APIC_TIMER_INITIAL_COUNT, 0);
 
-    klog(INFO, "cpu %u: local apic timer calibrated to %lu ticks per us", _cpu()->cpu_num, ticks_per_us);
+    klog(INFO, "cpu %u: local apic timer calibrated to %lu ticks per us", _cpu()->id, ticks_per_us);
 
     lapic_write(APIC_LVT_TIMER, vec);
 

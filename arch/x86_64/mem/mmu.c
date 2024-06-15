@@ -163,8 +163,8 @@ void mmu_tlbipi(struct cpu_context* status __unused) {
 
 void mmu_apswitch(void) {
     mmu_switch(FROM_HHDM(template));
-    idt_register_interrupt(0x0e, pfisr, nullptr);
-    idt_register_interrupt(0xfe, mmu_tlbipi, pic_send_eoi);
+    interrupt_register(0x0e, pfisr, nullptr, IPL_NORMAL);
+    interrupt_register(0xfe, mmu_tlbipi, pic_send_eoi, IPL_NORMAL);
     idt_reload();
 }
 

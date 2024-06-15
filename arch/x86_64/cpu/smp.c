@@ -38,9 +38,10 @@ static void __noreturn cpu_wakeup(struct limine_smp_info* smp_info) {
     mmu_apswitch();
     vmm_apinit();
 
+    apic_initap();
     apic_timer_init();
 
-    klog(INFO, "Hello from cpu %u", _cpu()->cpu_num);
+    klog(INFO, "Hello from cpu %u", _cpu()->id);
 
     __atomic_add_fetch(&cpus_awake, 1, __ATOMIC_SEQ_CST);
 
@@ -75,8 +76,6 @@ void smp_init(void) {
     for(size_t i = 0; i < cpu_count; i++) {
         if(lapics[i].lapicid == bootstrap_id)
             continue;
-
-        ap_cpus[i].cpu_num = i;
 
         smp_request.response->cpus[i]->extra_argument = (uint64_t)&ap_cpus[i];
 

@@ -93,3 +93,6 @@ struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority
 
     return thread;
 }
+
+extern void _sched_userspace_check(void) {
+}

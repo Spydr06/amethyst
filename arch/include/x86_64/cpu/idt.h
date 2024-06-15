@@ -56,9 +56,27 @@ struct idtr {
     uintptr_t idt;
 } __attribute__((packed));
 
-struct interrupt_handler {
+enum ipl {
+    IPL_IGNORE   = -1,
+    IPL_MAX      = 0,
+    IPL_TIMER    = 1,
+    IPL_NET      = 400,
+    IPL_DISK     = 500,
+    IPL_KEYBOARD = 600,
+    IPL_MOUSE    = 650,
+    IPL_DPC      = 900,
+    IPL_NORMAL   = 1000
+};
+
+struct isr {
+    uint64_t id;
     void (*handler)(struct cpu_context*);
     void (*eoi_handler)(uint32_t);
+    enum ipl priority;
+    bool pending;
+
+    struct isr* next;
+    struct isr* prev;
 };
 
 extern void* isr_stub_table[0x100];
@@ -68,11 +86,16 @@ void interrupts_apinit(void);
 
 void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags);
 void idt_reload(void);
-void idt_register_interrupt(uint8_t vector, void (*handler)(struct cpu_context*), void (*eoi_handler)(uint32_t));
+
+void interrupt_register(uint8_t vector, void (*handler)(struct cpu_context*), void (*eoi_handler)(uint32_t), enum ipl priority);
+struct isr* interrupt_allocate(void (*handler)(struct cpu_context*), void(*eoi_handler)(uint32_t), enum ipl priority);
 
 void idt_change_eoi(void (*eoi_handler)(uint32_t isr));
 
 bool interrupt_set(bool status);
+
+enum ipl interrupt_raise_ipl(enum ipl ipl);
+enum ipl interrupt_lower_ipl(enum ipl ipl);
 
 #endif /* _AMETHYST_X86_64_IDT_H */
 

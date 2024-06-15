@@ -69,6 +69,11 @@ enum lapic_register : uint32_t {
 	APIC_REG_ICR_HI = 0x310,
 
     APIC_LVT_TIMER = 0x320,
+    APIC_LVT_THERMAL = 0x330,
+    APIC_LVT_PERFORMANCE = 0x340,
+    APIC_LVT_LINT0 = 0x350,
+    APIC_LVT_LINT1 = 0x360,
+    APIC_LVT_ERROR = 0x370,
 
     APIC_TIMER_INITIAL_COUNT = 0x380,
     APIC_TIMER_COUNT = 0x390,
@@ -78,6 +83,7 @@ enum lapic_register : uint32_t {
 extern void *lapic_addr, *lapic_phys_addr;
 
 void apic_init(void);
+void apic_initap(void);
 void apic_timer_init(void);
 
 void apic_send_eoi(uint32_t irq);

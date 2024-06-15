@@ -11,6 +11,8 @@
 #define CPU_SP(ctx) ((ctx)->rsp)
 #define CPU_IP(ctx) ((ctx)->rip)
 
+#define CPU_CONTEXT_INTSTATUS(ctx) ((bool) ((ctx)->rflags & 0x200))
+
 typedef uint64_t register_t;
 
 struct ist {
@@ -50,9 +52,12 @@ struct cpu {
     struct vmm_context* vmm_context;
 
     bool interrupt_status;
-    unsigned cpu_num;
+    unsigned id;
+    unsigned acpiid;
 
-    struct interrupt_handler interrupt_handlers[0x100];
+    enum ipl ipl;
+    struct isr isr[0x100];
+    struct isr* isr_queue;
     
     struct thread* idle_thread;
 
@@ -100,7 +105,7 @@ struct cpu_extra_context {
     uint32_t mxcsr;
 } __attribute__((packed));
 
-extern void _context_saveandcall(void (*fn)(struct cpu_context*), void* stack);
+extern void _context_save_and_call(void (*fn)(struct cpu_context*), void* stack);
 extern void _context_switch(struct cpu_context* ctx);
 
 static __always_inline void cpu_ctx_init(struct cpu_context* ctx, bool u, bool interrupts) {
