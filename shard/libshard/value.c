@@ -32,7 +32,8 @@ void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, 
             dynarr_append_many(ctx, str, val->path, strlen(val->path));
             break;
         case SHARD_VAL_FUNCTION:
-            dynarr_append_many(ctx, str, "<function>", 9);
+            snprintf(buf, LEN(buf), "<function %tx>", (ptrdiff_t) val->function.body);
+            dynarr_append_many(ctx, str, buf, strlen(buf));
             break;
         case SHARD_VAL_LIST: {
             dynarr_append(ctx, str, '[');

@@ -34,6 +34,7 @@ extern "C" {
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <setjmp.h>
 
 #define DYNARR_INIT_CAPACITY 16
 
@@ -135,6 +136,11 @@ void shard_string_append(struct shard_context* ctx, struct shard_string* str, co
 void shard_string_push(struct shard_context* ctx, struct shard_string* str, char c);
 void shard_string_free(struct shard_context* ctx, struct shard_string* str);
 
+struct shard_scope {
+    struct shard_scope* outer;
+    struct shard_hashmap* idents; // hashmap of `struct shard_lazy_value`
+};
+
 struct shard_context {
     void* (*malloc)(size_t size);
     void* (*realloc)(void* ptr, size_t new_size);
@@ -156,6 +162,8 @@ struct shard_context {
     struct shard_string_list string_literals;
 
     struct shard_gc gc;
+
+    struct shard_scope base_scope;
 };
 
 #define shard_init(ctx) shard_init_ext((ctx), __builtin_frame_address(0))
@@ -386,6 +394,22 @@ int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shar
 
 void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr);
 
+struct shard_evaluator {
+    struct shard_context* ctx;
+    struct shard_gc* gc;
+
+    struct shard_scope* scope;
+    jmp_buf* exception;
+};
+
+enum shard_evaluator_status {
+    SHARD_EVAL_OK      = 0,
+    SHARD_EVAL_ERROR
+};
+
+_Noreturn __attribute__((format(printf, 3, 4))) 
+void shard_eval_throw(volatile struct shard_evaluator* e, struct shard_location loc, const char* fmt, ...);
+
 enum shard_value_type {
     SHARD_VAL_NULL     = 1 << 0,
     SHARD_VAL_BOOL     = 1 << 1,
@@ -395,7 +419,8 @@ enum shard_value_type {
     SHARD_VAL_PATH     = 1 << 5,
     SHARD_VAL_LIST     = 1 << 6,
     SHARD_VAL_SET      = 1 << 7,
-    SHARD_VAL_FUNCTION = 1 << 8
+    SHARD_VAL_FUNCTION = 1 << 8,
+    SHARD_VAL_BUILTIN  = 1 << 9
 };
 
 struct shard_value {
@@ -429,6 +454,10 @@ struct shard_value {
             struct shard_pattern* arg;
             struct shard_expr* body;
         } function;
+
+        struct {
+            struct shard_value (*callback)(struct shard_evaluator*, struct shard_location*, struct shard_value);
+        } builtin;
     };
 };
 
@@ -444,6 +473,8 @@ struct shard_list {
     struct shard_list* next;
     struct shard_lazy_value value;   
 };
+
+void shard_get_builtins(struct shard_context* ctx);
 
 void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* value, int max_depth);
 

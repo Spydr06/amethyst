@@ -1,1 +1,1 @@
-[ 1 (if false then 4 else 3) [ 3 4 5 ] ]
+[ 1 2 3 ] ++ [ "foo" "bar" ("baz" + " " + "69") ]
