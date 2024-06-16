@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* val) {
+void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* val, int max_depth) {
     static char buf[48];
     switch(val->type) {
         case SHARD_VAL_BOOL:
@@ -37,16 +37,21 @@ void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, 
         case SHARD_VAL_LIST: {
             dynarr_append(ctx, str, '[');
             dynarr_append(ctx, str, ' ');
-            struct shard_list* item = val->list.head;
-            while(item) {
-                if(!item->evaluated) {
-                    dynarr_append_many(ctx, str, "... ", 4);
-                    break;
+
+            if(max_depth > 0) {
+                struct shard_list* item = val->list.head;
+                while(item) {
+                    if(!item->value.evaluated)
+                        assert(shard_eval_lazy(ctx, &item->value) == 0);
+                    shard_value_to_string(ctx, str, &item->value.eval, max_depth--);
+                    dynarr_append(ctx, str, ' ');
+                    item = item->next;
                 }
-                shard_value_to_string(ctx, str, &item->value);
-                dynarr_append(ctx, str, ' ');
-                item = item->next;
-            }
+
+            } 
+            else if(val->list.head)
+                dynarr_append_many(ctx, str, "... ", 4);
+            
             dynarr_append(ctx, str, ']');
         } break;
         case SHARD_VAL_SET: {

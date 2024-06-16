@@ -52,6 +52,7 @@ struct shard_token;
 struct shard_expr;
 struct shard_pattern;
 struct shard_value;
+struct shard_lazy_value;
 struct shard_list;
 struct shard_alloc_map;
 
@@ -178,7 +179,8 @@ struct shard_source {
     unsigned line;
 };
 
-int shard_eval(struct shard_context* context, struct shard_source* src, struct shard_value* result, struct shard_expr* expr);
+int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard_value* result, struct shard_expr* dest);
+int shard_eval_lazy(struct shard_context* ctx, struct shard_lazy_value* value);
 
 enum shard_token_type {
     SHARD_TOK_EOF = 0,
@@ -430,17 +432,20 @@ struct shard_value {
     };
 };
 
-struct shard_list {
-    struct shard_list* next;
-    
+struct shard_lazy_value {
     union {
-        struct shard_expr* expr;
-        struct shard_value value;
+        struct shard_expr* lazy;
+        struct shard_value eval;
     };
     bool evaluated;
 };
 
-void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* value);
+struct shard_list {
+    struct shard_list* next;
+    struct shard_lazy_value value;   
+};
+
+void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* value, int max_depth);
 
 const char* shard_token_type_to_str(enum shard_token_type token_type);
 

@@ -148,15 +148,14 @@ static inline struct shard_value eval_path(volatile struct evaluator* e, struct 
     };
 }
 
-
 static inline struct shard_value eval_list(volatile struct evaluator* e, struct shard_expr* expr) {
     struct shard_list *head = NULL, *current = NULL, *next;
     
     for(size_t i = 0; i < expr->list.elems.count; i++) {
         next = shard_gc_malloc(e->gc, sizeof(struct shard_list));
         next->next = NULL;
-        next->expr = &expr->list.elems.items[i];
-        next->evaluated = false;
+        next->value.lazy = &expr->list.elems.items[i];
+        next->value.evaluated = false;
 
         if(current)
             current->next = next;
@@ -373,6 +372,10 @@ static inline struct shard_value eval_not(volatile struct evaluator* e, struct s
     return BOOL_VAL(!is_truthy(eval(e, expr->unaryop.expr)));
 }
 
+static inline struct shard_value eval_ternary(volatile struct evaluator* e, struct shard_expr* expr) {
+    return is_truthy(eval(e, expr->ternary.cond)) ? eval(e, expr->ternary.if_branch) : eval(e, expr->ternary.else_branch);
+}
+
 static struct shard_value eval(volatile struct evaluator* e, struct shard_expr* expr) {
     switch(expr->type) {
         case SHARD_EXPR_INT:
@@ -413,9 +416,29 @@ static struct shard_value eval(volatile struct evaluator* e, struct shard_expr* 
             return eval_not(e, expr);
         case SHARD_EXPR_NEGATE:
             return eval_negation(e, expr);
+        case SHARD_EXPR_TERNARY:
+            return eval_ternary(e, expr);
         default:
             throw(e, expr->loc, "unimplemented expression `%d`.", expr->type);
     }
+}
+
+int shard_eval_lazy(struct shard_context* ctx, struct shard_lazy_value* value) {
+    if(value->evaluated)
+        return 0;
+
+    jmp_buf exception;
+    volatile struct evaluator e;
+    evaluator_init(&e, ctx, &exception);
+
+    if(setjmp(*e.exception) == 0) {
+        value->eval = eval(&e, value->lazy);
+        value->evaluated = true;
+    }
+
+    evaluator_free(&e);
+
+    return ctx->errors.count;
 }
 
 int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard_value* result, struct shard_expr* expr) {
@@ -427,8 +450,9 @@ int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard
     volatile struct evaluator e;
     evaluator_init(&e, ctx, &exception);
 
-    if(setjmp(*e.exception) == 0)
+    if(setjmp(*e.exception) == 0) {
         *result = eval(&e, expr);
+    }
 
     evaluator_free(&e);
 finish:

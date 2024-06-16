@@ -134,7 +134,7 @@ static int eval_file(struct shard_context* ctx, const char* progname, const char
 
     if(!num_errors && echo_result) {
         struct shard_string str = {0};
-        shard_value_to_string(ctx, &str, &result);
+        shard_value_to_string(ctx, &str, &result, 1);
         shard_string_push(ctx, &str, '\0');
 
         puts(str.items);
