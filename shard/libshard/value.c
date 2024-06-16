@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* val) {
-    static char buf[100];
+    static char buf[48];
     switch(val->type) {
         case SHARD_VAL_BOOL:
             if(val->boolean)
@@ -24,8 +24,9 @@ void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, 
             dynarr_append_many(ctx, str, buf, strlen(buf));
             break;
         case SHARD_VAL_STRING:
-            snprintf(buf, LEN(buf), "\"%.*s\"", (int) strlen(val->string), val->string);
-            dynarr_append_many(ctx, str, buf, strlen(buf));
+            dynarr_append(ctx, str, '"');
+            dynarr_append_many(ctx, str, val->string, val->strlen);
+            dynarr_append(ctx, str, '"');
             break;
         case SHARD_VAL_PATH:
             dynarr_append_many(ctx, str, val->path, strlen(val->path));
@@ -38,7 +39,12 @@ void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, 
             dynarr_append(ctx, str, ' ');
             struct shard_list* item = val->list.head;
             while(item) {
-                shard_value_to_string(ctx, str, item->value);
+                if(!item->evaluated) {
+                    dynarr_append_many(ctx, str, "... ", 4);
+                    break;
+                }
+                shard_value_to_string(ctx, str, &item->value);
+                dynarr_append(ctx, str, ' ');
                 item = item->next;
             }
             dynarr_append(ctx, str, ']');

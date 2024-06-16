@@ -316,7 +316,7 @@ void shard_gc_resume(volatile struct shard_gc* gc) {
 }
 
 void* shard_gc_malloc_ext(volatile struct shard_gc* gc, size_t size, void (*dtor)(void*)) {
-    return allocate(gc, 0, size, dtor);
+    return allocate(gc, 1, size, dtor);
 }
 
 void* shard_gc_calloc_ext(volatile struct shard_gc* gc, size_t nmemb, size_t size, void (*dtor)(void*)) {

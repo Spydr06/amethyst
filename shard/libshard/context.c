@@ -1,7 +1,7 @@
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
 
-int shard_init(struct shard_context* ctx) {
+int shard_init_ext(struct shard_context* ctx, void* stack_base) {
     assert(ctx->malloc && ctx->realloc && ctx->free);
     ctx->ast = shard_arena_init(ctx);
     ctx->errors = (struct shard_errors){0};
@@ -9,10 +9,15 @@ int shard_init(struct shard_context* ctx) {
     ctx->include_dirs = (struct shard_string_list){0};
     ctx->ident_arena = shard_arena_init(ctx);
     shard_hashmap_init(ctx, &ctx->idents, 128);
+
+    shard_gc_begin(&ctx->gc, ctx, stack_base);
+
     return 0;
 }
 
 void shard_deinit(struct shard_context* ctx) {
+    shard_gc_end(&ctx->gc);
+
     shard_arena_free(ctx, ctx->ast);
 
     for(size_t i = 0; i < ctx->errors.count; i++)

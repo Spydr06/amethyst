@@ -125,7 +125,9 @@ static int eval_file(struct shard_context* ctx, const char* progname, const char
     };
 
     struct shard_value result;
-    int num_errors = shard_eval(ctx, &src, &result);
+    struct shard_expr expr = {0};
+
+    int num_errors = shard_eval(ctx, &src, &result, &expr);
     struct shard_error* errors = shard_get_errors(ctx);
     for(int i = 0; i < num_errors; i++)
         print_error(&errors[i]);
@@ -139,6 +141,8 @@ static int eval_file(struct shard_context* ctx, const char* progname, const char
 
         shard_string_free(ctx, &str);
     }
+
+    shard_free_expr(ctx, &expr);
 
     fclose(fd);
 

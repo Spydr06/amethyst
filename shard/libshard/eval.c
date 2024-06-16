@@ -5,7 +5,6 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <errno.h>
-#include <limits.h>
 
 #ifndef PATH_MAX
     #define PATH_MAX 4096
@@ -20,6 +19,8 @@
 #define FLOAT_VAL(f) ((struct shard_value) { .type = SHARD_VAL_FLOAT, .floating = (double)(f) })
 #define STRING_VAL(s, l) ((struct shard_value) { .type = SHARD_VAL_STRING, .string = (s), .strlen = (l) })
 
+#define LIST_VAL(head) ((struct shard_value) { .type = SHARD_VAL_LIST, .list.head = (head) })
+
 struct scope {
     struct scope* outer;
     struct shard_hashmap* idents;
@@ -27,22 +28,21 @@ struct scope {
 
 struct evaluator {
     struct shard_context* ctx;
-    struct shard_gc gc;
+    struct shard_gc* gc;
 
     struct scope* scope;
     jmp_buf* exception;
 };
 
-static void evaluator_init(volatile struct evaluator* eval, struct shard_context* ctx, jmp_buf* exception, void* stack_bottom) {
+static void evaluator_init(volatile struct evaluator* eval, struct shard_context* ctx, jmp_buf* exception) {
     memset((void*) eval, 0, sizeof(struct evaluator));
     eval->ctx = ctx;
     eval->exception = exception;
-
-    shard_gc_begin(&eval->gc, ctx, stack_bottom);
+    eval->gc = &ctx->gc;
 }
 
 static void evaluator_free(volatile struct evaluator* eval) {
-    shard_gc_end(&eval->gc);
+    (void) eval;
 }
 
 static inline void scope_push(volatile struct evaluator* e, struct scope* scope) {
@@ -148,6 +148,26 @@ static inline struct shard_value eval_path(volatile struct evaluator* e, struct 
     };
 }
 
+
+static inline struct shard_value eval_list(volatile struct evaluator* e, struct shard_expr* expr) {
+    struct shard_list *head = NULL, *current = NULL, *next;
+    
+    for(size_t i = 0; i < expr->list.elems.count; i++) {
+        next = shard_gc_malloc(e->gc, sizeof(struct shard_list));
+        next->next = NULL;
+        next->expr = &expr->list.elems.items[i];
+        next->evaluated = false;
+
+        if(current)
+            current->next = next;
+        current = next;
+        if(!head)
+            head = current;
+    }
+
+    return LIST_VAL(head);
+}
+
 static struct shard_value eval(volatile struct evaluator* e, struct shard_expr* expr);
 
 static inline struct shard_value eval_eq(volatile struct evaluator* e, struct shard_expr* expr, bool negate) {
@@ -226,7 +246,7 @@ static inline struct shard_value eval_addition(volatile struct evaluator* e, str
             switch(values[1].type) {
                 case SHARD_VAL_STRING:
                     len = values[0].strlen + values[1].strlen;
-                    sum = shard_gc_malloc(&e->gc, (len + 1) * sizeof(char));
+                    sum = shard_gc_malloc(e->gc, (len + 1) * sizeof(char));
                     sum[0] = '\0';
                     strcat(sum, values[0].string);
                     strcat(sum, values[1].string);
@@ -300,6 +320,59 @@ static inline struct shard_value eval_division(volatile struct evaluator* e, str
     ARITH_OP_INT_FLT(/) // TODO: handle zero-division
 }
 
+static inline struct shard_value eval_negation(volatile struct evaluator* e, struct shard_expr* expr) {
+    struct shard_value value = eval(e, expr->unaryop.expr);
+    switch(value.type) {
+        case SHARD_VAL_INT:
+            return INT_VAL(-value.integer);
+        case SHARD_VAL_FLOAT:
+            return FLOAT_VAL(-value.floating);
+        default:
+            throw(e, expr->loc, "`-`: operand is not of a numeric type");
+    }
+}
+
+static inline bool is_truthy(struct shard_value value) {
+    switch(value.type) {
+        case SHARD_VAL_NULL:
+            return false;
+        case SHARD_VAL_BOOL:
+            return value.boolean;
+        case SHARD_VAL_INT:
+            return value.integer != 0;
+        case SHARD_VAL_FLOAT:
+            return value.floating != .0f;
+        case SHARD_VAL_STRING:
+            return value.strlen != 0;
+        case SHARD_VAL_PATH:
+            return value.pathlen != 0;
+        case SHARD_VAL_LIST:
+            return value.list.head != NULL;
+        case SHARD_VAL_SET:
+            return value.set.set_size != 0;
+        case SHARD_VAL_FUNCTION:
+            return true;
+        default:
+            return false;
+    }
+}
+
+static inline struct shard_value eval_logand(volatile struct evaluator* e, struct shard_expr* expr) {
+    return BOOL_VAL(is_truthy(eval(e, expr->binop.lhs)) && is_truthy(eval(e, expr->binop.rhs)));
+}
+
+static inline struct shard_value eval_logor(volatile struct evaluator* e, struct shard_expr* expr) {
+    return BOOL_VAL(is_truthy(eval(e, expr->binop.lhs)) || is_truthy(eval(e, expr->binop.rhs)));
+}
+
+static inline struct shard_value eval_logimpl(volatile struct evaluator* e, struct shard_expr* expr) {
+    return BOOL_VAL(!is_truthy(eval(e, expr->binop.lhs)) || is_truthy(eval(e, expr->binop.rhs)));
+}
+
+static inline struct shard_value eval_not(volatile struct evaluator* e, struct shard_expr* expr) {
+    return BOOL_VAL(!is_truthy(eval(e, expr->unaryop.expr)));
+}
+
 static struct shard_value eval(volatile struct evaluator* e, struct shard_expr* expr) {
     switch(expr->type) {
         case SHARD_EXPR_INT:
@@ -316,6 +389,8 @@ static struct shard_value eval(volatile struct evaluator* e, struct shard_expr* 
             return STRING_VAL(expr->string, strlen(expr->string));
         case SHARD_EXPR_PATH:
             return eval_path(e, expr);
+        case SHARD_EXPR_LIST:
+            return eval_list(e, expr);
         case SHARD_EXPR_EQ:
             return eval_eq(e, expr, false);
         case SHARD_EXPR_NE:
@@ -328,27 +403,35 @@ static struct shard_value eval(volatile struct evaluator* e, struct shard_expr* 
             return eval_multiplication(e, expr);
         case SHARD_EXPR_DIV:
             return eval_division(e, expr);
+        case SHARD_EXPR_LOGAND:
+            return eval_logand(e, expr);
+        case SHARD_EXPR_LOGOR:
+            return eval_logor(e, expr);
+        case SHARD_EXPR_LOGIMPL:
+            return eval_logimpl(e, expr);
+        case SHARD_EXPR_NOT:
+            return eval_not(e, expr);
+        case SHARD_EXPR_NEGATE:
+            return eval_negation(e, expr);
         default:
             throw(e, expr->loc, "unimplemented expression `%d`.", expr->type);
     }
 }
 
-int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard_value* result) {
-    struct shard_expr expr = {0};
-    int err = shard_parse(ctx, src, &expr);
+int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard_value* result, struct shard_expr* expr) {
+    int err = shard_parse(ctx, src, expr);
     if(err)
         goto finish;
 
     jmp_buf exception;
     volatile struct evaluator e;
-    evaluator_init(&e, ctx, &exception, __builtin_frame_address(0));
+    evaluator_init(&e, ctx, &exception);
 
     if(setjmp(*e.exception) == 0)
-        *result = eval(&e, &expr);
+        *result = eval(&e, expr);
 
     evaluator_free(&e);
 finish:
-    shard_free_expr(ctx, &expr);
     return ctx->errors.count;
 }
 

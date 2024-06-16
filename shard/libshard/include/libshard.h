@@ -153,9 +153,13 @@ struct shard_context {
     struct shard_errors errors;
 
     struct shard_string_list string_literals;
+
+    struct shard_gc gc;
 };
 
-int shard_init(struct shard_context* ctx);
+#define shard_init(ctx) shard_init_ext((ctx), __builtin_frame_address(0))
+
+int shard_init_ext(struct shard_context* ctx, void* stack_base);
 void shard_include_dir(struct shard_context* ctx, char* path);
 
 void shard_deinit(struct shard_context* ctx);
@@ -174,7 +178,7 @@ struct shard_source {
     unsigned line;
 };
 
-int shard_eval(struct shard_context* context, struct shard_source* src, struct shard_value* result);
+int shard_eval(struct shard_context* context, struct shard_source* src, struct shard_value* result, struct shard_expr* expr);
 
 enum shard_token_type {
     SHARD_TOK_EOF = 0,
@@ -427,8 +431,13 @@ struct shard_value {
 };
 
 struct shard_list {
-    struct shard_value* value;
     struct shard_list* next;
+    
+    union {
+        struct shard_expr* expr;
+        struct shard_value value;
+    };
+    bool evaluated;
 };
 
 void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* value);
