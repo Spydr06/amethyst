@@ -646,7 +646,7 @@ static inline struct shard_value eval_call_value(volatile struct shard_evaluator
         case SHARD_VAL_SET:
             return eval_call_functor_set(e, value, arg, loc);
         default:
-            shard_eval_throw(e, loc, "attempt to call something which is not a function"); // TODO: support sets and `__functor`
+            shard_eval_throw(e, loc, "attempt to call something which is not a function");
     }
 }
 
