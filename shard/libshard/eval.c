@@ -23,6 +23,10 @@
 #define SET_VAL(_set) ((struct shard_value) { .type = SHARD_VAL_SET, .set = (_set) })
 #define FUNC_VAL(_arg, _body) ((struct shard_value) { .type = SHARD_VAL_FUNCTION, .function.arg = (_arg), .function.body = (_body) })
 
+#define LAZY_VAL(expr) ((struct shard_lazy_value){.lazy = (expr), .evaluated = false})
+
+static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_expr* expr);
+
 static void evaluator_init(volatile struct shard_evaluator* eval, struct shard_context* ctx, jmp_buf* exception) {
     memset((void*) eval, 0, sizeof(struct shard_evaluator));
     eval->ctx = ctx;
@@ -83,6 +87,14 @@ void shard_eval_throw(volatile struct shard_evaluator* e, struct shard_location 
     }));
 
     longjmp(*e->exception, SHARD_EVAL_ERROR);
+}
+
+static inline struct shard_value eval_lazy(volatile struct shard_evaluator* e, struct shard_lazy_value* lazy) {
+    if(!lazy->evaluated) {
+        lazy->eval = eval(e, lazy->lazy);
+        lazy->evaluated = true;
+    }
+    return lazy->eval;
 }
 
 static inline struct shard_value eval_path(volatile struct shard_evaluator* e, struct shard_expr* expr) {
@@ -376,6 +388,36 @@ static inline struct shard_value eval_merge(volatile struct shard_evaluator* e, 
     return SET_VAL(set);
 }
 
+static inline struct shard_lazy_value* eval_get_attr(volatile struct shard_evaluator* e, struct shard_lazy_value* set, struct shard_attr_path* path, struct shard_location loc) {
+    for(size_t i = 0; i < path->count; i++) {
+        eval_lazy(e, set);
+        
+        if(set->eval.type != SHARD_VAL_SET)
+            shard_eval_throw(e, loc, "`.%s` is not of type set", path->items[i]);
+
+        int err = shard_set_get(set->eval.set, path->items[i], &set);
+        if(err || !set)
+            return NULL;
+    }
+
+    return set;
+}
+
+static inline struct shard_value eval_attr_test(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    return BOOL_VAL(eval_get_attr(e, &LAZY_VAL(expr->attr_test.set), &expr->attr_test.path, expr->loc) != 0);
+}
+
+static inline struct shard_value eval_attr_sel(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    struct shard_lazy_value* value = eval_get_attr(e, &LAZY_VAL(expr->attr_test.set), &expr->attr_test.path, expr->loc);
+    if(value)
+        return eval_lazy(e, value);
+
+    if(expr->attr_sel.default_value)
+        return eval(e, expr->attr_sel.default_value);
+
+    shard_eval_throw(e, expr->loc, "`.`: set does not have this attribute");
+}
+
 static inline bool is_truthy(struct shard_value value) {
     switch(value.type) {
         case SHARD_VAL_NULL:
@@ -476,6 +518,10 @@ static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_
             return eval_concat(e, expr);
         case SHARD_EXPR_MERGE:
             return eval_merge(e, expr);
+        case SHARD_EXPR_ATTR_TEST:
+            return eval_attr_test(e, expr);
+        case SHARD_EXPR_ATTR_SEL:
+            return eval_attr_sel(e, expr);
         case SHARD_EXPR_ASSERT:
             return eval_assert(e, expr);
         case SHARD_EXPR_FUNCTION:

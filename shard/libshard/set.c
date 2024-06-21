@@ -2,7 +2,6 @@
 #include <libshard.h>
 
 #include <errno.h>
-#include <stdio.h>
 
 #define LAZY_VAL(expr) ((struct shard_lazy_value){.lazy = (expr), .evaluated = false})
 

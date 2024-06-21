@@ -1,1 +1,1 @@
-{ a = 69; b = 420; } // { d = 4; a = 4; }
+{ a = 69; b = 420; c = { foo = "foo"; bar = "bar"; }; }.c.foo or "none"
