@@ -55,6 +55,7 @@ struct shard_pattern;
 struct shard_value;
 struct shard_lazy_value;
 struct shard_list;
+struct shard_set;
 struct shard_alloc_map;
 
 typedef const char* shard_ident_t;
@@ -445,10 +446,7 @@ struct shard_value {
             struct shard_list* head;
         } list;
 
-        struct {
-            unsigned set_size;
-            // todo
-        } set;
+        struct shard_set* set;
 
         struct {
             struct shard_pattern* arg;
@@ -473,6 +471,22 @@ struct shard_list {
     struct shard_list* next;
     struct shard_lazy_value value;   
 };
+
+struct shard_set {
+    size_t size;
+    size_t capacity;
+    struct {
+        shard_ident_t key;
+        struct shard_lazy_value value;
+    } entries[];
+};
+
+struct shard_set* shard_set_init(struct shard_context* ctx, size_t capacity);
+struct shard_set* shard_set_from_hashmap(struct shard_context* ctx, struct shard_hashmap* map);
+struct shard_set* shard_set_merge(struct shard_context* ctx, const struct shard_set* fst, const struct shard_set* snd);
+
+void shard_set_put(struct shard_set* set, shard_ident_t attr, struct shard_lazy_value value);
+int shard_set_get(struct shard_set* set, shard_ident_t attr, struct shard_lazy_value** value);
 
 void shard_get_builtins(struct shard_context* ctx);
 

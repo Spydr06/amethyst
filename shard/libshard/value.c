@@ -58,9 +58,28 @@ void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, 
         case SHARD_VAL_SET: {
             dynarr_append(ctx, str, '{');
             dynarr_append(ctx, str, ' ');
-            // TODO
+
+            for(size_t i = 0; i < val->set->capacity; i++) {
+                if(!val->set->entries[i].key)
+                    continue;
+
+                dynarr_append_many(ctx, str, val->set->entries[i].key, strlen(val->set->entries[i].key));
+                dynarr_append_many(ctx, str, " = ", 3);
+
+                if(!val->set->entries[i].value.evaluated)
+                    assert(shard_eval_lazy(ctx, &val->set->entries[i].value) == 0);
+                shard_value_to_string(ctx, str, &val->set->entries[i].value.eval, max_depth--);
+
+                dynarr_append(ctx, str, ';');
+                dynarr_append(ctx, str, ' ');
+            }
+
             dynarr_append(ctx, str, '}');
         } break;
+        case SHARD_VAL_BUILTIN:
+            snprintf(buf, LEN(buf), "<builtin %tx>", (ptrdiff_t) val->function.body);
+            dynarr_append_many(ctx, str, buf, strlen(buf));
+            break;
     }
 }
 

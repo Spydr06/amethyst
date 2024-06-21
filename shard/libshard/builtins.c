@@ -1,6 +1,6 @@
 #include <libshard.h>
 
-#define BUILTIN_VAL(_callback) ((struct shard_value){ .type = SHARD_VAL_BUILTIN, .builtin.callback = (_callback) })
+#define BUILTIN_VAL(_callback) ((struct shard_value){ .type = SHARD_VAL_BUILTIN, .builtin = { .callback = (_callback) } })
 
 static struct shard_value builtin_abort(struct shard_evaluator* eval, struct shard_location* loc, struct shard_value arg) {
     if(arg.type != SHARD_VAL_STRING)
@@ -30,14 +30,14 @@ struct builtin {
     bool overloaded;
 };
 
-const struct builtin builtins[] = {
-    { "abort", BUILTIN_VAL(builtin_abort),   true },
-    { "throw", BUILTIN_VAL(builtin_throw),   true },
-    { "import", BUILTIN_VAL(builtin_import), true },
-    { NULL, {0}, false }
-};
-
 void shard_get_builtins(struct shard_context* ctx) {
+    struct builtin builtins[] = {
+        { "abort", BUILTIN_VAL(builtin_abort),   true },
+        { "throw", BUILTIN_VAL(builtin_throw),   true },
+        { "import", BUILTIN_VAL(builtin_import), true },
+        { NULL, {0}, false }
+    };
+
     for(const struct builtin* builtin = builtins; builtin->ident; builtin++) {
 
     }

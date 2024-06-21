@@ -20,6 +20,7 @@
 #define STRING_VAL(s, l) ((struct shard_value) { .type = SHARD_VAL_STRING, .string = (s), .strlen = (l) })
 
 #define LIST_VAL(_head) ((struct shard_value) { .type = SHARD_VAL_LIST, .list.head = (_head) })
+#define SET_VAL(_set) ((struct shard_value) { .type = SHARD_VAL_SET, .set = (_set) })
 #define FUNC_VAL(_arg, _body) ((struct shard_value) { .type = SHARD_VAL_FUNCTION, .function.arg = (_arg), .function.body = (_body) })
 
 static void evaluator_init(volatile struct shard_evaluator* eval, struct shard_context* ctx, jmp_buf* exception) {
@@ -153,6 +154,14 @@ static inline struct shard_value eval_list(volatile struct shard_evaluator* e, s
     }
 
     return LIST_VAL(head);
+}
+
+static inline struct shard_value eval_set(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    struct shard_set* set = shard_set_from_hashmap(e->ctx, &expr->set.attrs);
+    if(!set)
+        shard_eval_throw(e, expr->loc, "error allocating set: %s", strerror(errno));
+    
+    return SET_VAL(set);
 }
 
 static inline struct shard_value eval_function(volatile struct shard_evaluator* e, struct shard_expr* expr) {
@@ -348,6 +357,25 @@ static inline struct shard_value eval_concat(volatile struct shard_evaluator* e,
     return values[0];
 }
 
+static inline struct shard_value eval_merge(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    struct shard_value values[] = {
+        eval(e, expr->binop.lhs),
+        eval(e, expr->binop.rhs)
+    };
+
+    if(values[0].type != SHARD_VAL_SET)
+        shard_eval_throw(e, expr->loc, "`//`: left operand is not a set");
+
+    if(values[1].type != SHARD_VAL_SET)
+        shard_eval_throw(e, expr->loc, "`//`: right operand is not a set");
+
+    struct shard_set* set = shard_set_merge(e->ctx, values[0].set, values[1].set);
+    if(!set)
+        shard_eval_throw(e, expr->loc, "`//`: %s", strerror(errno));
+
+    return SET_VAL(set);
+}
+
 static inline bool is_truthy(struct shard_value value) {
     switch(value.type) {
         case SHARD_VAL_NULL:
@@ -365,7 +393,7 @@ static inline bool is_truthy(struct shard_value value) {
         case SHARD_VAL_LIST:
             return value.list.head != NULL;
         case SHARD_VAL_SET:
-            return value.set.set_size != 0;
+            return value.set->size != 0;
         case SHARD_VAL_FUNCTION:
             return true;
         default:
@@ -418,6 +446,8 @@ static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_
             return eval_path(e, expr);
         case SHARD_EXPR_LIST:
             return eval_list(e, expr);
+        case SHARD_EXPR_SET:
+            return eval_set(e, expr);
         case SHARD_EXPR_EQ:
             return eval_eq(e, expr, false);
         case SHARD_EXPR_NE:
@@ -444,6 +474,8 @@ static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_
             return eval_ternary(e, expr);
         case SHARD_EXPR_CONCAT:
             return eval_concat(e, expr);
+        case SHARD_EXPR_MERGE:
+            return eval_merge(e, expr);
         case SHARD_EXPR_ASSERT:
             return eval_assert(e, expr);
         case SHARD_EXPR_FUNCTION:
