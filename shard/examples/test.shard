@@ -1,2 +1,1 @@
-let as = { x = "foo"; y = "bar"; };
-in with as; [ (x + y) x ]
+4 > 3.13

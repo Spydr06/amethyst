@@ -38,11 +38,15 @@ static void evaluator_free(volatile struct shard_evaluator* eval) {
     (void) eval;
 }
 
-static inline void scope_push(volatile struct shard_evaluator* e, struct shard_set* bindings) {
+static inline struct shard_scope* scope_init(volatile struct shard_evaluator* e, struct shard_set* bindings) {
     struct shard_scope* scope = shard_gc_malloc(e->gc, sizeof(struct shard_scope));
     scope->bindings = bindings;
     scope->outer = e->scope;
-    e->scope = scope;
+    return scope;
+}
+
+static inline void scope_push(volatile struct shard_evaluator* e, struct shard_set* bindings) {
+    e->scope = scope_init(e, bindings);
 }
 
 static inline struct shard_scope* scope_pop(volatile struct shard_evaluator* e) {
@@ -177,6 +181,17 @@ static inline struct shard_value eval_set(volatile struct shard_evaluator* e, st
     if(!set)
         shard_eval_throw(e, expr->loc, "error allocating set: %s", strerror(errno));
     
+    if(expr->set.recursive) {
+        struct shard_scope* scope = scope_init(e, set);
+        for(size_t i = 0; i < set->capacity; i++) {
+            struct shard_lazy_value* value = &set->entries[i].value;
+            if(value->evaluated)
+                continue;
+
+            value->scope = scope;
+        }
+    }
+
     return SET_VAL(set);
 }
 
@@ -218,6 +233,57 @@ static inline struct shard_value eval_eq(volatile struct shard_evaluator* e, str
         case SHARD_VAL_LIST:
             shard_eval_throw(e, expr->loc, "unimplemented");
     }
+}
+
+#define CMP_OP(e, expr, op) do {            \
+        bool left_err = true;               \
+        struct shard_value values[] = {     \
+            eval((e), (expr)->binop.lhs),   \
+            eval((e), (expr)->binop.rhs)    \
+        };                                  \
+                                            \
+        switch(values[0].type) {            \
+            case SHARD_VAL_INT:             \
+                switch(values[1].type) {    \
+                    case SHARD_VAL_INT:     \
+                        return BOOL_VAL(values[0].integer op values[1].integer);   \
+                    case SHARD_VAL_FLOAT:   \
+                        return BOOL_VAL(values[0].integer op (int64_t) values[1].floating); \
+                    default:                \
+                        left_err = false;   \
+                        goto error;         \
+                }                           \
+            case SHARD_VAL_FLOAT:           \
+                switch(values[1].type) {    \
+                    case SHARD_VAL_INT:     \
+                        return BOOL_VAL(values[0].floating op (double) values[1].integer);   \
+                    case SHARD_VAL_FLOAT:   \
+                        return BOOL_VAL(values[0].floating op values[1].floating); \
+                    default:                \
+                        left_err = false;   \
+                        goto error;         \
+                }                           \
+            default:                        \
+                goto error;                 \
+        }                                   \
+    error:                                  \
+        shard_eval_throw(e, expr->loc, "`" #op "`: %s operand is not of a numeric type", left_err ? "left" : "right");\
+    } while(0)
+
+static inline struct shard_value eval_le(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    CMP_OP(e, expr, <=);
+}
+
+static inline struct shard_value eval_lt(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    CMP_OP(e, expr, <);
+}
+
+static inline struct shard_value eval_ge(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    CMP_OP(e, expr, >=);
+}
+
+static inline struct shard_value eval_gt(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    CMP_OP(e, expr, >);
 }
 
 static inline struct shard_value eval_addition(volatile struct shard_evaluator* e, struct shard_expr* expr) {
@@ -528,6 +594,14 @@ static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_
             return eval_eq(e, expr, false);
         case SHARD_EXPR_NE:
             return eval_eq(e, expr, true);
+        case SHARD_EXPR_LE:
+            return eval_le(e, expr);
+        case SHARD_EXPR_LT:
+            return eval_lt(e, expr);
+        case SHARD_EXPR_GE:
+            return eval_ge(e, expr);
+        case SHARD_EXPR_GT:
+            return eval_gt(e, expr);
         case SHARD_EXPR_ADD:
             return eval_addition(e, expr);
         case SHARD_EXPR_SUB:

@@ -824,6 +824,14 @@ static int parse_infix_expr(struct parser* p, struct shard_expr* expr, struct sh
             return parse_binop(p, expr, left, SHARD_EXPR_EQ, PREC_EQUALITY);
         case SHARD_TOK_NE:
             return parse_binop(p, expr, left, SHARD_EXPR_NE, PREC_EQUALITY);
+        case SHARD_TOK_LT:
+            return parse_binop(p, expr, left, SHARD_EXPR_LT, PREC_COMPARISON);
+        case SHARD_TOK_LE:
+            return parse_binop(p, expr, left, SHARD_EXPR_LE, PREC_COMPARISON);
+        case SHARD_TOK_GT:
+            return parse_binop(p, expr, left, SHARD_EXPR_GT, PREC_COMPARISON);
+        case SHARD_TOK_GE:
+            return parse_binop(p, expr, left, SHARD_EXPR_GE, PREC_COMPARISON);
         case SHARD_TOK_LOGIMPL:
             return parse_binop(p, expr, left, SHARD_EXPR_LOGIMPL, PREC_LOGIMPL);
         case SHARD_TOK_LOGOR:

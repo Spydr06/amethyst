@@ -18,6 +18,8 @@ language majorly inspired by Nix and NixOS and is implemented as a strict supers
 - String interpolation in paths
 - String interpolation in attribute names
 - `__functor` attribute for sets
+- stack-overflow handling in the evaluator
+- `==` and `!=` for lists and sets
 
 ## Building
 
