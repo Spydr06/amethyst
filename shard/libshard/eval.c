@@ -23,7 +23,7 @@
 #define SET_VAL(_set) ((struct shard_value) { .type = SHARD_VAL_SET, .set = (_set) })
 #define FUNC_VAL(_arg, _body) ((struct shard_value) { .type = SHARD_VAL_FUNCTION, .function.arg = (_arg), .function.body = (_body) })
 
-#define LAZY_VAL(expr) ((struct shard_lazy_value){.lazy = (expr), .evaluated = false})
+#define LAZY_VAL(_lazy, _scope) ((struct shard_lazy_value){.lazy = (_lazy), .scope = (_scope), .evaluated = false})
 
 static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_expr* expr);
 
@@ -38,7 +38,9 @@ static void evaluator_free(volatile struct shard_evaluator* eval) {
     (void) eval;
 }
 
-static inline void scope_push(volatile struct shard_evaluator* e, struct shard_scope* scope) {
+static inline void scope_push(volatile struct shard_evaluator* e, struct shard_set* bindings) {
+    struct shard_scope* scope = shard_gc_malloc(e->gc, sizeof(struct shard_scope));
+    scope->bindings = bindings;
     scope->outer = e->scope;
     e->scope = scope;
 }
@@ -52,12 +54,12 @@ static inline struct shard_scope* scope_pop(volatile struct shard_evaluator* e) 
     return scope;
 }
 
-static inline struct shard_lazy_value* lookup_var(volatile struct shard_evaluator* e, shard_ident_t ident) {
+static inline struct shard_lazy_value* lookup_binding(volatile struct shard_evaluator* e, shard_ident_t ident) {
     struct shard_scope* scope = e->scope;
     struct shard_lazy_value* found = NULL;
     while(scope) {
-        found = shard_hashmap_get(scope->idents, ident);
-        if(found)
+        int err = shard_set_get(scope->bindings, ident, &found);
+        if(!err && found)
             return found;
         scope = scope->outer;
     }
@@ -91,8 +93,11 @@ void shard_eval_throw(volatile struct shard_evaluator* e, struct shard_location 
 
 static inline struct shard_value eval_lazy(volatile struct shard_evaluator* e, struct shard_lazy_value* lazy) {
     if(!lazy->evaluated) {
+        struct shard_scope* prev = e->scope;
+        e->scope = lazy->scope;
         lazy->eval = eval(e, lazy->lazy);
         lazy->evaluated = true;
+        e->scope = prev;
     }
     return lazy->eval;
 }
@@ -155,8 +160,7 @@ static inline struct shard_value eval_list(volatile struct shard_evaluator* e, s
     for(size_t i = 0; i < expr->list.elems.count; i++) {
         next = shard_gc_malloc(e->gc, sizeof(struct shard_list));
         next->next = NULL;
-        next->value.lazy = &expr->list.elems.items[i];
-        next->value.evaluated = false;
+        next->value = LAZY_VAL(&expr->list.elems.items[i], e->scope);
 
         if(current)
             current->next = next;
@@ -169,7 +173,7 @@ static inline struct shard_value eval_list(volatile struct shard_evaluator* e, s
 }
 
 static inline struct shard_value eval_set(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    struct shard_set* set = shard_set_from_hashmap(e->ctx, &expr->set.attrs);
+    struct shard_set* set = shard_set_from_hashmap(e, &expr->set.attrs);
     if(!set)
         shard_eval_throw(e, expr->loc, "error allocating set: %s", strerror(errno));
     
@@ -404,11 +408,11 @@ static inline struct shard_lazy_value* eval_get_attr(volatile struct shard_evalu
 }
 
 static inline struct shard_value eval_attr_test(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    return BOOL_VAL(eval_get_attr(e, &LAZY_VAL(expr->attr_test.set), &expr->attr_test.path, expr->loc) != 0);
+    return BOOL_VAL(eval_get_attr(e, &LAZY_VAL(expr->attr_test.set, e->scope), &expr->attr_test.path, expr->loc) != 0);
 }
 
 static inline struct shard_value eval_attr_sel(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    struct shard_lazy_value* value = eval_get_attr(e, &LAZY_VAL(expr->attr_test.set), &expr->attr_test.path, expr->loc);
+    struct shard_lazy_value* value = eval_get_attr(e, &LAZY_VAL(expr->attr_test.set, e->scope), &expr->attr_test.path, expr->loc);
     if(value)
         return eval_lazy(e, value);
 
@@ -470,6 +474,36 @@ static inline struct shard_value eval_assert(volatile struct shard_evaluator* e,
     shard_eval_throw(e, expr->loc, "assertion failed");
 }
 
+static inline struct shard_value eval_ident(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    struct shard_lazy_value* val = lookup_binding(e, expr->ident);
+    if(!val)
+        shard_eval_throw(e, expr->loc, "identifier `%s` not bound in this scope", expr->ident);
+
+    return shard_value_copy(e, eval_lazy(e, val));
+}
+
+static inline struct shard_value eval_let(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    struct shard_set* bindings = shard_set_init(e->ctx, expr->let.bindings.count);
+    for(size_t i = 0; i < expr->let.bindings.count; i++)
+        shard_set_put(bindings, expr->let.bindings.items[i].ident, LAZY_VAL(expr->let.bindings.items[i].value, e->scope));
+    
+    scope_push(e, bindings);
+    struct shard_value value = eval(e, expr->let.expr);
+    scope_pop(e);
+    return value;
+}
+
+static inline struct shard_value eval_with(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    struct shard_value set = eval(e, expr->binop.lhs);
+    if(set.type != SHARD_VAL_SET)
+        shard_eval_throw(e, expr->loc, "`with`: expect left operand to be of type set");
+
+    scope_push(e, set.set);
+    struct shard_value value = eval(e, expr->binop.rhs);
+    scope_pop(e);
+    return value;
+}
+
 static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_expr* expr) {
     switch(expr->type) {
         case SHARD_EXPR_INT:
@@ -526,6 +560,12 @@ static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_
             return eval_assert(e, expr);
         case SHARD_EXPR_FUNCTION:
             return eval_function(e, expr);
+        case SHARD_EXPR_LET:
+            return eval_let(e, expr);
+        case SHARD_EXPR_IDENT:
+            return eval_ident(e, expr);
+        case SHARD_EXPR_WITH:
+            return eval_with(e, expr);
         default:
             shard_eval_throw(e, expr->loc, "unimplemented expression `%d`.", expr->type);
     }
@@ -540,6 +580,7 @@ int shard_eval_lazy(struct shard_context* ctx, struct shard_lazy_value* value) {
     evaluator_init(&e, ctx, &exception);
 
     if(setjmp(*e.exception) == 0) {
+        e.scope = value->scope;
         value->eval = eval(&e, value->lazy);
         value->evaluated = true;
     }

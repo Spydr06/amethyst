@@ -12,6 +12,13 @@ Shard is a...
 
 language majorly inspired by Nix and NixOS and is implemented as a strict superset of `nix`. It therefore shares most core principles with the well-established nix package manager and linux distribution.
 
+## TODO:
+
+- String interpolation
+- String interpolation in paths
+- String interpolation in attribute names
+- `__functor` attribute for sets
+
 ## Building
 
 There are no dependencies other that `libc` to the pure implementation of shard.

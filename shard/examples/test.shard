@@ -1,1 +1,2 @@
-{ a = 69; b = 420; c = { foo = "foo"; bar = "bar"; }; }.c.foo or "none"
+let as = { x = "foo"; y = "bar"; };
+in with as; [ (x + y) x ]

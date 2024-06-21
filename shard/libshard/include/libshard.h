@@ -139,7 +139,7 @@ void shard_string_free(struct shard_context* ctx, struct shard_string* str);
 
 struct shard_scope {
     struct shard_scope* outer;
-    struct shard_hashmap* idents; // hashmap of `struct shard_lazy_value`
+    struct shard_set* bindings;
 };
 
 struct shard_context {
@@ -461,7 +461,10 @@ struct shard_value {
 
 struct shard_lazy_value {
     union {
-        struct shard_expr* lazy;
+        struct {
+            struct shard_expr* lazy;
+            struct shard_scope* scope;
+        };
         struct shard_value eval;
     };
     bool evaluated;
@@ -482,7 +485,7 @@ struct shard_set {
 };
 
 struct shard_set* shard_set_init(struct shard_context* ctx, size_t capacity);
-struct shard_set* shard_set_from_hashmap(struct shard_context* ctx, struct shard_hashmap* map);
+struct shard_set* shard_set_from_hashmap(volatile struct shard_evaluator* ctx, struct shard_hashmap* map);
 struct shard_set* shard_set_merge(struct shard_context* ctx, const struct shard_set* fst, const struct shard_set* snd);
 
 void shard_set_put(struct shard_set* set, shard_ident_t attr, struct shard_lazy_value value);
@@ -490,6 +493,7 @@ int shard_set_get(struct shard_set* set, shard_ident_t attr, struct shard_lazy_v
 
 void shard_get_builtins(struct shard_context* ctx);
 
+struct shard_value shard_value_copy(volatile struct shard_evaluator* e, struct shard_value val);
 void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* value, int max_depth);
 
 const char* shard_token_type_to_str(enum shard_token_type token_type);

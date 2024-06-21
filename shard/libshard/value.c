@@ -3,6 +3,19 @@
 
 #include <stdio.h>
 
+struct shard_value shard_value_copy(volatile struct shard_evaluator* e, struct shard_value val) {
+    switch(val.type) {
+        case SHARD_VAL_LIST:
+            return val; // TODO: deep-copy
+            break;
+        case SHARD_VAL_SET:
+            return val; // TODO: deep-copy
+            break;
+        default:
+            return val;
+    }
+}
+
 void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* val, int max_depth) {
     static char buf[48];
     switch(val->type) {

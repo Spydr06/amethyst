@@ -3,7 +3,7 @@
 
 #include <errno.h>
 
-#define LAZY_VAL(expr) ((struct shard_lazy_value){.lazy = (expr), .evaluated = false})
+#define LAZY_VAL(_lazy, _scope) ((struct shard_lazy_value){.lazy = (_lazy), .scope = (_scope), .evaluated = false})
 
 struct shard_set* shard_set_init(struct shard_context* ctx, size_t capacity) {
     struct shard_set* set = shard_gc_malloc(&ctx->gc, sizeof(struct shard_set) + sizeof(set->entries[0]) * capacity);
@@ -20,15 +20,15 @@ struct shard_set* shard_set_init(struct shard_context* ctx, size_t capacity) {
     return set;
 }
 
-struct shard_set* shard_set_from_hashmap(struct shard_context* ctx, struct shard_hashmap* map) {
-    struct shard_set* set = shard_set_init(ctx, map->size);
+struct shard_set* shard_set_from_hashmap(volatile struct shard_evaluator* e, struct shard_hashmap* map) {
+    struct shard_set* set = shard_set_init(e->ctx, map->size);
     if(!set)
         return NULL;
 
     for(size_t i = 0; i < map->alloc; i++) {
         struct shard_hashpair* pair = map->pairs + i;
         if(pair->key)
-            shard_set_put(set, pair->key, LAZY_VAL(pair->value));
+            shard_set_put(set, pair->key, LAZY_VAL(pair->value, e->scope));
     }
 
     return set;
