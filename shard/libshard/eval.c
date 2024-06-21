@@ -21,7 +21,7 @@
 
 #define LIST_VAL(_head) ((struct shard_value) { .type = SHARD_VAL_LIST, .list.head = (_head) })
 #define SET_VAL(_set) ((struct shard_value) { .type = SHARD_VAL_SET, .set = (_set) })
-#define FUNC_VAL(_arg, _body) ((struct shard_value) { .type = SHARD_VAL_FUNCTION, .function.arg = (_arg), .function.body = (_body) })
+#define FUNC_VAL(_arg, _body, _scope) ((struct shard_value) { .type = SHARD_VAL_FUNCTION, .function.arg = (_arg), .function.body = (_body), .function.scope = (_scope) })
 
 #define LAZY_VAL(_lazy, _scope) ((struct shard_lazy_value){.lazy = (_lazy), .scope = (_scope), .evaluated = false})
 #define UNLAZY_VAL(_eval) ((struct shard_lazy_value){.eval = (_eval), .evaluated = true})
@@ -197,9 +197,7 @@ static inline struct shard_value eval_set(volatile struct shard_evaluator* e, st
 }
 
 static inline struct shard_value eval_function(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    // TODO: environment tracking
-    (void) e;
-    return FUNC_VAL(expr->func.arg, expr->func.body);
+    return FUNC_VAL(expr->func.arg, expr->func.body, e->scope);
 }
 
 static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_expr* expr);
@@ -551,10 +549,11 @@ static inline struct shard_value eval_ident(volatile struct shard_evaluator* e, 
 
 static inline struct shard_value eval_let(volatile struct shard_evaluator* e, struct shard_expr* expr) {
     struct shard_set* bindings = shard_set_init(e->ctx, expr->let.bindings.count);
+    scope_push(e, bindings);
+    
     for(size_t i = 0; i < expr->let.bindings.count; i++)
         shard_set_put(bindings, expr->let.bindings.items[i].ident, LAZY_VAL(expr->let.bindings.items[i].value, e->scope));
     
-    scope_push(e, bindings);
     struct shard_value value = eval(e, expr->let.expr);
     scope_pop(e);
     return value;
@@ -571,23 +570,21 @@ static inline struct shard_value eval_with(volatile struct shard_evaluator* e, s
     return value;
 }
 
-static inline struct shard_value eval_call(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    struct shard_value func = eval(e, expr->binop.lhs);
-    if(func.type != SHARD_VAL_FUNCTION)
-        shard_eval_throw(e, expr->loc, "attempt to call something which is not a function"); // TODO: support sets and `__functor`
-    
+static inline struct shard_value eval_call_function(volatile struct shard_evaluator* e, struct shard_value func, struct shard_lazy_value* arg_value, struct shard_location loc) {   
+    assert(func.type == SHARD_VAL_FUNCTION);
+
     struct shard_set* set;
     struct shard_value arg;
     switch(func.function.arg->type) {
         case SHARD_PAT_IDENT:
             set = shard_set_init(e->ctx, 1);
-            shard_set_put(set, func.function.arg->ident, LAZY_VAL(expr->binop.rhs, e->scope));
+            shard_set_put(set, func.function.arg->ident, *arg_value);
             break;
         case SHARD_PAT_SET:
             set = shard_set_init(e->ctx, func.function.arg->attrs.count + (size_t) !!func.function.arg->ident);
-            arg = eval(e, expr->binop.rhs);
+            arg = eval_lazy(e, arg_value);
             if(arg.type != SHARD_VAL_SET)
-                shard_eval_throw(e, expr->loc, "function expected argument of type set");
+                shard_eval_throw(e, loc, "function expected argument of type set");
 
             size_t expected_num_args = arg.set->size;
             for(size_t i = 0; i < func.function.arg->attrs.count; i++) {
@@ -599,14 +596,14 @@ static inline struct shard_value eval_call(volatile struct shard_evaluator* e, s
                         expected_num_args++;
                     } 
                     else
-                        shard_eval_throw(e, expr->loc, "set does not contain expected attribute `%s`", func.function.arg->attrs.items[i].ident);
+                        shard_eval_throw(e, loc, "set does not contain expected attribute `%s`", func.function.arg->attrs.items[i].ident);
                 }
 
                 shard_set_put(set, func.function.arg->attrs.items[i].ident, *val);
             }
 
             if(!func.function.arg->ellipsis && func.function.arg->attrs.count != expected_num_args)
-                shard_eval_throw(e, expr->loc, "set does not match expected attributes");
+                shard_eval_throw(e, loc, "set does not match expected attributes");
 
             if(func.function.arg->ident)
                 shard_set_put(set, func.function.arg->ident, UNLAZY_VAL(SET_VAL(set)));
@@ -615,19 +612,57 @@ static inline struct shard_value eval_call(volatile struct shard_evaluator* e, s
         default:
             assert(false && "unreachable");
     }
-    
+
+    struct shard_scope* prev_scope = e->scope;
+    e->scope = func.function.scope;
+
     scope_push(e, set);
     struct shard_value value = eval(e, func.function.body);
     scope_pop(e);
 
-    if(func.function.arg->type) {
-        for(size_t i = 0; i < set->capacity; i++) {
-            if(set->entries[i].key && set->entries[i].key != func.function.arg->ident)
-                shard_set_put(arg.set, set->entries[i].key, set->entries[i].value);
-        }
+    e->scope = prev_scope;
+
+    switch(func.function.arg->type) {
+        case SHARD_PAT_IDENT:
+            *arg_value = set->entries[0].value;
+            break;
+        case SHARD_PAT_SET:
+            for(size_t i = 0; i < set->capacity; i++) {
+                if(set->entries[i].key && set->entries[i].key != func.function.arg->ident)
+                    shard_set_put(arg.set, set->entries[i].key, set->entries[i].value);
+            }
+            break;
     }
 
     return value;
+}
+
+static struct shard_value eval_call_functor_set(volatile struct shard_evaluator* e, struct shard_value set, struct shard_lazy_value* arg, struct shard_location loc); 
+
+static inline struct shard_value eval_call_value(volatile struct shard_evaluator* e, struct shard_value value, struct shard_lazy_value* arg, struct shard_location loc) {
+    switch(value.type) {
+        case SHARD_VAL_FUNCTION:
+            return eval_call_function(e, value, arg, loc);
+        case SHARD_VAL_SET:
+            return eval_call_functor_set(e, value, arg, loc);
+        default:
+            shard_eval_throw(e, loc, "attempt to call something which is not a function"); // TODO: support sets and `__functor`
+    }
+}
+
+static inline struct shard_value eval_call(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    return eval_call_value(e, eval(e, expr->binop.lhs), &LAZY_VAL(expr->binop.rhs, e->scope), expr->loc);
+}
+
+static struct shard_value eval_call_functor_set(volatile struct shard_evaluator* e, struct shard_value set, struct shard_lazy_value* arg, struct shard_location loc) {
+    assert(set.type == SHARD_VAL_SET);
+
+    struct shard_lazy_value* functor;
+    int err = shard_set_get(set.set, shard_get_ident(e->ctx, "__functor"), &functor);
+    if(err || !functor)
+        shard_eval_throw(e, loc, "attempt to call set without a `__functor` attribute");
+
+    return eval_call_value(e, eval_call_value(e, eval_lazy(e, functor), &UNLAZY_VAL(set), loc), arg, loc);
 }
 
 static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_expr* expr) {

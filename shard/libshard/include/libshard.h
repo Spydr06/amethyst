@@ -451,6 +451,7 @@ struct shard_value {
         struct {
             struct shard_pattern* arg;
             struct shard_expr* body;
+            struct shard_scope* scope;
         } function;
 
         struct {
