@@ -1,3 +1,1 @@
-let add = { __functor = self: x: x + self.x; };
-    inc = add // { x = 1; };
-in inc 1
+builtins.currentSystem

@@ -19,6 +19,7 @@
 static const struct option cmdline_options[] = {
     {"help",   0, NULL, 'h'},
     {"silent", 0, NULL, 's'},
+    {"system", 1, NULL, 0  },
     {NULL,     0, NULL, 0  }
 };
 
@@ -165,7 +166,8 @@ int main(int argc, char** argv) {
         fprintf(stderr, "%s: error initializing libshard: %s\n", argv[0], strerror(err));
         exit(EXIT_FAILURE);
     }
-    
+   
+    const char* current_system = PLATFORM_STRING;
     bool echo_result = true;
     int ch, long_index;
     while((ch = getopt_long(argc, argv, "hI:s", cmdline_options, &long_index)) != EOF) {
@@ -173,6 +175,8 @@ int main(int argc, char** argv) {
         case 0:
             if(strcmp(cmdline_options[long_index].name, "help") == 0)
                 help(argv[0]);
+            if(strcmp(cmdline_options[long_index].name, "system") == 0)
+                current_system = optarg;
             break;
         case 'h':
             help(argv[0]);
@@ -199,6 +203,8 @@ int main(int argc, char** argv) {
         fprintf(stderr, "%s: no input files provided.\n", argv[0]);
         exit(EXIT_FAILURE);
     }
+
+    shard_set_current_system(&ctx, current_system);
 
     char* path = getenv("SHARD_PATH");
     if(path)

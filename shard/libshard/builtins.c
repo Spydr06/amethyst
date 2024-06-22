@@ -1,7 +1,14 @@
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
 
-#define BUILTIN_VAL(_callback) ((struct shard_value){ .type = SHARD_VAL_BUILTIN, .builtin = { .callback = (_callback) } })
+#include <time.h>
+
+#define BUILTIN_EXPR(_callback) ((struct shard_expr) {.type = SHARD_EXPR_BUILTIN, .loc = {0}, .builtin.callback = (_callback) })
+
+struct builtin {
+    const char* const ident;
+    struct shard_lazy_value value;
+};
 
 static struct shard_value builtin_abort(struct shard_evaluator* eval, struct shard_location* loc, struct shard_value arg) {
     if(arg.type != SHARD_VAL_STRING)
@@ -25,24 +32,55 @@ static struct shard_value builtin_import(struct shard_evaluator* eval, struct sh
     return (struct shard_value){.type = SHARD_VAL_NULL};
 }
 
-struct builtin {
-    const char* const ident;
-    struct shard_value value;
-};
+static struct shard_value builtin_currentTime(volatile struct shard_evaluator* e) {
+    (void) e;
+    return INT_VAL(time(NULL));
+}
+
+static struct shard_value builtin_shardPath(volatile struct shard_evaluator* e) {
+    struct shard_list *head = NULL, *current = NULL, *next;
+    
+    for(size_t i = 0; i < e->ctx->include_dirs.count; i++) {
+        next = shard_gc_malloc(e->gc, sizeof(struct shard_list));
+        next->next = NULL;
+        next->value = UNLAZY_VAL(CPATH_VAL(e->ctx->include_dirs.items[i]));
+
+        if(current)
+            current->next = next;
+        current = next;
+        if(!head)
+            head = current;
+    }
+
+    return LIST_VAL(head);
+}
 
 void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
+    static struct shard_expr currentTime = BUILTIN_EXPR(builtin_currentTime),
+                             shardPath   = BUILTIN_EXPR(builtin_shardPath);
+
     struct builtin builtins[] = {
-        { "true",  BOOL_VAL(true) },
-        { "false", BOOL_VAL(false) },
-        { "null",  NULL_VAL() },
+        { "shardVersion", UNLAZY_VAL(CSTRING_VAL(SHARD_VERSION)) },
+        { "langVersion", UNLAZY_VAL(INT_VAL(SHARD_VERSION_X)) },
+        { "currentTime", LAZY_VAL(&currentTime, NULL) },
+        { "shardPath", LAZY_VAL(&shardPath, NULL) },
+        { "currentSystem", UNLAZY_VAL(ctx->current_system ? CSTRING_VAL(ctx->current_system) : NULL_VAL()) },
     };
 
     struct shard_set* builtin_set = shard_set_init(ctx, LEN(builtins));
 
     for(size_t i = 0; i < LEN(builtins); i++) {
-        shard_set_put(builtin_set, shard_get_ident(ctx, builtins[i].ident), UNLAZY_VAL(builtins[i].value));
+        shard_set_put(builtin_set, shard_get_ident(ctx, builtins[i].ident), builtins[i].value);
     }
 
-    dest->bindings = builtin_set;
+    struct shard_set* global_scope = shard_set_init(ctx, 4);
+    shard_set_put(global_scope, shard_get_ident(ctx, "true"),     UNLAZY_VAL(BOOL_VAL(true)));
+    shard_set_put(global_scope, shard_get_ident(ctx, "false"),    UNLAZY_VAL(BOOL_VAL(false)));
+    shard_set_put(global_scope, shard_get_ident(ctx, "null"),     UNLAZY_VAL(NULL_VAL()));
+    shard_set_put(global_scope, shard_get_ident(ctx, "builtins"), UNLAZY_VAL(SET_VAL(builtin_set)));
+
+    dest->bindings = global_scope;
     dest->outer = NULL;
+    
+    ctx->builtin_intialized = true;    
 }

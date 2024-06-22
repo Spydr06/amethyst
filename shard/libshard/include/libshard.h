@@ -36,6 +36,15 @@ extern "C" {
 #include <stdbool.h>
 #include <setjmp.h>
 
+#define __SHARD_QUOTE(arg) #arg
+#define __SHARD_TOSTRING(arg) __SHARD_QUOTE(arg)
+
+#define SHARD_VERSION_X 0
+#define SHARD_VERSION_Y 1
+#define SHARD_VERSION_Z 0
+
+#define SHARD_VERSION __SHARD_TOSTRING(SHARD_VERSION_X) "." __SHARD_TOSTRING(SHARD_VERSION_Y) "." __SHARD_TOSTRING(SHARD_VERSION_Z)
+
 #define DYNARR_INIT_CAPACITY 16
 
 #define __shard_dynarr(name, base, ct) struct name {    \
@@ -57,6 +66,7 @@ struct shard_lazy_value;
 struct shard_list;
 struct shard_set;
 struct shard_alloc_map;
+struct shard_evaluator;
 
 typedef const char* shard_ident_t;
 
@@ -150,6 +160,7 @@ struct shard_context {
     char* (*dirname)(char* path);
     int (*access)(const char* pathname, int mode);
 
+    const char* current_system;
     const char* home_dir;
 
     struct shard_arena* ast;
@@ -164,6 +175,7 @@ struct shard_context {
 
     struct shard_gc gc;
 
+    bool builtin_intialized;
     struct shard_scope builtin_scope;
 };
 
@@ -171,6 +183,8 @@ struct shard_context {
 
 int shard_init_ext(struct shard_context* ctx, void* stack_base);
 void shard_include_dir(struct shard_context* ctx, char* path);
+
+void shard_set_current_system(struct shard_context* ctx, const char* current_system);
 
 void shard_deinit(struct shard_context* ctx);
 
@@ -309,7 +323,9 @@ enum shard_expr_type {
     SHARD_EXPR_LIST,
     SHARD_EXPR_SET,
     SHARD_EXPR_FUNCTION,
-    SHARD_EXPR_LET
+    SHARD_EXPR_LET,
+
+    SHARD_EXPR_BUILTIN,
 };
 
 void shard_attr_path_init(struct shard_context* ctx, struct shard_attr_path* path);
@@ -368,6 +384,10 @@ struct shard_expr {
             struct shard_binding_list bindings;
             struct shard_expr* expr;
         } let;
+
+        struct {
+            struct shard_value (*callback)(volatile struct shard_evaluator*);
+        } builtin;
     };
 };
 

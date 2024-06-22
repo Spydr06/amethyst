@@ -50,7 +50,12 @@
 #define BOOL_VAL(b) ((struct shard_value) { .type = SHARD_VAL_BOOL, .boolean = (bool)(b) })
 #define INT_VAL(i) ((struct shard_value) { .type = SHARD_VAL_INT, .integer = (int64_t)(i) })
 #define FLOAT_VAL(f) ((struct shard_value) { .type = SHARD_VAL_FLOAT, .floating = (double)(f) })
+
 #define STRING_VAL(s, l) ((struct shard_value) { .type = SHARD_VAL_STRING, .string = (s), .strlen = (l) })
+#define CSTRING_VAL(s) STRING_VAL(s, strlen((s)))
+
+#define PATH_VAL(p, l) ((struct shard_value) { .type = SHARD_VAL_PATH, .path = (p), .pathlen = (l) })
+#define CPATH_VAL(p) PATH_VAL(p, strlen(p))
 
 #define LIST_VAL(_head) ((struct shard_value) { .type = SHARD_VAL_LIST, .list.head = (_head) })
 #define SET_VAL(_set) ((struct shard_value) { .type = SHARD_VAL_SET, .set = (_set) })

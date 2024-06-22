@@ -136,11 +136,7 @@ static inline struct shard_value eval_path(volatile struct shard_evaluator* e, s
     }
 
     // TODO: register `path` with garbage collector
-    return (struct shard_value) {
-        .type = SHARD_VAL_PATH,
-        .path = path.items,
-        .pathlen = path.count
-    };
+    return PATH_VAL(path.items, path.count);
 }
 
 static inline struct shard_value eval_list(volatile struct shard_evaluator* e, struct shard_expr* expr) {
@@ -715,6 +711,8 @@ static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_
             return eval_with(e, expr);
         case SHARD_EXPR_CALL:
             return eval_call(e, expr);
+        case SHARD_EXPR_BUILTIN:
+            return expr->builtin.callback(e);
         default:
             shard_eval_throw(e, expr->loc, "unimplemented expression `%d`.", expr->type);
     }
@@ -747,6 +745,10 @@ int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard
     jmp_buf exception;
     volatile struct shard_evaluator e;
     evaluator_init(&e, ctx, &exception);
+
+    if(!ctx->builtin_intialized)
+        shard_get_builtins(ctx, &ctx->builtin_scope);
+
     e.scope = &ctx->builtin_scope;
 
     if(setjmp(*e.exception) == SHARD_EVAL_OK)

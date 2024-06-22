@@ -12,8 +12,6 @@ int shard_init_ext(struct shard_context* ctx, void* stack_base) {
 
     shard_gc_begin(&ctx->gc, ctx, stack_base);
 
-    shard_get_builtins(ctx, &ctx->builtin_scope);
-
     return 0;
 }
 
@@ -58,3 +56,6 @@ shard_ident_t shard_get_ident(struct shard_context* ctx, const char* key) {
     return ident;
 }
 
+void shard_set_current_system(struct shard_context* ctx, const char* current_system) {
+    ctx->current_system = current_system;
+}
