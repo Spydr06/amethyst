@@ -1,1 +1,2 @@
-builtins.currentSystem
+let set = { foo = 69; bar = 420; baz = null; };
+in builtins.attrValues set

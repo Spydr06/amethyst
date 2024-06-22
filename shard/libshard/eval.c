@@ -91,6 +91,10 @@ static inline struct shard_value eval_lazy(volatile struct shard_evaluator* e, s
     return lazy->eval;
 }
 
+struct shard_value shard_eval_lazy2(volatile struct shard_evaluator* e, struct shard_lazy_value* value) {
+    return eval_lazy(e, value);
+}
+
 static inline struct shard_value eval_path(volatile struct shard_evaluator* e, struct shard_expr* expr) {
     static char tmpbuf[PATH_MAX + 1];
 
@@ -617,6 +621,16 @@ static inline struct shard_value eval_call_function(volatile struct shard_evalua
     return value;
 }
 
+static struct shard_value eval_call_builtin(volatile struct shard_evaluator* e, struct shard_value builtin, struct shard_lazy_value* arg, struct shard_location loc) {
+    assert(builtin.type == SHARD_VAL_BUILTIN);
+
+    if(builtin.builtin.num_expected_args == 1)
+        return builtin.builtin.callback(e, &arg, &loc);
+    else {
+        assert(false && "not implemented");
+    }
+}
+
 static struct shard_value eval_call_functor_set(volatile struct shard_evaluator* e, struct shard_value set, struct shard_lazy_value* arg, struct shard_location loc); 
 
 static inline struct shard_value eval_call_value(volatile struct shard_evaluator* e, struct shard_value value, struct shard_lazy_value* arg, struct shard_location loc) {
@@ -625,6 +639,8 @@ static inline struct shard_value eval_call_value(volatile struct shard_evaluator
             return eval_call_function(e, value, arg, loc);
         case SHARD_VAL_SET:
             return eval_call_functor_set(e, value, arg, loc);
+        case SHARD_VAL_BUILTIN:
+            return eval_call_builtin(e, value, arg, loc);
         default:
             shard_eval_throw(e, loc, "attempt to call something which is not a function");
     }

@@ -10,11 +10,62 @@ struct builtin {
     struct shard_lazy_value value;
 };
 
-static struct shard_value builtin_abort(struct shard_evaluator* eval, struct shard_location* loc, struct shard_value arg) {
+static struct shard_value builtin_abort(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value arg = shard_eval_lazy2(e, *args);
     if(arg.type != SHARD_VAL_STRING)
-        shard_eval_throw(eval, *loc, "`builtins.abort` expects the argument to be of type `string`");
+        shard_eval_throw(e, *loc, "`builtins.abort` expects the argument to be of type `string`");
 
-    shard_eval_throw(eval, *loc, "evaluation aborted with the following message: '%.*s'", (int) arg.strlen, arg.string);
+    shard_eval_throw(e, *loc, "evaluation aborted with the following message: '%.*s'", (int) arg.strlen, arg.string);
+}
+
+static struct shard_value builtin_attrNames(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value arg = shard_eval_lazy2(e, *args);
+    if(arg.type != SHARD_VAL_SET)
+        shard_eval_throw(e, *loc, "`builtins.attrNames` expects the argument to be of type `set`");
+
+    struct shard_list *head = NULL, *current = NULL, *next;
+    for(size_t i = 0; i < arg.set->capacity; i++) {
+        if(!arg.set->entries[i].key)
+            continue;
+
+        next = shard_gc_malloc(e->gc, sizeof(struct shard_list));
+        next->value = UNLAZY_VAL(CSTRING_VAL(arg.set->entries[i].key));
+        next->next = NULL;
+
+        if(current)
+            current->next = next;
+        current = next;
+        if(!head)
+            head = current;
+    }
+
+    // TODO: sort alphabetically
+    return LIST_VAL(head);
+}
+
+static struct shard_value builtin_attrValues(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value arg = shard_eval_lazy2(e, *args);
+    if(arg.type != SHARD_VAL_SET)
+        shard_eval_throw(e, *loc, "`builtins.attrValues` expects the argument to be of type `set`");
+
+    struct shard_list *head = NULL, *current = NULL, *next;
+    for(size_t i = 0; i < arg.set->capacity; i++) {
+        if(!arg.set->entries[i].key)
+            continue;
+
+        next = shard_gc_malloc(e->gc, sizeof(struct shard_list));
+        next->value = arg.set->entries[i].value;
+        next->next = NULL;
+
+        if(current)
+            current->next = next;
+        current = next;
+        if(!head)
+            head = current;
+    }
+
+    // TODO: sort after keys alphabetically
+    return LIST_VAL(head);
 }
 
 static struct shard_value builtin_throw(struct shard_evaluator* eval, struct shard_location* loc, struct shard_value arg) {
@@ -65,6 +116,12 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
         { "currentTime", LAZY_VAL(&currentTime, NULL) },
         { "shardPath", LAZY_VAL(&shardPath, NULL) },
         { "currentSystem", UNLAZY_VAL(ctx->current_system ? CSTRING_VAL(ctx->current_system) : NULL_VAL()) },
+        { "abort", UNLAZY_VAL(BUILTIN_VAL(builtin_abort, 1)) },
+        // add
+        // all
+        // any
+        { "attrNames", UNLAZY_VAL(BUILTIN_VAL(builtin_attrNames, 1)) },
+        { "attrValues", UNLAZY_VAL(BUILTIN_VAL(builtin_attrValues, 1)) },
     };
 
     struct shard_set* builtin_set = shard_set_init(ctx, LEN(builtins));

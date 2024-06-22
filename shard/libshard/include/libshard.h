@@ -204,6 +204,7 @@ struct shard_source {
 
 int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard_value* result, struct shard_expr* dest);
 int shard_eval_lazy(struct shard_context* ctx, struct shard_lazy_value* value);
+struct shard_value shard_eval_lazy2(volatile struct shard_evaluator* e, struct shard_lazy_value* value);
 
 enum shard_token_type {
     SHARD_TOK_EOF = 0,
@@ -469,7 +470,9 @@ struct shard_value {
         } function;
 
         struct {
-            struct shard_value (*callback)(struct shard_evaluator*, struct shard_location*, struct shard_value);
+            struct shard_value (*callback)(volatile struct shard_evaluator*, struct shard_lazy_value**, struct shard_location*);
+            struct shard_lazy_value** queued_args;
+            unsigned num_queued_args, num_expected_args;
         } builtin;
     };
 };
