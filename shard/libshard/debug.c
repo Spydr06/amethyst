@@ -42,9 +42,6 @@ static const char* token_type_strings[_SHARD_TOK_LEN] = {
     E(LOGAND) = "&&",
     E(LOGOR) = "||",
     E(LOGIMPL) = "->",
-    E(NULL) = "null",
-    E(TRUE) = "true",
-    E(FALSE) = "false",
     E(REC) = "rec",
     E(OR) = "or",
     E(IF) = "if",
@@ -101,15 +98,6 @@ void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const 
     dynarr_append(ctx, str, '(');
     
     switch(expr->type) {
-        case SHARD_EXPR_NULL:
-            dynarr_append_many(ctx, str, "null", 4);
-            break;
-        case SHARD_EXPR_TRUE:
-            dynarr_append_many(ctx, str, "true", 4);
-            break;
-        case SHARD_EXPR_FALSE:
-            dynarr_append_many(ctx, str, "false", 5);
-            break;
         case SHARD_EXPR_IDENT:
             dynarr_append_many(ctx, str, expr->string, strlen(expr->string));
             break;

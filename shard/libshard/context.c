@@ -12,6 +12,8 @@ int shard_init_ext(struct shard_context* ctx, void* stack_base) {
 
     shard_gc_begin(&ctx->gc, ctx, stack_base);
 
+    shard_get_builtins(ctx, &ctx->builtin_scope);
+
     return 0;
 }
 

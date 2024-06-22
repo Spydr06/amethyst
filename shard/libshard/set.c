@@ -3,8 +3,6 @@
 
 #include <errno.h>
 
-#define LAZY_VAL(_lazy, _scope) ((struct shard_lazy_value){.lazy = (_lazy), .scope = (_scope), .evaluated = false})
-
 struct shard_set* shard_set_init(struct shard_context* ctx, size_t capacity) {
     struct shard_set* set = shard_gc_malloc(&ctx->gc, sizeof(struct shard_set) + sizeof(set->entries[0]) * capacity);
     if(!set) {

@@ -80,9 +80,6 @@ static const unsigned token_widths[] = {
     2,
     2,
     3,
-    4,
-    5,
-    3,
     2,
     2,
     4,
@@ -100,9 +97,6 @@ static const struct {
     const char* keyword;
     enum shard_token_type type;
 } keywords[] = {
-    {"null", SHARD_TOK_NULL},
-    {"true", SHARD_TOK_TRUE},
-    {"false", SHARD_TOK_FALSE},
     {"rec", SHARD_TOK_REC},
     {"or", SHARD_TOK_OR},
     {"if", SHARD_TOK_IF},

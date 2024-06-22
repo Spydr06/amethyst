@@ -322,6 +322,7 @@ static int parse_ident(struct parser* p, struct shard_expr* expr) {
     switch(p->token.type) {
         case SHARD_TOK_COLON: {
             struct shard_pattern* arg = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_pattern));
+            memset(arg, 0, sizeof(struct shard_pattern));
             arg->type = SHARD_PAT_IDENT;
             arg->ident = ident;
             arg->loc = ident_loc;
@@ -335,6 +336,7 @@ static int parse_ident(struct parser* p, struct shard_expr* expr) {
         } break;
         case SHARD_TOK_AT: {
             struct shard_pattern* arg = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_pattern));
+            memset(arg, 0, sizeof(struct shard_pattern));
             int err2[] = {
                 err,
                 advance(p),
@@ -466,6 +468,7 @@ static int parse_set(struct parser* p, struct shard_expr* expr, bool recursive) 
             shard_hashmap_free(p->ctx, &expr->set.attrs);
 
             struct shard_pattern* arg = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_pattern));
+            memset(arg, 0, sizeof(struct shard_pattern));
             int err2[] = {
                 err,
                 parse_set_pattern(p, arg, NULL, true, NULL),
@@ -484,6 +487,7 @@ static int parse_set(struct parser* p, struct shard_expr* expr, bool recursive) 
             shard_hashmap_free(p->ctx, &expr->set.attrs);
 
             struct shard_pattern* arg = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_pattern));
+            memset(arg, 0, sizeof(struct shard_pattern));
             int err2[] = {
                 err,
                 parse_set_pattern(p, arg, NULL, true, key),
@@ -620,24 +624,6 @@ static int parse_prefix_expr(struct parser* p, struct shard_expr* expr) {
                 .type = SHARD_EXPR_FLOAT,
                 .loc = p->token.location,
                 .floating = p->token.value.floating
-            };
-            return advance(p);
-        case SHARD_TOK_NULL:
-            *expr = (struct shard_expr) {
-                .type = SHARD_EXPR_NULL,
-                .loc = p->token.location,
-            };
-            return advance(p);
-        case SHARD_TOK_TRUE:
-            *expr = (struct shard_expr) {
-                .type = SHARD_EXPR_TRUE,
-                .loc = p->token.location,
-            };
-            return advance(p);
-        case SHARD_TOK_FALSE:
-            *expr = (struct shard_expr) {
-                .type = SHARD_EXPR_FALSE,
-                .loc = p->token.location,
             };
             return advance(p);
         case SHARD_TOK_STRING:

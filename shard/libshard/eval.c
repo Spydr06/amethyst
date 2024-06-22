@@ -10,22 +10,6 @@
     #define PATH_MAX 4096
 #endif
 
-#define NULL_VAL() ((struct shard_value) { .type = SHARD_VAL_NULL })
-#define TRUE_VAL() BOOL_VAL(true)
-#define FALSE_VAL() BOOL_VAL(false)
-
-#define BOOL_VAL(b) ((struct shard_value) { .type = SHARD_VAL_BOOL, .boolean = (bool)(b) })
-#define INT_VAL(i) ((struct shard_value) { .type = SHARD_VAL_INT, .integer = (int64_t)(i) })
-#define FLOAT_VAL(f) ((struct shard_value) { .type = SHARD_VAL_FLOAT, .floating = (double)(f) })
-#define STRING_VAL(s, l) ((struct shard_value) { .type = SHARD_VAL_STRING, .string = (s), .strlen = (l) })
-
-#define LIST_VAL(_head) ((struct shard_value) { .type = SHARD_VAL_LIST, .list.head = (_head) })
-#define SET_VAL(_set) ((struct shard_value) { .type = SHARD_VAL_SET, .set = (_set) })
-#define FUNC_VAL(_arg, _body, _scope) ((struct shard_value) { .type = SHARD_VAL_FUNCTION, .function.arg = (_arg), .function.body = (_body), .function.scope = (_scope) })
-
-#define LAZY_VAL(_lazy, _scope) ((struct shard_lazy_value){.lazy = (_lazy), .scope = (_scope), .evaluated = false})
-#define UNLAZY_VAL(_eval) ((struct shard_lazy_value){.eval = (_eval), .evaluated = true})
-
 static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_expr* expr);
 
 static void evaluator_init(volatile struct shard_evaluator* eval, struct shard_context* ctx, jmp_buf* exception) {
@@ -671,12 +655,6 @@ static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_
             return INT_VAL(expr->integer);
         case SHARD_EXPR_FLOAT:
             return FLOAT_VAL(expr->floating);
-        case SHARD_EXPR_NULL:
-            return NULL_VAL();
-        case SHARD_EXPR_TRUE:
-            return TRUE_VAL();
-        case SHARD_EXPR_FALSE:
-            return FALSE_VAL();
         case SHARD_EXPR_STRING:
             return STRING_VAL(expr->string, strlen(expr->string));
         case SHARD_EXPR_PATH:
@@ -769,6 +747,7 @@ int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard
     jmp_buf exception;
     volatile struct shard_evaluator e;
     evaluator_init(&e, ctx, &exception);
+    e.scope = &ctx->builtin_scope;
 
     if(setjmp(*e.exception) == SHARD_EVAL_OK)
         *result = eval(&e, expr);

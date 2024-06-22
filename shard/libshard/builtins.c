@@ -1,3 +1,4 @@
+#define _LIBSHARD_INTERNAL
 #include <libshard.h>
 
 #define BUILTIN_VAL(_callback) ((struct shard_value){ .type = SHARD_VAL_BUILTIN, .builtin = { .callback = (_callback) } })
@@ -27,18 +28,21 @@ static struct shard_value builtin_import(struct shard_evaluator* eval, struct sh
 struct builtin {
     const char* const ident;
     struct shard_value value;
-    bool overloaded;
 };
 
-void shard_get_builtins(struct shard_context* ctx) {
+void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
     struct builtin builtins[] = {
-        { "abort", BUILTIN_VAL(builtin_abort),   true },
-        { "throw", BUILTIN_VAL(builtin_throw),   true },
-        { "import", BUILTIN_VAL(builtin_import), true },
-        { NULL, {0}, false }
+        { "true",  BOOL_VAL(true) },
+        { "false", BOOL_VAL(false) },
+        { "null",  NULL_VAL() },
     };
 
-    for(const struct builtin* builtin = builtins; builtin->ident; builtin++) {
+    struct shard_set* builtin_set = shard_set_init(ctx, LEN(builtins));
 
+    for(size_t i = 0; i < LEN(builtins); i++) {
+        shard_set_put(builtin_set, shard_get_ident(ctx, builtins[i].ident), UNLAZY_VAL(builtins[i].value));
     }
+
+    dest->bindings = builtin_set;
+    dest->outer = NULL;
 }

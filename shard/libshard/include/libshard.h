@@ -164,7 +164,7 @@ struct shard_context {
 
     struct shard_gc gc;
 
-    struct shard_scope base_scope;
+    struct shard_scope builtin_scope;
 };
 
 #define shard_init(ctx) shard_init_ext((ctx), __builtin_frame_address(0))
@@ -234,9 +234,6 @@ enum shard_token_type {
     SHARD_TOK_LOGIMPL, // ->
 
     // keywords
-    SHARD_TOK_NULL,
-    SHARD_TOK_TRUE,
-    SHARD_TOK_FALSE,
     SHARD_TOK_REC,
     SHARD_TOK_OR,
     SHARD_TOK_IF,
@@ -282,9 +279,6 @@ enum shard_expr_type {
     SHARD_EXPR_FLOAT,
     SHARD_EXPR_STRING,
     SHARD_EXPR_PATH,
-    SHARD_EXPR_NULL,
-    SHARD_EXPR_TRUE,
-    SHARD_EXPR_FALSE,
 
     SHARD_EXPR_NOT,
     SHARD_EXPR_NEGATE,
@@ -492,7 +486,7 @@ struct shard_set* shard_set_merge(struct shard_context* ctx, const struct shard_
 void shard_set_put(struct shard_set* set, shard_ident_t attr, struct shard_lazy_value value);
 int shard_set_get(struct shard_set* set, shard_ident_t attr, struct shard_lazy_value** value);
 
-void shard_get_builtins(struct shard_context* ctx);
+void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest);
 
 struct shard_value shard_value_copy(volatile struct shard_evaluator* e, struct shard_value val);
 void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* value, int max_depth);
