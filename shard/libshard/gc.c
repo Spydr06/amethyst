@@ -1,6 +1,10 @@
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
 
+#ifndef SHARD_USE_GCBOEHM
+
+const enum shard_gc_backend _shard_gc_backend = SHARD_GC_BUILTIN;
+
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -484,4 +488,6 @@ size_t shard_gc_run(volatile struct shard_gc* gc)
     mark(gc);
     return sweep(gc);
 }
+
+#endif /* SHARD_USE_GCBOEHM */
 

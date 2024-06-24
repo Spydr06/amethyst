@@ -108,13 +108,36 @@ SHARD_DECL void shard_hashmap_free(const struct shard_context* ctx, struct shard
 SHARD_DECL int shard_hashmap_put(const struct shard_context* ctx, struct shard_hashmap* map, const char* key, void* value);
 SHARD_DECL void* shard_hashmap_get(const struct shard_hashmap* map, const char* key);
 
+enum shard_gc_backend {
+    SHARD_GC_BOEHM,
+    SHARD_GC_BUILTIN
+};
+
+extern const enum shard_gc_backend _shard_gc_backend;
+
 struct shard_gc {
     struct shard_context* ctx;
     struct shard_alloc_map* allocs;
-    bool paused;
     void* stack_bottom;
     size_t min_size;
+    bool paused;
 };
+
+#ifdef SHARD_USE_GCBOEHM
+
+#define SHARD_GC_BACKEND SHARD_GC_BOEHM
+
+SHARD_DECL void shard_gc_begin(volatile struct shard_gc* gc, struct shard_context* ctx, void* stack_base);
+SHARD_DECL void shard_gc_end(volatile struct shard_gc* gc);
+
+SHARD_DECL void* shard_gc_malloc(volatile struct shard_gc* gc, size_t size);
+SHARD_DECL void* shard_gc_calloc(volatile struct shard_gc* gc, size_t nmemb, size_t size);
+SHARD_DECL void* shard_gc_realloc(volatile struct shard_gc* gc, void* ptr, size_t size);
+SHARD_DECL void shard_gc_free(volatile struct shard_gc* gc, void* ptr);
+
+#else
+
+#define SHARD_GC_BACKEND SHARD_GC_BUILTIN
 
 #define shard_gc_begin(gc, ctx, stack_base) (shard_gc_begin_ext((gc), (ctx), (stack_base), 1024, 1024, 0.2, 0.8, 0.7))
 
@@ -134,6 +157,8 @@ SHARD_DECL void* shard_gc_malloc_ext(volatile struct shard_gc* gc, size_t size, 
 SHARD_DECL void* shard_gc_calloc_ext(volatile struct shard_gc* gc, size_t nmemb, size_t size, void (*dtor)(void*));
 SHARD_DECL void* shard_gc_realloc(volatile struct shard_gc* gc, void* ptr, size_t size);
 SHARD_DECL void shard_gc_free(volatile struct shard_gc* gc, void* ptr);
+
+#endif /* SHARD_USE_GCBOEHM */
 
 struct shard_error {
     struct shard_location loc;
