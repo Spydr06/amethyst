@@ -105,3 +105,9 @@ $(LIBATOMIC_OPS_SRC_DIR): $(LIBATOMIC_OPS_TAR)
 .PHONY: clean
 clean:
 	rm -rf $(BUILD_DIR)
+
+.PHONY: clean-gcboehm
+clean-gcboehm: clean
+	rm -rf $(LIBATOMIC_OPS_SRC_DIR) $(LIBATOMIC_OPS_TAR)
+	rm -rf $(GCBOEHM_SRC_DIR) $(GCBOEHM_TAR)
+
