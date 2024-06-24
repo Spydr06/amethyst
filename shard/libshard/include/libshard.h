@@ -54,6 +54,12 @@ extern "C" {
 
 #define shard_dynarr(name, base) __shard_dynarr(name, base, size_t)
 
+#ifdef _LIBSHARD_INTERNAL
+    #define SHARD_DECL __attribute__((visibility("default"))) 
+#else
+    #define SHARD_DECL
+#endif
+
 struct shard_hashmap;
 struct shard_context;
 struct shard_arena;
@@ -81,9 +87,9 @@ struct shard_arena {
     struct shard_arena* next;
 };
 
-struct shard_arena* shard_arena_init(const struct shard_context* ctx);
-void* shard_arena_malloc(const struct shard_context* ctx, struct shard_arena* arena, size_t size);
-void shard_arena_free(const struct shard_context* ctx, struct shard_arena* arena);
+SHARD_DECL struct shard_arena* shard_arena_init(const struct shard_context* ctx);
+SHARD_DECL void* shard_arena_malloc(const struct shard_context* ctx, struct shard_arena* arena, size_t size);
+SHARD_DECL void shard_arena_free(const struct shard_context* ctx, struct shard_arena* arena);
 
 struct shard_hashpair {
     const char* key;
@@ -96,11 +102,11 @@ struct shard_hashmap {
     struct shard_hashpair* pairs;
 };
 
-void shard_hashmap_init(const struct shard_context* ctx, struct shard_hashmap* map, size_t init_size);
-void shard_hashmap_free(const struct shard_context* ctx, struct shard_hashmap* map);
+SHARD_DECL void shard_hashmap_init(const struct shard_context* ctx, struct shard_hashmap* map, size_t init_size);
+SHARD_DECL void shard_hashmap_free(const struct shard_context* ctx, struct shard_hashmap* map);
 
-int shard_hashmap_put(const struct shard_context* ctx, struct shard_hashmap* map, const char* key, void* value);
-void* shard_hashmap_get(const struct shard_hashmap* map, const char* key);
+SHARD_DECL int shard_hashmap_put(const struct shard_context* ctx, struct shard_hashmap* map, const char* key, void* value);
+SHARD_DECL void* shard_hashmap_get(const struct shard_hashmap* map, const char* key);
 
 struct shard_gc {
     struct shard_context* ctx;
@@ -110,24 +116,24 @@ struct shard_gc {
     size_t min_size;
 };
 
-#define shard_gc_begin(gc, ctx, stack_base) (shard_gc_begin_ext((gc), (ctx), (stack_base), 1024, 1024, 0.2, 0.8, 0.5))
+#define shard_gc_begin(gc, ctx, stack_base) (shard_gc_begin_ext((gc), (ctx), (stack_base), 1024, 1024, 0.2, 0.8, 0.7))
 
-void shard_gc_begin_ext(volatile struct shard_gc* gc, struct shard_context* ctx, void* stack_bottom, size_t init_cap, size_t min_cap, double downsize_load_factor, double upsize_load_factor, double sweep_factor);
-size_t shard_gc_end(volatile struct shard_gc* gc);
+SHARD_DECL void shard_gc_begin_ext(volatile struct shard_gc* gc, struct shard_context* ctx, void* stack_bottom, size_t init_cap, size_t min_cap, double downsize_load_factor, double upsize_load_factor, double sweep_factor);
+SHARD_DECL size_t shard_gc_end(volatile struct shard_gc* gc);
 
-void shard_gc_pause(volatile struct shard_gc* gc);
-void shard_gc_resume(volatile struct shard_gc* gc);
+SHARD_DECL void shard_gc_pause(volatile struct shard_gc* gc);
+SHARD_DECL void shard_gc_resume(volatile struct shard_gc* gc);
 
-size_t shard_gc_run(volatile struct shard_gc* gc);
-void* shard_gc_make_static(volatile struct shard_gc* gc, void* ptr);
+SHARD_DECL size_t shard_gc_run(volatile struct shard_gc* gc);
+SHARD_DECL void* shard_gc_make_static(volatile struct shard_gc* gc, void* ptr);
 
 #define shard_gc_malloc(gc, size) (shard_gc_malloc_ext((gc), (size), NULL))
 #define shard_gc_calloc(gc, nmemb, size) (shard_gc_malloc_ext((gc), (nmemb), (size), NULL))
 
-void* shard_gc_malloc_ext(volatile struct shard_gc* gc, size_t size, void (*dtor)(void*));
-void* shard_gc_calloc_ext(volatile struct shard_gc* gc, size_t nmemb, size_t size, void (*dtor)(void*));
-void* shard_gc_realloc(volatile struct shard_gc* gc, void* ptr, size_t size);
-void shard_gc_free(volatile struct shard_gc* gc, void* ptr);
+SHARD_DECL void* shard_gc_malloc_ext(volatile struct shard_gc* gc, size_t size, void (*dtor)(void*));
+SHARD_DECL void* shard_gc_calloc_ext(volatile struct shard_gc* gc, size_t nmemb, size_t size, void (*dtor)(void*));
+SHARD_DECL void* shard_gc_realloc(volatile struct shard_gc* gc, void* ptr, size_t size);
+SHARD_DECL void shard_gc_free(volatile struct shard_gc* gc, void* ptr);
 
 struct shard_error {
     struct shard_location loc;
@@ -143,9 +149,9 @@ shard_dynarr(shard_string, char);
 shard_dynarr(shard_string_list, char*);
 shard_dynarr(shard_expr_list, struct shard_expr);
 
-void shard_string_append(struct shard_context* ctx, struct shard_string* str, const char* str2);
-void shard_string_push(struct shard_context* ctx, struct shard_string* str, char c);
-void shard_string_free(struct shard_context* ctx, struct shard_string* str);
+SHARD_DECL void shard_string_append(struct shard_context* ctx, struct shard_string* str, const char* str2);
+SHARD_DECL void shard_string_push(struct shard_context* ctx, struct shard_string* str, char c);
+SHARD_DECL void shard_string_free(struct shard_context* ctx, struct shard_string* str);
 
 struct shard_scope {
     struct shard_scope* outer;
@@ -181,14 +187,14 @@ struct shard_context {
 
 #define shard_init(ctx) shard_init_ext((ctx), __builtin_frame_address(0))
 
-int shard_init_ext(struct shard_context* ctx, void* stack_base);
-void shard_include_dir(struct shard_context* ctx, char* path);
+SHARD_DECL int shard_init_ext(struct shard_context* ctx, void* stack_base);
+SHARD_DECL void shard_include_dir(struct shard_context* ctx, char* path);
 
-void shard_set_current_system(struct shard_context* ctx, const char* current_system);
+SHARD_DECL void shard_set_current_system(struct shard_context* ctx, const char* current_system);
 
-void shard_deinit(struct shard_context* ctx);
+SHARD_DECL void shard_deinit(struct shard_context* ctx);
 
-shard_ident_t shard_get_ident(struct shard_context* ctx, const char* ident);
+SHARD_DECL shard_ident_t shard_get_ident(struct shard_context* ctx, const char* ident);
 
 // TODO: add other sources like memory buffers
 struct shard_source {
@@ -202,9 +208,9 @@ struct shard_source {
     unsigned line;
 };
 
-int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard_value* result, struct shard_expr* dest);
-int shard_eval_lazy(struct shard_context* ctx, struct shard_lazy_value* value);
-struct shard_value shard_eval_lazy2(volatile struct shard_evaluator* e, struct shard_lazy_value* value);
+SHARD_DECL int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard_value* result, struct shard_expr* dest);
+SHARD_DECL int shard_eval_lazy(struct shard_context* ctx, struct shard_lazy_value* value);
+SHARD_DECL struct shard_value shard_eval_lazy2(volatile struct shard_evaluator* e, struct shard_lazy_value* value);
 
 enum shard_token_type {
     SHARD_TOK_EOF = 0,
@@ -275,7 +281,7 @@ struct shard_token {
     } value;
 };
 
-int shard_lex(struct shard_context* ctx, struct shard_source* src, struct shard_token* token);
+SHARD_DECL int shard_lex(struct shard_context* ctx, struct shard_source* src, struct shard_token* token);
 
 shard_dynarr(shard_attr_path, shard_ident_t);
 
@@ -329,7 +335,7 @@ enum shard_expr_type {
     SHARD_EXPR_BUILTIN,
 };
 
-void shard_attr_path_init(struct shard_context* ctx, struct shard_attr_path* path);
+SHARD_DECL void shard_attr_path_init(struct shard_context* ctx, struct shard_attr_path* path);
 
 struct shard_expr {
     enum shard_expr_type type;
@@ -406,9 +412,9 @@ struct shard_pattern {
     shard_ident_t ident;
 };
 
-int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr);
+SHARD_DECL int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr);
 
-void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr);
+SHARD_DECL void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr);
 
 struct shard_evaluator {
     struct shard_context* ctx;
@@ -424,7 +430,7 @@ enum shard_evaluator_status {
 };
 
 _Noreturn __attribute__((format(printf, 3, 4))) 
-void shard_eval_throw(volatile struct shard_evaluator* e, struct shard_location loc, const char* fmt, ...);
+SHARD_DECL void shard_eval_throw(volatile struct shard_evaluator* e, struct shard_location loc, const char* fmt, ...);
 
 enum shard_value_type {
     SHARD_VAL_NULL     = 1 << 0,
@@ -502,23 +508,23 @@ struct shard_set {
     } entries[];
 };
 
-struct shard_set* shard_set_init(struct shard_context* ctx, size_t capacity);
-struct shard_set* shard_set_from_hashmap(volatile struct shard_evaluator* ctx, struct shard_hashmap* map);
-struct shard_set* shard_set_merge(struct shard_context* ctx, const struct shard_set* fst, const struct shard_set* snd);
+SHARD_DECL struct shard_set* shard_set_init(struct shard_context* ctx, size_t capacity);
+SHARD_DECL struct shard_set* shard_set_from_hashmap(volatile struct shard_evaluator* ctx, struct shard_hashmap* map);
+SHARD_DECL struct shard_set* shard_set_merge(struct shard_context* ctx, const struct shard_set* fst, const struct shard_set* snd);
 
-void shard_set_put(struct shard_set* set, shard_ident_t attr, struct shard_lazy_value value);
-int shard_set_get(struct shard_set* set, shard_ident_t attr, struct shard_lazy_value** value);
+SHARD_DECL void shard_set_put(struct shard_set* set, shard_ident_t attr, struct shard_lazy_value value);
+SHARD_DECL int shard_set_get(struct shard_set* set, shard_ident_t attr, struct shard_lazy_value** value);
 
-void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest);
+SHARD_DECL void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest);
 
-struct shard_value shard_value_copy(volatile struct shard_evaluator* e, struct shard_value val);
-void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* value, int max_depth);
+SHARD_DECL struct shard_value shard_value_copy(volatile struct shard_evaluator* e, struct shard_value val);
+SHARD_DECL void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* value, int max_depth);
 
-const char* shard_token_type_to_str(enum shard_token_type token_type);
+SHARD_DECL const char* shard_token_type_to_str(enum shard_token_type token_type);
 
-void shard_dump_pattern(struct shard_context* ctx, struct shard_string* str, const struct shard_pattern* pattern);
-void shard_dump_token(char* dest, size_t n, const struct shard_token* tok);
-void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const struct shard_expr* expr);
+SHARD_DECL void shard_dump_pattern(struct shard_context* ctx, struct shard_string* str, const struct shard_pattern* pattern);
+SHARD_DECL void shard_dump_token(char* dest, size_t n, const struct shard_token* tok);
+SHARD_DECL void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const struct shard_expr* expr);
 
 #ifdef _LIBSHARD_INTERNAL
     #include <libshard-internal.h>

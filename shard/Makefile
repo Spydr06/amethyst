@@ -1,8 +1,19 @@
 BUILD_DIR ?= build
 LIBSHARD_DIR := libshard
 
+LIBATOMIC_OPS_TAR_LINK ?= https://www.hboehm.info/gc/gc_source/libatomic_ops-7.8.0.tar.gz
+LIBATOMIC_OPS_TAR := $(shell basename $(LIBATOMIC_OPS_TAR_LINK))
+LIBATOMIC_OPS_SRC_DIR := $(patsubst %.tar.gz, %, $(LIBATOMIC_OPS_TAR))
+
+GCBOEHM_TAR_LINK ?= https://www.hboehm.info/gc/gc_source/gc-8.2.4.tar.gz
+GCBOEHM_TAR := $(shell basename $(GCBOEHM_TAR_LINK))
+GCBOEHM_SRC_DIR := $(patsubst %.tar.gz, %, $(GCBOEHM_TAR))
+
+GCBOEHM_LIB := $(GCBOEHM_SRC_DIR)/.libs/libgc.a
+
 SHARD_BIN := $(BUILD_DIR)/shard
 LIBSHARD := $(BUILD_DIR)/libshard.a
+LIBSHARD_OBJ := $(BUILD_DIR)/libshard.o
 
 SOURCES := $(shell find $(LIBSHARD_DIR) -name '*.c')
 OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SOURCES))
@@ -12,6 +23,11 @@ RANLIB ?= ranlib
 
 LDFLAGS +=
 CFLAGS += -Wall -Wextra -pedantic -std=c2x -I$(LIBSHARD_DIR)/include -g
+
+ifneq (,$(findstring SHARD_USE_GCBOEHM, $(CFLAGS)))
+	OBJECTS += $(GCBOEHM_LIB)
+	CFLAGS += -I$(GCBOEHM_SRC_DIR)/include
+endif
 
 .PHONY: all
 all: $(LIBSHARD) $(SHARD_BIN)
@@ -31,20 +47,60 @@ $(BUILD_DIR):
 	@echo " MKDIR $(BUILD_DIR)"
 	@mkdir -p $(BUILD_DIR)
 
-$(SHARD_BIN): $(OBJECTS) $(BUILD_DIR)/shard.o $(BUILD_DIR)/repl.o
+$(SHARD_BIN): $(BUILD_DIR)/shard.o $(BUILD_DIR)/repl.o $(LIBSHARD_OBJ)
 	@echo "  LD    $@"
 	@$(CC) $(LDFLAGS) $^ -o $@
 
-$(LIBSHARD): $(OBJECTS) | $(BUILD_DIR)
+$(LIBSHARD): $(LIBSHARD_OBJ)
 	@echo "  AR    $@"	
-	@$(AR) -ru $@ $<
+	@$(AR) -rcs $@ $<
 	@echo " RANLIB	$@"
 	@$(RANLIB) $@
+
+$(LIBSHARD_OBJ): $(OBJECTS) | $(BUILD_DIR)	
+	@echo "  LD    $@"
+	@$(LD) -r $^ -o $@
 
 $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	@echo "  CC    $^"
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.o=%.d)" -c $^ -o $@
+
+.PHONY: gcboehm
+gcboehm: $(GCBOEHM_LIB)
+
+$(GCBOEHM_LIB): $(GCBOEHM_SRC_DIR)/Makefile
+	$(MAKE) -C $(GCBOEHM_SRC_DIR)
+
+$(GCBOEHM_SRC_DIR)/Makefile: $(GCBOEHM_SRC_DIR)/libatomic_ops
+	@echo "  PUSHD $(GCBOEHM_SRC_DIR)"		&& \
+		pushd $(GCBOEHM_SRC_DIR) 			&& \
+		echo "Configuring gcboehm..." 		&& \
+		autoreconf -vif 					&& \
+		automake --add-missing 				&& \
+		CC=$(CC) CXX=$(CXX)					   \
+		./configure --enable-static=yes --enable-shared=no		&& \
+		echo "Configuring gcboehm done."
+
+$(GCBOEHM_SRC_DIR)/libatomic_ops: $(LIBATOMIC_OPS_SRC_DIR) | $(GCBOEHM_SRC_DIR)
+	@echo "  LN[S] $@"
+	@ln -s $(shell realpath $^) $@
+
+$(GCBOEHM_SRC_DIR): $(GCBOEHM_TAR)
+	@echo "  TAR   $^"
+	@tar xf $^ -C $(dir $(GCBOEHM_SRC_DIR))
+
+$(GCBOEHM_TAR):
+	@echo "  WGET  $@"
+	@wget $(GCBOEHM_TAR_LINK) -O $@
+
+$(LIBATOMIC_OPS_TAR):
+	@echo "  WGET  $@"
+	@wget $(LIBATOMIC_OPS_TAR_LINK) -O $@
+
+$(LIBATOMIC_OPS_SRC_DIR): $(LIBATOMIC_OPS_TAR)
+	@echo "  TAR   $^"
+	@tar xf $^ -C $(dir $(LIBATOMIC_OPS_SRC_DIR))
 
 .PHONY: clean
 clean:
