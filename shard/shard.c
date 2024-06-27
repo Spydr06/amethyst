@@ -45,6 +45,28 @@ static int _tell(struct shard_source* src) {
     return ftell(src->userp);
 }
 
+static int _close(struct shard_source* src) {
+    return fclose(src->userp);
+}
+
+static int _open(const char* path, struct shard_source* dest, const char* restrict mode) {
+    FILE* fd = fopen(path, mode);
+    if(!fd)
+        return errno;
+
+    *dest = (struct shard_source){
+        .userp = fd,
+        .origin = path,
+        .getc = _getc,
+        .ungetc = _ungetc,
+        .tell = _tell,
+        .close = _close,
+        .line = 1
+    };
+
+    return 0;
+}
+
 static void print_basic_error(struct shard_error* error) {
     fprintf(stderr, 
         C_BLD C_RED "error: " C_RST C_BLD " %s:%u:" C_NOBLD " %s\n" C_RST,
@@ -109,21 +131,12 @@ static void print_error(struct shard_error* error) {
     free(line_str);
 }
 
-static int eval_file(struct shard_context* ctx, const char* progname, const char* input_file, bool echo_result) {
-    FILE* fd = fopen(input_file, "r");
-    if(!fd) {
+static int eval_file(struct shard_context* ctx, const char* progname, const char* input_file, bool echo_result) { 
+    struct shard_source src;
+    if(_open(input_file, &src, "r")) {
         fprintf(stderr, "%s: could not read file `%s`: %s\n", progname, input_file, strerror(errno));
         return EXIT_FAILURE;
     }
-
-    struct shard_source src = {
-        .userp = fd,
-        .origin = input_file,
-        .getc = _getc,
-        .ungetc = _ungetc,
-        .tell = _tell,
-        .line = 1
-    };
 
     struct shard_value result;
     struct shard_expr expr = {0};
@@ -145,8 +158,7 @@ static int eval_file(struct shard_context* ctx, const char* progname, const char
 
     shard_free_expr(ctx, &expr);
 
-    fclose(fd);
-
+    src.close(&src);
     return num_errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
@@ -158,6 +170,7 @@ int main(int argc, char** argv) {
         .realpath = realpath,
         .dirname = dirname,
         .access = access,
+        .open = _open,
         .home_dir = getenv("HOME"),
     };
     

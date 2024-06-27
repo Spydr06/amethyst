@@ -67,6 +67,9 @@ int shard_set_get(struct shard_set* set, shard_ident_t attr, struct shard_lazy_v
     if(!attr)
         return EINVAL;
 
+    if(!set->size)
+        return ENOENT;
+
     uintptr_t index = hash(attr) % set->capacity;
 
     // linear probing

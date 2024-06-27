@@ -646,6 +646,10 @@ static inline struct shard_value eval_call_value(volatile struct shard_evaluator
     }
 }
 
+SHARD_DECL struct shard_value shard_eval_call(volatile struct shard_evaluator* e, struct shard_value value, struct shard_lazy_value* arg, struct shard_location loc) {
+    return eval_call_value(e, value, arg, loc);
+}
+
 static inline struct shard_value eval_call(volatile struct shard_evaluator* e, struct shard_expr* expr) {
     return eval_call_value(e, eval(e, expr->binop.lhs), &LAZY_VAL(expr->binop.rhs, e->scope), expr->loc);
 }

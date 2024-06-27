@@ -189,7 +189,9 @@ struct shard_context {
     void (*free)(void* ptr);
     char* (*realpath)(const char* restrict path, char* restrict resolved_path);
     char* (*dirname)(char* path);
-    int (*access)(const char* pathname, int mode);
+    int (*access)(const char* path, int mode);
+
+    int (*open)(const char* path, struct shard_source* dest, const char* restrict mode);
 
     const char* current_system;
     const char* home_dir;
@@ -229,12 +231,14 @@ struct shard_source {
     int (*getc)(struct shard_source* self);
     int (*ungetc)(int c, struct shard_source* self);
     int (*tell)(struct shard_source* self);
+    int (*close)(struct shard_source* self);
 
     unsigned line;
 };
 
 SHARD_DECL int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard_value* result, struct shard_expr* dest);
 SHARD_DECL int shard_eval_lazy(struct shard_context* ctx, struct shard_lazy_value* value);
+SHARD_DECL struct shard_value shard_eval_call(volatile struct shard_evaluator* e, struct shard_value value, struct shard_lazy_value* arg, struct shard_location loc);
 SHARD_DECL struct shard_value shard_eval_lazy2(volatile struct shard_evaluator* e, struct shard_lazy_value* value);
 
 enum shard_token_type {
