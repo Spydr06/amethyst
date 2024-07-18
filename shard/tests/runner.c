@@ -59,10 +59,10 @@ _Noreturn static void help(const char* argv0) {
 }
 
 static void _signal_handler(int signo) {
+    fprintf(stderr, "\r " C_BLD C_RED "error: " C_NOBLD "uncaught signal %s (%d).\n", strsignal(signo), signo);
     if(segv_recovery_set)
         longjmp(segv_recovery, signo);
 
-    fprintf(stderr, C_BLD C_RED "\rerror: " C_NOBLD "uncaught signal %s (%d).\n", strsignal(signo), signo);
     exit(127);
 }
 
@@ -138,7 +138,6 @@ enum test_status run(const char* filename, struct shard_context* ctx, enum test_
         src.close(&src);
     }
     else {
-        printf("\r " C_RED C_BLD " error:" C_NOBLD " caught signal %s (%d).\n", strsignal(sig), sig);
         status = FAILED;
     }
 
