@@ -15,6 +15,9 @@ SHARD_BIN := $(BUILD_DIR)/shard
 LIBSHARD := $(BUILD_DIR)/libshard.a
 LIBSHARD_OBJ := $(BUILD_DIR)/libshard.o
 
+TEST_RUNNER_SOURCE := tests/runner.c
+TEST_RUNNER_BIN := $(BUILD_DIR)/tests/runner
+
 SOURCES := $(shell find $(LIBSHARD_DIR) -name '*.c')
 OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SOURCES))
 
@@ -101,6 +104,20 @@ $(LIBATOMIC_OPS_TAR):
 $(LIBATOMIC_OPS_SRC_DIR): $(LIBATOMIC_OPS_TAR)
 	@echo "  TAR   $^"
 	@tar xf $^ -C $(dir $(LIBATOMIC_OPS_SRC_DIR))
+
+.PHONY: test
+test: $(TEST_RUNNER_BIN)
+	@echo "  PUSHD $(dir $(TEST_RUNNER_SOURCE))" && \
+		pushd $(dir $(TEST_RUNNER_SOURCE)) 		 && \
+		$(realpath $<)
+
+.PHONY: test-runner
+test-runner: $(TEST_RUNNER_BIN)
+
+$(TEST_RUNNER_BIN): $(TEST_RUNNER_SOURCE) $(LIBSHARD_OBJ)
+	@mkdir -p $(dir $@)
+	@echo "  CC    $< -> $@"
+	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^	
 
 .PHONY: clean
 clean:
