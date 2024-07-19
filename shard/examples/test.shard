@@ -1,1 +1,4 @@
-builtins.add 34 35
+let
+    isZero = x: x == 0;
+in
+    builtins.any isZero [1 2 1]

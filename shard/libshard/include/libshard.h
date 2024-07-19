@@ -476,6 +476,8 @@ enum shard_value_type {
     SHARD_VAL_BUILTIN  = 1 << 9
 };
 
+#define SHARD_VAL_CALLABLE (SHARD_VAL_FUNCTION | SHARD_VAL_BUILTIN | SHARD_VAL_SET)
+
 struct shard_value {
     enum shard_value_type type;
 

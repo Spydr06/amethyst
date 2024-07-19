@@ -19,6 +19,47 @@ static struct shard_value builtin_add(volatile struct shard_evaluator* e, struct
     );
 }
 
+static struct shard_value builtin_all(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value pred = shard_eval_lazy2(e, args[0]);
+    if(!(pred.type & SHARD_VAL_CALLABLE))
+        shard_eval_throw(e, *loc, "`builtins.all` expects first argument to be of type `function`");
+
+    struct shard_value list = shard_eval_lazy2(e, args[1]);
+    if(list.type != SHARD_VAL_LIST)
+        shard_eval_throw(e, *loc, "`builtins.all` expects second argument to be of type `list`");
+
+    bool all_result = true;
+    struct shard_list* cur = list.list.head;
+    while(all_result && cur) {
+        struct shard_value result = shard_eval_call(e, pred, &cur->value, *loc);
+        all_result = result.type == SHARD_VAL_BOOL && result.boolean;
+        cur = cur->next;
+    }
+
+    return BOOL_VAL(all_result);
+}
+
+static struct shard_value builtin_any(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value pred = shard_eval_lazy2(e, args[0]);
+    if(!(pred.type & SHARD_VAL_CALLABLE))
+        shard_eval_throw(e, *loc, "`builtins.any` expects first argument to be of type `function`");
+
+    struct shard_value list = shard_eval_lazy2(e, args[1]);
+    if(list.type != SHARD_VAL_LIST)
+        shard_eval_throw(e, *loc, "`builtins.any` expects second argument to be of type `list`");
+
+    bool any_result = false;
+    struct shard_list* cur = list.list.head;
+    while(!any_result && cur) {
+        struct shard_value result = shard_eval_call(e, pred, &cur->value, *loc);
+        any_result = result.type == SHARD_VAL_BOOL && result.boolean;
+        cur = cur->next;
+    }
+
+    return BOOL_VAL(any_result);
+
+}
+
 static struct shard_value builtin_abort(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
     struct shard_value arg = shard_eval_lazy2(e, *args);
     if(arg.type != SHARD_VAL_STRING)
@@ -75,6 +116,42 @@ static struct shard_value builtin_attrValues(volatile struct shard_evaluator* e,
 
     // TODO: sort after keys alphabetically
     return LIST_VAL(head);
+}
+
+static struct shard_value builtin_bitAnd(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value a = shard_eval_lazy2(e, *args);
+    if(a.type != SHARD_VAL_INT)
+        shard_eval_throw(e, *loc, "`builtins.bitAnd` expects first argument to be of type `int`");
+
+    struct shard_value b = shard_eval_lazy2(e, *args);
+    if(b.type != SHARD_VAL_INT)
+        shard_eval_throw(e, *loc, "`builtins.bitAnd` expects second argument to be of type `int`");
+
+    return INT_VAL(a.integer & b.integer);
+}
+
+static struct shard_value builtin_bitOr(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value a = shard_eval_lazy2(e, *args);
+    if(a.type != SHARD_VAL_INT)
+        shard_eval_throw(e, *loc, "`builtins.bitOr` expects first argument to be of type `int`");
+
+    struct shard_value b = shard_eval_lazy2(e, *args);
+    if(b.type != SHARD_VAL_INT)
+        shard_eval_throw(e, *loc, "`builtins.bitOr` expects second argument to be of type `int`");
+
+    return INT_VAL(a.integer | b.integer);
+}
+
+static struct shard_value builtin_bitXor(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value a = shard_eval_lazy2(e, *args);
+    if(a.type != SHARD_VAL_INT)
+        shard_eval_throw(e, *loc, "`builtins.bitXor` expects first argument to be of type `int`");
+
+    struct shard_value b = shard_eval_lazy2(e, *args);
+    if(b.type != SHARD_VAL_INT)
+        shard_eval_throw(e, *loc, "`builtins.bitXor` expects second argument to be of type `int`");
+
+    return INT_VAL(a.integer ^ b.integer);
 }
 
 static struct shard_value builtin_isAttrs(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
@@ -296,10 +373,13 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
         { "currentSystem", UNLAZY_VAL(ctx->current_system ? CSTRING_VAL(ctx->current_system) : NULL_VAL()) },
         { "abort", UNLAZY_VAL(BUILTIN_VAL(builtin_abort, 1)) },
         { "add", UNLAZY_VAL(BUILTIN_VAL(builtin_add, 2)) },
-        // all
-        // any
+        { "any", UNLAZY_VAL(BUILTIN_VAL(builtin_any, 2)) },
+        { "all", UNLAZY_VAL(BUILTIN_VAL(builtin_all, 2)) },
         { "attrNames", UNLAZY_VAL(BUILTIN_VAL(builtin_attrNames, 1)) },
         { "attrValues", UNLAZY_VAL(BUILTIN_VAL(builtin_attrValues, 1)) },
+        { "bitAnd", UNLAZY_VAL(BUILTIN_VAL(builtin_bitAnd, 2)) },
+        { "bitOr", UNLAZY_VAL(BUILTIN_VAL(builtin_bitOr, 2)) },
+        { "bitXor", UNLAZY_VAL(BUILTIN_VAL(builtin_bitXor, 2)) },
         { "isAttrs", UNLAZY_VAL(BUILTIN_VAL(builtin_isAttrs, 1)) },
         { "isBool", UNLAZY_VAL(BUILTIN_VAL(builtin_isBool, 1)) },
         { "isFloat", UNLAZY_VAL(BUILTIN_VAL(builtin_isFloat, 1)) },
