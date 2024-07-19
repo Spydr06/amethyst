@@ -202,6 +202,10 @@ debug: $(ISO)
 	$(QEMU) $(QEMUFLAGS) -cdrom $< -boot order=d -s -S &
 	$(GDB) $(GDBFLAGS)
 
+.PHONY: test
+test:
+	$(MAKE) -C shard test
+
 .PHONY: shard
 shard:
 	C_CXX_FLAGS=$(SAVED_C_CXX_FLAGS) CFLAGS=$(SAVED_CFLAGS) LDFLAGS=$(SAVED_LDFLAGS) \
