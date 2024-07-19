@@ -129,6 +129,10 @@ static inline bool is_ident_char(char c) {
     return isalnum(c) || c == '_' || c == '-';
 }
 
+static int is_path_terminator(int c) {
+    return isspace(c) || c == ';' || c == ',';
+}
+
 static int lex_ident(struct shard_context* ctx, struct shard_source* src, struct shard_token* token) {
     unsigned start = src->tell(src);
 
@@ -256,6 +260,8 @@ static int lex_string(struct shard_context* ctx, struct shard_source* src, struc
             return EINVAL;
         }
     }
+    if(is_path)
+        src->ungetc(c, src);
 
     dynarr_append(ctx, &str, '\0');
 
@@ -405,7 +411,7 @@ repeat:
             else if(!isspace(c)) {
                 src->ungetc(c, src);
                 src->ungetc('/', src);
-                return lex_string(ctx, src, token, isspace, true);
+                return lex_string(ctx, src, token, is_path_terminator, true);
             }
             else {
                 src->ungetc(c, src);
@@ -414,7 +420,7 @@ repeat:
             break;
         case '~':
             src->ungetc(c, src);
-            return lex_string(ctx, src, token, isspace, true);
+            return lex_string(ctx, src, token, is_path_terminator, true);
         case ':':
             KEYWORD_TOK(token, src, COLON);
             break;
@@ -451,7 +457,7 @@ repeat:
                     src->ungetc(c2, src);
                 src->ungetc('/', src);
                 src->ungetc('.', src);
-                return lex_string(ctx, src, token, isspace, true);
+                return lex_string(ctx, src, token, is_path_terminator, true);
             }
             else {
                 if(c2 != -2)

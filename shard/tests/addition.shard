@@ -1,1 +1,14 @@
-34 + 35
+let 
+    add = a: b: a + b;
+    sub = a: b: a - b;
+in
+    # addition
+    assert 34 + 35 == 69;
+    assert (add 34 35) == 69;
+
+    # subtraction
+    assert 42 - 11 == 31;
+    assert (sub 42 11) == 31;
+
+    true
+

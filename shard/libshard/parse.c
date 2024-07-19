@@ -595,8 +595,10 @@ static int parse_let(struct parser* p, struct shard_expr* expr) {
         int err2 = parse_let_binding(p, &binding);
         dynarr_append(p->ctx, &expr->let.bindings, binding);
 
-        if(err2)
+        if(err2) {
             err = err2;
+            break;
+        }
     }
 
     int errs[] = {

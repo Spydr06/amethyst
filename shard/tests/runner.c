@@ -47,6 +47,7 @@ static jmp_buf segv_recovery;
 static const struct option cmdline_options[] = {
     {"help",   0, NULL, 'h'},
     {"silent", 0, NULL, 's'},
+    {"dir",    0, NULL, 'd'},
     {NULL,     0, NULL, 0  }
 };
 
@@ -55,6 +56,7 @@ _Noreturn static void help(const char* argv0) {
     printf("Options:\n");
     printf("  -h, --help    Print this help text and exit.\n");
     printf("  -s, --silent  Supress messages except errors.\n");
+    printf("  -d, --dir     Specify test directory.\n");
     exit(EXIT_SUCCESS);
 }
 
@@ -214,20 +216,35 @@ int run_all(const char* argv0, struct shard_context* ctx, enum test_flags flags)
 
 int main(int argc, char** argv) {
     enum test_flags flags = 0;
-    int ch, long_index;
-    while((ch = getopt_long(argc, argv, "hs", cmdline_options, &long_index)) != EOF) {
+    int ch, long_index, err;
+
+    while((ch = getopt_long(argc, argv, "hsd:", cmdline_options, &long_index)) != EOF) {
         switch(ch) {
         case 0:
             if(strcmp(cmdline_options[long_index].name, "help") == 0)
-                help(argv[0]);
-            break;
+                goto opt_help;
+            else if(strcmp(cmdline_options[long_index].name, "silent") == 0)
+                goto opt_silent;
+            else if(strcmp(cmdline_options[long_index].name, "dir") == 0)
+                goto opt_dir;
+            goto opt_unrecognized;
         case 'h':
+        opt_help:
             help(argv[0]);
             break;
         case 's':
+        opt_silent:
             flags |= SILENT;
             break;
+        case 'd':
+        opt_dir:
+            if((err = chdir(optarg))) {
+                fprintf(stderr, "%s: could not switch working directory to `%s`: %s\n", argv[0], optarg, strerror(err));
+                exit(EXIT_FAILURE);
+            }
+            break;
         case '?':
+        opt_unrecognized:
             fprintf(stderr, "%s: unrecognized option -- %s\n", argv[0], argv[optind]);
             fprintf(stderr, "Try `%s --help` for more information.\n", argv[0]);
             exit(EXIT_FAILURE);
@@ -255,8 +272,7 @@ int main(int argc, char** argv) {
         .home_dir = getenv("HOME"),
     };
 
-    int err = shard_init(&ctx);
-    if(err) {
+    if((err = shard_init(&ctx))) {
         fprintf(stderr, "%s: error initializing libshard: %s\n", argv[0], strerror(err));
         exit(EXIT_FAILURE);
     }

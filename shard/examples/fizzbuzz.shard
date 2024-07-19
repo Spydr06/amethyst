@@ -1,0 +1,4 @@
+let fizzBuzz = n: (if n % 15 == 0 then "FizzBuzz"
+            else if n % 3 == 0 then "Fizz"
+            else if n % 5 == 0 then "Bazz");
+in fizzBuzz 15 

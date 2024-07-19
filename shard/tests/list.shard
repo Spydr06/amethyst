@@ -1,0 +1,11 @@
+let 
+    f = x: x * 2;
+    list = [ 123 ./foo.shard "abc" (f { x = y; }) ];
+in
+    assert builtins.isList list;
+    assert (builtins.typeOf list) == "list";
+    assert (builtins.length list) == 4;
+    assert (builtins.head list) == 123;
+    assert (builtins.head (builtins.tail list)) == ./foo.shard;
+    
+    true

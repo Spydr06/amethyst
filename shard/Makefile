@@ -107,9 +107,7 @@ $(LIBATOMIC_OPS_SRC_DIR): $(LIBATOMIC_OPS_TAR)
 
 .PHONY: test
 test: $(TEST_RUNNER_BIN)
-	@echo "  PUSHD $(dir $(TEST_RUNNER_SOURCE))" && \
-		pushd $(dir $(TEST_RUNNER_SOURCE)) 		 && \
-		$(realpath $<)
+	$(realpath $<) -d tests
 
 .PHONY: test-runner
 test-runner: $(TEST_RUNNER_BIN)
