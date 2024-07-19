@@ -241,6 +241,8 @@ SHARD_DECL int shard_eval_lazy(struct shard_context* ctx, struct shard_lazy_valu
 SHARD_DECL struct shard_value shard_eval_call(volatile struct shard_evaluator* e, struct shard_value value, struct shard_lazy_value* arg, struct shard_location loc);
 SHARD_DECL struct shard_value shard_eval_lazy2(volatile struct shard_evaluator* e, struct shard_lazy_value* value);
 
+SHARD_DECL struct shard_value shard_eval_addition(volatile struct shard_evaluator* e, struct shard_value left, struct shard_value right, struct shard_location* loc);
+
 enum shard_token_type {
     SHARD_TOK_EOF = 0,
 

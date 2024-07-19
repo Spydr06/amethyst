@@ -11,6 +11,14 @@ struct builtin {
     struct shard_lazy_value value;
 };
 
+static struct shard_value builtin_add(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    return shard_eval_addition(e,
+        shard_eval_lazy2(e, args[0]),
+        shard_eval_lazy2(e, args[1]),
+        loc
+    );
+}
+
 static struct shard_value builtin_abort(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
     struct shard_value arg = shard_eval_lazy2(e, *args);
     if(arg.type != SHARD_VAL_STRING)
@@ -287,7 +295,7 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
         { "shardPath", LAZY_VAL(&shardPath, NULL) },
         { "currentSystem", UNLAZY_VAL(ctx->current_system ? CSTRING_VAL(ctx->current_system) : NULL_VAL()) },
         { "abort", UNLAZY_VAL(BUILTIN_VAL(builtin_abort, 1)) },
-        // add
+        { "add", UNLAZY_VAL(BUILTIN_VAL(builtin_add, 2)) },
         // all
         // any
         { "attrNames", UNLAZY_VAL(BUILTIN_VAL(builtin_attrNames, 1)) },

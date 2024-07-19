@@ -179,7 +179,7 @@ int main(int argc, char** argv) {
         fprintf(stderr, "%s: error initializing libshard: %s\n", argv[0], strerror(err));
         exit(EXIT_FAILURE);
     }
-   
+    
     const char* current_system = PLATFORM_STRING;
     bool echo_result = true;
     int ch, long_index;

@@ -270,21 +270,25 @@ static inline struct shard_value eval_gt(volatile struct shard_evaluator* e, str
 }
 
 static inline struct shard_value eval_addition(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    struct shard_value values[] = {
+    return shard_eval_addition(
+        e,
         eval(e, expr->binop.lhs),
-        eval(e, expr->binop.rhs)
-    };
+        eval(e, expr->binop.rhs),
+        &expr->loc
+    );
+}
 
-    bool left = false;
-    switch(values[0].type) {
+struct shard_value shard_eval_addition(volatile struct shard_evaluator* e, struct shard_value left, struct shard_value right, struct shard_location* loc) {
+    bool is_left = false;
+    switch(left.type) {
         case SHARD_VAL_INT: {
-            int64_t sum = values[0].integer;
-            switch(values[1].type) {
+            int64_t sum = left.integer;
+            switch(right.type) {
                 case SHARD_VAL_INT:
-                    sum += values[1].integer;
+                    sum += right.integer;
                     break;
                 case SHARD_VAL_FLOAT:
-                    sum += (int64_t) values[1].floating;
+                    sum += (int64_t) right.floating;
                     break;
                 default:
                     goto fail;
@@ -294,13 +298,13 @@ static inline struct shard_value eval_addition(volatile struct shard_evaluator* 
         }
 
         case SHARD_VAL_FLOAT: {
-            double sum = values[0].floating;
-            switch(values[1].type) {
+            double sum = left.floating;
+            switch(right.type) {
                 case SHARD_VAL_INT:
-                    sum += (double) values[1].integer;
+                    sum += (double) right.integer;
                     break;
                 case SHARD_VAL_FLOAT:
-                    sum += values[1].floating;
+                    sum += right.floating;
                     break;
                 default:
                     goto fail;
@@ -312,13 +316,13 @@ static inline struct shard_value eval_addition(volatile struct shard_evaluator* 
         case SHARD_VAL_STRING: {
             char* sum = 0;
             size_t len = 0;
-            switch(values[1].type) {
+            switch(right.type) {
                 case SHARD_VAL_STRING:
-                    len = values[0].strlen + values[1].strlen;
+                    len = left.strlen + right.strlen;
                     sum = shard_gc_malloc(e->gc, (len + 1) * sizeof(char));
                     sum[0] = '\0';
-                    strcat(sum, values[0].string);
-                    strcat(sum, values[1].string);
+                    strcat(sum, left.string);
+                    strcat(sum, right.string);
                     break;
                 default:
                     goto fail;
@@ -327,12 +331,12 @@ static inline struct shard_value eval_addition(volatile struct shard_evaluator* 
         }
         
         default:
-            left = true;
+            is_left = true;
             break;
     }
 
 fail:
-    shard_eval_throw(e, expr->loc, "`+`: %s operand is not of a numeric type", left ? "left" : "right");
+    shard_eval_throw(e, *loc, "`+`: %s operand is not of a numeric type", is_left ? "left" : "right");
 }
 
 #define ARITH_OP_INT_FLT(op) \
@@ -626,9 +630,14 @@ static struct shard_value eval_call_builtin(volatile struct shard_evaluator* e, 
 
     if(builtin.builtin.num_expected_args == 1)
         return builtin.builtin.callback(e, &arg, &loc);
-    else {
-        assert(false && "not implemented");
-    }
+    else if(!builtin.builtin.num_queued_args)
+        builtin.builtin.queued_args = shard_gc_malloc(e->gc, sizeof(void*) * builtin.builtin.num_expected_args);
+
+    builtin.builtin.queued_args[builtin.builtin.num_queued_args++] = arg;
+    if(builtin.builtin.num_queued_args != builtin.builtin.num_expected_args)
+        return builtin;
+
+    return builtin.builtin.callback(e, builtin.builtin.queued_args, &loc);
 }
 
 static struct shard_value eval_call_functor_set(volatile struct shard_evaluator* e, struct shard_value set, struct shard_lazy_value* arg, struct shard_location loc); 
@@ -651,7 +660,9 @@ SHARD_DECL struct shard_value shard_eval_call(volatile struct shard_evaluator* e
 }
 
 static inline struct shard_value eval_call(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    return eval_call_value(e, eval(e, expr->binop.lhs), &LAZY_VAL(expr->binop.rhs, e->scope), expr->loc);
+    struct shard_lazy_value* arg = shard_gc_malloc(e->gc, sizeof(struct shard_lazy_value));
+    *arg = LAZY_VAL(expr->binop.rhs, e->scope);
+    return eval_call_value(e, eval(e, expr->binop.lhs), arg, expr->loc);
 }
 
 static struct shard_value eval_call_functor_set(volatile struct shard_evaluator* e, struct shard_value set, struct shard_lazy_value* arg, struct shard_location loc) {

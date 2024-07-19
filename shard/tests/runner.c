@@ -254,6 +254,7 @@ int main(int argc, char** argv) {
             fprintf(stderr, "Try `%s --help` for more information.\n", argv[0]);
             exit(EXIT_FAILURE);
         }
+
     }
 
     if(signal(SIGSEGV, _signal_handler) == SIG_ERR) {

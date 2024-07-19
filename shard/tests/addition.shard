@@ -1,10 +1,14 @@
 let 
     add = a: b: a + b;
     sub = a: b: a - b;
+
+    succ = builtins.add 1;
 in
     # addition
     assert 34 + 35 == 69;
     assert (add 34 35) == 69;
+    assert (builtins.add 34 35) == 69;
+    assert (succ 41) == 42;
 
     # subtraction
     assert 42 - 11 == 31;

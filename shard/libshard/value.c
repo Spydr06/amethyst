@@ -7,10 +7,15 @@ struct shard_value shard_value_copy(volatile struct shard_evaluator* e, struct s
     switch(val.type) {
         case SHARD_VAL_LIST:
             return val; // TODO: deep-copy
-            break;
         case SHARD_VAL_SET:
             return val; // TODO: deep-copy
-            break;
+        case SHARD_VAL_BUILTIN: {
+            size_t size = sizeof(void*) * val.builtin.num_expected_args;
+            struct shard_lazy_value** copied_args = shard_gc_malloc(e->gc, size);
+            memcpy(copied_args, val.builtin.queued_args, size);
+            val.builtin.queued_args = copied_args;
+            return val;
+        }
         default:
             return val;
     }
