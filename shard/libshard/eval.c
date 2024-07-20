@@ -340,9 +340,6 @@ fail:
 }
 
 #define ARITH_OP_INT_FLT(op) \
-    struct shard_value left = eval(e, expr->binop.lhs), \
-                      right = eval(e, expr->binop.rhs); \
- \
     bool left_err = false; \
     switch(left.type) { \
         case SHARD_VAL_INT: { \
@@ -379,18 +376,45 @@ fail:
     } \
  \
 fail: \
-    shard_eval_throw(e, expr->loc, "`" #op "`: %s operand is not of a numeric type", left_err ? "left" : "right"); \
+    shard_eval_throw(e, *loc, "`" #op "`: %s operand is not of a numeric type", left_err ? "left" : "right"); \
 
-static inline struct shard_value eval_subtraction(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+struct shard_value shard_eval_subtraction(volatile struct shard_evaluator* e, struct shard_value left, struct shard_value right, struct shard_location* loc) {
     ARITH_OP_INT_FLT(-)
 }
 
-static inline struct shard_value eval_multiplication(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+static inline struct shard_value eval_subtraction(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    return shard_eval_subtraction(
+        e,
+        eval(e, expr->binop.lhs),
+        eval(e, expr->binop.rhs),
+        &expr->loc
+    );
+}
+
+struct shard_value shard_eval_multiplication(volatile struct shard_evaluator* e, struct shard_value left, struct shard_value right, struct shard_location* loc) {
     ARITH_OP_INT_FLT(*)
 }
 
+static inline struct shard_value eval_multiplication(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    return shard_eval_multiplication(
+        e,
+        eval(e, expr->binop.lhs),
+        eval(e, expr->binop.rhs),
+        &expr->loc
+    );
+}
+
+struct shard_value shard_eval_division(volatile struct shard_evaluator* e, struct shard_value left, struct shard_value right, struct shard_location* loc) {
+    ARITH_OP_INT_FLT(/)
+}
+
 static inline struct shard_value eval_division(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    ARITH_OP_INT_FLT(/) // TODO: handle zero-division
+    return shard_eval_division(
+        e,
+        eval(e, expr->binop.lhs),
+        eval(e, expr->binop.rhs),
+        &expr->loc
+    );
 }
 
 static inline struct shard_value eval_negation(volatile struct shard_evaluator* e, struct shard_expr* expr) {
