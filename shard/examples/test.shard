@@ -1,4 +1,1 @@
-let succ = builtins.add 1; 
-in builtins.genList (x: succ x * x) 5
-
-
+3.141569

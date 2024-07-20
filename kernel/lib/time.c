@@ -84,3 +84,9 @@ time_t mktime(struct tm* tm) {
     return tm_to_secs(tm); // TODO: timezones    
 }
 
+// TODO: implement
+time_t time(time_t* tloc) {
+    (void) tloc;
+    return 0;
+}
+

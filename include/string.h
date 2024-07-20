@@ -6,6 +6,7 @@
 
 void* memset(void* s, int c, size_t n);
 void* memcpy(void* dst, const void* src, size_t n);
+char* mempcpy(void *restrict dst, const void *restrict src, size_t n);
 void* memmove(void* dest, const void *src, size_t n);
 
 int memcmp(const void* vl, const void* vr, size_t n);
@@ -21,6 +22,7 @@ size_t strlen(const char* s);
 size_t strnlen(const char* s, size_t maxlen);
 char* strcpy(char* dest, const char* src);
 char* strncpy(char* dst, const char* restrict src, size_t dsize);
+char* stpncpy(char *restrict dst, const char *restrict src, size_t dsize);
 
 int strncmp(const char* _l, const char* _r, size_t n);
 int strcmp(const char* _l, const char* _r);

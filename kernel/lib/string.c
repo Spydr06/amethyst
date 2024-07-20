@@ -162,6 +162,20 @@ char* strcpy(char* dest, const char* src) {
     return dest;
 }
 
+char* mempcpy(void *restrict dst, const void *restrict src, size_t n) {
+    return (char *)memcpy(dst, src, n) + n;
+}
+
+char* stpncpy(char *restrict dst, const char *restrict src, size_t dsize) {
+     size_t  dlen = strnlen(src, dsize);
+     return memset(mempcpy(dst, src, dlen), 0, dsize - dlen);
+}
+
+char* strncpy(char* dst, const char* restrict src, size_t dsize) {
+    stpncpy(dst, src, dsize);
+    return dst;
+}
+
 int strcmp(const char* l, const char* r) {
 	for (; *l == *r && *l; l++, r++);
 	return *(unsigned char *) l - *(unsigned char *) r;
@@ -173,6 +187,11 @@ int strncmp(const char *_l, const char *_r, size_t n)
 	if (!n--) return 0;
 	for (; *l && *r && n && *l == *r ; l++, r++, n--);
 	return *l - *r;
+}
+
+char* strcat(char* restrict dest, const char* restrict src) {
+    strcpy(dest + strlen(dest), src);
+    return dest;
 }
 
 char* strerror(int errnum) {

@@ -171,6 +171,10 @@ static int lex_ident(struct shard_context* ctx, struct shard_source* src, struct
 static int lex_number(struct shard_context* ctx __attribute__((unused)), struct shard_source* src, struct shard_token* token) {
     unsigned start = src->tell(src);
 
+    int64_t integer = 0;
+    int64_t fractional = 0;
+    int64_t divisor = 1;
+
     bool floating = false;
     int c, i = 0;
     while(isdigit(c = src->getc(src)) || c == '\'' || c == '.') {
@@ -188,9 +192,14 @@ static int lex_number(struct shard_context* ctx __attribute__((unused)), struct 
                     return EINVAL;
                 }
                 floating = true;
-                /* fall through */
+                break;
             default:
-                tmpbuf[i++] = (char) c;
+                if(floating) {
+                    fractional = fractional * 10 + (c - '0');
+                    divisor *= 10;
+                }
+                else 
+                    integer = integer * 10 + (c - '0');
         }
     }
 
@@ -208,20 +217,10 @@ static int lex_number(struct shard_context* ctx __attribute__((unused)), struct 
 
     errno = 0;
     if(floating) {
-        double d = strtod(tmpbuf, NULL);
-        if(errno) {
-            ERR_TOK(token, src, strerror(errno));
-            return errno;
-        }
-        init_token(token, SHARD_TOK_FLOAT, loc, (union shard_token_value){.floating = d});
+        init_token(token, SHARD_TOK_FLOAT, loc, (union shard_token_value){.floating = ((double) integer) + (((double) fractional) / ((double) divisor)) });
     }
     else {
-        int64_t i = (int64_t) strtoull(tmpbuf, NULL, 10);
-        if(errno) {
-            ERR_TOK(token, src, strerror(errno));
-            return errno;
-        }
-        init_token(token, SHARD_TOK_INT, loc, (union shard_token_value){.integer = i});
+        init_token(token, SHARD_TOK_INT, loc, (union shard_token_value){.integer = integer});
     }
     return 0;
 }
