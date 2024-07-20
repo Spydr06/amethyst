@@ -1,3 +1,4 @@
+#include "sys/subsystems/shard.h"
 #include <drivers/pci/pci.h>
 #include <drivers/video/vga.h>
 
@@ -63,6 +64,8 @@ void kmain(size_t cmdline_size, const char* cmdline)
 
     klog(INFO, "\e[4mHello, World\e[24m %.02f", 3.14); 
     
+    shard_subsystem_init();
+
     while(1);
 }
 

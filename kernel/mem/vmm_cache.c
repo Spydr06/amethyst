@@ -36,15 +36,15 @@ static struct page* find_page(struct vnode* vnode, uintptr_t offset) {
     return page;
 }
 
-int vmm_cache_get_page(struct vnode* vnode, uintptr_t offset, struct page** res) {
+int vmm_cache_get_page(struct vnode* vnode, uintptr_t offset, struct page** res __unused) {
     assert(vnode->type == V_TYPE_REGULAR || vnode->type == V_TYPE_BLKDEV);
     assert((offset % PAGE_SIZE) == 0);
 
-retry:
+/*retry:
     mutex_acquire(&mutex, false);
     
     struct page* new_page = nullptr;
-    volatile struct page* page = find_page(vnode, offset);
+    volatile struct page* page = */find_page(vnode, offset);
 
     unimplemented();
 }

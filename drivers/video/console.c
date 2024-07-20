@@ -491,7 +491,7 @@ void vga_console_putchar(int c) {
     }
 }
 
-size_t vga_console_ttywrite(void* __unused internal, const char* str, size_t count) {
+size_t vga_console_ttywrite(void* internal __unused, const char* str, size_t count) {
     for(size_t i = 0; i < count; i++)
         vga_console_putchar(str[i]);
     return count;

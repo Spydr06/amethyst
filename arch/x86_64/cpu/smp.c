@@ -28,7 +28,7 @@ static volatile struct limine_smp_request smp_request = {
     .revision = 0
 };
 
-static void __noreturn cpu_wakeup(struct limine_smp_info* smp_info) {
+static __noreturn void cpu_wakeup(struct limine_smp_info* smp_info) {
     cpu_set((struct cpu*) smp_info->extra_argument);
     cpu_enable_features();
 

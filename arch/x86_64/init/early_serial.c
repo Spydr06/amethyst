@@ -52,7 +52,7 @@ void early_putchar(int ch) {
         serial_putchar(ch);
 }
 
-size_t early_serial_ttywrite(void* __unused internal, const char* str, size_t count) {
+size_t early_serial_ttywrite(void* internal __unused, const char* str, size_t count) {
     for(size_t i = 0; i < count; i++)
         early_putchar(str[i]);
 

@@ -1,6 +1,5 @@
 #include <drivers/char/keyboard.h>
 #include <kernelio.h>
-#include <ctype.h>
 
 #ifdef __x86_64__
     #include <x86_64/cpu/idt.h>
@@ -41,7 +40,7 @@ static void (*keyboard_handler)(struct keyboard_event) = empty_handler;
 
 static enum keyboard_flags flags = 0; 
 
-void keyboard_interrupt_handler(struct cpu_context* status) {
+void keyboard_interrupt_handler(struct cpu_context* status __unused) {
     bool interrup_state = interrupt_set(false);
 
     enum ps2_scan_code scan_code = get_ps2_scan_code();

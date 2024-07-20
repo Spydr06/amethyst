@@ -4,6 +4,9 @@ VERSION ?= 0.0.1
 BUILD_DIR ?= build
 SHARD_BUILD_DIR ?= $(BUILD_DIR)/shard
 
+SHARD_DIR ?= shard
+SHARD_OBJECT ?= $(SHARD_BUILD_DIR)/libshard.o
+
 LIMINE_DIR ?= limine
 LIMINE_LOADERS := $(LIMINE_DIR)/limine-bios.sys $(LIMINE_DIR)/limine-bios-cd.bin $(LIMINE_DIR)/limine-uefi-cd.bin
 
@@ -24,7 +27,7 @@ override SOURCE_DIRS := kernel init drivers $(ARCH_DIR)
 SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S" -or -name "*.ids"
 SOURCES := $(shell find $(SOURCE_DIRS) $(SOURCE_PATTERN) | grep -v "arch/")
 
-INCLUDES := . include arch/include
+INCLUDES := . include arch/include $(SHARD_DIR)/libshard/include
 
 SSP := $(shell openssl rand -hex 8)
 CMOS_YEAR := $(shell date +"%Y")
@@ -67,9 +70,6 @@ override OBJCOPY := $(TOOLPREFIX)objcopy
 
 CONSOLEFONT_OBJECT ?= $(BUILD_DIR)/default.psf.o
 CONSOLEFONT ?= fonts/default.psf
-
-SHARD_DIR ?= shard
-SHARD_OBJECT ?= $(SHARD_BUILD_DIR)/libshard.o
 
 TAR ?= tar
 
@@ -146,14 +146,15 @@ $(CONSOLEFONT_OBJECT): $(CONSOLEFONT)
 
 $(SHARD_OBJECT): $(SHARD_DIR)
 	@echo "  MAKE  $(SHARD_DIR)"
-	$(MAKE) -C $(SHARD_DIR) libshard_obj BUILD_DIR=$(shell realpath $(SHARD_BUILD_DIR)) \
+	@$(MAKE) -C $(SHARD_DIR) libshard_obj BUILD_DIR=$(shell realpath $(SHARD_BUILD_DIR)) \
 		C_CXX_FLAGS="$(C_CXX_FLAGS)" CFLAGS="$(CFLAGS)" LDFLAGS="$(SAVED_LDFLAGS)" 
 
 .PHONY: initrd
 initrd: $(INITRD)
 
 $(INITRD):
-	$(MAKE) -C $(SYSROOT_DIR) initrd INITRD=$(shell realpath $(shell pwd))/$(INITRD) BUILD_DIR=$(shell realpath $(BUILD_DIR))
+	@echo "  MAKE  $(SYSROOT_DIR)"
+	@$(MAKE) -C $(SYSROOT_DIR) initrd INITRD=$(shell realpath $(shell pwd))/$(INITRD) BUILD_DIR=$(shell realpath $(BUILD_DIR))
 
 .PHONY: iso
 iso: $(ISO)
