@@ -38,5 +38,7 @@ void shard_subsystem_init(void) {
     shard_set_current_system(&context, CURRENT_SYSTEM);
 
     spinlock_release(&context_lock);
+
+    klog(INFO, "shard subsystem intialized");
 }
 

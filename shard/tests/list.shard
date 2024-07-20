@@ -8,6 +8,6 @@ in
     assert (builtins.head list) == 123;
     assert (builtins.head (builtins.tail list)) == ./foo.shard;
     assert builtins.any builtins.isInt list;
-    assert !builtins.all builtins.isInt list;
+    assert builtins.all builtins.isInt list;
     
     true
