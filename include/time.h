@@ -31,5 +31,7 @@ static inline struct timespec timespec_add(struct timespec a, struct timespec b)
     };
 }
 
+time_t time(time_t* tloc);
+
 #endif /* _AMETHYST_LIBK_TIME_H */
 

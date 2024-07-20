@@ -68,6 +68,9 @@ override OBJCOPY := $(TOOLPREFIX)objcopy
 CONSOLEFONT_OBJECT ?= $(BUILD_DIR)/default.psf.o
 CONSOLEFONT ?= fonts/default.psf
 
+SHARD_DIR ?= shard
+SHARD_OBJECT ?= $(SHARD_BUILD_DIR)/libshard.o
+
 TAR ?= tar
 
 GDB ?= gdb
@@ -93,12 +96,12 @@ OBJECTS := $(patsubst %, $(BUILD_DIR)/%.o, $(SOURCES))
 VERSION_H := include/version.h
 
 .PHONY: all
-all: $(ISO) shard
+all: $(ISO)
 
 .PHONY: kernel
 kernel: $(KERNEL_ELF)
 
-$(KERNEL_ELF): $(OBJECTS) $(CONSOLEFONT_OBJECT)
+$(KERNEL_ELF): $(OBJECTS) $(CONSOLEFONT_OBJECT) $(SHARD_OBJECT)
 	@echo "  LD    $@"
 	@$(LD) $(LDFLAGS) $^ -o $@
 	@$(OBJCOPY) --only-keep-debug $(KERNEL_ELF) $(KERNEL_SYM)
@@ -140,6 +143,11 @@ $(VERSION_H): $(VERSION_H).in
 $(CONSOLEFONT_OBJECT): $(CONSOLEFONT)
 	@echo "  LD    $^"
 	@$(LD) -r -b binary -o $@ $<
+
+$(SHARD_OBJECT): $(SHARD_DIR)
+	@echo "  MAKE  $(SHARD_DIR)"
+	$(MAKE) -C $(SHARD_DIR) libshard_obj BUILD_DIR=$(shell realpath $(SHARD_BUILD_DIR)) \
+		C_CXX_FLAGS="$(C_CXX_FLAGS)" CFLAGS="$(CFLAGS)" LDFLAGS="$(SAVED_LDFLAGS)" 
 
 .PHONY: initrd
 initrd: $(INITRD)
@@ -206,10 +214,10 @@ debug: $(ISO)
 test:
 	$(MAKE) -C shard test
 
-.PHONY: shard
-shard:
-	C_CXX_FLAGS=$(SAVED_C_CXX_FLAGS) CFLAGS=$(SAVED_CFLAGS) LDFLAGS=$(SAVED_LDFLAGS) \
-		$(MAKE) -C shard BUILD_DIR=$(shell realpath $(SHARD_BUILD_DIR))
+#.PHONY: shard
+#shard:
+#	C_CXX_FLAGS=$(SAVED_C_CXX_FLAGS) CFLAGS=$(SAVED_CFLAGS) LDFLAGS=$(SAVED_LDFLAGS) \
+#		$(MAKE) -C shard BUILD_DIR=$(shell realpath $(SHARD_BUILD_DIR))
 
 .PHONY: clean
 clean:

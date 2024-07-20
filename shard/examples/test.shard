@@ -1,2 +1,4 @@
-builtins.genList (x: x * x) 5
+let succ = builtins.add 1; 
+in builtins.genList (x: succ x * x) 5
+
 

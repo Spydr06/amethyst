@@ -72,11 +72,15 @@
 #define LAZY_VAL(_lazy, _scope) ((struct shard_lazy_value){.lazy = (_lazy), .scope = (_scope), .evaluated = false})
 #define UNLAZY_VAL(_eval) ((struct shard_lazy_value){.eval = (_eval), .evaluated = true})
 
+#ifndef _AMETHYST_STRNLEN_DEFINED
+
 static inline size_t strnlen(const char *s, size_t n)
 {
 	const char *p = memchr(s, 0, n);
 	return p ? (size_t) (p - s) : n;
 }
+
+#endif
 
 static inline char* shard_mempcpy(void *restrict dst, const void *restrict src, size_t n) {
     return (char *)memcpy(dst, src, n) + n;

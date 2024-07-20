@@ -24,8 +24,15 @@ OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SOURCES))
 AR ?= ar
 RANLIB ?= ranlib
 
-LDFLAGS +=
-CFLAGS += -Wall -Wextra -pedantic -std=c2x -I$(LIBSHARD_DIR)/include -g
+define unique
+	$(strip $(if $1,$(firstword $1) $(call unique,$(filter-out $(firstword $1),$1))))
+endef
+
+override LDFLAGS +=
+override LDFLAGS := $(call unique, $(LDFLAGS))
+
+override CFLAGS += -Wall -Wextra -pedantic -std=c2x -I$(LIBSHARD_DIR)/include -g
+override CFLAGS := $(call unique, $(CFLAGS))
 
 ifneq (,$(findstring SHARD_USE_GCBOEHM, $(CFLAGS)))
 	OBJECTS += $(GCBOEHM_LIB)
@@ -59,6 +66,9 @@ $(LIBSHARD): $(LIBSHARD_OBJ)
 	@$(AR) -rcs $@ $<
 	@echo " RANLIB	$@"
 	@$(RANLIB) $@
+
+.PHONY: libshard_obj
+libshard_obj: $(LIBSHARD_OBJ)
 
 $(LIBSHARD_OBJ): $(OBJECTS) | $(BUILD_DIR)	
 	@echo "  LD    $@"

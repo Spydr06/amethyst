@@ -214,6 +214,7 @@ static inline struct shard_value eval_eq(volatile struct shard_evaluator* e, str
             return BOOL_VAL((values[0].builtin.callback == values[1].builtin.callback) ^ negate);
         case SHARD_VAL_SET:
         case SHARD_VAL_LIST:
+        default:
             shard_eval_throw(e, expr->loc, "unimplemented");
     }
 }
