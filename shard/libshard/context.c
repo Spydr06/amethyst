@@ -43,6 +43,10 @@ struct shard_error* shard_get_errors(struct shard_context* ctx) {
     return ctx->errors.items;
 }
 
+void shard_remove_errors(struct shard_context* context) {
+    context->errors.count = 0;
+}
+
 shard_ident_t shard_get_ident(struct shard_context* ctx, const char* key) {
     char* ident = shard_hashmap_get(&ctx->idents, key);
     if(ident)

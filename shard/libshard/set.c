@@ -26,7 +26,7 @@ struct shard_set* shard_set_from_hashmap(volatile struct shard_evaluator* e, str
     for(size_t i = 0; i < map->alloc; i++) {
         struct shard_hashpair* pair = map->pairs + i;
         if(pair->key)
-            shard_set_put(set, pair->key, LAZY_VAL(pair->value, e->scope));
+            shard_set_put(set, pair->key, shard_lazy(e->ctx, pair->value, e->scope));
     }
 
     return set;
@@ -40,7 +40,7 @@ static inline uintptr_t probe_next(const struct shard_set* set, uintptr_t index)
     return (index + 1) % set->capacity;
 }
 
-void shard_set_put(struct shard_set* set, shard_ident_t attr, struct shard_lazy_value value) {
+void shard_set_put(struct shard_set* set, shard_ident_t attr, struct shard_lazy_value* value) {
     if(!attr || set->size >= set->capacity)
         return;
 
@@ -75,7 +75,7 @@ int shard_set_get(struct shard_set* set, shard_ident_t attr, struct shard_lazy_v
     // linear probing
     for(size_t i = 0; i < set->capacity; i++) {
         if(set->entries[index].key == attr) {
-            *value = &set->entries[index].value;
+            *value = set->entries[index].value;
             return 0;
         }
 

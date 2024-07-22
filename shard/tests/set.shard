@@ -1,0 +1,10 @@
+let
+    setA = {
+        foo = 69;
+        bar = "Hello <3";
+        baz = [ 1 2 3 ];
+    };
+in
+    assert builtins.isAttrs setA;
+
+    true

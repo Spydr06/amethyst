@@ -69,9 +69,6 @@
         .builtin.num_expected_args = (_num_expected_args)                   \
     })
 
-#define LAZY_VAL(_lazy, _scope) ((struct shard_lazy_value){.lazy = (_lazy), .scope = (_scope), .evaluated = false})
-#define UNLAZY_VAL(_eval) ((struct shard_lazy_value){.eval = (_eval), .evaluated = true})
-
 #ifndef _AMETHYST_STRNLEN_DEFINED
 
 static inline size_t strnlen(const char *s, size_t n)

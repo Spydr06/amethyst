@@ -1,13 +1,13 @@
 let 
     f = x: x * 2;
-    list = [ 123 ./foo.shard "abc" (f { x = y; }) ];
+    listA = [ 123 ./foo.shard "abc" (f { x = y; }) ];
 in
-    assert builtins.isList list;
-    assert (builtins.typeOf list) == "list";
-    assert (builtins.length list) == 4;
-    assert (builtins.head list) == 123;
-    assert (builtins.head (builtins.tail list)) == ./foo.shard;
-    assert builtins.any builtins.isInt list;
-    assert !builtins.all builtins.isInt list;
+    assert builtins.isList listA;
+    assert (builtins.typeOf listA) == "list";
+    assert (builtins.length listA) == 4;
+    assert (builtins.head listA) == 123;
+    assert (builtins.head (builtins.tail listA)) == ./foo.shard;
+    assert builtins.any builtins.isInt listA;
+    assert !builtins.all builtins.isInt listA;
     
     true

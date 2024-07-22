@@ -8,7 +8,7 @@
 
 struct builtin {
     const char* const ident;
-    struct shard_lazy_value value;
+    struct shard_lazy_value* value;
 };
 
 static struct shard_value builtin_add(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
@@ -46,7 +46,7 @@ static  struct shard_value builtin_div(volatile struct shard_evaluator* e, struc
 static struct shard_value builtin_floor(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
     struct shard_value arg = shard_eval_lazy2(e, *args);
     if(arg.type != SHARD_VAL_FLOAT)
-        shard_eval_throw(e, *loc, "`builtins.float` expects argument to be of type `float`");
+        shard_eval_throw(e, *loc, "`builtins.floor` expects argument to be of type `float`");
 
     return INT_VAL((int64_t) arg.floating);
 }
@@ -54,7 +54,7 @@ static struct shard_value builtin_floor(volatile struct shard_evaluator* e, stru
 static struct shard_value builtin_ceil(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
     struct shard_value arg = shard_eval_lazy2(e, *args);
     if(arg.type != SHARD_VAL_FLOAT)
-        shard_eval_throw(e, *loc, "`builtins.float` expects argument to be of type `float`");
+        shard_eval_throw(e, *loc, "`builtins.ceil` expects argument to be of type `float`");
 
     return INT_VAL((int64_t) (arg.floating + 1.0));
 }
@@ -71,7 +71,7 @@ static struct shard_value builtin_all(volatile struct shard_evaluator* e, struct
     bool all_result = true;
     struct shard_list* cur = list.list.head;
     while(all_result && cur) {
-        struct shard_value result = shard_eval_call(e, pred, &cur->value, *loc);
+        struct shard_value result = shard_eval_call(e, pred, cur->value, *loc);
         all_result = result.type == SHARD_VAL_BOOL && result.boolean;
         cur = cur->next;
     }
@@ -91,7 +91,7 @@ static struct shard_value builtin_any(volatile struct shard_evaluator* e, struct
     bool any_result = false;
     struct shard_list* cur = list.list.head;
     while(!any_result && cur) {
-        struct shard_value result = shard_eval_call(e, pred, &cur->value, *loc);
+        struct shard_value result = shard_eval_call(e, pred, cur->value, *loc);
         any_result = result.type == SHARD_VAL_BOOL && result.boolean;
         cur = cur->next;
     }
@@ -118,7 +118,7 @@ static struct shard_value builtin_attrNames(volatile struct shard_evaluator* e, 
             continue;
 
         next = shard_gc_malloc(e->gc, sizeof(struct shard_list));
-        next->value = UNLAZY_VAL(CSTRING_VAL(arg.set->entries[i].key));
+        next->value = shard_unlazy(e->ctx, CSTRING_VAL(arg.set->entries[i].key));
         next->next = NULL;
 
         if(current)
@@ -193,6 +193,43 @@ static struct shard_value builtin_bitXor(volatile struct shard_evaluator* e, str
     return INT_VAL(a.integer ^ b.integer);
 }
 
+static struct shard_value builtin_catAttrs(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value attr = shard_eval_lazy2(e, args[0]);
+    if(attr.type != SHARD_VAL_STRING)
+        shard_eval_throw(e, *loc, "`builtins.catAttrs` expects first argument to be of type `string`");
+
+    struct shard_value list = shard_eval_lazy2(e, args[1]);
+    if(list.type != SHARD_VAL_LIST)
+        shard_eval_throw(e, *loc, "`builtins.catAttrs` expects second argument to be of type `list` %d", attr.type);
+
+    shard_ident_t attr_ident = shard_get_ident(e->ctx, attr.string);
+
+    struct shard_list *head = NULL, *next, *last = NULL;
+
+    struct shard_list* list_cur = list.list.head;
+    while(list_cur) {
+        struct shard_value elem = shard_eval_lazy2(e, list_cur->value);
+        struct shard_lazy_value* set_attr;
+        if(elem.type != SHARD_VAL_SET || shard_set_get(elem.set, attr_ident, &set_attr))
+            goto iter_continue;
+
+        next = shard_gc_malloc(e->gc, sizeof(struct shard_list));
+        next->next = NULL;
+        next->value = set_attr;
+        
+        if(last)
+            last->next = next;
+        if(!head)
+            head = next;
+        last = next;
+
+    iter_continue:
+        list_cur = list_cur->next;
+    }
+
+    return LIST_VAL(head);
+}
+
 static struct shard_value builtin_genList(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
     struct shard_value generator = shard_eval_lazy2(e, args[0]);
     if(!(generator.type & SHARD_VAL_CALLABLE))
@@ -206,8 +243,8 @@ static struct shard_value builtin_genList(volatile struct shard_evaluator* e, st
     for(int64_t i = 0; i < length.integer; i++) {
         next = shard_gc_malloc(e->gc, sizeof(struct shard_list));
         next->next = NULL;
-        next->value = UNLAZY_VAL(
-            shard_eval_call(e, generator, &UNLAZY_VAL(INT_VAL(i)), *loc)
+        next->value = shard_unlazy(e->ctx, 
+            shard_eval_call(e, generator, shard_unlazy(e->ctx, INT_VAL(i)), *loc)
         );
 
         if(last)
@@ -315,7 +352,7 @@ static struct shard_value builtin_toString(volatile struct shard_evaluator* e, s
             if(!(to_str.type & (SHARD_VAL_BUILTIN | SHARD_VAL_FUNCTION)))
                 shard_eval_throw(e, *loc, "`builtins.toString` `__toString` attribute must be of type function");
 
-            struct shard_value returned = shard_eval_call(e, to_str, &UNLAZY_VAL(arg), *loc);
+            struct shard_value returned = shard_eval_call(e, to_str, shard_unlazy(e->ctx, arg), *loc);
             if(returned.type != SHARD_VAL_STRING)
                 shard_eval_throw(e, *loc, "`builtins.toString` `__toString` must return a string");
 
@@ -339,8 +376,8 @@ static struct shard_value builtin_tryEval(volatile struct shard_evaluator* e, st
         value = success = BOOL_VAL(false);
 
     struct shard_set* set = shard_set_init(e->ctx, 2);
-    shard_set_put(set, shard_get_ident(e->ctx, "success"), UNLAZY_VAL(success));
-    shard_set_put(set, shard_get_ident(e->ctx, "value"), UNLAZY_VAL(value));
+    shard_set_put(set, shard_get_ident(e->ctx, "success"), shard_unlazy(e->ctx, success));
+    shard_set_put(set, shard_get_ident(e->ctx, "value"), shard_unlazy(e->ctx, value));
 
     return SET_VAL(set);
 }
@@ -380,7 +417,7 @@ static struct shard_value builtin_head(volatile struct shard_evaluator* e, struc
 
     if(!val.list.head)
         return NULL_VAL();
-    return shard_eval_lazy2(e, &val.list.head->value);
+    return shard_eval_lazy2(e, val.list.head->value);
 }
 
 static struct shard_value builtin_tail(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
@@ -410,7 +447,7 @@ static struct shard_value builtin_shardPath(volatile struct shard_evaluator* e) 
     for(size_t i = 0; i < e->ctx->include_dirs.count; i++) {
         next = shard_gc_malloc(e->gc, sizeof(struct shard_list));
         next->next = NULL;
-        next->value = UNLAZY_VAL(CPATH_VAL(e->ctx->include_dirs.items[i]));
+        next->value = shard_unlazy(e->ctx, CPATH_VAL(e->ctx->include_dirs.items[i]));
 
         if(current)
             current->next = next;
@@ -427,42 +464,43 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
                              shardPath   = BUILTIN_EXPR(builtin_shardPath);
 
     struct builtin builtins[] = {
-        { "abort", UNLAZY_VAL(BUILTIN_VAL(builtin_abort, 1)) },
-        { "add", UNLAZY_VAL(BUILTIN_VAL(builtin_add, 2)) },
-        { "all", UNLAZY_VAL(BUILTIN_VAL(builtin_all, 2)) },
-        { "any", UNLAZY_VAL(BUILTIN_VAL(builtin_any, 2)) },
-        { "attrNames", UNLAZY_VAL(BUILTIN_VAL(builtin_attrNames, 1)) },
-        { "attrValues", UNLAZY_VAL(BUILTIN_VAL(builtin_attrValues, 1)) },
-        { "bitAnd", UNLAZY_VAL(BUILTIN_VAL(builtin_bitAnd, 2)) },
-        { "bitOr", UNLAZY_VAL(BUILTIN_VAL(builtin_bitOr, 2)) },
-        { "bitXor", UNLAZY_VAL(BUILTIN_VAL(builtin_bitXor, 2)) },
-        { "ceil", UNLAZY_VAL(BUILTIN_VAL(builtin_ceil, 1)) },
-        { "currentSystem", UNLAZY_VAL(ctx->current_system ? CSTRING_VAL(ctx->current_system) : NULL_VAL()) },
-        { "currentTime", LAZY_VAL(&currentTime, NULL) },
-        { "div", UNLAZY_VAL(BUILTIN_VAL(builtin_div, 2)) },
-        { "floor", UNLAZY_VAL(BUILTIN_VAL(builtin_floor, 1)) },
-        { "genList", UNLAZY_VAL(BUILTIN_VAL(builtin_genList, 2)) },
-        { "head", UNLAZY_VAL(BUILTIN_VAL(builtin_head, 1)) },
-        { "isAttrs", UNLAZY_VAL(BUILTIN_VAL(builtin_isAttrs, 1)) },
-        { "isBool", UNLAZY_VAL(BUILTIN_VAL(builtin_isBool, 1)) },
-        { "isFloat", UNLAZY_VAL(BUILTIN_VAL(builtin_isFloat, 1)) },
-        { "isFunction", UNLAZY_VAL(BUILTIN_VAL(builtin_isFunction, 1)) },
-        { "isInt", UNLAZY_VAL(BUILTIN_VAL(builtin_isInt, 1)) },
-        { "isList", UNLAZY_VAL(BUILTIN_VAL(builtin_isList, 1)) },
-        { "isNull", UNLAZY_VAL(BUILTIN_VAL(builtin_isNull, 1)) },
-        { "isPath", UNLAZY_VAL(BUILTIN_VAL(builtin_isPath, 1)) },
-        { "isString", UNLAZY_VAL(BUILTIN_VAL(builtin_isString, 1)) },
-        { "langVersion", UNLAZY_VAL(INT_VAL(SHARD_VERSION_X)) },
-        { "length", UNLAZY_VAL(BUILTIN_VAL(builtin_length, 1)) },
-        { "mul", UNLAZY_VAL(BUILTIN_VAL(builtin_mul, 2)) },
-        { "seq", UNLAZY_VAL(BUILTIN_VAL(builtin_seq, 2)) },
-        { "shardPath", LAZY_VAL(&shardPath, NULL) },
-        { "shardVersion", UNLAZY_VAL(CSTRING_VAL(SHARD_VERSION)) },
-        { "sub", UNLAZY_VAL(BUILTIN_VAL(builtin_sub, 2)) },
-        { "tail", UNLAZY_VAL(BUILTIN_VAL(builtin_tail, 1)) },
-        { "toString", UNLAZY_VAL(BUILTIN_VAL(builtin_toString, 1)) },
-        { "tryEval", UNLAZY_VAL(BUILTIN_VAL(builtin_tryEval, 1)) },
-        { "typeOf", UNLAZY_VAL(BUILTIN_VAL(builtin_typeOf, 1)) },
+        { "abort", shard_unlazy(ctx, BUILTIN_VAL(builtin_abort, 1)) },
+        { "add", shard_unlazy(ctx, BUILTIN_VAL(builtin_add, 2)) },
+        { "all", shard_unlazy(ctx, BUILTIN_VAL(builtin_all, 2)) },
+        { "any", shard_unlazy(ctx, BUILTIN_VAL(builtin_any, 2)) },
+        { "attrNames", shard_unlazy(ctx, BUILTIN_VAL(builtin_attrNames, 1)) },
+        { "attrValues", shard_unlazy(ctx, BUILTIN_VAL(builtin_attrValues, 1)) },
+        { "bitAnd", shard_unlazy(ctx, BUILTIN_VAL(builtin_bitAnd, 2)) },
+        { "bitOr", shard_unlazy(ctx, BUILTIN_VAL(builtin_bitOr, 2)) },
+        { "bitXor", shard_unlazy(ctx, BUILTIN_VAL(builtin_bitXor, 2)) },
+        { "catAttrs", shard_unlazy(ctx, BUILTIN_VAL(builtin_catAttrs, 2)) },
+        { "ceil", shard_unlazy(ctx, BUILTIN_VAL(builtin_ceil, 1)) },
+        { "currentSystem", shard_unlazy(ctx, ctx->current_system ? CSTRING_VAL(ctx->current_system) : NULL_VAL()) },
+        { "currentTime", shard_lazy(ctx, &currentTime, NULL) },
+        { "div", shard_unlazy(ctx, BUILTIN_VAL(builtin_div, 2)) },
+        { "floor", shard_unlazy(ctx, BUILTIN_VAL(builtin_floor, 1)) },
+        { "genList", shard_unlazy(ctx, BUILTIN_VAL(builtin_genList, 2)) },
+        { "head", shard_unlazy(ctx, BUILTIN_VAL(builtin_head, 1)) },
+        { "isAttrs", shard_unlazy(ctx, BUILTIN_VAL(builtin_isAttrs, 1)) },
+        { "isBool", shard_unlazy(ctx, BUILTIN_VAL(builtin_isBool, 1)) },
+        { "isFloat", shard_unlazy(ctx, BUILTIN_VAL(builtin_isFloat, 1)) },
+        { "isFunction", shard_unlazy(ctx, BUILTIN_VAL(builtin_isFunction, 1)) },
+        { "isInt", shard_unlazy(ctx, BUILTIN_VAL(builtin_isInt, 1)) },
+        { "isList", shard_unlazy(ctx, BUILTIN_VAL(builtin_isList, 1)) },
+        { "isNull", shard_unlazy(ctx, BUILTIN_VAL(builtin_isNull, 1)) },
+        { "isPath", shard_unlazy(ctx, BUILTIN_VAL(builtin_isPath, 1)) },
+        { "isString", shard_unlazy(ctx, BUILTIN_VAL(builtin_isString, 1)) },
+        { "langVersion", shard_unlazy(ctx, INT_VAL(SHARD_VERSION_X)) },
+        { "length", shard_unlazy(ctx, BUILTIN_VAL(builtin_length, 1)) },
+        { "mul", shard_unlazy(ctx, BUILTIN_VAL(builtin_mul, 2)) },
+        { "seq", shard_unlazy(ctx, BUILTIN_VAL(builtin_seq, 2)) },
+        { "shardPath", shard_lazy(ctx, &shardPath, NULL) },
+        { "shardVersion", shard_unlazy(ctx, CSTRING_VAL(SHARD_VERSION)) },
+        { "sub", shard_unlazy(ctx, BUILTIN_VAL(builtin_sub, 2)) },
+        { "tail", shard_unlazy(ctx, BUILTIN_VAL(builtin_tail, 1)) },
+        { "toString", shard_unlazy(ctx, BUILTIN_VAL(builtin_toString, 1)) },
+        { "tryEval", shard_unlazy(ctx, BUILTIN_VAL(builtin_tryEval, 1)) },
+        { "typeOf", shard_unlazy(ctx, BUILTIN_VAL(builtin_typeOf, 1)) },
     };
 
     struct shard_set* builtin_set = shard_set_init(ctx, LEN(builtins));
@@ -472,13 +510,14 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
     }
 
     struct shard_set* global_scope = shard_set_init(ctx, 4);
-    shard_set_put(global_scope, shard_get_ident(ctx, "true"),     UNLAZY_VAL(BOOL_VAL(true)));
-    shard_set_put(global_scope, shard_get_ident(ctx, "false"),    UNLAZY_VAL(BOOL_VAL(false)));
-    shard_set_put(global_scope, shard_get_ident(ctx, "null"),     UNLAZY_VAL(NULL_VAL()));
-    shard_set_put(global_scope, shard_get_ident(ctx, "builtins"), UNLAZY_VAL(SET_VAL(builtin_set)));
+    shard_set_put(global_scope, shard_get_ident(ctx, "true"),     shard_unlazy(ctx, BOOL_VAL(true)));
+    shard_set_put(global_scope, shard_get_ident(ctx, "false"),    shard_unlazy(ctx, BOOL_VAL(false)));
+    shard_set_put(global_scope, shard_get_ident(ctx, "null"),     shard_unlazy(ctx, NULL_VAL()));
+    shard_set_put(global_scope, shard_get_ident(ctx, "builtins"), shard_unlazy(ctx, SET_VAL(builtin_set)));
 
     dest->bindings = global_scope;
     dest->outer = NULL;
     
     ctx->builtin_intialized = true;    
 }
+

@@ -169,6 +169,8 @@ struct shard_error {
 
 struct shard_error* shard_get_errors(struct shard_context* context);
 
+void shard_remove_errors(struct shard_context* context);
+
 shard_dynarr(shard_errors, struct shard_error);
 shard_dynarr(shard_string, char);
 shard_dynarr(shard_string_list, char*);
@@ -530,9 +532,12 @@ struct shard_lazy_value {
     bool evaluated;
 };
 
+SHARD_DECL struct shard_lazy_value* shard_lazy(struct shard_context* ctx, struct shard_expr* lazy, struct shard_scope* scope);
+SHARD_DECL struct shard_lazy_value* shard_unlazy(struct shard_context* ctx, struct shard_value value);
+
 struct shard_list {
     struct shard_list* next;
-    struct shard_lazy_value value;   
+    struct shard_lazy_value* value;   
 };
 
 struct shard_set {
@@ -540,7 +545,7 @@ struct shard_set {
     size_t capacity;
     struct {
         shard_ident_t key;
-        struct shard_lazy_value value;
+        struct shard_lazy_value* value;
     } entries[];
 };
 
@@ -548,7 +553,7 @@ SHARD_DECL struct shard_set* shard_set_init(struct shard_context* ctx, size_t ca
 SHARD_DECL struct shard_set* shard_set_from_hashmap(volatile struct shard_evaluator* ctx, struct shard_hashmap* map);
 SHARD_DECL struct shard_set* shard_set_merge(struct shard_context* ctx, const struct shard_set* fst, const struct shard_set* snd);
 
-SHARD_DECL void shard_set_put(struct shard_set* set, shard_ident_t attr, struct shard_lazy_value value);
+SHARD_DECL void shard_set_put(struct shard_set* set, shard_ident_t attr, struct shard_lazy_value* value);
 SHARD_DECL int shard_set_get(struct shard_set* set, shard_ident_t attr, struct shard_lazy_value** value);
 
 SHARD_DECL void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest);

@@ -146,6 +146,8 @@ enum test_status run(const char* filename, struct shard_context* ctx, enum test_
 finish:
     segv_recovery_set = false;
 
+    shard_remove_errors(ctx);
+ 
     clock_t end = clock();
 
     if(!(flags & SILENT)) {
