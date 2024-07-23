@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <cdefs.h>
 
+#include <sys/timer.h>
+
 #include "msr.h"
 #include "gdt.h"
 #include "idt.h"
@@ -65,6 +67,7 @@ struct cpu {
     
     struct thread* idle_thread;
 
+    struct timer_entry sched_timer_entry;
     void* scheduler_stack;
 
     struct cpu_features features;

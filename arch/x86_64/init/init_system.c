@@ -87,6 +87,7 @@ __noreturn void _start(void)
         timekeeper_init(hpet_ticks, ticks_per_us, mktime(&tm));
     }
     apic_init();
+    apic_timer_init();
     scheduler_init();
     smp_init();
 

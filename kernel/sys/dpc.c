@@ -1,5 +1,7 @@
 #include <sys/dpc.h>
+
 #include <cpu/interrupts.h>
+#include <cpu/cpu.h>
 
 #include <assert.h>
 

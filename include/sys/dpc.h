@@ -1,7 +1,7 @@
 #ifndef _AMETHYST_SYS_DPC_H
 #define _AMETHYST_SYS_DPC_H
 
-#include <cpu/cpu.h>
+struct cpu_context;
 
 typedef void* dpc_arg_t;
 typedef void (*dpc_fn_t)(struct cpu_context*, dpc_arg_t);

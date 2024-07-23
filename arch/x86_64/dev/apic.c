@@ -169,10 +169,8 @@ void apic_initap(void) {
     }
 }
 
-static void timer_isr(struct cpu_context* ctx __unused)  {
-    // TODO: timer isr
-
-    klog(ERROR, "here");
+static void _timer_isr(struct cpu_context* context)  {
+    timer_isr(_cpu()->timer, context);
 }
 
 static time_t stop_timer(void) {
@@ -188,9 +186,11 @@ static void arm_timer(time_t ticks) {
 }
 
 void apic_timer_init(void) {
-    struct isr* isr = interrupt_allocate(timer_isr, apic_send_eoi, IPL_TIMER); 
+    struct isr* isr = interrupt_allocate(_timer_isr, apic_send_eoi, IPL_TIMER); 
     assert(isr);
     uint8_t vec = isr->id & 0xff;
+
+    lapic_write(APIC_TIMER_DIVIDE, 3);
 
     assert(hpet_exists());
     
@@ -205,7 +205,8 @@ void apic_timer_init(void) {
 
     lapic_write(APIC_LVT_TIMER, vec);
 
-    assert(_cpu()->timer = timer_init(ticks_per_us, arm_timer, stop_timer));
+    _cpu()->timer = timer_init(ticks_per_us, arm_timer, stop_timer);
+    assert(_cpu()->timer);
 }
 
 void apic_send_eoi(__unused uint32_t irq) {

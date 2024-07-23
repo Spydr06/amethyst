@@ -1,8 +1,8 @@
-#include "x86_64/mem/mmu.h"
 #include <sys/scheduler.h>
 #include <sys/thread.h>
 #include <sys/mutex.h>
 #include <sys/spinlock.h>
+#include <sys/dpc.h>
 
 #include <cpu/cpu.h>
 #include <mem/slab.h>
@@ -15,6 +15,8 @@
 
 #define SCHEDULER_STACK_SIZE (PAGE_SIZE * 16)
 
+#define QUANTUM_US 100000
+
 static struct scache* thread_cache;
 static struct scache* proc_cache;
 
@@ -26,6 +28,10 @@ mutex_t sched_pid_table_mutex;
 static pid_t current_pid = 1;
 
 static void cpu_idle_thread(void) {}
+
+static void timer_hook(struct cpu_context* context, dpc_arg_t arg) {
+    klog(INFO, "in timer_hook()");
+}
 
 void scheduler_init(void) {
     thread_cache = slab_newcache(sizeof(struct thread), 0, nullptr, nullptr);
@@ -47,7 +53,8 @@ void scheduler_init(void) {
     _cpu()->thread = sched_new_thread(nullptr, PAGE_SIZE * 32, 0, nullptr, nullptr);
     assert(_cpu()->thread);
 
-    // TODO: timer init
+    timer_insert(_cpu()->timer, &_cpu()->sched_timer_entry, timer_hook, nullptr, QUANTUM_US, true);
+    timer_resume(_cpu()->timer);
 }
 
 void scheduler_apentry(void) {
