@@ -30,7 +30,7 @@ static pid_t current_pid = 1;
 static void cpu_idle_thread(void) {}
 
 static void timer_hook(struct cpu_context* context, dpc_arg_t arg) {
-    klog(INFO, "in timer_hook()");
+    klog(INFO, "in scheduler::timer_hook() (cpu #%d)", _cpu()->id);
 }
 
 void scheduler_init(void) {
@@ -64,6 +64,9 @@ void scheduler_apentry(void) {
 
     _cpu()->idle_thread = sched_new_thread(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr);
     assert(_cpu()->idle_thread);
+
+    timer_insert(_cpu()->timer, &_cpu()->sched_timer_entry, timer_hook, nullptr, QUANTUM_US, true);
+    timer_resume(_cpu()->timer);
 }
 
 struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack) {

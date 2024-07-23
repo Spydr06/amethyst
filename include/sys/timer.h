@@ -32,7 +32,6 @@ struct timer_entry {
     bool fired;
 };
 
-
 void timer_resume(struct timer* timer);
 void timer_stop(struct timer* timer);
 
