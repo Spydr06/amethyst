@@ -54,10 +54,14 @@ struct cpu {
     bool interrupt_status;
     unsigned id;
     unsigned acpiid;
+    int _errno;
 
     enum ipl ipl;
     struct isr isr[0x100];
     struct isr* isr_queue;
+
+    struct isr* dpc_isr;
+    struct dpc* dpc_queue;
     
     struct thread* idle_thread;
 

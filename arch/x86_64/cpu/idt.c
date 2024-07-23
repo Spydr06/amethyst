@@ -19,6 +19,7 @@ extern void _interrupt_disable(void);
 #define SAVE_RUN_PENDING() _context_save_and_call(run_pending, nullptr)
 
 static void run_pending(struct cpu_context* ctx);
+static inline void isr_enqueue(struct isr* isr);
 
 extern uint64_t _millis;
 
@@ -141,6 +142,19 @@ struct isr* interrupt_allocate(void (*handler)(struct cpu_context *), void (*eoi
     }
 
     return isr;
+}
+
+void interrupt_raise(struct isr* isr) {
+    bool istate = interrupt_set(false);
+
+    if(isr->pending)
+        goto cleanup;
+
+    isr_enqueue(isr);
+    isr->pending = true;
+
+cleanup:
+    interrupt_set(istate);
 }
 
 enum ipl interrupt_raise_ipl(enum ipl ipl) {

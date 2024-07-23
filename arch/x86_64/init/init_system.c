@@ -9,6 +9,7 @@
 #include <mem/pmm.h>
 #include <mem/mmap.h>
 #include <sys/scheduler.h>
+#include <sys/dpc.h>
 #include <x86_64/cpu/acpi.h>
 #include <x86_64/cpu/gdt.h>
 #include <x86_64/cpu/smp.h>
@@ -59,6 +60,8 @@ __noreturn void _start(void)
     pic_init();
     interrupt_register(KEYBOARD_INTERRUPT, keyboard_interrupt_handler, pic_send_eoi, IPL_KEYBOARD);
     init_interrupts();
+
+    dpc_init();
     
     struct mmap mmap;
     assert(mmap_parse(&mmap) == 0);

@@ -94,6 +94,8 @@ void idt_change_eoi(void (*eoi_handler)(uint32_t isr));
 
 bool interrupt_set(bool status);
 
+void interrupt_raise(struct isr* isr);
+
 enum ipl interrupt_raise_ipl(enum ipl ipl);
 enum ipl interrupt_lower_ipl(enum ipl ipl);
 

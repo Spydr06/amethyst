@@ -10,6 +10,7 @@
 #include <cpu/cpu.h>
 
 #include <sys/scheduler.h>
+#include <sys/dpc.h>
 
 #include <mem/vmm.h>
 #include <mem/pmm.h>
@@ -34,6 +35,8 @@ static __noreturn void cpu_wakeup(struct limine_smp_info* smp_info) {
 
     gdt_reload();
     interrupts_apinit();
+
+    dpc_init();
 
     mmu_apswitch();
     vmm_apinit();

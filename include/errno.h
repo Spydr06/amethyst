@@ -1,6 +1,8 @@
 #ifndef _AMETHYST_ERRNO_H
 #define _AMETHYST_ERRNO_H
 
+#include <cpu/cpu.h>
+
 #define EPERM            1
 #define ENOENT           2
 #define ESRCH            3
@@ -136,7 +138,11 @@
 #define EHWPOISON       168
 #define EDQUOT          1133
 
-extern int errno;
+#define errno (*_errno_location())
+
+static inline int* _errno_location(void) {
+    return &_cpu()->_errno;
+}
 
 #endif /* _AMETHYST_ERRNO_H */
 
