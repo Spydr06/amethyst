@@ -15,6 +15,14 @@
 
 #define CPU_CONTEXT_INTSTATUS(ctx) ((bool) ((ctx)->rflags & 0x200))
 
+/*#define CPU_CONTEXT_THREADSAVE(t, c) do {                                        \
+        memcpy((&t)->context, c, sizeof(struct cpu_context));                    \
+        (t)->extra_context.gsbase = rdmsr(MSR_KERNELGSBASE);                     \
+	    (t)->extra_context.fsbase = rdmsr(MSR_FSBASE);                           \
+	    __asm__ volatile ("fxsave (%%rax)" : : "a"(&(t)->extra_context.fx[0]));  \
+	    __asm__ volatile ("stmxcsr (%%rax)" : : "a"(&(t)->extra_context.mxcsr)); \
+    while(0) */
+
 typedef uint64_t register_t;
 
 struct ist {

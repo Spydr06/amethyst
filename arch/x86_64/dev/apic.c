@@ -190,7 +190,7 @@ void apic_timer_init(void) {
     assert(isr);
     uint8_t vec = isr->id & 0xff;
 
-    lapic_write(APIC_TIMER_DIVIDE, 3);
+    //lapic_write(APIC_TIMER_DIVIDE, 3);
 
     assert(hpet_exists());
     

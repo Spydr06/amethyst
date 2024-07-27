@@ -147,7 +147,7 @@ static int parse_string_lit(struct parser* p, struct shard_expr* expr, enum shar
     for(const char* ptr = p->token.value.string; *ptr; ptr++) {
         switch(*ptr) {
             case '\\': {
-                char c;
+                char c = 0;
                 err = parse_escape_code(p, ++ptr, &c);
                 if(err) {
                     dynarr_append(p->ctx, &str, '\\');

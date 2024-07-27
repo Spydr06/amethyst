@@ -15,7 +15,7 @@
 
 #define SCHEDULER_STACK_SIZE (PAGE_SIZE * 16)
 
-#define QUANTUM_US 100000
+#define QUANTUM_US 1000000
 
 static struct scache* thread_cache;
 static struct scache* proc_cache;
@@ -31,6 +31,17 @@ static void cpu_idle_thread(void) {}
 
 static void timer_hook(struct cpu_context* context, dpc_arg_t arg) {
     klog(INFO, "in scheduler::timer_hook() (cpu #%d)", _cpu()->id);
+
+  /*  struct thread* current = _cpu()->thread;
+    interrupt_set(false);
+
+    // already preempted
+    if(current->flags & THREAD_FLAGS_PREEMPTED)
+        return;
+
+    current->flags |= THREAD_FLAGS_PREEMPTED;
+*/
+
 }
 
 void scheduler_init(void) {

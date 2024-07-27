@@ -1,3 +1,4 @@
+#include "sys/timekeeper.h"
 #include <time.h>
 
 static time_t _year_to_secs(time_t year, int* is_leap) {
@@ -84,9 +85,10 @@ time_t mktime(struct tm* tm) {
     return tm_to_secs(tm); // TODO: timezones    
 }
 
-// TODO: implement
 time_t time(time_t* tloc) {
-    (void) tloc;
-    return 0;
+    struct timespec ts = timekeeper_time();
+    if(tloc)
+        *tloc = ts.s;
+    return ts.s;
 }
 
