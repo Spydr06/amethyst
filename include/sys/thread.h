@@ -16,9 +16,17 @@ enum thread_flags {
     THREAD_FLAGS_DEAD = 32
 };
 
+enum wakeup_reason {
+    WAKEUP_REASON_NORMAL = 0,
+    WAKEUP_REASON_INTERRUPTED = -1
+};
+
 struct thread {
     void* kernel_stack_top;
     void* kernel_stack;
+
+    struct thread* prev;
+    struct thread* next;
 
     struct vmm_context* vmm_context;
     struct proc* proc;
@@ -29,6 +37,13 @@ struct thread {
     tid_t tid;
 
     spinlock_t sleep_lock;
+    enum wakeup_reason wakeup_reason;
+    bool sleep_interrupt_status;
+
+    bool should_exit;
+
+    struct cpu* cpu;
+    struct cpu* cpu_target;
 
     struct cpu_context context;
     struct cpu_extra_context extra_context;

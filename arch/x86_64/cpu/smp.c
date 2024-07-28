@@ -49,8 +49,9 @@ static __noreturn void cpu_wakeup(struct limine_smp_info* smp_info) {
     __atomic_add_fetch(&cpus_awake, 1, __ATOMIC_SEQ_CST);
 
     scheduler_apentry();
-    //hlt();
-    while(1);
+
+    // let the scheduler take over
+    sched_stop_thread();  
 }
 
 void smp_init(void) {

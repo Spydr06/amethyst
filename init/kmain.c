@@ -1,20 +1,21 @@
-#include "sys/subsystems/shard.h"
-#include <drivers/pci/pci.h>
-#include <drivers/video/vga.h>
-
 #include <cpu/cpu.h>
 #include <cpu/syscalls.h>
-#include <mem/heap.h>
-#include <mem/vmm.h>
-#include <init/cmdline.h>
-#include <filesystem/virtual.h>
-#include <filesystem/temporary.h>
+#include <drivers/pci/pci.h>
+#include <drivers/video/vga.h>
 #include <filesystem/device.h>
 #include <filesystem/initrd.h>
-#include <sys/tty.h>
+#include <filesystem/temporary.h>
+#include <filesystem/virtual.h>
+#include <init/cmdline.h>
 #include <io/tty.h>
+#include <mem/heap.h>
+#include <mem/vmm.h>
+#include <sys/scheduler.h>
+#include <sys/subsystems/shard.h>
+#include <sys/tty.h>
 
 #include <kernelio.h>
+#include <assert.h>
 #include <version.h>
 
 static void greet(void) {
@@ -30,14 +31,27 @@ static void color_test(void) {
     }
     printk("\n");
 
-    for(int i = 0; i < 256; i++) {
+    /*for(int i = 0; i < 256; i++) {
         printk("\e[48;5;%hhum  \e[0m", i);
         
         if(i == 15 || (i > 15 && i < 232 && (i - 16) % 36 == 35) || i == 231)
             printk("\n");
-    }
+    }*/
 
     printk("\n\n");
+}
+
+void test1(void) {
+    while(1) {
+        klog(INFO, "thread 1 on cpu #%d", _cpu()->id);
+        sched_sleep(1'000'000);
+    }
+}
+
+static void sched_test(void) {
+    struct thread* thread1 = sched_new_thread(test1, PAGE_SIZE * 16, 4, nullptr, nullptr);
+    assert(thread1);
+    sched_queue(thread1);
 }
 
 void kmain(size_t cmdline_size, const char* cmdline)
@@ -66,6 +80,9 @@ void kmain(size_t cmdline_size, const char* cmdline)
     
     shard_subsystem_init();
 
-    while(1);
+    sched_test();
+
+    // let the scheduler take over
+    sched_stop_thread();
 }
 

@@ -232,7 +232,7 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
 static bool last_was_inline = false;
 
 void __panic(const char* file, int line, const char* func, const char* error, ...) {
-    spinlock_release(&io_lock);
+    spinlock_acquire(&io_lock);
     if(last_was_inline)
         kernelio_writer('\n');
 
@@ -246,6 +246,7 @@ void __panic(const char* file, int line, const char* func, const char* error, ..
     printk("\e[0m\n\n[stack trace]:\n");
     dump_stack();
 
+    spinlock_release(&io_lock);
     hlt();
 }
 

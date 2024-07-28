@@ -15,13 +15,22 @@
 
 #define CPU_CONTEXT_INTSTATUS(ctx) ((bool) ((ctx)->rflags & 0x200))
 
-/*#define CPU_CONTEXT_THREADSAVE(t, c) do {                                        \
-        memcpy((&t)->context, c, sizeof(struct cpu_context));                    \
-        (t)->extra_context.gsbase = rdmsr(MSR_KERNELGSBASE);                     \
-	    (t)->extra_context.fsbase = rdmsr(MSR_FSBASE);                           \
-	    __asm__ volatile ("fxsave (%%rax)" : : "a"(&(t)->extra_context.fx[0]));  \
-	    __asm__ volatile ("stmxcsr (%%rax)" : : "a"(&(t)->extra_context.mxcsr)); \
-    while(0) */
+#define CPU_CONTEXT_THREADSAVE(t, c) do {                                        \
+        memcpy(&(t)->context, c, sizeof(struct cpu_context));                    \
+        (t)->extra_context.gs_base = rdmsr(MSR_KERNELGSBASE);                    \
+	    (t)->extra_context.fs_base = rdmsr(MSR_FSBASE);                          \
+	    __asm__ volatile ("fxsave (%%rax)" :: "a"(&(t)->extra_context.fx[0]));   \
+	    __asm__ volatile ("stmxcsr (%%rax)" :: "a"(&(t)->extra_context.mxcsr));  \
+    } while(0)
+
+#define CPU_CONTEXT_SWITCHTHREAD(t) do {                                        \
+        _cpu()->ist.rsp0 = (uint64_t)(t)->kernel_stack_top;                     \
+        wrmsr(MSR_KERNELGSBASE, (t)->extra_context.gs_base);                    \
+        wrmsr(MSR_FSBASE, (t)->extra_context.fs_base);                          \
+        __asm__ volatile ("fxrstor (%%rax)" :: "a"(&(t)->extra_context.fx[0])); \
+        __asm__ volatile ("ldmxcsr (%%rax)" :: "a"(&(t)->extra_context.mxcsr)); \
+        _context_switch(&(t)->context);                                         \
+    } while(0)
 
 typedef uint64_t register_t;
 
@@ -123,7 +132,7 @@ struct cpu_extra_context {
 } __attribute__((packed));
 
 extern void _context_save_and_call(void (*fn)(struct cpu_context*), void* stack);
-extern void _context_switch(struct cpu_context* ctx);
+extern __noreturn void _context_switch(struct cpu_context* ctx);
 
 static __always_inline void cpu_ctx_init(struct cpu_context* ctx, bool u, bool interrupts) {
     if(u) {
@@ -159,7 +168,11 @@ static __always_inline struct cpu* _cpu(void) {
     return cpu->this;
 }
 
-_Noreturn static __always_inline void hlt(void) {
+static __always_inline void hlt_until_int(void) {
+    __asm__ volatile("hlt");
+}
+
+__noreturn static __always_inline void hlt(void) {
     __asm__ volatile("cli; hlt");
     while(1); // unreachable
 }
