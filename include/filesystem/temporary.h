@@ -7,6 +7,7 @@
 struct tmpfs {
     struct vfs vfs;
     uintmax_t inode_num;
+    uintmax_t id;
 };
 
 struct tmpfs_node {

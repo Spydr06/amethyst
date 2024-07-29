@@ -44,8 +44,6 @@ static __noreturn void cpu_wakeup(struct limine_smp_info* smp_info) {
     apic_initap();
     apic_timer_init();
 
-    klog(INFO, "Hello from cpu %u", _cpu()->id);
-
     __atomic_add_fetch(&cpus_awake, 1, __ATOMIC_SEQ_CST);
 
     scheduler_apentry();

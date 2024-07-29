@@ -41,33 +41,6 @@ static void color_test(void) {
     printk("\n\n");
 }
 
-void thread1_func(void) {
-    while(1) {
-        klog(ERROR, "thread 1 on cpu #%d", _cpu()->id);
-       sched_sleep(1'000'000);
-    }
-}
-
-void thread2_func(void) {
-    sched_sleep(500'000);
-
-    while(1) {
-        klog(ERROR, "thread 2 on cpu #%d", _cpu()->id);
-       sched_sleep(1'000'000);
-    }
-}
-
-static void sched_test(void) {
-    klog(INFO, "testing scheduler...");
-    struct thread* thread1 = sched_new_thread(thread1_func, PAGE_SIZE * 16, 0, nullptr, nullptr);
-    assert(thread1);
-    sched_queue(thread1);
-
-    struct thread* thread2 = sched_new_thread(thread2_func, PAGE_SIZE * 16, 0, nullptr, nullptr);
-    assert(thread2);
-    sched_queue(thread2);
-}
-
 void kmain(size_t cmdline_size, const char* cmdline)
 {
     syscalls_init(); 
@@ -85,7 +58,17 @@ void kmain(size_t cmdline_size, const char* cmdline)
     cmdline_parse(cmdline_size, cmdline);
     
     create_ttys(); 
-//    initrd_unpack();
+
+    // const char* root = cmdline_get("root"); // root device
+    const char* rootfs = cmdline_get("rootfs"); // root filesystem
+    if(!rootfs)
+        panic("no `rootfs=` flag in the kernel command line found, please specify a root filesystem");
+
+    klog(INFO, "mounting root (%s) on `/`", rootfs);
+
+    assert(vfs_mount(nullptr, vfs_root, "/", rootfs, nullptr) == 0);
+
+    initrd_unpack();
 
     greet();
     color_test();
@@ -93,10 +76,6 @@ void kmain(size_t cmdline_size, const char* cmdline)
     klog(INFO, "\e[4mHello, World\e[24m %.02f", 3.14); 
     
     shard_subsystem_init();
-
-    sched_test();
-
-    *((int*) 0) = 1;
 
     // let the scheduler take over
     sched_stop_thread();

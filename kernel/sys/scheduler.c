@@ -22,7 +22,7 @@
 #define RUN_QUEUE_COUNT ((int) sizeof(run_queue_bitmap) * 8)
 
 struct run_queue {
-    struct thread* list;
+    struct thread* head;
     struct thread* last;
 };
 
@@ -56,7 +56,7 @@ static void cpu_idle_thread(void) {
 }
 
 static struct thread* queue_get_thread(struct run_queue* queue) {
-    struct thread* thread = queue->list;
+    struct thread* thread = queue->head;
 
     while(thread) {
         if(thread->pin < 0 || thread->pin == _cpu()->id)
@@ -71,7 +71,7 @@ static struct thread* queue_get_thread(struct run_queue* queue) {
     if(thread->prev)
         thread->prev->next = thread->next;
     else
-        queue->list = thread->next;
+        queue->head = thread->next;
 
     if(thread->next)
         thread->next->prev = thread->prev;
@@ -82,22 +82,25 @@ static struct thread* queue_get_thread(struct run_queue* queue) {
 }
 
 static struct thread* dequeue_next_thread(int min_priority) {
+    if(run_queue_bitmap == 0)
+        return nullptr;
+
     bool int_state = interrupt_set(false);
 
     struct thread* thread = nullptr;
-    if(run_queue_bitmap == 0)
-        goto finish;
 
     for(int i = 0; i < RUN_QUEUE_COUNT && i <= min_priority && !thread; i++) {
+        if(!(run_queue_bitmap & ((uint64_t) 1 << i)))
+            continue;
+
         thread = queue_get_thread(&run_queue[i]);
-        if(thread && !run_queue[i].list)
+        if(thread && !run_queue[i].head)
             run_queue_bitmap &= ~((uint64_t) 1 << i);
     }
 
     if(thread)
         thread->flags &= ~THREAD_FLAGS_QUEUED;
 
-finish:
     interrupt_set(int_state);
     return thread;
 }
@@ -113,7 +116,7 @@ static void enqueue_thread(struct thread* thread) {
     if(thread->prev)
         thread->prev->next = thread;
     else
-        run_queue[thread->priority].list = thread;
+        run_queue[thread->priority].head = thread;
 
     thread->next = nullptr;
     run_queue[thread->priority].last = thread;
@@ -154,13 +157,10 @@ static __noreturn void switch_thread(struct thread* thread) {
 }
 
 static __noreturn void preempt_callback(void) {
-  //  klog(INFO, "in scheduler::preempt_callback() (cpu #%d)", _cpu()->id);
-
     spinlock_acquire(&run_queue_lock);
 
     struct thread* current = _cpu()->thread;
     struct thread* next = dequeue_next_thread(current->priority);
-    //klog(INFO, "(#%d) next: %p", _cpu()->id, next);
 
     current->flags &= ~THREAD_FLAGS_PREEMPTED;
     if(next) {

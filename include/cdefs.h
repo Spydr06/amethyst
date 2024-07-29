@@ -37,6 +37,8 @@
 
 #define __twice(a) a a
 
+#define __either(a, b) ((a) ? (a) : (b))
+
 #ifndef ASM_FILE
 
 extern char _KERNEL_BASE_[];

@@ -268,6 +268,42 @@ leave:
     return err;
 }
 
+int vfs_mount(struct vnode* backing, struct vnode* path_ref, const char* path, const char* fs_name, void* data) {
+    struct vfsops* ops;
+    int err = hashtable_get(&fs_table, (void**) &ops, fs_name, strlen(fs_name));
+    if(err)
+        return err;
+
+    struct vnode* mount_point;
+    err = vfs_lookup(&mount_point, path_ref, path, nullptr, 0);
+    if(err)
+        return err;
+
+    if(mount_point->type != V_TYPE_DIR) {
+        vop_release(&mount_point);
+        return ENOTDIR;
+    }
+
+    struct vfs* vfs;
+    err = ops->mount(&vfs, mount_point, backing, data);
+    if(err) {
+        vop_release(&mount_point);
+        return err;
+    }
+
+    spinlock_acquire(&list_lock);
+
+    vfs->next = vfs_list;
+    vfs_list = vfs;
+
+    spinlock_release(&list_lock);
+
+    mount_point->vfsmounted = vfs;
+    vfs->node_covered = mount_point;
+
+    return 0;
+}
+
 int vfs_link(struct vnode* dest_ref, const char* dest_path, struct vnode* link_ref, const char* link_path, enum vtype type, struct vattr* attr) {
     if(type != V_TYPE_LINK && type != V_TYPE_REGULAR)
         return EINVAL;

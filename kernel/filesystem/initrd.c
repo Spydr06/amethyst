@@ -127,8 +127,7 @@ static void build_entry(struct tar_entry* entry, void* addr) {
 
     size_t name_len = __last(header->name) ? __len(header->name) : strlen((const char*) header->name);
     memcpy(name_ptr, header->name, name_len);
-    name_ptr += name_len;
-    *name_ptr = '\0';
+    name_ptr[name_len] = '\0';
 
     klog(DEBUG, "entry `%s`", name_ptr);
 

@@ -9,7 +9,6 @@
 #include <string.h>
 #include <errno.h>
 #include <hashtable.h>
-#include <time.h>
 
 static struct scache* node_cache;
 

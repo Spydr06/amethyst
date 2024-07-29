@@ -74,7 +74,7 @@ struct vnode {
     mutex_t lock;
     mutex_t size_lock;
     int refcount;
-    enum vfflags flags;
+    enum vflags flags;
     enum vtype type;
     struct vfs* vfs;
     struct vfs* vfsmounted;
@@ -120,6 +120,8 @@ extern struct vnode* vfs_root;
 int vfs_lookup(struct vnode** dest, struct vnode* src, const char* path, char* last_comp, enum vfs_lookup_flags flags);
 
 void vfs_init(void);
+
+int vfs_mount(struct vnode* backing, struct vnode* path_ref, const char* path, const char* fs_name, void* data);
 
 int vfs_register(struct vfsops* vfsops, const char* name);
 int vfs_create(struct vnode* ref, const char* path, struct vattr* attr, enum vtype type, struct vnode** node);
@@ -171,7 +173,7 @@ static inline int vop_symlink(struct vnode* node, const char* name, struct vattr
     return node->ops->symlink(node, name, attr, path, cred);
 }
 
-static inline void vop_init(struct vnode* node, struct vops* vops, enum vfflags flags, enum vtype type, struct vfs* vfs) {
+static inline void vop_init(struct vnode* node, struct vops* vops, enum vflags flags, enum vtype type, struct vfs* vfs) {
     node->ops = vops;
 
     mutex_init(&node->lock);
