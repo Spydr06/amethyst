@@ -18,6 +18,7 @@
 #include <x86_64/dev/hpet.h>
 #include <x86_64/dev/pic.h>
 #include <x86_64/cpu/idt.h>
+#include <x86_64/trace.h>
 #include <limine/limine.h>
 #include <sys/tty.h>
 #include <sys/early_timer.h>
@@ -50,6 +51,8 @@ __noreturn void _start(void)
 {
     cpu_set(&init_cpu);
     early_console_init();
+
+    load_symtab(kernel_file_request.response);   
      
     klog(DEBUG, "_start() is at %p", (void*) _start);
     

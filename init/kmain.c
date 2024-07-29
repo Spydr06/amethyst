@@ -96,6 +96,8 @@ void kmain(size_t cmdline_size, const char* cmdline)
 
     sched_test();
 
+    *((int*) 0) = 1;
+
     // let the scheduler take over
     sched_stop_thread();
 }
