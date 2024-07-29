@@ -30,6 +30,10 @@ struct thread {
     struct thread* prev;
     struct thread* next;
 
+    // queue for semaphores
+    struct thread* sleep_prev;
+    struct thread* sleep_next;
+
     struct vmm_context* vmm_context;
     struct proc* proc;
 

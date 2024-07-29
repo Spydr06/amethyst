@@ -20,7 +20,6 @@ typedef struct semaphore {
         (x)->head = nullptr;        \
     } while(0)
 
-// TODO: once threading is implemented:
 int semaphore_wait(semaphore_t *sem, bool interruptible);
 void semaphore_signal(semaphore_t *sem);
 bool semaphore_test(semaphore_t *sem);

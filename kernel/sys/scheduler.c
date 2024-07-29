@@ -210,7 +210,7 @@ static void timer_hook(struct cpu_context* context, dpc_arg_t arg __unused) {
     CPU_IP(context) = (uintptr_t) preempt_callback;
 }
 
-static void prepare_sleep(bool interruptible) {
+void sched_prepare_sleep(bool interruptible) {
     _cpu()->thread->sleep_interrupt_status = interrupt_set(false);
     spinlock_acquire(&_cpu()->thread->sleep_lock);
     _cpu()->thread->flags |= THREAD_FLAGS_SLEEP | (interruptible ? THREAD_FLAGS_INTERRUPTIBLE : 0);
@@ -259,7 +259,7 @@ static void _yield(struct cpu_context* context) {
 
 void sched_sleep(size_t us) {
     struct timer_entry sleep_entry = {0};
-    prepare_sleep(false);
+    sched_prepare_sleep(false);
 
     timer_insert(_cpu()->timer, &sleep_entry, timeout, _cpu()->thread, us, false);
     sched_yield();

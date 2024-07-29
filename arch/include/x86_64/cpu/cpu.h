@@ -34,7 +34,7 @@
 
 typedef uint64_t register_t;
 
-typedef int8_t cpuid_t;
+typedef int16_t cpuid_t;
 
 struct ist {
     uint32_t reserved;
