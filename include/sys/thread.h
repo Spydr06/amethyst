@@ -7,6 +7,8 @@
 #include <sys/spinlock.h>
 #include <cpu/cpu.h>
 
+#define THREAD_UNPINNED ((cpuid_t) -1)
+
 enum thread_flags {
     THREAD_FLAGS_QUEUED = 1,
     THREAD_FLAGS_RUNNING = 2,
@@ -43,7 +45,7 @@ struct thread {
     bool should_exit;
 
     struct cpu* cpu;
-    struct cpu* cpu_target;
+    cpuid_t pin;
 
     struct cpu_context context;
     struct cpu_extra_context extra_context;

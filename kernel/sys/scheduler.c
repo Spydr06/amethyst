@@ -17,7 +17,7 @@
 #define SCHEDULER_STACK_SIZE (PAGE_SIZE * 16)
 
 // main timer quantum
-#define QUANTUM_US 100'000
+#define QUANTUM_US 1'000'000
 
 #define RUN_QUEUE_COUNT 64
 
@@ -41,12 +41,12 @@ static pid_t current_pid = 1;
 
 static void sched_target_cpu(struct cpu* cpu) {
     bool interrupt_status = interrupt_set(false);
-    _cpu()->thread->cpu_target = cpu;
+    _cpu()->thread->pin = cpu->id;
     interrupt_set(interrupt_status);
 }
 
 static void cpu_idle_thread(void) {
-//    klog(INFO, "idle (cpu #%d)", _cpu()->id);
+    klog(INFO, "idle (cpu #%d)", _cpu()->id);
     sched_target_cpu(_cpu());
 
     interrupt_set(true);
@@ -60,7 +60,7 @@ static struct thread* queue_get_thread(struct run_queue* queue) {
     struct thread* thread = queue->list;
 
     while(thread) {
-        if(!thread->cpu_target || thread->cpu_target == _cpu())
+        if(thread->pin < 0 || thread->pin == _cpu()->id)
             break;
 
         thread = thread->next;
@@ -363,6 +363,7 @@ struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority
 
     memset(thread, 0, sizeof(struct thread));
 
+    thread->pin = THREAD_UNPINNED;
     thread->kernel_stack = vmm_map(nullptr, kernel_stack_size, VMM_FLAGS_ALLOCATE, MMU_FLAGS_WRITE | MMU_FLAGS_READ | MMU_FLAGS_NOEXEC, nullptr);
     if(!thread->kernel_stack) {
         slab_free(thread_cache, thread);

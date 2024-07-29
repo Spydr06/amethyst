@@ -34,6 +34,8 @@
 
 typedef uint64_t register_t;
 
+typedef int8_t cpuid_t;
+
 struct ist {
     uint32_t reserved;
 	uint64_t rsp0;
@@ -71,8 +73,8 @@ struct cpu {
     struct vmm_context* vmm_context;
 
     bool interrupt_status;
-    unsigned id;
-    unsigned acpiid;
+    cpuid_t id;
+    cpuid_t acpiid;
     int _errno;
 
     enum ipl ipl;
