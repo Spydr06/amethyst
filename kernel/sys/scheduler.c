@@ -17,9 +17,9 @@
 #define SCHEDULER_STACK_SIZE (PAGE_SIZE * 16)
 
 // main timer quantum
-#define QUANTUM_US 1'000'000
+#define QUANTUM_US 10'000
 
-#define RUN_QUEUE_COUNT 64
+#define RUN_QUEUE_COUNT ((int) sizeof(run_queue_bitmap) * 8)
 
 struct run_queue {
     struct thread* list;
@@ -39,15 +39,14 @@ mutex_t sched_pid_table_mutex;
 
 static pid_t current_pid = 1;
 
-static void sched_target_cpu(struct cpu* cpu) {
+void sched_pin(cpuid_t pin) {
     bool interrupt_status = interrupt_set(false);
-    _cpu()->thread->pin = cpu->id;
+    _cpu()->thread->pin = pin;
     interrupt_set(interrupt_status);
 }
 
 static void cpu_idle_thread(void) {
-    klog(INFO, "idle (cpu #%d)", _cpu()->id);
-    sched_target_cpu(_cpu());
+    sched_pin(_cpu()->id);
 
     interrupt_set(true);
     while(1) {
@@ -86,23 +85,25 @@ static struct thread* dequeue_next_thread(int min_priority) {
     bool int_state = interrupt_set(false);
 
     struct thread* thread = nullptr;
-
     if(run_queue_bitmap == 0)
         goto finish;
 
-    for(int i = 0; i < RUN_QUEUE_COUNT && i < min_priority && !thread; i++) {
+    for(int i = 0; i < RUN_QUEUE_COUNT && i <= min_priority && !thread; i++) {
         thread = queue_get_thread(&run_queue[i]);
         if(thread && !run_queue[i].list)
             run_queue_bitmap &= ~((uint64_t) 1 << i);
     }
 
+    if(thread)
+        thread->flags &= ~THREAD_FLAGS_QUEUED;
+
 finish:
     interrupt_set(int_state);
-    return NULL;
+    return thread;
 }
 
 static void enqueue_thread(struct thread* thread) {
-    assert((thread->flags & THREAD_FLAGS_RUNNING) == 0);
+    assert(!(thread->flags & THREAD_FLAGS_RUNNING));
 
     thread->flags |= THREAD_FLAGS_QUEUED;
 
@@ -134,13 +135,13 @@ static __noreturn void switch_thread(struct thread* thread) {
     if(current)
         current->flags &= ~THREAD_FLAGS_RUNNING;
 
-    assert((thread->flags & THREAD_FLAGS_RUNNING) == 0);
+    assert(!(thread->flags & THREAD_FLAGS_RUNNING));
 
     if(current && current->flags & THREAD_FLAGS_SLEEP)
         spinlock_release(&current->sleep_lock);
 
     thread->flags |= THREAD_FLAGS_RUNNING;
-    assert((thread->flags & THREAD_FLAGS_QUEUED) == 0);
+//    assert(!(thread->flags & THREAD_FLAGS_QUEUED));
 
     spinlock_release(&run_queue_lock);
 
@@ -153,12 +154,13 @@ static __noreturn void switch_thread(struct thread* thread) {
 }
 
 static __noreturn void preempt_callback(void) {
-    klog(INFO, "in scheduler::preempt_callback() (cpu #%d)", _cpu()->id);
+  //  klog(INFO, "in scheduler::preempt_callback() (cpu #%d)", _cpu()->id);
 
     spinlock_acquire(&run_queue_lock);
 
     struct thread* current = _cpu()->thread;
     struct thread* next = dequeue_next_thread(current->priority);
+    //klog(INFO, "(#%d) next: %p", _cpu()->id, next);
 
     current->flags &= ~THREAD_FLAGS_PREEMPTED;
     if(next) {
@@ -363,7 +365,6 @@ struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority
 
     memset(thread, 0, sizeof(struct thread));
 
-    thread->pin = THREAD_UNPINNED;
     thread->kernel_stack = vmm_map(nullptr, kernel_stack_size, VMM_FLAGS_ALLOCATE, MMU_FLAGS_WRITE | MMU_FLAGS_READ | MMU_FLAGS_NOEXEC, nullptr);
     if(!thread->kernel_stack) {
         slab_free(thread_cache, thread);
@@ -371,7 +372,8 @@ struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority
     }
 
     thread->kernel_stack_top = (void*)((uintptr_t) thread->kernel_stack + kernel_stack_size);
-
+    thread->pin = THREAD_UNPINNED;
+    
     thread->vmm_context = proc ? nullptr : &vmm_kernel_context;
     thread->proc = proc;
     thread->priority = priority;

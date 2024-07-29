@@ -18,6 +18,7 @@ void scheduler_init(void);
 void scheduler_apentry(void);
 __noreturn void sched_stop_thread(void);
 
+void sched_pin(cpuid_t pin);
 void sched_sleep(size_t us);
 void sched_prepare_sleep(bool interruptible);
 bool sched_wakeup(struct thread* thread, enum wakeup_reason reason);

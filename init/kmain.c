@@ -41,17 +41,31 @@ static void color_test(void) {
     printk("\n\n");
 }
 
-void test1(void) {
+void thread1_func(void) {
     while(1) {
-        klog(INFO, "thread 1 on cpu #%d", _cpu()->id);
-        sched_sleep(1'000'000);
+        klog(ERROR, "thread 1 on cpu #%d", _cpu()->id);
+       sched_sleep(1'000'000);
+    }
+}
+
+void thread2_func(void) {
+    sched_sleep(500'000);
+
+    while(1) {
+        klog(ERROR, "thread 2 on cpu #%d", _cpu()->id);
+       sched_sleep(1'000'000);
     }
 }
 
 static void sched_test(void) {
-    struct thread* thread1 = sched_new_thread(test1, PAGE_SIZE * 16, 4, nullptr, nullptr);
+    klog(INFO, "testing scheduler...");
+    struct thread* thread1 = sched_new_thread(thread1_func, PAGE_SIZE * 16, 0, nullptr, nullptr);
     assert(thread1);
     sched_queue(thread1);
+
+    struct thread* thread2 = sched_new_thread(thread2_func, PAGE_SIZE * 16, 0, nullptr, nullptr);
+    assert(thread2);
+    sched_queue(thread2);
 }
 
 void kmain(size_t cmdline_size, const char* cmdline)

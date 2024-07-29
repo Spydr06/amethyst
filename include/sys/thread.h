@@ -27,6 +27,7 @@ struct thread {
     void* kernel_stack_top;
     void* kernel_stack;
 
+    // queue for the scheduler
     struct thread* prev;
     struct thread* next;
 
