@@ -125,6 +125,46 @@ char* itoa(int64_t inum, char* str, int base) {
     return str;
 }
 
+char* pretty_size_toa(size_t size, char* buf) {
+    long double fract = 0.0;
+    const char* suffix;
+
+    if(size < KiB) {
+        suffix = "B";
+    } 
+    else if(size < MiB) {
+        suffix = "KiB";
+        fract = ((long double) size) / (long double) KiB;
+        size /= KiB;
+    }
+    else if(size < GiB) {
+        suffix = "MiB";
+        fract = ((long double) size) / (long double) MiB;
+        size /= MiB;
+    }
+    else if(size < TiB) {
+        suffix = "GiB";
+        fract = ((long double) size) / (long double) GiB;
+        size /= GiB;
+    }
+    else {
+        suffix = "TiB";
+        fract = ((long double) size) / (long double) TiB;
+        size /= TiB;
+    }
+
+    utoa(size, buf, 10);
+
+    size_t dec = (size_t) ((fract - (long double) size) * 10.0l);
+    if(dec > 0 && fract != 0.0) {
+        strcat(buf, ".");
+        utoa(dec, buf + strlen(buf), 10);
+    }
+
+    strcat(buf, suffix);
+    return buf;
+}
+
 int atoi(const char* s) {
     int res = 0;
     int sign = 1;

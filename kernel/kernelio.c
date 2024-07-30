@@ -88,7 +88,7 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
     }
 
     int printed = 0;
-    enum : uint8_t { M_CHAR, M_SHORT, M_INT, M_LONG, M_LONG_LONG, M_SIZE_T, M_INTMAX_T } mode;
+    enum : uint8_t { M_CHAR, M_SHORT, M_INT, M_LONG, M_LONG_LONG, M_SIZE_T, M_PRETTY_SIZE_T, M_INTMAX_T } mode;
     
     struct padding high_padding = {0, .default_fill = ' '};
     struct padding low_padding = {0, .default_fill = '0'};
@@ -146,6 +146,8 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
                 : mode == M_INT ? itoa((int64_t) va_arg(ap, int), buf, 10)
                 : mode == M_LONG ? itoa((int64_t) va_arg(ap, long), buf, 10)
                 : mode == M_LONG_LONG ? itoa((int64_t) va_arg(ap, long long), buf, 10)
+                : mode == M_INTMAX_T ? utoa((uint64_t) va_arg(ap, uintmax_t), buf, 10)
+                : mode == M_PRETTY_SIZE_T ? pretty_size_toa(va_arg(ap, size_t), buf)
                 : itoa((uint64_t) va_arg(ap, size_t), buf, 10);
             printed += print_padding(writer, s, get_padding(&high_padding), high_padding.fill);
             WRITES(s);
@@ -156,6 +158,7 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
                 : mode == M_INT ? utoa((uint64_t) va_arg(ap, unsigned int), buf, 16) 
                 : mode == M_LONG ? utoa((uint64_t) va_arg(ap, unsigned long), buf, 16)
                 : mode == M_LONG_LONG ? utoa((uint64_t) va_arg(ap, unsigned long long), buf, 16)
+                : mode == M_INTMAX_T ? utoa((uint64_t) va_arg(ap, uintmax_t), buf, 16)
                 : utoa((uint64_t) va_arg(ap, size_t), buf, 16);
             printed += print_padding(writer, s, get_padding(&high_padding), high_padding.fill);
             WRITES(s);
@@ -166,7 +169,9 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
                 : mode == M_INT ? utoa((uint64_t) va_arg(ap, unsigned int), buf, 10) 
                 : mode == M_LONG ? utoa((uint64_t) va_arg(ap, unsigned long), buf, 10)
                 : mode == M_LONG_LONG ? utoa((uint64_t) va_arg(ap, unsigned long long), buf, 10)
-                : utoa((uint64_t) va_arg(ap, size_t), buf, 10);
+                : mode == M_SIZE_T ? utoa((uint64_t) va_arg(ap, size_t), buf, 10)
+                : mode == M_PRETTY_SIZE_T ? pretty_size_toa(va_arg(ap, size_t), buf)
+                : utoa((uint64_t) va_arg(ap, uintmax_t), buf, 10);
             printed += print_padding(writer, s, get_padding(&high_padding), high_padding.fill);
             WRITES(s);
         } break;
@@ -197,6 +202,10 @@ int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap) 
             goto repeat;
         case 'z':
             mode = M_SIZE_T;
+            goto repeat;
+        // nonstandard
+        case 'Z':
+            mode = M_PRETTY_SIZE_T;
             goto repeat;
         case '%':
             writer('%');

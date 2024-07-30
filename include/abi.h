@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include <time.h>
 
+#define KiB (1024ull)
+#define MiB (KiB * 1024ull)
+#define GiB (MiB * 1024ull)
+#define TiB (GiB * 1024ull)
+
 typedef int32_t pid_t;
 typedef int32_t tid_t;
 typedef int32_t gid_t;

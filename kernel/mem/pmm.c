@@ -49,7 +49,7 @@ void pmm_init(struct mmap* mmap) {
     assert(hhdm_request.response);
     hhdm_base = hhdm_request.response->offset;
 
-    klog(INFO, "total memory: 0x%zx bytes", mmap->memory_size);
+    klog(INFO, "total memory: 0x%zx bytes (%Zu)", mmap->memory_size, mmap->memory_size);
     memory_size = mmap->memory_size;
 
     pages = MAKE_HHDM(mmap->biggest_entry->base);

@@ -15,6 +15,8 @@ char* reverse(char* str, size_t len);
 char* utoa(uint64_t num, char* str, int base);
 char* itoa(int64_t num, char* str, int base);
 
+char* pretty_size_toa(size_t size, char* buf);
+
 size_t strlen(const char* s);
 
 #define _AMETHYST_STRNLEN_DEFINED 1

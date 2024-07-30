@@ -78,7 +78,7 @@ void kmain(size_t cmdline_size, const char* cmdline)
         struct vattr attr;
         assert(!vfs_getattr(test, &attr));
 
-        klog(INFO, "`/test.txt` is %zu bytes large", attr.size);
+        klog(INFO, "`/test.txt` is %Zu large", attr.size);
 
         char* buffer = kmalloc(attr.size + 1);
 
@@ -89,7 +89,7 @@ void kmain(size_t cmdline_size, const char* cmdline)
 
         klog(INFO, "`/test.txt` contains: \"%s\"", buffer);
 
-        vfs_close(test, V_FFLAGS_READ);
+        vfs_close(test, 0);
     }
 
     greet();
