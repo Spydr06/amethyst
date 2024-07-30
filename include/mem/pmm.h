@@ -23,7 +23,12 @@ struct pmm_section {
 };
 
 enum page_flags : uint8_t {
-    PAGE_FLAGS_FREE = 1 
+    PAGE_FLAGS_FREE      = 1,
+    PAGE_FLAGS_DIRTY     = 2,
+    PAGE_FLAGS_TRUNCATED = 4,
+    PAGE_FLAGS_ERROR     = 8,
+    PAGE_FLAGS_READY     = 16,
+    PAGE_FLAGS_PINNED    = 32,
 };
 
 struct page {
@@ -32,6 +37,9 @@ struct page {
 
     struct page* hash_next;
     struct page* hash_prev;
+
+    struct page* vnode_next;
+    struct page* vnode_prev;
 
     union {
         struct {
@@ -55,6 +63,10 @@ void pmm_init(struct mmap* mmap);
 void* pmm_alloc(size_t size, enum pmm_section_type section);
 void* pmm_alloc_page(enum pmm_section_type section);
 
+void* pmm_page_address(struct page* page);
+struct page* pmm_get_page(void* address);
+
+void pmm_hold(void* addr);
 void pmm_release(void* vaddr);
 void pmm_makefree(void* addr, size_t count);
 

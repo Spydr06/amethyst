@@ -70,6 +70,28 @@ void kmain(size_t cmdline_size, const char* cmdline)
 
     initrd_unpack();
 
+    {
+        struct vnode* test;
+        assert(!vfs_open(vfs_root, "test.txt", V_FFLAGS_READ, &test));
+        klog(INFO, "Opened `/test.txt`");
+
+        struct vattr attr;
+        assert(!vfs_getattr(test, &attr));
+
+        klog(INFO, "`/test.txt` is %zu bytes large", attr.size);
+
+        char* buffer = kmalloc(attr.size + 1);
+
+        size_t bytes_read;
+        assert(!vfs_read(test, buffer, attr.size, 0, &bytes_read, 0));
+
+        buffer[bytes_read] = '\0';
+
+        klog(INFO, "`/test.txt` contains: \"%s\"", buffer);
+
+        vfs_close(test, V_FFLAGS_READ);
+    }
+
     greet();
     color_test();
 

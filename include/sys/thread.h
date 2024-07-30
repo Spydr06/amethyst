@@ -52,6 +52,8 @@ struct thread {
     struct cpu* cpu;
     cpuid_t pin;
 
+    int _errno;
+
     struct cpu_context context;
     struct cpu_extra_context extra_context;
 

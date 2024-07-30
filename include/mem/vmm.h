@@ -85,6 +85,8 @@ void vmm_unmap(void* addr, size_t size, enum vmm_flags flags);
 
 void vmm_cache_init(void);
 
+int vmm_cache_truncate(struct vnode* vnode, uintmax_t offset);
+int vmm_cache_make_dirty(struct page* page);
 int vmm_cache_get_page(struct vnode* vnode, uintptr_t offset, struct page** res);
 
 #endif /* _AMETHYST_MEM_VMM_H */

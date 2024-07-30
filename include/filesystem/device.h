@@ -51,7 +51,7 @@ void devfs_remove(const char* name, int major, int minor);
 int devfs_get_root(struct vfs* vfs, struct vnode** node);
 int devfs_mount(struct vfs** vfs, struct vnode* mount_point, struct vnode* backing, void* data);
 
-int devfs_setattr(struct vnode* node, struct vattr* attr, struct cred* cred);
+int devfs_setattr(struct vnode* node, struct vattr* attr, int which, struct cred* cred);
 int devfs_create(struct vnode* parent, const char* name, struct vattr* attr, int type, struct vnode** result, struct cred* cred);
 int devfs_inactive(struct vnode* node);
 

@@ -60,6 +60,8 @@ int initrd_unpack(void) {
         if(strncmp((const char*) entry.indicator, "ustar", 5))
             break;
 
+        klog(INFO, "Entry `%s`", entry.name);
+
         struct vattr entry_attr;
         entry_attr.gid = entry.gid;
         entry_attr.uid = entry.uid;
@@ -128,8 +130,6 @@ static void build_entry(struct tar_entry* entry, void* addr) {
     size_t name_len = __last(header->name) ? __len(header->name) : strlen((const char*) header->name);
     memcpy(name_ptr, header->name, name_len);
     name_ptr[name_len] = '\0';
-
-    klog(DEBUG, "entry `%s`", name_ptr);
 
 #define CONVERT_FIELD(field) (convert((const char*) header->field, __len(header->field) - 1))
 

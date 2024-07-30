@@ -141,19 +141,25 @@ int devfs_mount(struct vfs** vfs, struct vnode* mount_point __unused, struct vno
     return 0;
 }
 
-int devfs_setattr(struct vnode* node, struct vattr* attr, struct cred* cred) {
+int devfs_setattr(struct vnode* node, struct vattr* attr, int which, struct cred* cred) {
     struct dev_node* dev_node = (struct dev_node*) node;
 
     if(dev_node->physical && dev_node->physical != node)
-        return vop_setattr(dev_node->physical, attr, cred);
+        return vop_setattr(dev_node->physical, attr, which, cred);
 
     vop_lock(node);
-    dev_node->vattr.gid = attr->gid;
-    dev_node->vattr.uid = attr->uid;
-    dev_node->vattr.mode = attr->mode;
-    dev_node->vattr.atime = attr->atime;
-    dev_node->vattr.mtime = attr->mtime;
-    dev_node->vattr.ctime = attr->ctime;
+    if(which & V_ATTR_GID)
+        dev_node->vattr.gid = attr->gid;
+    if(which & V_ATTR_UID)
+        dev_node->vattr.uid = attr->uid;
+    if(which & V_ATTR_MODE)
+        dev_node->vattr.mode = attr->mode;
+    if(which & V_ATTR_ATIME)
+        dev_node->vattr.atime = attr->atime;
+    if(which & V_ATTR_MTIME)
+        dev_node->vattr.mtime = attr->mtime;
+    if(which & V_ATTR_CTIME)
+        dev_node->vattr.ctime = attr->ctime;
     vop_unlock(node);
 
     return 0;
@@ -183,7 +189,7 @@ int devfs_create(struct vnode* parent, const char* name, struct vattr* attr, int
 // TODO: struct timespec time; 
 // tmp_attr.atime = tmp_attr.ctime = tmp_attr.mtime = time;
     tmp_attr.size = 0;
-    assert(devfs_setattr(&node->vnode, &tmp_attr, cred) == 0);
+    assert(devfs_setattr(&node->vnode, &tmp_attr, V_ATTR_ALL, cred) == 0);
     node->vattr.nlinks = 0;
     node->vattr.rdev_major = tmp_attr.rdev_major;
     node->vattr.rdev_minor = tmp_attr.rdev_minor;

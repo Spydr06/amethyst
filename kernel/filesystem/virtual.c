@@ -4,6 +4,8 @@
 #include <mem/heap.h>
 #include <mem/vmm.h>
 #include <sys/spinlock.h>
+#include <sys/mutex.h>
+#include <sys/semaphore.h>
 #include <sys/thread.h>
 #include <sys/scheduler.h>
 
@@ -28,6 +30,8 @@ static struct cred kernel_cred = {
     .uid = 0
 };
 
+static struct cred* get_cred(void);
+
 void vfs_init(void) {
     assert(hashtable_init(&fs_table, 20) == 0);
 
@@ -42,6 +46,32 @@ void vfs_init(void) {
 
 int vfs_register(struct vfsops* ops, const char* name) {
     return hashtable_set(&fs_table, ops, name, strlen(name), true);
+}
+
+int vfs_open(struct vnode* ref, const char* path, int flags, struct vnode** res) {
+    struct vnode* tmp = nullptr;
+    int err = vfs_lookup(&tmp, ref, path, nullptr, 0);
+    if(err)
+        return err;
+
+    if((err = vop_open(&tmp, flags, get_cred())))
+        vop_release(&tmp);
+    else
+        *res = tmp;
+
+    return err;
+}
+
+int vfs_close(struct vnode* node, int flags) {
+    return vop_close(node, flags, get_cred());
+}
+
+int vfs_getattr(struct vnode* node, struct vattr* attr) {
+    return vop_getattr(node, attr, get_cred());
+}
+
+int vfs_setattr(struct vnode* node, struct vattr* attr, int which) {
+    return vop_setattr(node, attr, which, get_cred());
 }
 
 void vfs_inactive(struct vnode *node) {
@@ -232,15 +262,15 @@ int vfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset, s
     *written = 0;
     if(!size)
         return 0;
-    
 
     // overflow
     if(size + offset < offset) {
         return EINVAL;
     }
 
-    int err = 0;
     mutex_acquire(&node->size_lock, false);
+    
+    int err = 0;
     struct vattr attr;
     if((err = vop_getattr(node, &attr, get_cred())))
         goto leave;
@@ -261,7 +291,124 @@ int vfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset, s
     
     struct page* page;
 
-    unimplemented();
+    if(start_offset) {
+        err = vmm_cache_get_page(node, page_offset * PAGE_SIZE, &page);
+        if(err)
+            goto leave;
+
+        size_t write_size = MIN(PAGE_SIZE - start_offset, size);
+        void* address = MAKE_HHDM(pmm_page_address(page));
+
+        memcpy((void*) ((uintptr_t) address + start_offset), buffer, write_size);
+        vmm_cache_make_dirty(page);
+        
+        *written += write_size;
+        page_offset += 1;
+        page_count -= 1;
+
+        if(flags & V_FFLAGS_NOCACHE)
+            unimplemented();
+        
+        pmm_release(FROM_HHDM(address));
+    }
+    
+    for(uintmax_t offset = 0; offset < page_count * PAGE_SIZE; offset += PAGE_SIZE) {
+        if((err = vmm_cache_get_page(node, page_offset * PAGE_SIZE + offset, &page)))
+            goto leave;
+        
+        size_t write_size = MIN(PAGE_SIZE, size - *written);
+        void* address = MAKE_HHDM(pmm_page_address(page));
+        memcpy(address, (void*)((uintptr_t) buffer + *written), write_size);
+
+        vmm_cache_make_dirty(page);
+        *written += write_size;
+
+        if(flags & V_FFLAGS_NOCACHE)
+            unimplemented();
+
+        pmm_release(FROM_HHDM(address));
+    }
+
+leave:
+    mutex_release(&node->size_lock);
+    return err;
+}
+
+int vfs_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, size_t* bytes_read, int flags) {
+    if(node->type != V_TYPE_REGULAR && node->type != V_TYPE_BLKDEV)
+        // special file
+        return vop_read(node, buffer, size, offset, flags, bytes_read, get_cred());
+
+    int err = 0;
+    
+    *bytes_read = 0;
+    if(!size)
+        return 0;
+
+    if(size + offset < offset)
+        return EOVERFLOW;    
+
+    mutex_acquire(&node->size_lock, false);
+    size_t node_size = 0;
+
+    if(node->type == V_TYPE_REGULAR) {
+        struct vattr attr;
+        if((err = vop_getattr(node, &attr, get_cred())))
+            goto leave;
+        
+        node_size = attr.size;
+    }
+    else
+        unimplemented();
+    
+    if(offset >= node_size)
+        goto leave;
+
+    size = MIN(offset + size, node_size) - offset;
+
+    uintmax_t page_offset, page_count, start_offset;
+    bytes_to_pages(offset, size, &page_offset, &page_count, &start_offset);
+    struct page* page = nullptr;
+
+    if(start_offset) {
+        // unaligned first page
+        if((err = vmm_cache_get_page(node, page_offset * PAGE_SIZE, &page)))
+            goto leave;
+
+        size_t read_size = MIN(PAGE_SIZE - start_offset, size);
+        void* address = MAKE_HHDM(pmm_page_address(page));
+
+        memcpy(buffer, (void*)((uintptr_t) address + start_offset), read_size);
+        *bytes_read += read_size;
+        page_offset++;
+        page_count--;
+
+        if(flags & V_FFLAGS_NOCACHE) {
+            // remove page from vmm cache
+            unimplemented();
+        }
+
+        pmm_release(FROM_HHDM(address));
+    }
+
+    for(uintmax_t offset = 0; offset < page_count * PAGE_SIZE; offset += PAGE_SIZE) {
+        // remaining pages
+        if((err = vmm_cache_get_page(node, page_offset * PAGE_SIZE + offset, &page)))
+            goto leave;
+
+        size_t read_size = MIN(PAGE_SIZE, size - *bytes_read);
+        void* address = MAKE_HHDM(pmm_page_address(page));
+
+        memcpy((void*)((uintptr_t) buffer + *bytes_read), address, read_size);
+        *bytes_read += read_size;
+
+        if(flags & V_FFLAGS_NOCACHE) {
+            // remove page from vmm cache
+            unimplemented();
+        }
+
+        pmm_release(FROM_HHDM(address));
+    }
 
 leave:
     mutex_release(&node->size_lock);

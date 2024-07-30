@@ -1,3 +1,4 @@
+#include "sys/mutex.h"
 #include <mem/pmm.h>
 #include <mem/vmm.h>
 #include <mem/mmap.h>
@@ -26,8 +27,9 @@ static volatile struct limine_hhdm_request hhdm_request = {
 };
 
 static size_t page_count, free_page_count;
-static spinlock_t memory_spinlock;
 static struct page* pages;
+
+static mutex_t free_list_mutex;
 
 static struct page* free_lists[PMM_SECTION_COUNT];
 static struct page* standby_lists[PMM_SECTION_COUNT];
@@ -71,11 +73,11 @@ void pmm_init(struct mmap* mmap) {
         }
     }
 
-    spinlock_init(memory_spinlock);
+    mutex_init(&free_list_mutex);
 }
 
 void* pmm_alloc_page(enum pmm_section_type section) {
-    spinlock_acquire(&memory_spinlock);
+    mutex_acquire(&free_list_mutex, false);
 
     struct page* page = nullptr;
     for(int i = section; i >= 0; i--) {
@@ -88,13 +90,21 @@ void* pmm_alloc_page(enum pmm_section_type section) {
 
     // TODO: get page from standby list
 
-    spinlock_release(&memory_spinlock);
+    mutex_release(&free_list_mutex);
 
     if(!page)
         return nullptr;
 
     allocate(page);
     return (void*) (PAGE_GETID(page) * PAGE_SIZE);;
+}
+
+void* pmm_page_address(struct page* page) {
+    return (void*)(PAGE_GETID(page) * PAGE_SIZE);
+}
+
+struct page* pmm_get_page(void* address) {
+    return &pages[(uintptr_t) address / PAGE_SIZE];
 }
 
 void* pmm_alloc(size_t size, enum pmm_section_type section) {
@@ -104,7 +114,7 @@ void* pmm_alloc(size_t size, enum pmm_section_type section) {
     if(size == 1)
         return pmm_alloc_page(section);
 
-    spinlock_acquire(&memory_spinlock);
+    mutex_acquire(&free_list_mutex, false);
 
     uintmax_t page = 0;
     size_t found;
@@ -138,8 +148,22 @@ got_pages:
         }
     }
 
-    spinlock_release(&memory_spinlock);
+    mutex_release(&free_list_mutex);
     return addr;
+}
+
+void pmm_hold(void* addr) {
+    struct page* page = &pages[(uintptr_t) addr / PAGE_SIZE];
+
+    mutex_acquire(&free_list_mutex, false);
+
+    __atomic_add_fetch(&page->refcount, 1, __ATOMIC_SEQ_CST);
+    if(page->refcount == 1) {
+        assert(!(page->flags & PAGE_FLAGS_FREE));
+        free_list_remove(page);
+    }
+
+    mutex_release(&free_list_mutex);
 }
 
 void pmm_release(void* addr) {
@@ -148,11 +172,12 @@ void pmm_release(void* addr) {
 
     uintmax_t new_refcount = __atomic_sub_fetch(&page->refcount, 1, __ATOMIC_SEQ_CST);
     if(!new_refcount) {
-        spinlock_acquire(&memory_spinlock);
+        assert(!(page->flags & PAGE_FLAGS_DIRTY));
+        mutex_acquire(&free_list_mutex, false);
         free_list_insert(page);
         if(!page->backing)
             page->flags |= PAGE_FLAGS_FREE;
-        spinlock_release(&memory_spinlock);
+        mutex_release(&free_list_mutex);
     }
 }
 

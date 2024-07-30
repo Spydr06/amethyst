@@ -2,6 +2,7 @@
 #define _AMETHYST_ERRNO_H
 
 #include <cpu/cpu.h>
+#include <sys/thread.h>
 
 #define EPERM            1
 #define ENOENT           2
@@ -141,6 +142,9 @@
 #define errno (*_errno_location())
 
 static inline int* _errno_location(void) {
+    if(_cpu()->thread) {
+        return &_cpu()->thread->_errno;
+    }
     return &_cpu()->_errno;
 }
 
