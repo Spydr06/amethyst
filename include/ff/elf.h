@@ -4343,5 +4343,7 @@ typedef struct {
 
 int elf_load(struct vnode* node, void* base, void** entry, char** interpreter, Elf64_auxv_list_t* auxv);
 
+void* elf_prepare_stack(void* top, Elf64_auxv_list_t* auxv, char** argv, char** envp);
+
 #endif	/* elf.h */
 

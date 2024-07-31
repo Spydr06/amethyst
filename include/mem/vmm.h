@@ -71,6 +71,11 @@ struct vmm_context {
     page_table_ptr_t page_table;
 };
 
+struct vmm_file_desc {
+    struct vnode* node;
+    uintmax_t offset;
+};
+
 static_assert(sizeof(struct vmm_cache) <= PAGE_SIZE);
 
 extern struct vmm_context vmm_kernel_context;

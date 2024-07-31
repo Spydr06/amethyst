@@ -78,7 +78,7 @@ void kmain(size_t cmdline_size, const char* cmdline)
     shard_subsystem_init();
 
     int err = scheduler_exec(
-        "/bin/init", 1,
+        "/bin/init",
         (char*[]){"/bin/init", nullptr}, // argc
         (char*[]){nullptr}               // envp
     );

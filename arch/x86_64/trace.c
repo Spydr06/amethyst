@@ -1,10 +1,10 @@
 #include <x86_64/trace.h>
-#include <kernelio.h>
+#include <ff/elf.h>
 
+#include <kernelio.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include <elf.h>
 
 struct stackframe {
     struct stackframe* rbp; // ebp on x86
@@ -27,7 +27,7 @@ void load_symtab(struct limine_kernel_file_response* response) {
 
     const Elf64_Ehdr* header = kernel_file->address;
 
-    if(memcmp(header->e_ident, "\x7f" "ELF", 4) || header->e_type != ET_EXEC) {
+    if(memcmp(header->e_ident, ELFMAG, 4) || header->e_type != ET_EXEC) {
         klog(ERROR, "kernel file is not an ELF file");
         return;
     }

@@ -400,7 +400,30 @@ struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority
 extern void _sched_userspace_check(void) {
 }
 
-int scheduler_exec(const char* path, int argc, char* argv[], char* envp[]) {
+#define STACK_TOP        ((void*) 0x0000800000000000)
+#define INTERPRETER_BASE ((void*) 0x00000beef0000000)
+
+static int load_interpreter(const char* interpreter, void** entry) {
+    if(!interpreter)
+        return 0;
+
+    int err;
+    struct vnode* interp_node;
+
+    if((err = vfs_open(vfs_root, interpreter, 0, &interp_node)))
+        return err;
+
+    Elf64_auxv_list_t interp_auxv;
+    char* interp_interp = nullptr;
+
+    if((err = elf_load(interp_node, INTERPRETER_BASE, entry, &interp_interp, &interp_auxv)))
+        return err;
+
+    assert(!interp_interp);
+    return 0;
+}
+
+int scheduler_exec(const char* path, char* argv[], char* envp[]) {
     klog(INFO, "executing `%s`", path);
 
     struct vmm_context* vmm_ctx = vmm_context_new();
@@ -417,13 +440,34 @@ int scheduler_exec(const char* path, int argc, char* argv[], char* envp[]) {
         return err;
 
     Elf64_auxv_list_t auxv;
-    char* interp = nullptr;
+    char* interpreter = nullptr;
     void* entry;
 
-    if((err = elf_load(exec_node, nullptr, &entry, &interp, &auxv)))
+    if((err = elf_load(exec_node, nullptr, &entry, &interpreter, &auxv)))
         return err;
 
-    unimplemented();
+    if((err = load_interpreter(interpreter, &entry)))
+        return err;
+
+    // TODO: fd allocation
+
+    void* stack = elf_prepare_stack(STACK_TOP, &auxv, argv, envp);
+    if(!stack)
+        ENOMEM;
+
+    vmm_switch_context(&vmm_kernel_context);
+
+    struct thread* user_thread = sched_new_thread(entry, PAGE_SIZE * 16, 1, nullptr, stack);
+    assert(user_thread);
+
+    // TODO: proc
+
+    user_thread->vmm_context = vmm_ctx;
+    sched_queue(user_thread);
+
+    vop_release(&exec_node);
+
+    // proc_release(&proc);
 
     return 0;
 }
