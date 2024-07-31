@@ -1,3 +1,4 @@
+#include "ff/elf.h"
 #include <sys/scheduler.h>
 #include <sys/thread.h>
 #include <sys/mutex.h>
@@ -415,7 +416,14 @@ int scheduler_exec(const char* path, int argc, char* argv[], char* envp[]) {
     if(err)
         return err;
 
+    Elf64_auxv_list_t auxv;
+    char* interp = nullptr;
+    void* entry;
 
+    if((err = elf_load(exec_node, nullptr, &entry, &interp, &auxv)))
+        return err;
+
+    unimplemented();
 
     return 0;
 }

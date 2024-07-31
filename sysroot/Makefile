@@ -3,7 +3,7 @@ INITRD ?= $(BUILD_DIR)/initrd
 
 INITRD_DIR ?= $(BUILD_DIR)/initrd-files
 
-INITRD_SRC_FILES += test.txt
+INITRD_SRC_FILES += test.txt bin/init
 override INITRD_DST_FILES := $(addprefix $(INITRD_DIR)/, $(INITRD_SRC_FILES))
 
 .PHONY: all

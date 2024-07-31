@@ -23,6 +23,8 @@
 
 #include <stdint.h>
 
+#include <filesystem/virtual.h>
+
 /* Type for a 16-bit quantity.  */
 typedef uint16_t Elf32_Half;
 typedef uint16_t Elf64_Half;
@@ -4330,6 +4332,16 @@ enum
 #define R_OR1K_TLS_TPOFF	32
 #define R_OR1K_TLS_DTPOFF	33
 #define R_OR1K_TLS_DTPMOD	34
+
+typedef struct {
+    Elf64_auxv_t phdr;
+    Elf64_auxv_t phnum;
+    Elf64_auxv_t phent;
+    Elf64_auxv_t entry;
+    Elf64_auxv_t null;
+} Elf64_auxv_list_t;
+
+int elf_load(struct vnode* node, void* base, void** entry, char** interpreter, Elf64_auxv_list_t* auxv);
 
 #endif	/* elf.h */
 
