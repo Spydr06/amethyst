@@ -1,5 +1,6 @@
 #include <mem/vmm.h>
 #include <mem/pmm.h>
+#include <mem/slab.h>
 
 #include <sys/thread.h>
 
@@ -16,6 +17,7 @@ static struct vmm_space kernel_space = {
 };
 
 static struct vmm_cache* cache_list;
+static struct scache* ctx_cache;
 
 static struct vmm_cache* new_cache(void);
 static struct vmm_space* get_space(void* vaddr);
@@ -48,6 +50,36 @@ void vmm_init(struct mmap* mmap) {
 
 void vmm_apinit(void) {
     vmm_switch_context(&vmm_kernel_context);
+}
+
+static void ctx_ctor(struct scache* cache __unused, void* obj) {
+    struct vmm_context* ctx = obj;
+
+    ctx->space.start = USERSPACE_START;
+    ctx->space.end = USERSPACE_END;
+
+    mutex_init(&ctx->space.lock);
+    mutex_init(&ctx->space.pflock);
+    ctx->space.ranges = nullptr;
+}
+
+// dtor as alias to ctor
+static void (*ctx_dtor)(struct scache*, void*) = &ctx_ctor;
+
+struct vmm_context* vmm_context_new(void) { 
+    if(!ctx_cache)
+        assert(ctx_cache = slab_newcache(sizeof(struct vmm_context), 0, ctx_ctor, ctx_dtor));
+
+    struct vmm_context* ctx = slab_alloc(ctx_cache);
+    if(!ctx)
+        return nullptr;
+
+    if(!(ctx->page_table = mmu_new_table())) {
+        slab_free(ctx_cache, ctx);
+        return nullptr;
+    }
+    
+    return ctx;
 }
 
 void vmm_switch_context(struct vmm_context* context) {

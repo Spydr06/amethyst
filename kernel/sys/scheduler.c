@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <string.h>
 #include <abi.h>
+#include <errno.h>
 
 #define SCHEDULER_STACK_SIZE (PAGE_SIZE * 16)
 
@@ -396,5 +397,26 @@ struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority
 
 // called from `_context_switch()`
 extern void _sched_userspace_check(void) {
+}
+
+int scheduler_exec(const char* path, int argc, char* argv[], char* envp[]) {
+    klog(INFO, "executing `%s`", path);
+
+    struct vmm_context* vmm_ctx = vmm_context_new();
+    if(!vmm_ctx)
+        return ENOMEM;
+
+    vmm_switch_context(vmm_ctx);
+
+    // TODO: proc
+    
+    struct vnode* exec_node;
+    int err = vfs_open(vfs_root, path, 0, &exec_node);
+    if(err)
+        return err;
+
+
+
+    return 0;
 }
 

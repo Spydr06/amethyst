@@ -49,13 +49,22 @@ int devfs_register(struct devops* decops, const char* name, int type, int major,
 void devfs_remove(const char* name, int major, int minor);
 
 int devfs_get_root(struct vfs* vfs, struct vnode** node);
+int devfs_getnode(struct vnode* physical, int major, int minor, struct vnode** node);
+int devfs_lookup(struct vnode* node, const char* name, struct vnode** result, struct cred* cred);
+
 int devfs_mount(struct vfs** vfs, struct vnode* mount_point, struct vnode* backing, void* data);
+int devfs_create(struct vnode* parent, const char* name, struct vattr* attr, int type, struct vnode** result, struct cred* cred);
+
+int devfs_open(struct vnode** nodep, int flags, struct cred* cred);
+int devfs_close(struct vnode* node, int flags, struct cred* cred);
+
+int devfs_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_read, struct cred* cred);
+int devfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_written, struct cred* cred);
 
 int devfs_setattr(struct vnode* node, struct vattr* attr, int which, struct cred* cred);
-int devfs_create(struct vnode* parent, const char* name, struct vattr* attr, int type, struct vnode** result, struct cred* cred);
-int devfs_inactive(struct vnode* node);
+int devfs_getattr(struct vnode* node, struct vattr* attr, struct cred* cred);
 
-int devfs_getnode(struct vnode* physical, int major, int minor, struct vnode** node);
+int devfs_inactive(struct vnode* node);
 
 #endif /* _AMETHYST_FILESYSTEM_DEVICE_H */
 

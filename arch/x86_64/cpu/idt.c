@@ -1,7 +1,7 @@
 #include <x86_64/cpu/idt.h>
 #include <x86_64/dev/pic.h>
 #include <x86_64/cpu/cpu.h>
-#include <cpu/syscalls.h>
+#include <sys/syscall.h>
 #include <drivers/char/keyboard.h>
 
 #include <cpu/cpu.h>

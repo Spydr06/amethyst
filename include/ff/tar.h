@@ -53,5 +53,7 @@ struct tar_entry {
 	uint16_t devmajor;
 };
 
+const char* tar_entry_type_str(enum tar_entry_type type);
+
 #endif /* _AMETHYST_FILEFORMAT_TAR_H */
 

@@ -1,4 +1,5 @@
 #include <x86_64/cpu/cpu.h>
+#include <sys/syscall.h>
 
 #include <kernelio.h>
 #include <cpuid.h>
@@ -23,6 +24,8 @@ void cpu_enable_features(void) {
 
     //klog(DEBUG, "syscall support: %hhu", _cpu()->features.syscall_supported);
      
+    syscalls_init();
+
     _cpu()->features.sse_supported = true; // must be supported on x86_64
     _cpu()->features.sse2_supported = true;
     _enable_sse();

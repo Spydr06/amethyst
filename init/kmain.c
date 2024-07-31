@@ -1,5 +1,4 @@
 #include <cpu/cpu.h>
-#include <cpu/syscalls.h>
 #include <drivers/pci/pci.h>
 #include <drivers/video/vga.h>
 #include <filesystem/device.h>
@@ -7,11 +6,13 @@
 #include <filesystem/temporary.h>
 #include <filesystem/virtual.h>
 #include <init/cmdline.h>
+#include <io/pseudo_devices.h>
 #include <io/tty.h>
 #include <mem/heap.h>
 #include <mem/vmm.h>
 #include <sys/scheduler.h>
 #include <sys/subsystems/shard.h>
+#include <sys/syscall.h>
 #include <sys/tty.h>
 
 #include <kernelio.h>
@@ -43,21 +44,20 @@ static void color_test(void) {
 
 void kmain(size_t cmdline_size, const char* cmdline)
 {
-    syscalls_init(); 
-     
+    cmdline_parse(cmdline_size, cmdline);
+    
     vmm_cache_init();
 
     vfs_init();
     tmpfs_init();
     devfs_init();
 
-    tty_init();
+    pseudodevices_init();
 
-    pci_init();
-    
-    cmdline_parse(cmdline_size, cmdline);
-    
+    tty_init();
     create_ttys(); 
+
+    pci_init(); 
 
     // const char* root = cmdline_get("root"); // root device
     const char* rootfs = cmdline_get("rootfs"); // root filesystem
@@ -70,34 +70,21 @@ void kmain(size_t cmdline_size, const char* cmdline)
 
     initrd_unpack();
 
-    {
-        struct vnode* test;
-        assert(!vfs_open(vfs_root, "test.txt", V_FFLAGS_READ, &test));
-        klog(INFO, "Opened `/test.txt`");
-
-        struct vattr attr;
-        assert(!vfs_getattr(test, &attr));
-
-        klog(INFO, "`/test.txt` is %Zu large", attr.size);
-
-        char* buffer = kmalloc(attr.size + 1);
-
-        size_t bytes_read;
-        assert(!vfs_read(test, buffer, attr.size, 0, &bytes_read, 0));
-
-        buffer[bytes_read] = '\0';
-
-        klog(INFO, "`/test.txt` contains: \"%s\"", buffer);
-
-        vfs_close(test, 0);
-    }
-
     greet();
     color_test();
 
     klog(INFO, "\e[4mHello, World\e[24m %.02f", 3.14); 
-    
+
     shard_subsystem_init();
+
+    int err = scheduler_exec(
+        "/bin/init", 1,
+        (char*[]){"/bin/init", nullptr}, // argc
+        (char*[]){nullptr}               // envp
+    );
+
+    if(err)
+        panic("Error executing `/bin/init`: %s", strerror(err));
 
     // let the scheduler take over
     sched_stop_thread();

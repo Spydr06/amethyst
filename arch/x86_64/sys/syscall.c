@@ -1,4 +1,4 @@
-#include <cpu/syscalls.h>
+#include <sys/syscall.h>
 
 #include <x86_64/cpu/idt.h>
 #include <x86_64/cpu/cpu.h>
@@ -23,3 +23,6 @@ bool syscalls_init(void)
     return true;
 }
 
+extern void _sys_test(void) {
+
+}

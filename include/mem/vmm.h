@@ -78,6 +78,8 @@ extern struct vmm_context vmm_kernel_context;
 void vmm_init(struct mmap* mmap);
 void vmm_apinit(void);
 
+struct vmm_context* vmm_context_new(void);
+
 void vmm_switch_context(struct vmm_context* context);
 
 void* vmm_map(void* addr, size_t size, enum vmm_flags flags, enum mmu_flags mmu_flags, void* private);

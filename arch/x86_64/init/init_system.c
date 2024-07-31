@@ -89,6 +89,7 @@ __noreturn void _start(void)
         cmos_read(&tm);
         timekeeper_init(hpet_ticks, ticks_per_us, mktime(&tm));
     }
+
     apic_init();
     apic_timer_init();
     scheduler_init();
@@ -101,6 +102,6 @@ __noreturn void _start(void)
     else
         kmain(0, nullptr);
     
-    hlt();
+    panic("`kmain()` returned. This should never happen.");
 }
 

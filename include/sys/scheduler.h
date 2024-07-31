@@ -26,6 +26,8 @@ bool sched_wakeup(struct thread* thread, enum wakeup_reason reason);
 void sched_queue(struct thread* thread);
 int sched_yield(void);
 
+int scheduler_exec(const char* path, int argc, char* argv[], char* envp[]);
+
 struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack);
 
 #endif /* _AMETHYST_SYS_SCHEDULER */

@@ -39,7 +39,7 @@ int initrd_unpack(void) {
         return EBADF;
     }
 
-    klog(INFO, "`%s` at %p with size %lu (%lu pages).", filename, initrd->address, initrd->size, ROUND_UP(initrd->size, PAGE_SIZE) / PAGE_SIZE);
+    klog(INFO, "`%s` at %p with size %Zu (%lu pages).", filename, initrd->address, (size_t) initrd->size, ROUND_UP(initrd->size, PAGE_SIZE) / PAGE_SIZE);
     assert(((uintptr_t) initrd->address % PAGE_SIZE) == 0);
 
     void* ptr = initrd->address;
@@ -91,7 +91,7 @@ int initrd_unpack(void) {
                 err = vfs_link(nullptr, (const char*) entry.link, vfs_root, (const char*) entry.name, V_TYPE_LINK, &entry_attr);
                 break;
             default:
-                panic("Unsupported TAR entry type %hu", entry.type);
+                klog(ERROR, "unsupported TAR entry type `%s` (%hu)", tar_entry_type_str(entry.type), entry.type);
         }
         
         if(err)
