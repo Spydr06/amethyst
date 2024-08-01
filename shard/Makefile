@@ -1,5 +1,6 @@
 BUILD_DIR ?= build
 LIBSHARD_DIR := libshard
+GEODE_DIR := geode
 
 LIBATOMIC_OPS_TAR_LINK ?= https://www.hboehm.info/gc/gc_source/libatomic_ops-7.8.0.tar.gz
 LIBATOMIC_OPS_TAR := $(shell basename $(LIBATOMIC_OPS_TAR_LINK))
@@ -15,11 +16,16 @@ SHARD_BIN := $(BUILD_DIR)/shard
 LIBSHARD := $(BUILD_DIR)/libshard.a
 LIBSHARD_OBJ := $(BUILD_DIR)/libshard.o
 
+GEODE_BIN := $(BUILD_DIR)/geode-host
+
 TEST_RUNNER_SOURCE := tests/runner.c
 TEST_RUNNER_BIN := $(BUILD_DIR)/tests/runner
 
-SOURCES := $(shell find $(LIBSHARD_DIR) -name '*.c')
-OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SOURCES))
+LIBSHARD_SOURCES := $(shell find $(LIBSHARD_DIR) -name '*.c')
+LIBSHARD_OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(LIBSHARD_SOURCES))
+
+GEODE_SOURCES := $(shell find $(GEODE_DIR) -name '*.c')
+GEODE_OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(GEODE_SOURCES))
 
 AR ?= ar
 RANLIB ?= ranlib
@@ -35,18 +41,21 @@ override CFLAGS += -Wall -Wextra -pedantic -std=c2x -I$(LIBSHARD_DIR)/include -g
 override CFLAGS := $(call unique, $(CFLAGS))
 
 ifneq (,$(findstring SHARD_USE_GCBOEHM, $(CFLAGS)))
-	OBJECTS += $(GCBOEHM_LIB)
+	LIBSHARD_OBJECTS += $(GCBOEHM_LIB)
 	CFLAGS += -I$(GCBOEHM_SRC_DIR)/include
 endif
 
 .PHONY: all
-all: $(LIBSHARD) $(SHARD_BIN)
+all: $(LIBSHARD) $(SHARD_BIN) $(GEODE_BIN)
 
 .PHONY: lib
 lib: $(LIBSHARD)
 
 .PHONY: bin
 bin: $(SHARD_BIN)
+
+.PHONY: geode
+geode: $(GEODE_BIN)
 
 .PHONY: debug
 debug: CFLAGS += -fsanitize=address,undefined -g
@@ -59,7 +68,7 @@ $(BUILD_DIR):
 
 $(SHARD_BIN): $(BUILD_DIR)/shard.o $(BUILD_DIR)/repl.o $(LIBSHARD_OBJ)
 	@echo "  LD    $@"
-	@$(CC) $(LDFLAGS) $^ -o $@
+	@$(CC) $(LDFLAGS) $@ -o $^
 
 $(LIBSHARD): $(LIBSHARD_OBJ)
 	@echo "  AR    $@"	
@@ -67,10 +76,14 @@ $(LIBSHARD): $(LIBSHARD_OBJ)
 	@echo " RANLIB	$@"
 	@$(RANLIB) $@
 
+$(GEODE_BIN): $(GEODE_OBJECTS) $(LIBSHARD_OBJ)
+	@echo "  LD    $@"
+	@$(CC) $(LDFLAGS) -o $@ $^
+
 .PHONY: libshard_obj
 libshard_obj: $(LIBSHARD_OBJ)
 
-$(LIBSHARD_OBJ): $(OBJECTS) | $(BUILD_DIR)	
+$(LIBSHARD_OBJ): $(LIBSHARD_OBJECTS) | $(BUILD_DIR)	
 	@echo "  LD    $@"
 	@$(LD) -r $^ -o $@
 

@@ -1,0 +1,22 @@
+{
+    pkgs,
+    initrd,
+    ...
+}: {
+    imports = [
+    ];
+
+    system.config = "x86_64-elf";
+
+    packages = [
+        pkgs.sourcePackage "init" {
+            sourceFiles = [ ./bin/init.S ];
+            buildTarget = ./bin/init;
+        };
+        
+        pkgs.sourcePackage "test" {
+            sourceFiles = [ ./test.txt ];
+        }
+    ];
+}
+
