@@ -453,7 +453,7 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
 
     void* stack = elf_prepare_stack(STACK_TOP, &auxv, argv, envp);
     if(!stack)
-        ENOMEM;
+        return ENOMEM;
 
     vmm_switch_context(&vmm_kernel_context);
 

@@ -9,6 +9,8 @@
 
 #define MAX_FILENAME_LENGTH 256
 
+#define PATH_SEPARATOR '/'
+
 enum vflags {
     V_FLAGS_ROOT = 1
 };

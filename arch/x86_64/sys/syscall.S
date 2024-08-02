@@ -26,13 +26,15 @@ _syscall_count:
 
 .section .text
 
+.extern _sched_userspace_check
+
 // syscall calling convention:
 // %rax: syscall number
 // ...
 
 .globl _syscall_entry
 _syscall_entry:
-    swapgs
+    // swapgs
 
     // save syscall number in cr2
     mov %rax, %cr2
@@ -81,7 +83,73 @@ _syscall_entry:
     mov %rbx, %es
     mov %rbx, %ds
 
+    push %r9
+    mov %r8, %r9
+    mov %r10, %r8
+    mov %rdx, %rcx
+    mov %rsi, %rdx
+    mov %rdi, %rsi
 
+    sti
+    mov %rax, %rdi
+    
+    // TODO: log syscalls ?
+    // call _syscall_log
+    
+    mov %rsp, %rdi
+    add $8, %rdi
 
+    cmp _syscall_count, %rax
+    jae .L.no_syscall
+    call *_syscall_table(,%rax,8)
+    jmp .L.return
+
+.L.no_syscall:
+    call _syscall_invalid
+.L.return:
+    cli
+
+    mov %rax, %rdi
+    mov %rdx, %rsi
+
+    // TODO: log syscalls?
+
+    mov %rsp, %rdi
+    add $8, %rdi
+    xor %rsi, %rsi
+    inc %rsi
+
+    mov %rax, %rcx
+    call _sched_userspace_check
+
+    cli
+
+    add $32, %rsp
+    pop %rbx
+    mov %rbx, %es
+    pop %rbx
+    mov %rbx, %ds
+    add $8, %rsp // rax
+    pop %rbx
+    pop %rcx
+    add $8, %rsp // rdx
+    pop %r8
+    pop %r9
+    pop %r10
+    pop %r11
+    pop %r12
+    pop %r13
+    pop %r14
+    pop %r15
+    pop %rdi
+    pop %rsi
+    pop %rbp
+    add $8, %rsp // remove error code
+    pop %rcx
+    add $8, %rsp // user %cs
+    pop %r11     // rflags
+    pop %rsp
+
+    //swapgs
 
     sysretq

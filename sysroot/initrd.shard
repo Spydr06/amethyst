@@ -2,11 +2,11 @@
     pkgs,
     initrd,
     ...
-}: {
+}: initrd.crossSystem {
     imports = [
     ];
 
-    system.config = "x86_64-elf";
+    hostPlatform = "x86_64-elf";
 
     packages = [
         pkgs.sourcePackage "init" {

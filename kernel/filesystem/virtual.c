@@ -141,7 +141,7 @@ int vfs_lookup(struct vnode** dest, struct vnode* src, const char* path, char* l
     strcpy(comp_buffer, path);
 
     for(size_t i = 0; i < path_len; i++) {
-        if(comp_buffer[i] == '/')
+        if(comp_buffer[i] == PATH_SEPARATOR)
             comp_buffer[i] = '\0';
     }
 

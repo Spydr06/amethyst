@@ -24,5 +24,7 @@ bool syscalls_init(void)
 }
 
 extern void _sys_test(void) {
+}
 
+extern void _syscall_invalid(void) {
 }
