@@ -28,7 +28,7 @@ int sched_yield(void);
 
 int scheduler_exec(const char* path, char* argv[], char* envp[]);
 
-struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack);
+struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, bool in_userspace, void* user_stack);
 
 #endif /* _AMETHYST_SYS_SCHEDULER */
 

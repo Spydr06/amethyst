@@ -332,9 +332,9 @@ void scheduler_init(void) {
 
     spinlock_init(run_queue_lock);
 
-    _cpu()->idle_thread = sched_new_thread(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr);
+    _cpu()->idle_thread = sched_new_thread(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, false, nullptr);
     assert(_cpu()->idle_thread);
-    _cpu()->thread = sched_new_thread(nullptr, PAGE_SIZE * 32, 0, nullptr, nullptr);
+    _cpu()->thread = sched_new_thread(nullptr, PAGE_SIZE * 32, 0, nullptr, false, nullptr);
     assert(_cpu()->thread);
 
     // install scheduling timer
@@ -350,7 +350,7 @@ void scheduler_apentry(void) {
     assert(_cpu()->scheduler_stack);
     _cpu()->scheduler_stack = (void*)((uintptr_t) _cpu()->scheduler_stack + SCHEDULER_STACK_SIZE);
 
-    _cpu()->idle_thread = sched_new_thread(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr);
+    _cpu()->idle_thread = sched_new_thread(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, false, nullptr);
     assert(_cpu()->idle_thread);
 
     // install scheduling timer
@@ -360,7 +360,7 @@ void scheduler_apentry(void) {
     timer_resume(_cpu()->timer);
 }
 
-struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack) {
+struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, bool in_userspace, void* user_stack) {
     struct thread* thread = slab_alloc(thread_cache);
     if(!thread)
         return nullptr;
@@ -384,7 +384,7 @@ struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority
         thread->tid = __atomic_fetch_add(&current_pid, 1, __ATOMIC_SEQ_CST);
     }
 
-    cpu_ctx_init(&thread->context, proc != nullptr, true);
+    cpu_ctx_init(&thread->context, in_userspace, true);
     cpu_extra_ctx_init(&thread->extra_context);
 
     CPU_SP(&thread->context) = proc ? (register_t) user_stack : (register_t) thread->kernel_stack_top;
@@ -457,7 +457,7 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
 
     vmm_switch_context(&vmm_kernel_context);
 
-    struct thread* user_thread = sched_new_thread(entry, PAGE_SIZE * 16, 1, nullptr, stack);
+    struct thread* user_thread = sched_new_thread(entry, PAGE_SIZE * 16, 1, nullptr, true /* TODO: should be: proc != nullptr */, stack);
     assert(user_thread);
 
     // TODO: proc

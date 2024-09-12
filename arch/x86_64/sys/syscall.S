@@ -34,7 +34,7 @@ _syscall_count:
 
 .globl _syscall_entry
 _syscall_entry:
-    // swapgs
+    swapgs
 
     // save syscall number in cr2
     mov %rax, %cr2
@@ -150,6 +150,6 @@ _syscall_entry:
     pop %r11     // rflags
     pop %rsp
 
-    //swapgs
-
+    swapgs
     sysretq
+
