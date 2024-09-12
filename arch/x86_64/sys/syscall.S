@@ -1,28 +1,11 @@
-.extern _sys_test
+.extern _syscall_table
+.extern _syscall_count
 //.extern _sys_read
 //.extern _sys_write
 //.extern _sys_open
 //.extern _sys_close
 //.extern _sys_stat
 // ...
-
-.section .rodata
-
-.globl _syscall_table
-.align 8
-_syscall_table:
-    .quad _sys_test
-  //  .quad _sys_read
-  //  .quad _sys_write
-  //  .quad _sys_open
-  //  .quad _sys_close
-  //  .quad _sys_stat
-    // ...
-_syscall_table_end:
-
-.globl _syscall_count
-_syscall_count:
-    .quad (_syscall_table_end - _syscall_table) / 8
 
 .section .text
 
@@ -91,22 +74,22 @@ _syscall_entry:
     mov %rdi, %rsi
 
     sti
-    mov %rax, %rdi
     
     // TODO: log syscalls ?
     // call _syscall_log
     
+    mov %rax, %rdi
+    call _syscall_get_entry
+    
+    mov %rax, %rcx
+    mov %rdi, %rax
+    
     mov %rsp, %rdi
     add $8, %rdi
+    
+    // call the syscall handler
+    call *%rcx
 
-    cmp _syscall_count, %rax
-    jae .L.no_syscall
-    call *_syscall_table(,%rax,8)
-    jmp .L.return
-
-.L.no_syscall:
-    call _syscall_invalid
-.L.return:
     cli
 
     mov %rax, %rdi

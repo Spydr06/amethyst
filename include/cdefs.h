@@ -25,6 +25,8 @@
 #define __unused __attribute__((unused))
 #define __aligned(al) __attribute__((aligned(al)))
 #define __interrupt __attribute__ ((interrupt))
+#define __no_caller_saved_registers __attribute__((no_caller_saved_registers)) 
+#define __general_regs_only __attribute__((target("general-regs-only")))
 
 #define __low_ptr(ptr) ((void*) (((uintptr_t) (ptr)) + _KERNEL_BASE_)) 
 
