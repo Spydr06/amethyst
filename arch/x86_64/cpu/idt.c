@@ -17,9 +17,9 @@ extern void _idt_reload(volatile const struct idtr* idtr);
 extern void _interrupt_enable(void);
 extern void _interrupt_disable(void);
 
-#define SAVE_RUN_PENDING() _context_save_and_call(run_pending, nullptr)
+#define SAVE_RUN_PENDING() _context_save_and_call(run_pending, nullptr, nullptr)
 
-static void run_pending(struct cpu_context* ctx);
+static void run_pending(struct cpu_context* ctx, void* __unused);
 static inline void isr_enqueue(struct isr* isr);
 
 extern uint64_t _millis;
@@ -217,7 +217,7 @@ static inline void isr_dequeue(struct isr* isr) {
         isr->next->prev = isr->prev;
 }
 
-static void run_pending(struct cpu_context* ctx) {
+static void run_pending(struct cpu_context* ctx, void* __unused) {
     bool entry_status = _cpu()->interrupt_status;
     if(entry_status) {
         _interrupt_disable();
@@ -257,7 +257,7 @@ static void run_pending(struct cpu_context* ctx) {
         isr_run(isr, ctx);
 
         // TODO: _could_ lead to infinite recursion
-        run_pending(ctx);
+        run_pending(ctx, nullptr);
     }
 
 finish:
@@ -280,7 +280,7 @@ extern void __isr(struct cpu_context* ctx, register_t vector) {
 
     if(_cpu()->ipl > isr->priority) {
         isr_run(isr, ctx);
-        run_pending(ctx);
+        run_pending(ctx, nullptr);
     }
     else {
         isr_enqueue(isr);

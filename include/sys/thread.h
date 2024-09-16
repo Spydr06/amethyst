@@ -57,6 +57,8 @@ struct thread {
     struct cpu_context context;
     struct cpu_extra_context extra_context;
 
+    struct cpu_context* user_memcpy_context;
+
     struct {
         spinlock_t lock;
         struct stack stack;

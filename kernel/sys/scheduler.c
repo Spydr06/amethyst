@@ -488,10 +488,9 @@ extern __syscall void _sched_userspace_check(struct cpu_context* context, bool s
         .syscall_ret = syscall_ret
     };
 
-    // check if we are on the scheduler stack
+    // check if we are on the scheduler/kernel stack
     if((void*) &args < _cpu()->scheduler_stack && (void*) &args >= _cpu()->scheduler_stack - SCHEDULER_STACK_SIZE)
-        //unimplemented(); // switch stacks
-        _context_save_and_call(userspace_check_routine, _cpu()->thread->kernel_stack_top, &args);
+        _context_save_and_call(userspace_check_routine, _cpu()->thread->kernel_stack_top, &args); // switch to kernel stack first
     else
         userspace_check(&args);
 

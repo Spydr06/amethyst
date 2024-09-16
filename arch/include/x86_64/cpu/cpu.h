@@ -12,6 +12,7 @@
 
 #define CPU_SP(ctx) ((ctx)->rsp)
 #define CPU_IP(ctx) ((ctx)->rip)
+#define CPU_RET(ctx) ((ctx)->rax)
 
 #define CPU_CONTEXT_INTSTATUS(ctx) ((bool) ((ctx)->rflags & 0x200))
 
@@ -133,7 +134,7 @@ struct cpu_extra_context {
     uint32_t mxcsr;
 } __attribute__((packed));
 
-extern void _context_save_and_call(void (*fn)(struct cpu_context*, void*), void* stack, void* userp);
+extern int _context_save_and_call(void (*fn)(struct cpu_context*, void*), void* stack, void* userp);
 extern __noreturn void _context_switch(struct cpu_context* ctx);
 
 static __always_inline void cpu_ctx_init(struct cpu_context* ctx, bool u, bool interrupts) {
