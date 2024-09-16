@@ -49,9 +49,9 @@ struct ist {
 	uint64_t ist5;
 	uint64_t ist6;
 	uint64_t ist7;
-	uint32_t reserved3[3];
+	uint32_t reserved3[2];
 	uint32_t iopb;
-};
+} __attribute__((packed));
 
 struct cpu_features {
     bool sse_supported : 1;
@@ -133,7 +133,7 @@ struct cpu_extra_context {
     uint32_t mxcsr;
 } __attribute__((packed));
 
-extern void _context_save_and_call(void (*fn)(struct cpu_context*), void* stack);
+extern void _context_save_and_call(void (*fn)(struct cpu_context*, void*), void* stack, void* userp);
 extern __noreturn void _context_switch(struct cpu_context* ctx);
 
 static __always_inline void cpu_ctx_init(struct cpu_context* ctx, bool u, bool interrupts) {
@@ -156,12 +156,24 @@ static __always_inline void cpu_extra_ctx_init(struct cpu_extra_context* ctx) {
     ctx->fx[4] = 0;
 }
 
+static __always_inline
+#ifdef _AMETHYST_CPU_SYSCALLS_H
+    __no_caller_saved_registers __general_regs_only
+#endif
+bool cpu_ctx_is_user(struct cpu_context* ctx) {
+    return ctx->cs == 0x23;
+}
+
 static __always_inline void cpu_set(struct cpu* ptr) {
     ptr->this = ptr;
     wrmsr(MSR_GSBASE, (uintptr_t) &ptr->this);
 }
 
-static __always_inline struct cpu* _cpu(void) {
+static __always_inline 
+#ifdef _AMETHYST_CPU_SYSCALLS_H
+    __no_caller_saved_registers __general_regs_only
+#endif
+struct cpu* _cpu(void) {
     volatile struct cpu* cpu;
     __asm__ volatile (
         "mov %%gs:0, %%rax"

@@ -1,9 +1,9 @@
 .section .text
 .globl _start
 _start:
-    mov $0, %rax
-    syscall // test syscall
-
 .L.loop:
+    mov $1, %rax
+    syscall
+
     jmp .L.loop
 

@@ -2,30 +2,20 @@
 
 .macro isr_err_stub num
 isr_stub_\num:
-    save_context
-    mov %rsp, %rdi
-    mov $\num, %rsi
-    cld
-    call __isr
-    restore_context
-    iretq
+    push %rbp
+    mov $\num, %rbp
+    jmp __isr_common
 .endm
 
 .macro isr_no_err_stub num
 isr_stub_\num:
-    push $0
-    save_context
-    mov %rsp, %rdi
-    mov $\num, %rsi
-    cld
-    call __isr
-    restore_context
-    add $8, %rsp
-    iretq
+    pushq $0
+    push %rbp
+    mov $\num, %rbp
+    jmp __isr_common
 .endm
 
 .macro save_context
-    push %rbp
     push %rsi
     push %rdi
     push %r15
@@ -611,4 +601,36 @@ _interrupt_disable:
 _interrupt_enable:
     sti
     ret
+
+.globl __isr_common
+__isr_common:
+    cmpq $0x23, 24(%rsp) 
+    jne .L.not_needed.1
+    swapgs
+.L.not_needed.1:
+
+    save_context
+    
+    // setup kernel segments
+    mov $0x10, %rdi
+    mov %rdi, %ds
+    mov %rdi, %es
+
+    // save ctx pointer and isr num
+    mov %rsp, %rdi // ctx
+    mov %rbp, %rsi // isr num
+
+    cld
+    call __isr
+    cli
+
+    restore_context
+
+    add $8, %rsp // remove error code
+
+    cmpq $0x23, 8(%rsp)
+    jne .L.not_needed.2
+    swapgs
+.L.not_needed.2:
+    iretq
 

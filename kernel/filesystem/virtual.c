@@ -7,7 +7,7 @@
 #include <sys/mutex.h>
 #include <sys/semaphore.h>
 #include <sys/thread.h>
-#include <sys/scheduler.h>
+#include <sys/proc.h>
 
 #include <kernelio.h>
 #include <assert.h>

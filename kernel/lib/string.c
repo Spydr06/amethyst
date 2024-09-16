@@ -236,7 +236,7 @@ char* strcat(char* restrict dest, const char* restrict src) {
 
 char* strerror(int errnum) {
     switch(errnum) {
-    case 0:           return "No error information";
+    case 0:           return "Success";
 
     case EILSEQ:      return "Illegal byte sequence";
     case EDOM:        return "Domain error";

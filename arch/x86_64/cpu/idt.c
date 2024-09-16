@@ -1,3 +1,4 @@
+#include "sys/scheduler.h"
 #include <x86_64/cpu/idt.h>
 #include <x86_64/dev/pic.h>
 #include <x86_64/cpu/cpu.h>
@@ -67,6 +68,10 @@ static const char *exception_names[] = {
 
 static void load_default(void);
 
+static void tick(struct cpu_context* status __unused) {
+    _millis++;
+}
+
 void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags) {
     idt[vector].offset_1 = (uintptr_t) isr & 0xffff;
     idt[vector].offset_2 = ((uintptr_t) isr >> 16) & 0xffff;
@@ -84,6 +89,8 @@ void init_interrupts(void) {
     }
     
     interrupts_apinit();
+    
+    interrupt_register(PIT_INTERRUPT, tick, pic_send_eoi, IPL_TIMER);
 }
 
 void interrupts_apinit(void) {
@@ -99,10 +106,6 @@ void idt_reload(void) {
     _idt_reload(&idtr);
 }
 
-static void tick(struct cpu_context* status __unused) {
-    _millis++;
-}
-
 static void double_fault_handler(struct cpu_context* status) {
     klog(ERROR, "Double Fault at %p.", (void*) status->error_code);
 }
@@ -112,7 +115,6 @@ static void divide_error_handler(struct cpu_context* status) {
 }
 
 static void load_default(void) {
-    interrupt_register(PIT_INTERRUPT, tick, pic_send_eoi, IPL_TIMER);
     interrupt_register(PAGE_FAULT, page_fault_handler, nullptr, IPL_NORMAL);
     interrupt_register(DOUBLE_FAULT, double_fault_handler, nullptr, IPL_NORMAL);
     interrupt_register(DIVIDE_ERROR, divide_error_handler, nullptr, IPL_NORMAL);
@@ -276,10 +278,6 @@ extern void __isr(struct cpu_context* ctx, register_t vector) {
             panic("Unhandled Interrupt %llu.", (unsigned long long) vector);
     }
 
-    if(isr->eoi_handler)
-        isr->eoi_handler(vector);
-
-    // TODO: user-space checks
     if(_cpu()->ipl > isr->priority) {
         isr_run(isr, ctx);
         run_pending(ctx);
@@ -288,6 +286,12 @@ extern void __isr(struct cpu_context* ctx, register_t vector) {
         isr_enqueue(isr);
         isr->pending = true;
     }
+
+    if(isr->eoi_handler)
+        isr->eoi_handler(vector);
+
+    if(cpu_ctx_is_user(ctx))
+        _sched_userspace_check(ctx, false, 0, 0);
 
     _cpu()->interrupt_status = CPU_CONTEXT_INTSTATUS(ctx);
 }

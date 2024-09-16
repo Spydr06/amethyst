@@ -1,6 +1,12 @@
-#include "ff/elf.h"
+#include "mem/heap.h"
+#include "sys/fd.h"
+#include "sys/semaphore.h"
+#include "sys/syscall.h"
+#include "x86_64/cpu/cpu.h"
+#include "x86_64/cpu/idt.h"
 #include <sys/scheduler.h>
 #include <sys/thread.h>
+#include <sys/proc.h>
 #include <sys/mutex.h>
 #include <sys/spinlock.h>
 #include <sys/dpc.h>
@@ -8,6 +14,7 @@
 #include <cpu/cpu.h>
 #include <mem/slab.h>
 #include <mem/vmm.h>
+#include <ff/elf.h>
 
 #include <hashtable.h>
 #include <kernelio.h>
@@ -26,6 +33,13 @@
 struct run_queue {
     struct thread* head;
     struct thread* last;
+};
+
+struct check_args {
+    struct cpu_context* context;
+    bool syscall;
+    uint64_t syscall_errno;
+    uint64_t syscall_ret;
 };
 
 static struct scache* thread_cache;
@@ -224,7 +238,7 @@ static void timeout(struct cpu_context* ctx __unused, dpc_arg_t arg) {
     sched_wakeup((struct thread*) arg, 0);
 }
 
-static void _yield(struct cpu_context* context) {
+static void _yield(struct cpu_context* context, void* __unused) {
     struct thread* thread = _cpu()->thread;
 
     spinlock_acquire(&run_queue_lock);
@@ -310,7 +324,7 @@ int sched_yield(void) {
     bool sleeping = _cpu()->thread->flags & THREAD_FLAGS_SLEEP;
     bool old = sleeping ? _cpu()->thread->sleep_interrupt_status : interrupt_set(false);
 
-    _context_save_and_call(_yield, _cpu()->scheduler_stack);
+    _context_save_and_call(_yield, _cpu()->scheduler_stack, nullptr);
     interrupt_set(old);
 
     return sleeping ? _cpu()->thread->wakeup_reason : 0;
@@ -332,9 +346,9 @@ void scheduler_init(void) {
 
     spinlock_init(run_queue_lock);
 
-    _cpu()->idle_thread = sched_new_thread(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, false, nullptr);
+    _cpu()->idle_thread = sched_new_thread(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr);
     assert(_cpu()->idle_thread);
-    _cpu()->thread = sched_new_thread(nullptr, PAGE_SIZE * 32, 0, nullptr, false, nullptr);
+    _cpu()->thread = sched_new_thread(nullptr, PAGE_SIZE * 32, 0, nullptr, nullptr);
     assert(_cpu()->thread);
 
     // install scheduling timer
@@ -350,7 +364,7 @@ void scheduler_apentry(void) {
     assert(_cpu()->scheduler_stack);
     _cpu()->scheduler_stack = (void*)((uintptr_t) _cpu()->scheduler_stack + SCHEDULER_STACK_SIZE);
 
-    _cpu()->idle_thread = sched_new_thread(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, false, nullptr);
+    _cpu()->idle_thread = sched_new_thread(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr);
     assert(_cpu()->idle_thread);
 
     // install scheduling timer
@@ -360,7 +374,7 @@ void scheduler_apentry(void) {
     timer_resume(_cpu()->timer);
 }
 
-struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, bool in_userspace, void* user_stack) {
+struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack) {
     struct thread* thread = slab_alloc(thread_cache);
     if(!thread)
         return nullptr;
@@ -384,7 +398,7 @@ struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority
         thread->tid = __atomic_fetch_add(&current_pid, 1, __ATOMIC_SEQ_CST);
     }
 
-    cpu_ctx_init(&thread->context, in_userspace, true);
+    cpu_ctx_init(&thread->context, proc, true);
     cpu_extra_ctx_init(&thread->extra_context);
 
     CPU_SP(&thread->context) = proc ? (register_t) user_stack : (register_t) thread->kernel_stack_top;
@@ -396,8 +410,92 @@ struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority
     return thread;
 }
 
-// called from `_context_switch()`
-extern void _sched_userspace_check(void) {
+struct proc* sched_new_proc(void) {
+    struct proc* proc = slab_alloc(proc_cache);
+    if(!proc)
+        return nullptr;
+
+    memset(proc, 0, sizeof(struct proc));
+
+    mutex_init(&proc->mutex);
+    spinlock_init(proc->nodes_lock);
+    
+    proc->pid = __atomic_fetch_add(&current_pid, 1, __ATOMIC_SEQ_CST);
+
+    proc->ref_count = 1;
+    proc->state = PROC_STATE_NORMAL;
+    proc->running_thread_count = 1;
+    
+    proc->fd_count = 3;
+    proc->fd_first = 1;
+    mutex_init(&proc->fd_mutex);
+
+    proc->fd = kmalloc(sizeof(struct fd) * proc->fd_count);
+    if(!proc->fd) {
+        slab_free(proc_cache, proc);
+        return nullptr;
+    }
+
+    proc->umask = 022;
+    
+    semaphore_init(&proc->wait_sem, 0);
+
+    mutex_acquire(&sched_pid_table_mutex, false);
+    if(hashtable_set(&pid_table, proc, &proc->pid, sizeof(pid_t), true)) {
+        mutex_release(&sched_pid_table_mutex);
+        kfree(proc->fd);
+        slab_free(proc_cache, proc);
+        return nullptr;
+    }
+    mutex_release(&sched_pid_table_mutex);
+
+    return proc;
+}
+
+static void userspace_check(struct check_args* args) {
+    if(_cpu()->thread->should_exit) {
+        interrupt_set(true);
+        // THREAD EXIT
+        unimplemented();
+    }
+
+    // TODO: check signals
+}
+
+static void userspace_check_routine(struct cpu_context* ctx, void* userp) {
+    assert(!CPU_CONTEXT_INTSTATUS(ctx));
+
+    struct check_args* args = userp;
+    userspace_check(args);
+    _cpu()->interrupt_status = CPU_CONTEXT_INTSTATUS(args->context);
+
+    _context_switch(args->context);
+}
+
+// called from `_context_switch()` and `_syscall_entry()`
+extern __syscall void _sched_userspace_check(struct cpu_context* context, bool syscall, uint64_t syscall_errno, uint64_t syscall_ret) {
+    assert(_cpu());
+    if(!_cpu()->thread || !cpu_ctx_is_user(context))
+        return;
+
+//    klog(ERROR, "in _sched_userspace_check()");
+    bool int_status = interrupt_set(false);
+
+    struct check_args args = {
+        .context = context,
+        .syscall = syscall,
+        .syscall_errno = syscall_errno,
+        .syscall_ret = syscall_ret
+    };
+
+    // check if we are on the scheduler stack
+    if((void*) &args < _cpu()->scheduler_stack && (void*) &args >= _cpu()->scheduler_stack - SCHEDULER_STACK_SIZE)
+        //unimplemented(); // switch stacks
+        _context_save_and_call(userspace_check_routine, _cpu()->thread->kernel_stack_top, &args);
+    else
+        userspace_check(&args);
+
+    _cpu()->interrupt_status = int_status;
 }
 
 #define STACK_TOP        ((void*) 0x0000800000000000)
@@ -432,7 +530,8 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
 
     vmm_switch_context(vmm_ctx);
 
-    // TODO: proc
+    struct proc* proc = sched_new_proc();
+    assert(proc);
     
     struct vnode* exec_node;
     int err = vfs_open(vfs_root, path, 0, &exec_node);
@@ -457,7 +556,7 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
 
     vmm_switch_context(&vmm_kernel_context);
 
-    struct thread* user_thread = sched_new_thread(entry, PAGE_SIZE * 16, 1, nullptr, true /* TODO: should be: proc != nullptr */, stack);
+    struct thread* user_thread = sched_new_thread(entry, PAGE_SIZE * 16, 1, proc, stack);
     assert(user_thread);
 
     // TODO: proc

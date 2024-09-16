@@ -66,6 +66,7 @@ _syscall_entry:
     mov %rbx, %es
     mov %rbx, %ds
 
+    // prepare arguments
     push %r9
     mov %r8, %r9
     mov %r10, %r8
@@ -75,27 +76,26 @@ _syscall_entry:
 
     sti
     
-    // TODO: log syscalls ?
-    // call _syscall_log
-    
     mov %rax, %rdi
+    call _syscall_log
+    
     call _syscall_get_entry
     
-    mov %rax, %rcx
+    mov %rax, %r10
     mov %rdi, %rax
     
     mov %rsp, %rdi
     add $8, %rdi
     
     // call the syscall handler
-    call *%rcx
+    call *%r10
 
     cli
 
     mov %rax, %rdi
     mov %rdx, %rsi
 
-    // TODO: log syscalls?
+    call _syscall_log_return
 
     mov %rsp, %rdi
     add $8, %rdi

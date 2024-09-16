@@ -5,14 +5,7 @@
 #include <cdefs.h>
 
 #include <sys/thread.h>
-#include <filesystem/virtual.h>
-
-#define PROC_HOLD(v) (__atomic_add_fetch(&(v)->ref_count, 1, __ATOMIC_SEQ_CST))
-
-struct proc {
-    int ref_count;
-    struct cred cred;
-};
+#include <sys/syscall.h>
 
 void scheduler_init(void);
 void scheduler_apentry(void);
@@ -28,7 +21,9 @@ int sched_yield(void);
 
 int scheduler_exec(const char* path, char* argv[], char* envp[]);
 
-struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, bool in_userspace, void* user_stack);
+struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack);
+
+__syscall void _sched_userspace_check(struct cpu_context* context, bool syscall, uint64_t syscall_errno, uint64_t syscall_ret);
 
 #endif /* _AMETHYST_SYS_SCHEDULER */
 

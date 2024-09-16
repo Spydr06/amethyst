@@ -27,6 +27,8 @@ const struct syscall_entry _syscall_table[] = {
     _SYS_E(test)    
 };
 
+const size_t _syscall_count = __len(_syscall_table);
+
 extern __syscall syscall_t _syscall_get_entry(size_t i) {
     return i < __len(_syscall_table) ? _syscall_table[i].syscall : _syscall_invalid;
 }
@@ -38,8 +40,7 @@ const char* _syscall_get_name(size_t i) {
 bool syscalls_init(void)
 {
     if(_cpu()->features.syscall_supported) {
-        uint64_t star = 0x13ul << 48 | 0x08ul << 32;
-        wrmsr(MSR_STAR, star);
+        wrmsr(MSR_STAR,  (uint64_t) 0x13 << 48 | (uint64_t) 0x08 << 32);
         wrmsr(MSR_LSTAR, (uintptr_t) _syscall_entry);
         wrmsr(MSR_CSTAR, 0);
         wrmsr(MSR_FMASK, 0x200);
