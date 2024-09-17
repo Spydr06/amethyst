@@ -6,6 +6,11 @@ _start:
     mov $msg, %rsi
     mov $13, %rdx
     syscall
+
+    mov $60, %rax
+    mov $0, %rdi
+    syscall
+
 .L.loop:
     jmp .L.loop
 

@@ -37,6 +37,7 @@ struct proc {
     spinlock_t nodes_lock;
 
     semaphore_t wait_sem;
+    spinlock_t exiting;
 };
 
 #endif /* _AMETHYST_SYS_PROC_H */

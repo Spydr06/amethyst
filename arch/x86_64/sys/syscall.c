@@ -9,18 +9,21 @@
 #include <cdefs.h>
 #include <kernelio.h>
 
-#define _SYS_E(_name) [_SYS_##_name] = ((struct syscall_entry){ \
-        .syscall = (syscall_t) _sys_##_name,                    \
-        .name = #_name,                                         \
+#define _SYS_E(_name, _fmt) [_SYS_##_name] = ((struct syscall_entry){   \
+        .syscall = (syscall_t) _sys_##_name,                            \
+        .name = #_name,                                                 \
+        .debug_fmt = _fmt                                               \
     })
 
 struct syscall_entry {
     syscall_t syscall;
     const char* name;
+    const char* debug_fmt;
 };
 
 const struct syscall_entry _syscall_table[] = {
-    _SYS_E(knldebug)
+    _SYS_E(exit,     "%ld"         ),
+    _SYS_E(knldebug, "%ld, %p, %ld")
 };
 
 const size_t _syscall_count = __len(_syscall_table);
@@ -31,6 +34,10 @@ extern __syscall syscall_t _syscall_get_entry(size_t i) {
 
 const char* _syscall_get_name(size_t i) {
     return i < __len(_syscall_table) && _syscall_table[i].syscall ? _syscall_table[i].name : "invalid";
+}
+
+const char* _syscall_get_debug_fmt(size_t i) {
+    return i < __len(_syscall_table) && _syscall_table[i].syscall ? _syscall_table[i].debug_fmt : " N/A";
 }
 
 bool syscalls_init(void)

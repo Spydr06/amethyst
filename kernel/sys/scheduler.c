@@ -410,6 +410,51 @@ struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority
     return thread;
 }
 
+static void _internal_thread_exit(struct cpu_context* __unused, void* __unused) {
+    struct thread* thread = _cpu()->thread;
+    _cpu()->thread = nullptr;
+
+    interrupt_set(false);
+    spinlock_acquire(&run_queue_lock);
+    thread->flags |= THREAD_FLAGS_DEAD;
+    spinlock_release(&run_queue_lock);
+
+    sched_stop_thread();
+}
+
+static __noreturn void sched_thread_exit(void) {
+    struct thread* thread = _cpu()->thread;
+    assert(thread);
+
+    struct proc* proc = thread->proc;
+
+    struct vmm_context* old_ctx = thread->vmm_context;
+    vmm_switch_context(&vmm_kernel_context);
+
+    if(proc) {
+        __atomic_fetch_sub(&proc->running_thread_count, 1, __ATOMIC_SEQ_CST);
+        assert(old_ctx != &vmm_kernel_context);
+
+        if(!proc->running_thread_count) {
+            if(thread->should_exit)
+                proc->status = -1;
+
+//            sched_proc_exit();
+//            vmm_destroy_context(old_ctx);
+//            PROC_RELEASE(proc);
+            here();
+        }
+    }
+
+    interrupt_set(false);
+    _context_save_and_call(_internal_thread_exit, _cpu()->scheduler_stack, nullptr);
+    unreachable();
+}
+
+static void sched_stop_other_threads(void) {
+    // TODO:
+}
+
 struct proc* sched_new_proc(void) {
     struct proc* proc = slab_alloc(proc_cache);
     if(!proc)
@@ -568,5 +613,17 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
     // proc_release(&proc);
 
     return 0;
+}
+
+void scheduler_terminate(int status) {
+    struct thread* thread = _cpu()->thread;
+    struct proc* proc = thread->proc;
+    if(!spinlock_try(&proc->exiting))
+        sched_thread_exit();
+
+    sched_stop_other_threads();
+    proc->status = status;
+
+    sched_thread_exit();
 }
 
