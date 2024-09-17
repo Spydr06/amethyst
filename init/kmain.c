@@ -1,3 +1,4 @@
+#include "sys/syscall_log.h"
 #include <cpu/cpu.h>
 #include <drivers/pci/pci.h>
 #include <drivers/video/vga.h>
@@ -12,7 +13,6 @@
 #include <mem/vmm.h>
 #include <sys/scheduler.h>
 #include <sys/subsystems/shard.h>
-#include <sys/syscall.h>
 #include <sys/tty.h>
 
 #include <kernelio.h>
@@ -45,6 +45,8 @@ static void color_test(void) {
 void kmain(size_t cmdline_size, const char* cmdline)
 {
     cmdline_parse(cmdline_size, cmdline);
+
+    syscall_log_set(cmdline_get("log-syscalls") != nullptr);
     
     vmm_cache_init();
 

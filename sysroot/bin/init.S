@@ -3,7 +3,7 @@
 _start:
     mov $255, %rax
     mov $4, %rdi
-    mov $hello_world, %rsi
+    mov $msg, %rsi
     mov $13, %rdx
     syscall
 .L.loop:
@@ -11,7 +11,8 @@ _start:
 
 .section .rodata
 .globl msg
-hello_world:
+msg:
     .ascii "Hello, World!"
     .byte 0
-
+msg_end:
+.set msg_length, msg_end - msg

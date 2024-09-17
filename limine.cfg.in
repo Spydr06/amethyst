@@ -8,4 +8,4 @@ TIMEOUT=5
     # Path to the kernel to boot. boot:/// represents the partition on which limine.cfg is located.
     KERNEL_PATH=boot:///boot/@KERNEL_ELF@
     MODULE_PATH=boot:///boot/initrd
-    KERNEL_CMDLINE=initrd=/boot/initrd rootfs=tmpfs
+    KERNEL_CMDLINE=initrd=/boot/initrd rootfs=tmpfs log-syscalls

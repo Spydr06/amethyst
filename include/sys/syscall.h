@@ -19,7 +19,7 @@ typedef struct {
     uint64_t _errno;
 } syscallret_t;
 
-typedef syscallret_t (*syscall_t)(void) __no_caller_saved_registers;
+typedef syscallret_t (*syscall_t)() __no_caller_saved_registers;
 
 extern const size_t _syscall_count;
 
