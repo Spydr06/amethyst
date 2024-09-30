@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <math.h>
 
-__syscall syscallret_t _sys_write(struct cpu_context* ctx, int fd, void* buffer, size_t size) {
+__syscall syscallret_t _sys_write(struct cpu_context* __unused, int fd, void* buffer, size_t size) {
     syscallret_t ret = {
         .ret = -1,
         ._errno = 0

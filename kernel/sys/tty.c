@@ -107,7 +107,7 @@ void tty_process(struct tty* tty, char c) {
 
     // TODO: buffers and other flags
 
-    tty->write_to_device(tty->device_internal, &c, 1);
+    tty->write_to_device(tty->device_internal, &echo_char, 1);
 }
 
 struct tty* tty_create(const char* name, ttydev_write_fn_t write_fn, tty_inactive_fn_t inactive_fn, void* internal) {

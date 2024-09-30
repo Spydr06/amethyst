@@ -499,7 +499,7 @@ struct proc* sched_new_proc(void) {
     return proc;
 }
 
-static void userspace_check(struct check_args* args) {
+static void userspace_check(struct check_args* __unused) {
     if(_cpu()->thread->should_exit) {
         interrupt_set(true);
         // THREAD EXIT

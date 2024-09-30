@@ -93,7 +93,7 @@ static void remove_page(struct page* page) {
     cached_pages--;
 }
 
-int vmm_cache_truncate(struct vnode* vnode, uintmax_t offset) {
+int vmm_cache_truncate(struct vnode* vnode __unused, uintmax_t offset __unused) {
     unimplemented();
 }
 

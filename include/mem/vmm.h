@@ -17,12 +17,13 @@
 #define VMM_RANGES_PER_CACHE ((PAGE_SIZE - sizeof(struct vmm_cache_header)) / sizeof(struct vmm_range))
 
 enum vmm_flags : uint8_t {
-    VMM_FLAGS_PAGESIZE = 1,
-    VMM_FLAGS_ALLOCATE = 2,
-    VMM_FLAGS_PHYSICAL = 4,
-    VMM_FLAGS_FILE     = 8,
-    VMM_FLAGS_EXACT    = 16,
-    VMM_FLAGS_SHARED   = 32,
+    VMM_FLAGS_PAGESIZE  = 1,
+    VMM_FLAGS_ALLOCATE  = 2,
+    VMM_FLAGS_PHYSICAL  = 4,
+    VMM_FLAGS_FILE      = 8,
+    VMM_FLAGS_EXACT     = 16,
+    VMM_FLAGS_SHARED    = 32,
+    VMM_FLAGS_CREDCHECK = 64,
 
     VMM_PERMANENT_FLAGS_MASK = (VMM_FLAGS_FILE | VMM_FLAGS_SHARED)
 };

@@ -11,8 +11,10 @@
 #define __syscall __no_caller_saved_registers __general_regs_only
 
 enum syscall {
-    _SYS_READ     = 0,
+    _SYS_read     = 0,
     _SYS_write    = 1,
+    _SYS_open     = 2,
+    _SYS_close    = 3,
     _SYS_exit     = 60,
     _SYS_knldebug = 255
 };

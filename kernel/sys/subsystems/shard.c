@@ -12,9 +12,9 @@ static struct shard_context context;
 
 #define CURRENT_SYSTEM "amethyst-x86_64"
 
-static void print_error(struct shard_error* error) {
-    klog(ERROR, "%s:%d:%d: %s", error->loc.src->origin, error->loc.line, error->loc.offset, error->err);
-}
+//static void print_error(struct shard_error* error) {
+//    klog(ERROR, "%s:%d:%d: %s", error->loc.src->origin, error->loc.line, error->loc.offset, error->err);
+//}
 
 void shard_subsystem_init(void) {
     spinlock_init(context_lock);

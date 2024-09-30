@@ -46,6 +46,12 @@ enum vattr_bitflags {
     V_ATTR_ALL = V_ATTR_MODE | V_ATTR_UID | V_ATTR_GID | V_ATTR_ATIME | V_ATTR_MTIME | V_ATTR_CTIME
 };
 
+enum vaccess {
+    V_ACCESS_EXECUTE = 1,
+    V_ACCESS_WRITE = 2,
+    V_ACCESS_READ = 4
+};
+
 struct cred {
     uid_t uid;
     gid_t gid;
@@ -166,6 +172,10 @@ static inline void vop_lock(struct vnode* node) {
 
 static inline void vop_unlock(struct vnode* node) {
     mutex_release(&node->lock);
+}
+
+static inline int vop_access(struct vnode* node, mode_t mode, struct cred* cred) {
+    return node->ops->access(node, mode, cred);
 }
 
 static inline uintmax_t vop_hold(struct vnode* node) {

@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <math.h>
 
-extern __syscall syscallret_t _sys_knldebug(struct cpu_context* ctx, enum klog_severity severity, const char* user_buffer, size_t buffer_size) {
+extern __syscall syscallret_t _sys_knldebug(struct cpu_context* __unused, enum klog_severity severity, const char* user_buffer, size_t buffer_size) {
     if(!user_buffer)
         return (syscallret_t) {
             ._errno = EINVAL,
