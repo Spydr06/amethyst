@@ -31,7 +31,9 @@ typedef uint64_t* page_table_ptr_t;
 
 void mmu_init(struct mmap* mmap);
 void mmu_apswitch(void);
+
 page_table_ptr_t mmu_new_table(void);
+void mmu_destroy_table(page_table_ptr_t table);
 
 bool mmu_map(page_table_ptr_t table, void* paddr, void* vaddr, enum mmu_flags flags);
 void mmu_unmap(page_table_ptr_t table, void* vaddr);

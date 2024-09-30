@@ -11,6 +11,7 @@
 #include <filesystem/virtual.h>
 
 #define PROC_HOLD(v) (__atomic_add_fetch(&(v)->ref_count, 1, __ATOMIC_SEQ_CST))
+#define PROC_RELEASE(v) (__atomic_sub_fetch(&(v)->ref_count, 1, __ATOMIC_SEQ_CST))
 
 enum proc_state {
     PROC_STATE_NORMAL,

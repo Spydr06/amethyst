@@ -6,6 +6,7 @@
 
 #include <kernelio.h>
 #include <assert.h>
+#include <errno.h>
 #include <math.h>
 
 #define RANGE_TOP(range) ((void*) ((uintptr_t) (range)->start + (range)->size))
@@ -26,7 +27,7 @@ static void free_range(struct vmm_range* range);
 static struct vmm_range* alloc_range(void);
 static void* get_free_range(struct vmm_space* space, void* addr, size_t offset);
 static void insert_range(struct vmm_space* space, struct vmm_range* range);
-static void unmap(struct vmm_space* space, void* addr, size_t size);
+static int change_map(struct vmm_space* space, void* addr, size_t size, bool free, enum vmm_flags flags, enum mmu_flags new_mmu_flags);
 
 void vmm_init(struct mmap* mmap) {
     mutex_init(&kernel_space.lock);
@@ -80,6 +81,18 @@ struct vmm_context* vmm_context_new(void) {
     }
     
     return ctx;
+}
+
+void vmm_context_destroy(struct vmm_context* context) {
+    if(!context)
+        return;
+
+    struct vmm_context* old_ctx = _cpu()->thread->vmm_context;
+    vmm_switch_context(context);
+    vmm_unmap(context->space.start, context->space.end - context->space.start, 0);
+    vmm_switch_context(old_ctx);
+    mmu_destroy_table(context->page_table);
+    slab_free(ctx_cache, context);
 }
 
 void vmm_switch_context(struct vmm_context* context) {
@@ -187,11 +200,9 @@ void vmm_unmap(void* addr, size_t size, enum vmm_flags flags) {
     if(!space)
         return;
 
-    mutex_acquire(&space->pflock, false);
     mutex_acquire(&space->lock, false);
-    unmap(space, addr, size);
+    change_map(space, addr, size, true, flags, 0);
     mutex_release(&space->lock);
-    mutex_release(&space->pflock);
 }
 
 static struct vmm_cache* new_cache(void) {
@@ -365,10 +376,34 @@ fragmentation_check:
     }
 }
 
-static void unmap(struct vmm_space* space, void* addr, size_t size) {
-    (void) space;
-    (void) addr;
-    (void) size;
-    unimplemented();
-}
+static int change_map(struct vmm_space* space, void* addr, size_t size, bool free, enum vmm_flags flags, enum mmu_flags new_mmu_flags) {
+    void* top = addr + size;
+    struct vmm_range* range = space->ranges;
+    struct vmm_range* new_range = nullptr;
+
+    if(!free) {
+        new_range = alloc_range();
+        if(!new_range)
+            return ENOMEM;
+    }
+
+    int err = 0;
+
+    while(range) {
+        assert(range != space->ranges || !range->prev);
+        void* range_top = RANGE_TOP(range);
+
+        if(range->start >= addr && range_top <= top) {
+            if(free) {
+                
+            }
+        }
+    }
+
+finish:
+    if(!free)
+        free_range(new_range);
+
+    return err;
+} 
 

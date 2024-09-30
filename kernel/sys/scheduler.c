@@ -1,3 +1,5 @@
+#include "filesystem/device.h"
+#include "filesystem/virtual.h"
 #include "mem/heap.h"
 #include "sys/fd.h"
 #include "sys/semaphore.h"
@@ -440,8 +442,8 @@ static __noreturn void sched_thread_exit(void) {
                 proc->status = -1;
 
 //            sched_proc_exit();
-//            vmm_destroy_context(old_ctx);
-//            PROC_RELEASE(proc);
+            vmm_context_destroy(old_ctx);
+            PROC_RELEASE(proc);
             here();
         }
     }
@@ -592,8 +594,30 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
     if((err = load_interpreter(interpreter, &entry)))
         return err;
 
-    // TODO: fd allocation
+    struct vnode* tty_node;
+    assert(devfs_find("tty0", &tty_node) == 0);
+    vop_lock(tty_node);
+    assert(vop_open(&tty_node, V_FFLAGS_READ | V_FFLAGS_NOCTTY, &proc->cred) == 0);
+    vop_hold(tty_node);
+    assert(vop_open(&tty_node, V_FFLAGS_WRITE | V_FFLAGS_NOCTTY, &proc->cred) == 0);
+    vop_hold(tty_node);
+    assert(vop_open(&tty_node, V_FFLAGS_WRITE | V_FFLAGS_NOCTTY, &proc->cred) == 0);
+    vop_unlock(tty_node);
 
+    struct file* stdin  = fd_allocate();
+    struct file* stdout = fd_allocate();
+    struct file* stderr = fd_allocate();
+
+    stdin->vnode = stdout->vnode = stderr->vnode = tty_node;
+    stdin->mode = stdout->mode = stderr->mode = 0644;
+
+    stdin->flags = FILE_READ;
+    stdout->flags = stderr->flags = FILE_WRITE;
+
+    proc->fd[0] = (struct fd){.file = stdin,  .flags = 0};
+    proc->fd[1] = (struct fd){.file = stdout, .flags = 0};
+    proc->fd[2] = (struct fd){.file = stderr, .flags = 0};
+    
     void* stack = elf_prepare_stack(STACK_TOP, &auxv, argv, envp);
     if(!stack)
         return ENOMEM;
@@ -624,6 +648,9 @@ void scheduler_terminate(int status) {
     sched_stop_other_threads();
     proc->status = status;
 
+    if(proc->pid == 1)
+        panic("`init` process (pid 1) terminated. This should never happen!");
+    
     sched_thread_exit();
 }
 

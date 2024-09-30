@@ -1,3 +1,4 @@
+#include "kernelio.h"
 #include <filesystem/device.h>
 #include <filesystem/virtual.h>
 
@@ -25,8 +26,10 @@ static struct vfsops vfsops = {
 
 static struct vops vnode_ops = {
     .create = devfs_create,
+    .open = devfs_open,
     .setattr = devfs_setattr,
     .inactive = devfs_inactive,
+    .lookup = devfs_lookup,
 };
 
 static void ctor(struct scache* cache __unused, void* obj) {
@@ -128,6 +131,39 @@ int devfs_get_root(struct vfs* vfs, struct vnode** node) {
     devfs_root->vnode.vfs = vfs;
     *node = (struct vnode*) devfs_root;
     return 0;
+}
+
+int devfs_lookup(struct vnode* node, const char* name, struct vnode** result, struct cred* __unused) {
+    struct dev_node* dev_node = (struct dev_node*) node;
+    if(node->type != V_TYPE_DIR)
+        return ENOTDIR;
+
+    void* v;
+    mutex_acquire(&node->lock, false);
+
+    mutex_acquire(&table_mutex, false);
+    int err = hashtable_get(&dev_node->children, &v, name, strlen(name));
+    mutex_release(&table_mutex);
+
+    if(err) {
+        mutex_release(&node->lock);
+        return err;
+    }
+
+    struct vnode* rnode = v;
+    vop_hold(rnode);
+
+    mutex_release(&node->lock);
+    *result = rnode;
+
+    return 0;
+}
+
+int devfs_find(const char* name, struct vnode** dest) {
+    int err = vfs_lookup(dest, (struct vnode*) devfs_root, name, nullptr, 0);
+    if(!err)
+        vop_unlock(*dest);
+    return err;
 }
 
 int devfs_mount(struct vfs** vfs, struct vnode* mount_point __unused, struct vnode* backing __unused, void* data __unused) {
@@ -232,6 +268,21 @@ int devfs_create(struct vnode* parent, const char* name, struct vattr* attr, int
     *result = &node->vnode;
 
     return 0;
+}
+
+int devfs_open(struct vnode** nodep, int flags, struct cred* __unused) {
+    struct dev_node* dev_node = (struct dev_node*) *nodep;
+
+    if((*nodep)->type != V_TYPE_CHDEV && (*nodep)->type != V_TYPE_BLKDEV)
+        return 0;
+
+    if(dev_node->master)
+        dev_node = dev_node->master;
+
+    if(dev_node->devops->open == nullptr)
+        return 0;
+
+    return dev_node->devops->open(dev_node->vattr.rdev_minor, nodep, flags);
 }
 
 int devfs_getnode(struct vnode* physical, int major, int minor, struct vnode** node) {

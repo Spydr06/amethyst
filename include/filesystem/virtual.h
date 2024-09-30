@@ -21,7 +21,8 @@ enum vfflags {
     V_FFLAGS_NONBLOCKING    = 4,
     V_FFLAGS_SHARED         = 8,
     V_FFLAGS_EXEC           = 16,
-    V_FFLAGS_NOCACHE        = 32,
+    V_FFLAGS_NOCTTY         = 32,
+    V_FFLAGS_NOCACHE        = 64,
 };
 
 enum vtype {

@@ -222,6 +222,27 @@ page_table_ptr_t mmu_new_table(void) {
     return table;
 }
 
+static void _destroy(uint64_t* table, int depth) {
+    for(size_t i = 0; i < (depth == 3 ? 256 : 512); i++) {
+        void* addr = (void*) (table[i] & ADDRMASK);
+        if(!addr)
+            continue;
+
+        if(depth > 0)
+            _destroy(MAKE_HHDM(addr), depth - 1);
+
+        pmm_release(addr);
+    }
+}
+
+void mmu_destroy_table(page_table_ptr_t table) {
+    if(!table)
+        return;
+
+    _destroy(MAKE_HHDM(table), 3);
+    pmm_release(table);
+}
+
 bool mmu_map(page_table_ptr_t table, void* paddr, void* vaddr, enum mmu_flags flags) {
     uint64_t entry = ((uintptr_t) paddr & ADDRMASK) | flags;
     return add_page(table, vaddr, entry, 0);
