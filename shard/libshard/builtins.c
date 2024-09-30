@@ -6,6 +6,19 @@
 
 #define BUILTIN_EXPR(_callback) ((struct shard_expr) {.type = SHARD_EXPR_BUILTIN, .loc = {0}, .builtin.callback = (_callback) })
 
+#define LAZY_STATIC_EXPR(name, ctor) \
+    static struct shard_expr* __lazy_##name(void) {     \
+        static struct shard_expr expr;                  \
+        static bool initialized = false;                \
+        if(!initialized) {                              \
+            expr = (ctor);                              \
+            initialized = true;                         \
+        }                                               \
+        return &expr;                                   \
+    }
+
+#define GET_LAZY(name) (__lazy_##name())
+
 struct builtin {
     const char* const ident;
     struct shard_lazy_value* value;
@@ -459,10 +472,10 @@ static struct shard_value builtin_shardPath(volatile struct shard_evaluator* e) 
     return LIST_VAL(head);
 }
 
-void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
-    static struct shard_expr currentTime = BUILTIN_EXPR(builtin_currentTime),
-                             shardPath   = BUILTIN_EXPR(builtin_shardPath);
+LAZY_STATIC_EXPR(currentTime, BUILTIN_EXPR(builtin_currentTime))
+LAZY_STATIC_EXPR(shardPath, BUILTIN_EXPR(builtin_shardPath))
 
+void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
     struct builtin builtins[] = {
         { "abort", shard_unlazy(ctx, BUILTIN_VAL(builtin_abort, 1)) },
         { "add", shard_unlazy(ctx, BUILTIN_VAL(builtin_add, 2)) },
@@ -476,7 +489,7 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
         { "catAttrs", shard_unlazy(ctx, BUILTIN_VAL(builtin_catAttrs, 2)) },
         { "ceil", shard_unlazy(ctx, BUILTIN_VAL(builtin_ceil, 1)) },
         { "currentSystem", shard_unlazy(ctx, ctx->current_system ? CSTRING_VAL(ctx->current_system) : NULL_VAL()) },
-        { "currentTime", shard_lazy(ctx, &currentTime, NULL) },
+        { "currentTime", shard_lazy(ctx, GET_LAZY(currentTime), NULL) },
         { "div", shard_unlazy(ctx, BUILTIN_VAL(builtin_div, 2)) },
         { "floor", shard_unlazy(ctx, BUILTIN_VAL(builtin_floor, 1)) },
         { "genList", shard_unlazy(ctx, BUILTIN_VAL(builtin_genList, 2)) },
@@ -494,7 +507,7 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
         { "length", shard_unlazy(ctx, BUILTIN_VAL(builtin_length, 1)) },
         { "mul", shard_unlazy(ctx, BUILTIN_VAL(builtin_mul, 2)) },
         { "seq", shard_unlazy(ctx, BUILTIN_VAL(builtin_seq, 2)) },
-        { "shardPath", shard_lazy(ctx, &shardPath, NULL) },
+        { "shardPath", shard_lazy(ctx, GET_LAZY(shardPath), NULL) },
         { "shardVersion", shard_unlazy(ctx, CSTRING_VAL(SHARD_VERSION)) },
         { "sub", shard_unlazy(ctx, BUILTIN_VAL(builtin_sub, 2)) },
         { "tail", shard_unlazy(ctx, BUILTIN_VAL(builtin_tail, 1)) },
