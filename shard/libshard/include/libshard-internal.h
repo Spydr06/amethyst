@@ -8,37 +8,47 @@
 #include <assert.h>
 #include <string.h>
 
-#define dynarr_append(ctx, arr, item) do {                                                      \
+#define __dynarr_append(arr, item, realloc, ...) do {                                           \
     if((arr)->count >= (arr)->capacity) {                                                       \
         (arr)->capacity = (arr)->capacity == 0 ? DYNARR_INIT_CAPACITY : (arr)->capacity * 2;    \
-        (arr)->items = (ctx)->realloc((arr)->items, (arr)->capacity * sizeof(*(arr)->items));   \
+        (arr)->items = realloc(__VA_ARGS__ __VA_OPT__(,)                                        \
+                (arr)->items, (arr)->capacity * sizeof(*(arr)->items));                         \
         assert((arr)->items != NULL);                                                           \
     }                                                                                           \
     (arr)->items[(arr)->count++] = (item);                                                      \
 } while(0)
 
-#define dynarr_append_many(ctx, arr, new_items, new_items_count) do {                           \
-        if ((arr)->count + (new_items_count) > (arr)->capacity) {                                 \
-            if ((arr)->capacity == 0) {                                                          \
-                (arr)->capacity = DYNARR_INIT_CAPACITY;                                      \
-            }                                                                                   \
-            while ((arr)->count + (new_items_count) > (arr)->capacity) {                          \
-                (arr)->capacity *= 2;                                                            \
-            }                                                                                   \
-            (arr)->items = (ctx)->realloc((arr)->items, (arr)->capacity*sizeof(*(arr)->items));     \
-            assert((arr)->items != NULL && "Buy more RAM lol");                                 \
-        }                                                                                       \
+#define __dynarr_append_many(arr, new_items, new_items_count, realloc, ...) do {                   \
+        if ((arr)->count + (new_items_count) > (arr)->capacity) {                                  \
+            if ((arr)->capacity == 0) {                                                            \
+                (arr)->capacity = DYNARR_INIT_CAPACITY;                                            \
+            }                                                                                      \
+            while ((arr)->count + (new_items_count) > (arr)->capacity) {                           \
+                (arr)->capacity *= 2;                                                              \
+            }                                                                                      \
+            (arr)->items = realloc(__VA_ARGS__ __VA_OPT__(,)                                       \
+                    (arr)->items, (arr)->capacity*sizeof(*(arr)->items));                          \
+            assert((arr)->items != NULL && "Not enough memory.");                                  \
+        }                                                                                          \
         memcpy((arr)->items + (arr)->count, (new_items), (new_items_count)*sizeof(*(arr)->items)); \
-        (arr)->count += (new_items_count);                                                       \
+        (arr)->count += (new_items_count);                                                         \
     } while (0)
 
-#define dynarr_free(ctx, arr) do {      \
-    if((arr)->items) {                  \
-        (ctx)->free((arr)->items);      \
-        (arr)->items = NULL;            \
-        (arr)->capacity = 0;            \
-    }                                   \
+#define __dynarr_free(arr, free, ...) do {            \
+    if((arr)->items) {                                \
+        free(__VA_ARGS__ __VA_OPT__(,) (arr)->items); \
+        (arr)->items = NULL;                          \
+        (arr)->capacity = 0;                          \
+    }                                                 \
 } while(0)
+
+#define dynarr_append(ctx, arr, item) __dynarr_append(arr, item, (ctx)->realloc)
+#define dynarr_append_many(ctx, arr, new_items, new_items_count) __dynarr_append_many(arr, new_items, new_items_count, (ctx)->realloc)
+#define dynarr_free(ctx, arr) __dynarr_free(arr, (ctx)->free)
+
+#define dynarr_gc_append(gc, arr, item) __dynarr_append(arr, item, shard_gc_realloc, (gc))
+#define dynarr_gc_append_many(gc, arr, new_items, new_items_count) __dynarr_append_many(arr, new_items, new_items_count, shard_gc_realloc, (gc))
+#define dynarr_gc_free(gc, arr) __dynarr_free(arr, shard_gc_free, (gc))
 
 #define EITHER(a, b) ((a) ? (a) : (b))
 #define LEN(arr) (sizeof((arr)) / sizeof((arr)[0]))

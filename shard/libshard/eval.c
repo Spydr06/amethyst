@@ -102,7 +102,7 @@ static inline struct shard_value eval_path(volatile struct shard_evaluator* e, s
     // TODO: buffer resolved paths
     switch(*expr->string) {
         case '/':
-            shard_string_append(e->ctx, &path, expr->string);
+            shard_gc_string_append(e->gc, &path, expr->string);
             break;
         case '.': { // TODO: do with lesser allocations
             if(!e->ctx->realpath || !e->ctx->dirname || !expr->loc.src->origin)
@@ -117,31 +117,30 @@ static inline struct shard_value eval_path(volatile struct shard_evaluator* e, s
 
             e->ctx->free(current_path);
             
-            shard_string_append(e->ctx, &path, tmpbuf);
+            shard_gc_string_append(e->gc, &path, tmpbuf);
             if(path.items[path.count - 1] != '/')
-                shard_string_push(e->ctx, &path, '/');
+                shard_gc_string_push(e->gc, &path, '/');
             
-            shard_string_append(e->ctx, &path, expr->string + 2);
+            shard_gc_string_append(e->gc, &path, expr->string + 2);
         } break;
         case '~':
             if(!e->ctx->home_dir)
                 shard_eval_throw(e, expr->loc, "no home directory specified; Home paths are disabled");
 
-            shard_string_append(e->ctx, &path, e->ctx->home_dir);
+            shard_gc_string_append(e->gc, &path, e->ctx->home_dir);
             if(path.items[path.count - 1] != '/')
-                shard_string_push(e->ctx, &path, '/');
+                shard_gc_string_push(e->gc, &path, '/');
             
-            shard_string_append(e->ctx, &path, expr->string + 2);
+            shard_gc_string_append(e->gc, &path, expr->string + 2);
             break;
         default:
             // include paths...
-            shard_string_append(e->ctx, &path, expr->string);
+            shard_gc_string_append(e->gc, &path, expr->string);
             break;
     }
 
-    shard_string_push(e->ctx, &path, '\0');
+    shard_gc_string_push(e->gc, &path, '\0');
 
-    // TODO: register `path` with garbage collector
     return PATH_VAL(path.items, path.count);
 }
 
