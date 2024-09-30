@@ -1,4 +1,5 @@
 #include "filesystem/virtual.h"
+#include "sys/termios.h"
 #include <sys/tty.h>
 #include <sys/mutex.h>
 
@@ -16,8 +17,10 @@ mutex_t list_mutex;
 static struct tty* tty_list[TTY_MAX_COUNT];
 
 static void inactive(int minor); 
+static int write(int minor, void* _buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_written);
 
 static struct devops devops = {
+    .write = write,
     .inactive = inactive
 };
 
@@ -64,6 +67,22 @@ static void inactive(int minor) {
     tty_destroy(tty);
 } 
 
+static int write(int minor, void* buffer, size_t size, uintmax_t __unused, int __unused, size_t* bytes_written) {
+    struct tty* tty = tty_get(minor);
+    if(!tty)
+        return ENODEV;
+
+    *bytes_written = size;
+    for(size_t i = 0; i < size; i++) {
+        if(((char*) buffer)[i] == '\n' && (tty->termios.c_oflag & ONLCR)) {
+            char cr = '\r';
+            tty->write_to_device(tty->device_internal, &cr, 1);
+        }
+        tty->write_to_device(tty->device_internal, buffer + i, 1);
+    }
+
+    return 0;
+}
 void tty_process(struct tty* tty, char c) {
     if(c == '\r' && (tty->termios.c_iflag & IGNCR))
         return;

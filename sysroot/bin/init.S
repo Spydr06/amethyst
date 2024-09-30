@@ -7,6 +7,12 @@ _start:
     mov $13, %rdx
     syscall
 
+    mov $1, %rax
+    mov $1, %rdi
+    mov $msg, %rsi
+    mov $14, %rdx
+    syscall
+
     mov $60, %rax
     mov $0, %rdi
     syscall
@@ -18,6 +24,7 @@ _start:
 .globl msg
 msg:
     .ascii "Hello, World!"
+    .byte 10 // nl
     .byte 0
 msg_end:
 .set msg_length, msg_end - msg

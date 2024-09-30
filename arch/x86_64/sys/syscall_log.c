@@ -30,6 +30,6 @@ extern __syscall void _syscall_log(register_t syscall, register_t a1, register_t
 
 extern __syscall void _syscall_log_return(uint64_t ret, uint64_t _errno) {
     if(_syscall_log_enabled)
-        klog(DEBUG, "\e[32m[%04d %04d] <<<\e[0m sysret: %lu (%s)", _cpu()->thread->proc->pid, _cpu()->thread->tid, ret, strerror(_errno));
+        klog(DEBUG, "\e[32m[%04d %04d] <<<\e[0m sysret: %ld (%s)", _cpu()->thread->proc->pid, _cpu()->thread->tid, ret, strerror(_errno));
 }
 

@@ -389,6 +389,8 @@ static int change_map(struct vmm_space* space, void* addr, size_t size, bool fre
 
     int err = 0;
 
+    klog(ERROR, "unimplemented: `free` in change_map()");
+    /*
     while(range) {
         assert(range != space->ranges || !range->prev);
         void* range_top = RANGE_TOP(range);
@@ -398,7 +400,7 @@ static int change_map(struct vmm_space* space, void* addr, size_t size, bool fre
                 
             }
         }
-    }
+    }*/
 
 finish:
     if(!free)

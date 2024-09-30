@@ -27,6 +27,7 @@ static struct vfsops vfsops = {
 static struct vops vnode_ops = {
     .create = devfs_create,
     .open = devfs_open,
+    .write = devfs_write,
     .setattr = devfs_setattr,
     .inactive = devfs_inactive,
     .lookup = devfs_lookup,
@@ -283,6 +284,17 @@ int devfs_open(struct vnode** nodep, int flags, struct cred* __unused) {
         return 0;
 
     return dev_node->devops->open(dev_node->vattr.rdev_minor, nodep, flags);
+}
+
+int devfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_written, struct cred* __unused) {
+    struct dev_node* dev_node = (struct dev_node*) node;
+    if(dev_node->master)
+        dev_node = dev_node->master;
+
+    if(!dev_node->devops->write)
+        return ENODEV;
+
+    return dev_node->devops->write(dev_node->vattr.rdev_minor, buffer, size, offset, flags, bytes_written);
 }
 
 int devfs_getnode(struct vnode* physical, int major, int minor, struct vnode** node) {

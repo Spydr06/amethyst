@@ -22,6 +22,7 @@ struct syscall_entry {
 };
 
 const struct syscall_entry _syscall_table[] = {
+    _SYS_E(write,    "%d, %p, %zu" ),
     _SYS_E(exit,     "%ld"         ),
     _SYS_E(knldebug, "%ld, %p, %ld")
 };
