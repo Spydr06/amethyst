@@ -60,6 +60,24 @@ extern "C" {
     #define SHARD_DECL
 #endif
 
+#ifdef _LIBSHARD_VALGRIND_DEBUGGING
+    //
+    // Valgrind has issues with glibc's builtin `memset` due to aggressive optimization on some platforms.
+    // Therefore, we need to provide a custom alternative that is not optimized.
+    // 
+    // !! ONLY USE THIS FOR DEBUGGING !!
+    //
+
+    #define memset __libshard_valgrind_memset
+
+    static inline void* memset(void* s, int c, size_t n) {
+        char* bytes = (char*) s;
+        for(size_t i = 0; i < n; i++)
+            bytes[i] = (char) c;
+        return s;
+    }
+#endif
+
 struct shard_hashmap;
 struct shard_context;
 struct shard_arena;

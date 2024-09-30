@@ -139,6 +139,8 @@ static inline struct shard_value eval_path(volatile struct shard_evaluator* e, s
             break;
     }
 
+    shard_string_push(e->ctx, &path, '\0');
+
     // TODO: register `path` with garbage collector
     return PATH_VAL(path.items, path.count);
 }

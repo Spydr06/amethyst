@@ -88,6 +88,7 @@ void shard_hashmap_init(const struct shard_context* ctx, struct shard_hashmap* m
     map->size = 0;
     map->alloc = actual_size;
     map->pairs = ctx->malloc(actual_size * sizeof(struct shard_hashpair));
+    
     memset(map->pairs, 0, actual_size * sizeof(struct shard_hashpair));
 }
 

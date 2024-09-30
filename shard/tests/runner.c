@@ -103,8 +103,22 @@ static int _open(const char* path, struct shard_source* dest, const char* restri
     return 0;
 }
 
+double select_unit(double us, const char** unit) {
+    if(us >= 1'000'000.0) {
+        *unit = "s";
+        return us / 1'000'000.0;
+    }
+    if(us >= 1'000.0) {
+        *unit = "ms";
+        return us / 1000.0;
+    }
+    
+    *unit = "µs";
+    return us;
+}
+
 void print_error(const struct shard_error* err) {
-    printf("\r " C_RED C_BLD "error:" C_NOBLD " %s:%u:%u: %s\n", err->loc.src->origin, err->loc.line, err->loc.offset, err->err);
+    printf("\r " C_RED C_BLD "error:" C_NOBLD " %s:%u: %s\n", err->loc.src->origin, err->loc.line + 1, err->err);
 }
 
 enum test_status run(const char* filename, struct shard_context* ctx, enum test_flags flags) {
@@ -163,7 +177,9 @@ finish:
                 break;
         }
 
-        printf("%s " C_BLACK "[%.1f µs]\n" C_RST, filename, (double)(end - start));
+        const char* unit;
+        double duration = select_unit((double)(end - start), &unit);
+        printf("%s " C_BLACK "[%.1f %s]\n" C_RST, filename, duration, unit);
     }
 
     return status;
@@ -209,8 +225,10 @@ int run_all(const char* argv0, struct shard_context* ctx, enum test_flags flags)
         printf("\n %s%-4d pass\n", passed ? C_GREEN : C_BLACK, passed);
         printf(" %s%-4d fail\n", failed ? C_RED C_BLD : C_BLACK, failed);
         printf(C_RST " %-4d skip\n", skipped);
-
-        printf("\nRan %d tests" C_BLACK " [%.1f µs]\n\n" C_RST, total, (double)(end - start));
+        
+        const char* unit = NULL;
+        double duration = select_unit((double)(end - start), &unit);
+        printf("\nRan %d tests" C_BLACK " [%.1f %s]\n\n" C_RST, total, duration, unit);
     } 
 
     return !!failed;
