@@ -27,6 +27,8 @@ LIBSHARD_OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(LIBSHARD_SOURCES))
 GEODE_SOURCES := $(shell find $(GEODE_DIR) -name '*.c')
 GEODE_OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(GEODE_SOURCES))
 
+GEODE_CFLAGS := -I$(GEODE_DIR)/include
+
 AR ?= ar
 RANLIB ?= ranlib
 
@@ -63,12 +65,12 @@ debug: LDFLAGS += -lasan -lubsan
 debug: all
 
 $(BUILD_DIR):
-	@echo " MKDIR $(BUILD_DIR)"
+	@echo "  MKDIR $(BUILD_DIR)"
 	@mkdir -p $(BUILD_DIR)
 
 $(SHARD_BIN): $(BUILD_DIR)/shard.o $(BUILD_DIR)/repl.o $(LIBSHARD_OBJ)
 	@echo "  LD    $@"
-	@$(CC) $(LDFLAGS) $@ -o $^
+	@$(CC) $(LDFLAGS) -o $@ $^
 
 $(LIBSHARD): $(LIBSHARD_OBJ)
 	@echo "  AR    $@"	
@@ -90,7 +92,7 @@ $(LIBSHARD_OBJ): $(LIBSHARD_OBJECTS) | $(BUILD_DIR)
 $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	@echo "  CC    $^"
 	@mkdir -p $(dir $@)
-	@$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.o=%.d)" -c $^ -o $@
+	@$(CC) $(CFLAGS) $(if $(filter $(GEODE_DIR)/%,$<),$(GEODE_CFLAGS)) -MMD -MP -MF "$(@:%.o=%.d)" -c $^ -o $@
 
 .PHONY: gcboehm
 gcboehm: $(GCBOEHM_LIB)

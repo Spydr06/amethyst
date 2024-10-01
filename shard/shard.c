@@ -201,12 +201,7 @@ int main(int argc, char** argv) {
             echo_result = false;
             break;
         case '?':
-            fprintf(stderr, "%s: unrecognized option -- %s\n", argv[0], argv[optind]);
-            fprintf(stderr, "Try `%s --help` for more information.\n", argv[0]);
-            exit(EXIT_FAILURE);
-            break;
         default:
-            fprintf(stderr, "%s: invalid option -- %c\n", argv[0], ch);
             fprintf(stderr, "Try `%s --help` for more information.\n", argv[0]);
             exit(EXIT_FAILURE);
         }
