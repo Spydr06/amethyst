@@ -5,7 +5,10 @@
 
 void print_error(struct shard_error* error);
 
-#undef unreachable
+#ifdef unreachable
+    #undef unreachable
+#endif
+
 #define unreachable() do {                                                                                              \
         fprintf(stderr, __FILE__ ":" __LINE__ ":%s `unreachable()` encountered. This should never happen.", __func__);  \
         exit(EXIT_FAILURE);                                                                                             \

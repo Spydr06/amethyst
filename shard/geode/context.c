@@ -5,6 +5,7 @@
 #endif /* __STDC_VERSION__ */
 
 #include <context.h>
+#include <config.h>
 
 #include <libshard.h>
 
@@ -12,11 +13,12 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <libgen.h>
+#include <memory.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <libgen.h>
+#include <string.h>
 #include <unistd.h>
-#include <memory.h>
 
 static int _getc(struct shard_source* src) {
     return fgetc(src->userp);
@@ -124,6 +126,10 @@ int geode_context_init(struct geode_context* ctx, const char* prog_name, geode_e
 
     ctx->prog_name = prog_name;
     ctx->error_handler = error_handler;
+
+    ctx->main_config_path = GEODE_DEFAULT_PREFIX GEODE_DEFAULT_CONFIG_FILE;
+    ctx->prefix = GEODE_DEFAULT_PREFIX;
+
     ctx->shard_ctx = (struct shard_context){
         .malloc = malloc,
         .realloc = realloc,
@@ -149,6 +155,93 @@ void geode_context_free(struct geode_context* ctx) {
         shard_deinit(&ctx->shard_ctx);
         ctx->shard_initialized = false;
     }
+
+    // free all heap buckets
+    struct heap_bucket* bucket = ctx->heap;
+
+    while(bucket) {
+        struct heap_bucket* next = bucket->next;
+        free(bucket);
+        bucket = next;
+    }
+}
+
+void* geode_malloc(struct geode_context* ctx, size_t size) {
+    struct heap_bucket* bucket = malloc(sizeof(struct heap_bucket) + size);
+    if(!bucket)
+        return NULL;
+    
+    bucket->next = NULL;
+    bucket->prev = NULL;
+
+    if(ctx->heap) {
+        struct heap_bucket* prev = ctx->heap;
+        while(prev->next) 
+            prev = prev->next;
+        
+        prev->next = bucket;
+        bucket->prev = prev;
+    }
+    else {
+        ctx->heap = bucket;
+    }
+
+    return bucket + 1;
+}
+
+void* geode_calloc(struct geode_context* ctx, size_t nmemb, size_t size) {
+    void* ptr = geode_malloc(ctx, nmemb * size);
+    memset(ptr, 0, nmemb * size);
+    return ptr;
+}
+
+void* geode_realloc(struct geode_context* ctx, void* ptr, size_t size) {
+    if(!ptr)
+        return geode_malloc(ctx, size);
+
+    struct heap_bucket* bucket = ((struct heap_bucket*) ptr) - 1;
+    bucket = realloc(bucket, sizeof(struct heap_bucket) + size);
+
+    if(bucket->prev)
+        bucket->prev->next = bucket;
+    else
+        ctx->heap = bucket;
+
+    if(bucket->next)
+        bucket->next->prev = bucket;
+
+    return bucket + 1;
+}
+
+void geode_free(struct geode_context* ctx, void* ptr) {
+    if(!ptr)
+        return;
+
+    struct heap_bucket* bucket = ((struct heap_bucket*) ptr) - 1;
+
+    if(bucket->prev)
+        bucket->prev->next = bucket->next;
+    if(bucket->next)
+        bucket->next->prev = bucket->prev;
+
+    if(bucket == ctx->heap)
+        ctx->heap = NULL;
+
+    free(bucket);
+}
+
+void geode_context_set_prefix(struct geode_context* ctx, const char* prefix) {
+    ctx->prefix = prefix;
+
+    if(strcmp(ctx->main_config_path, GEODE_DEFAULT_PREFIX GEODE_DEFAULT_CONFIG_FILE) == 0) {
+        size_t len = strlen(ctx->prefix) + strlen(GEODE_DEFAULT_CONFIG_FILE) + 2;
+        ctx->main_config_path = geode_malloc(ctx, len);
+        snprintf(ctx->main_config_path, len, "%s/%s", ctx->prefix, GEODE_DEFAULT_CONFIG_FILE);
+    }
+}
+
+void geode_context_set_config_file(struct geode_context* ctx, char* config_file) {
+    ctx->main_config_path = config_file;
 }
 
 _Noreturn void geode_throw_err(struct geode_context* ctx, struct geode_error err) {
