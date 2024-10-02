@@ -32,5 +32,9 @@
         exit(EXIT_FAILURE);                                                                                        \
     } while(0)
 
+struct geode_context;
+
+void geode_generate_initrd(struct geode_context* ctx, const char* path);
+
 #endif /* _GEODE_H */
 

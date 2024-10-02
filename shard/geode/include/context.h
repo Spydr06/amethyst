@@ -13,8 +13,11 @@ enum geode_error_type {
     GEODE_ERR_LIBSHARD_INIT = 1,
     GEODE_ERR_SHARD,
     GEODE_ERR_UNRECOGNIZED_ACTION,
+    GEODE_ERR_UNRECOGNIZED_ARGUMENT,
     GEODE_ERR_NO_ACTION,
+    GEODE_ERR_MISSING_PARAMETER,
     GEODE_ERR_FILE_IO,
+    GEODE_ERR_MKDIR,
 };
 
 struct geode_error {
@@ -22,6 +25,7 @@ struct geode_error {
     union {
         int err_no;
         const char* action;
+        const char* argument;
         struct { const char* path; int err_no; } file;
         struct { struct shard_error* errs; int num; } shard;
     } payload;
@@ -34,6 +38,7 @@ struct heap_bucket {
 
 struct geode_context {
     const char* prog_name;
+    const char* current_action;
 
     struct {
         bool verbose   : 1;

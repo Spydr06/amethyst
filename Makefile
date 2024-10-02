@@ -7,6 +7,11 @@ SHARD_BUILD_DIR ?= $(BUILD_DIR)/shard
 SHARD_DIR ?= shard
 SHARD_OBJECT ?= $(SHARD_BUILD_DIR)/libshard.o
 
+GEODE_DIR ?= shard/geode
+GEODE_HOST_BIN ?= $(SHARD_DIR)/build/geode-host
+
+SYSTEM_CONFIGURATION ?= configuration.shard
+
 LIMINE_DIR ?= limine
 LIMINE_LOADERS := $(LIMINE_DIR)/limine-bios.sys $(LIMINE_DIR)/limine-bios-cd.bin $(LIMINE_DIR)/limine-uefi-cd.bin
 
@@ -16,8 +21,8 @@ KERNEL_SYM ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).sym
 ISOROOT_DIR ?= $(BUILD_DIR)/iso
 ISO ?= amethyst.iso
 
-SYSROOT_DIR ?= sysroot
 INITRD ?= $(ISOROOT_DIR)/boot/initrd
+INITRD_PREFIX ?= $(BUILD_DIR)/initrd-prefix
 
 TOOLPREFIX ?= $(ARCH)-elf-
 
@@ -149,12 +154,19 @@ $(SHARD_OBJECT): $(SHARD_DIR)
 	@$(MAKE) -C $(SHARD_DIR) libshard_obj BUILD_DIR=$(shell realpath $(SHARD_BUILD_DIR)) \
 		C_CXX_FLAGS="$(C_CXX_FLAGS)" CFLAGS="$(CFLAGS)" LDFLAGS="$(SAVED_LDFLAGS)" 
 
+.PHONY: geode
+geode: $(GEODE_HOST_BIN)
+
+$(GEODE_HOST_BIN): $(SHARD_DIR)
+	@echo "  MAKE  $(SHARD_DIR) geode [HOST]"
+	@$(MAKE) -C $(SHARD_DIR) geode
+
 .PHONY: initrd
 initrd: $(INITRD)
 
-$(INITRD):
-	@echo "  MAKE  $(SYSROOT_DIR)"
-	@$(MAKE) -C $(SYSROOT_DIR) initrd INITRD=$(shell realpath $(shell pwd))/$(INITRD) BUILD_DIR=$(shell realpath $(BUILD_DIR))
+$(INITRD): $(GEODE_HOST_BIN) $(SYSTEM_CONFIGURATION)
+	mkdir -p $(dir $(INITRD))
+	$(GEODE_HOST_BIN) bootstrap -p $(INITRD_PREFIX) -c $(SYSTEM_CONFIGURATION) -v initrd $(INITRD)
 
 .PHONY: iso
 iso: $(ISO)
@@ -226,3 +238,5 @@ clean:
 	rm -rf $(LIMINE_DIR)/boot
 	rm -rf $(ISOROOT_DIR)
 	rm -f $(VERSION_H)
+	rm -rf $(SHARD_DIR)/build
+

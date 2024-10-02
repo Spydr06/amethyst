@@ -24,10 +24,13 @@ TEST_RUNNER_BIN := $(BUILD_DIR)/tests/runner
 LIBSHARD_SOURCES := $(shell find $(LIBSHARD_DIR) -name '*.c')
 LIBSHARD_OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(LIBSHARD_SOURCES))
 
+GEODE_LIBS := libarchive
+
 GEODE_SOURCES := $(shell find $(GEODE_DIR) -name '*.c')
 GEODE_OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(GEODE_SOURCES))
 
-GEODE_CFLAGS := -I$(GEODE_DIR)/include
+GEODE_CFLAGS := -I$(GEODE_DIR)/include $(shell pkg-config --cflags $(GEODE_LIBS))
+GEODE_LDFLAGS := $(shell pkg-config --libs $(GEODE_LIBS))
 
 AR ?= ar
 RANLIB ?= ranlib
@@ -80,7 +83,7 @@ $(LIBSHARD): $(LIBSHARD_OBJ)
 
 $(GEODE_BIN): $(GEODE_OBJECTS) $(LIBSHARD_OBJ)
 	@echo "  LD    $@"
-	@$(CC) $(LDFLAGS) -o $@ $^
+	@$(CC) $(LDFLAGS) $(GEODE_LDFLAGS) -o $@ $^
 
 .PHONY: libshard_obj
 libshard_obj: $(LIBSHARD_OBJ)

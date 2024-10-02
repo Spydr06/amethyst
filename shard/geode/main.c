@@ -33,6 +33,7 @@ static const struct option cmdline_options[] = {
 };
 
 static void help(struct geode_context* ctx) {
+    printf("Geode - a declarative package manager for Amethyst.\n\n");
     printf("Usage: %s [ACTION] [<ARGUMENTS>] [<OPTIONS>]\n", ctx->prog_name);
     printf("\nActions:\n");
 
@@ -41,6 +42,9 @@ static void help(struct geode_context* ctx) {
         printf("  %s\t\t%s\n", action->name, action->desc);
         action++;
     }
+
+    printf("\nArguments:\n");
+    printf("Try `%s <action> help` for more information about action-specific arguments.\n", ctx->prog_name);
 
     printf("\nOptions:\n");
     printf("  -h, --help              Print this help text and exit.\n");
@@ -74,6 +78,15 @@ static void error_handler(struct geode_context* ctx, struct geode_error err) {
             break;
         case GEODE_ERR_FILE_IO:
             errorf("Could not access file `%s`: %s\n", err.payload.file.path, strerror(err.payload.file.err_no));
+            break;
+        case GEODE_ERR_MKDIR:
+            errorf("Could not create directory `%s`: %s\n", err.payload.file.path, strerror(err.payload.file.err_no));
+            break;
+        case GEODE_ERR_MISSING_PARAMETER:
+            errorf("Argument `%s` expects parameter.\nTry `%s %s help` for more information.\n", err.payload.argument, ctx->prog_name, ctx->current_action);
+            break;
+        case GEODE_ERR_UNRECOGNIZED_ARGUMENT:
+            errorf("Unrecognized argument `%s` to action `%s`.\nTry `%s %s help` for more information.\n", err.payload.argument, ctx->current_action, ctx->prog_name, ctx->current_action);
             break;
     }
 
@@ -131,6 +144,7 @@ int main(int argc, char** argv) {
     if(!found)
         geode_throw(&ctx, UNRECOGNIZED_ACTION, .action=argv[optind]);
 
+    ctx.current_action = action->name;
     ret = action->handler(&ctx, argc - (optind + 1), argv + (optind + 1));
     if(ret)
         goto finish;
