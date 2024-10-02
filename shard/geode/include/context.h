@@ -1,6 +1,7 @@
 #ifndef _GEODE_CONTEXT_H
 #define _GEODE_CONTEXT_H
 
+#include "config.h"
 #include <libshard.h>
 
 struct geode_error;
@@ -13,14 +14,16 @@ enum geode_error_type {
     GEODE_ERR_SHARD,
     GEODE_ERR_UNRECOGNIZED_ACTION,
     GEODE_ERR_NO_ACTION,
+    GEODE_ERR_FILE_IO,
 };
 
 struct geode_error {
     enum geode_error_type type;
     union {
-        struct shard_errors errs;
         int err_no;
         const char* action;
+        struct { const char* path; int err_no; } file;
+        struct { struct shard_error* errs; int num; } shard;
     } payload;
 };
 
@@ -32,11 +35,17 @@ struct heap_bucket {
 struct geode_context {
     const char* prog_name;
 
+    struct {
+        bool verbose   : 1;
+        int __unused__ : 7;
+    } flags;
+
     struct shard_context shard_ctx;
     bool shard_initialized;
 
     char* main_config_path;
     const char* prefix;
+    struct open_shard_source configuration;
 
     geode_error_handler_t error_handler; 
 
@@ -53,6 +62,8 @@ void geode_free(struct geode_context* ctx, void* ptr);
 
 void geode_context_set_prefix(struct geode_context* ctx, const char* prefix);
 void geode_context_set_config_file(struct geode_context* ctx, char* config_file);
+
+int geode_open_shard_file(const char* path, struct shard_source* dest, const char* restrict mode);
 
 void geode_print_shard_error(struct shard_error* err);
 

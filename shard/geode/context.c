@@ -4,12 +4,11 @@
     #define _XOPEN_SOURCE 500
 #endif /* __STDC_VERSION__ */
 
+#include <geode.h>
 #include <context.h>
 #include <config.h>
 
 #include <libshard.h>
-
-#include "../shard.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -36,7 +35,7 @@ static int _close(struct shard_source* src) {
     return fclose(src->userp);
 }
 
-static int _open(const char* path, struct shard_source* dest, const char* restrict mode) {
+int geode_open_shard_file(const char* path, struct shard_source* dest, const char* restrict mode) {
     FILE* fd = fopen(path, mode);
     if(!fd)
         return errno;
@@ -137,7 +136,7 @@ int geode_context_init(struct geode_context* ctx, const char* prog_name, geode_e
         .realpath = realpath,
         .dirname = dirname,
         .access = access,
-        .open = _open,
+        .open = geode_open_shard_file,
         .home_dir = nullptr
     };
 
@@ -151,6 +150,8 @@ int geode_context_init(struct geode_context* ctx, const char* prog_name, geode_e
 }
 
 void geode_context_free(struct geode_context* ctx) {
+    geode_close_source(ctx, &ctx->configuration);
+
     if(ctx->shard_initialized) {
         shard_deinit(&ctx->shard_ctx);
         ctx->shard_initialized = false;
