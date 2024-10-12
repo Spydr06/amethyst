@@ -78,7 +78,7 @@ _context_save_and_call:
     mov %rsp, %rdi
     mov %rdx, %rsi
 
-    call %r11
+    call *%r11
 
     cli
     mov %rsp, %rdi
