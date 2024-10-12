@@ -134,24 +134,18 @@ enum test_status run(const char* filename, struct shard_context* ctx, enum test_
     segv_recovery_set = true;
     int sig = setjmp(segv_recovery);
     if(!sig) {
-        struct shard_source src;
-        if(_open(filename, &src, "r")) {
+        struct shard_open_source* source = shard_open(ctx, filename);
+        if(!source) {
             printf("\r " C_RED C_BLD "error:" C_NOBLD " could not read file `%s`: %s\n", filename, strerror(errno));
             status = FAILED;
             goto finish;
         }
 
-        struct shard_value result;
-        struct shard_expr expr = {0};
-
-        int num_errors = shard_eval(ctx, &src, &result, &expr);
+        int num_errors = shard_eval(ctx, source);
         status = num_errors ? FAILED : PASSED;
         struct shard_error* errors = shard_get_errors(ctx);
         for(int i = 0; i < num_errors; i++)
             print_error(&errors[i]);
-        shard_free_expr(ctx, &expr);
-
-        src.close(&src);
     }
     else {
         status = FAILED;

@@ -78,19 +78,20 @@ extern "C" {
     }
 #endif
 
-struct shard_hashmap;
-struct shard_context;
+struct shard_alloc_map;
 struct shard_arena;
-struct shard_source;
-struct shard_token;
+struct shard_context;
+struct shard_evaluator;
 struct shard_expr;
-struct shard_pattern;
-struct shard_value;
+struct shard_hashmap;
 struct shard_lazy_value;
 struct shard_list;
+struct shard_open_source;
+struct shard_pattern;
 struct shard_set;
-struct shard_alloc_map;
-struct shard_evaluator;
+struct shard_source;
+struct shard_token;
+struct shard_value;
 
 typedef const char* shard_ident_t;
 
@@ -220,6 +221,8 @@ struct shard_context {
     const char* current_system;
     const char* home_dir;
 
+    struct shard_hashmap open_sources;
+
     struct shard_arena* ast;
     struct shard_string_list include_dirs;
 
@@ -260,7 +263,7 @@ struct shard_source {
     unsigned line;
 };
 
-SHARD_DECL int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard_value* result, struct shard_expr* dest);
+SHARD_DECL int shard_eval(struct shard_context* ctx, struct shard_open_source* source);
 SHARD_DECL int shard_eval_lazy(struct shard_context* ctx, struct shard_lazy_value* value);
 SHARD_DECL struct shard_value shard_eval_call(volatile struct shard_evaluator* e, struct shard_value value, struct shard_lazy_value* arg, struct shard_location loc);
 SHARD_DECL struct shard_value shard_eval_lazy2(volatile struct shard_evaluator* e, struct shard_lazy_value* value);
@@ -593,10 +596,17 @@ struct shard_open_source {
     struct shard_source source;
     struct shard_expr expr;
     struct shard_value result;    
+
+    bool opened : 1;
+    bool parsed : 1;
+    bool evaluated : 1;
+
+    bool auto_close : 1; // automatically close on deletion using ctx->close()
+    bool auto_free : 1;  // automatically free struct on deletion using ctx->free()
 };
 
-SHARD_DECL struct shard_open_source* shard_get_open(struct shard_context* ctx, const char* origin);
-SHARD_DECL int shard_register_open(struct shard_context* ctx, const char* origin, struct shard_open_source* source);
+SHARD_DECL struct shard_open_source* shard_open(struct shard_context* ctx, const char* origin);
+SHARD_DECL int shard_register_open(struct shard_context* ctx, const char* origin, bool is_path, struct shard_open_source* source);
 
 #ifdef _LIBSHARD_INTERNAL
     #include <libshard-internal.h>

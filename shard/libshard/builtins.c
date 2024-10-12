@@ -3,6 +3,7 @@
 
 #include <time.h>
 #include <stdio.h>
+#include <errno.h>
 
 #define BUILTIN_EXPR(_callback) ((struct shard_expr) {.type = SHARD_EXPR_BUILTIN, .loc = {0}, .builtin.callback = (_callback) })
 
@@ -487,10 +488,15 @@ static struct shard_value builtin_import(volatile struct shard_evaluator* e, str
             shard_eval_throw(e, *loc, "`builtins.import` expects a string or path");
     }
 
-    struct shard_source import_src;
-    int err = e->ctx->open(filepath, &import_src, "r");
+    struct shard_open_source* source = shard_open(e->ctx, filepath);
+    if(!source)
+        shard_eval_throw(e, *loc, "could not open `%s`: %s", filepath, strerror(errno));
+
+    int err = shard_eval(e->ctx, source);
     if(err)
-        shard_eval_throw(e, *loc, "could not open `%s`: %s", filepath, strerror(err));
+        shard_eval_throw(e, *loc, "error in `builtins.import` file `%s`.", filepath);
+
+    return source->result;
 }
 
 LAZY_STATIC_EXPR(currentTime, BUILTIN_EXPR(builtin_currentTime))

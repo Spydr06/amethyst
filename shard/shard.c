@@ -132,23 +132,20 @@ static void print_error(struct shard_error* error) {
 }
 
 static int eval_file(struct shard_context* ctx, const char* progname, const char* input_file, bool echo_result) { 
-    struct shard_source src;
-    if(_open(input_file, &src, "r")) {
+    struct shard_open_source* source = shard_open(ctx, input_file);
+    if(!source) {
         fprintf(stderr, "%s: could not read file `%s`: %s\n", progname, input_file, strerror(errno));
         return EXIT_FAILURE;
     }
-
-    struct shard_value result;
-    struct shard_expr expr = {0};
-
-    int num_errors = shard_eval(ctx, &src, &result, &expr);
+    
+    int num_errors = shard_eval(ctx, source);
     struct shard_error* errors = shard_get_errors(ctx);
     for(int i = 0; i < num_errors; i++)
         print_error(&errors[i]);
 
     if(!num_errors && echo_result) {
         struct shard_string str = {0};
-        shard_value_to_string(ctx, &str, &result, 1);
+        shard_value_to_string(ctx, &str, &source->result, 1);
         shard_string_push(ctx, &str, '\0');
 
         puts(str.items);
@@ -156,9 +153,6 @@ static int eval_file(struct shard_context* ctx, const char* progname, const char
         shard_string_free(ctx, &str);
     }
 
-    shard_free_expr(ctx, &expr);
-
-    src.close(&src);
     return num_errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 

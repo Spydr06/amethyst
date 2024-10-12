@@ -1,5 +1,6 @@
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
+#include <errno.h>
 
 int shard_init_ext(struct shard_context* ctx, void* stack_base) {
     assert(ctx->malloc && ctx->realloc && ctx->free);
@@ -9,6 +10,7 @@ int shard_init_ext(struct shard_context* ctx, void* stack_base) {
     ctx->include_dirs = (struct shard_string_list){0};
     ctx->ident_arena = shard_arena_init(ctx);
     shard_hashmap_init(ctx, &ctx->idents, 128);
+    shard_hashmap_init(ctx, &ctx->open_sources, 16);
 
     shard_gc_begin(&ctx->gc, ctx, stack_base);
 
@@ -16,6 +18,26 @@ int shard_init_ext(struct shard_context* ctx, void* stack_base) {
 }
 
 void shard_deinit(struct shard_context* ctx) {
+    for(struct shard_hashpair* pair = ctx->open_sources.pairs; pair < &ctx->open_sources.pairs[ctx->open_sources.alloc]; pair++) {
+        if(!pair->key || !pair->value)
+            continue;
+        
+        struct shard_open_source* source = pair->value;
+        if(source->opened && source->auto_close) {
+            if(source->auto_free)
+                ctx->free((void*) source->source.origin);
+            source->source.close(&source->source);
+            source->opened = false;
+        }
+
+        if(source->evaluated)
+            shard_free_expr(ctx, &source->expr);
+
+        if(source->auto_free)
+            ctx->free(source);
+    }
+
+    shard_hashmap_free(ctx, &ctx->open_sources);
     shard_gc_end(&ctx->gc);
 
     shard_arena_free(ctx, ctx->ast);
@@ -63,3 +85,78 @@ shard_ident_t shard_get_ident(struct shard_context* ctx, const char* key) {
 void shard_set_current_system(struct shard_context* ctx, const char* current_system) {
     ctx->current_system = current_system;
 }
+
+struct shard_open_source* shard_open(struct shard_context* ctx, const char* origin) {
+    char* full_origin = ctx->realpath(origin, NULL);
+    if(!full_origin) {
+        // errno set by ctx->realpath
+        return NULL;
+    }
+
+    struct shard_open_source* source = shard_hashmap_get(&ctx->open_sources, full_origin);
+    if(source) {
+        ctx->free(full_origin);
+        return source;
+    }
+
+    source = ctx->malloc(sizeof(struct shard_open_source));
+    memset(source, 0, sizeof(struct shard_open_source));
+
+    int err = ctx->open(full_origin, &source->source, "r");
+    if(err) {
+        errno = err;
+        ctx->free(full_origin);
+        return NULL;
+    }
+
+    source->opened = true;
+    source->auto_free = true;
+    source->auto_close = true;
+
+    err = shard_hashmap_put(ctx, &ctx->open_sources, full_origin, source);
+
+    if(err) {
+        ctx->free(full_origin);
+        source->source.close(&source->source);
+        ctx->free(source);
+    }
+
+    return err ? NULL : source;
+}
+
+int shard_register_open(struct shard_context* ctx, const char* origin, bool is_path, struct shard_open_source* source) {
+    if(!source)
+        return EINVAL;
+    
+    
+    const char* full_origin = origin;
+    if(is_path) {
+        full_origin = ctx->realpath(origin, NULL);
+        if(!full_origin) {
+            // errno set by ctx->realpath
+            return errno;
+        }
+    }
+
+    bool just_opened = false;
+    if(!source->opened) {
+        int err = ctx->open(full_origin, &source->source, "r");
+        if(err) {
+            if(is_path)
+                ctx->free((void*) full_origin);
+            return err;
+        }
+
+        source->opened = true;
+        source->auto_close = true;
+        just_opened = true;
+    }
+
+    int err = shard_hashmap_put(ctx, &ctx->open_sources, full_origin, source);
+    
+    if(is_path && !just_opened)
+        ctx->free((void*) full_origin);
+
+    return err;
+}
+

@@ -51,7 +51,8 @@ struct geode_context {
     char* main_config_path;
     char* store_path;
     const char* prefix;
-    struct open_shard_source configuration;
+
+    struct shard_value* configuration;
 
     geode_error_handler_t error_handler; 
 

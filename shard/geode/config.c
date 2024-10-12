@@ -7,6 +7,7 @@
 
 #include <unistd.h>
 #include <memory.h>
+#include <stdlib.h>
 
 #define _(str) str
 
@@ -21,7 +22,10 @@ with builtins; let\n\
 in config prelude\n\
 ");
 
-static void get_loader(struct geode_context* ctx, struct open_shard_source* open) {
+static struct shard_open_source* get_loader(struct geode_context* ctx) {
+    struct shard_open_source* open = malloc(sizeof(struct shard_open_source));
+    memset(open, 0, sizeof(struct shard_open_source));
+
     size_t loader_size = strlen(loader_fmt) + strlen(ctx->store_path) + strlen(ctx->main_config_path) + strlen(GEODE_PRELUDE_FILE) + 1;
 
     char* loader = geode_calloc(ctx, loader_size, sizeof(char));
@@ -31,40 +35,23 @@ static void get_loader(struct geode_context* ctx, struct open_shard_source* open
     if(err)
         geode_throw(ctx, FILE_IO, .file=TUPLE("loader source", err));
 
-    open->open = true;
+    open->opened = true;
+    open->auto_close = true;
+    open->auto_free = true;
+
+    shard_register_open(&ctx->shard_ctx, "<loader>", false, open);
+
+    return open;
 }
 
-static void compile_configuration(struct geode_context* ctx, struct open_shard_source* loader) {
-    int err = shard_eval(&ctx->shard_ctx, &loader->source, &loader->result, &loader->expr);
+static void compile_configuration(struct geode_context* ctx, struct shard_open_source* loader) {
+    int err = shard_eval(&ctx->shard_ctx, loader);
     if(err)
         geode_throw(ctx, SHARD, .shard=TUPLE(shard_get_errors(&ctx->shard_ctx), err));
-}
-
-void geode_open_source(struct geode_context* ctx, const char* path, struct open_shard_source* open) {
-    memset(open, 0, sizeof(struct open_shard_source));
-
-    int err = geode_open_shard_file(path, &open->source, "rb");
-    if(err)
-        geode_throw(ctx, FILE_IO, .file=TUPLE(path, err));
-
-    open->open = true;
-
-    err = shard_eval(&ctx->shard_ctx, &open->source, &open->result, &open->expr);
-    if(err)
-        geode_throw(ctx, SHARD, .shard=TUPLE(shard_get_errors(&ctx->shard_ctx), err));
-}
-
-void geode_close_source(struct geode_context* ctx, struct open_shard_source* open) {
-    if(open->open) {
-        shard_free_expr(&ctx->shard_ctx, &open->expr);
-        open->source.close(&open->source);
-        open->open = false;
-    }
 }
 
 void geode_load_config(struct geode_context* ctx) {
-    get_loader(ctx, &ctx->configuration);
-    compile_configuration(ctx, &ctx->configuration);
+    compile_configuration(ctx, get_loader(ctx));
 
     infof(ctx, "Loaded configuration `%s`.\n", ctx->main_config_path);
 }

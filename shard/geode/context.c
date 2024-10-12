@@ -151,8 +151,6 @@ int geode_context_init(struct geode_context* ctx, const char* prog_name, geode_e
 }
 
 void geode_context_free(struct geode_context* ctx) {
-    geode_close_source(ctx, &ctx->configuration);
-
     if(ctx->shard_initialized) {
         shard_deinit(&ctx->shard_ctx);
         ctx->shard_initialized = false;

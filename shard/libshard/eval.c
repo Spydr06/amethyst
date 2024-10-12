@@ -792,24 +792,32 @@ int shard_eval_lazy(struct shard_context* ctx, struct shard_lazy_value* value) {
     return ctx->errors.count;
 }
 
-int shard_eval(struct shard_context* ctx, struct shard_source* src, struct shard_value* result, struct shard_expr* expr) {
-    int err = shard_parse(ctx, src, expr);
-    if(err)
-        goto finish;
+int shard_eval(struct shard_context* ctx, struct shard_open_source* source) {
+    if(!source->parsed) {
+        int err = shard_parse(ctx, &source->source, &source->expr);
+        if(err)
+            goto finish;
 
-    jmp_buf exception;
-    volatile struct shard_evaluator e;
-    evaluator_init(&e, ctx, &exception);
+        source->parsed = true;
+    }
 
-    if(!ctx->builtin_intialized)
-        shard_get_builtins(ctx, &ctx->builtin_scope);
+    if(!source->evaluated) {
+        jmp_buf exception;
+        volatile struct shard_evaluator e;
+        evaluator_init(&e, ctx, &exception);
 
-    e.scope = &ctx->builtin_scope;
+        if(!ctx->builtin_intialized)
+            shard_get_builtins(ctx, &ctx->builtin_scope);
 
-    if(setjmp(*e.exception) == SHARD_EVAL_OK)
-        *result = eval(&e, expr);
+        e.scope = &ctx->builtin_scope;
 
-    evaluator_free(&e);
+        if(setjmp(*e.exception) == SHARD_EVAL_OK)
+            source->result = eval(&e, &source->expr);
+
+        evaluator_free(&e);
+
+        source->evaluated = true;
+    }
 finish:
     return ctx->errors.count;
 }
