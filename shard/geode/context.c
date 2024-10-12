@@ -127,7 +127,8 @@ int geode_context_init(struct geode_context* ctx, const char* prog_name, geode_e
     ctx->error_handler = error_handler;
 
     ctx->main_config_path = GEODE_DEFAULT_PREFIX GEODE_DEFAULT_CONFIG_FILE;
-    ctx->prefix = GEODE_DEFAULT_PREFIX;
+    ctx->store_path       = GEODE_DEFAULT_PREFIX GEODE_DEFAULT_STORE_PATH;
+    ctx->prefix           = GEODE_DEFAULT_PREFIX;
 
     ctx->shard_ctx = (struct shard_context){
         .malloc = malloc,
@@ -239,10 +240,20 @@ void geode_context_set_prefix(struct geode_context* ctx, const char* prefix) {
         ctx->main_config_path = geode_malloc(ctx, len);
         snprintf(ctx->main_config_path, len, "%s/%s", ctx->prefix, GEODE_DEFAULT_CONFIG_FILE);
     }
+
+    if(strcmp(ctx->store_path, GEODE_DEFAULT_PREFIX GEODE_DEFAULT_STORE_PATH) == 0) {
+        size_t len = strlen(ctx->prefix) + strlen(GEODE_DEFAULT_STORE_PATH) + 2;
+        ctx->main_config_path = geode_malloc(ctx, len);
+        snprintf(ctx->main_config_path, len, "%s/%s", ctx->prefix, GEODE_DEFAULT_STORE_PATH);
+    }
 }
 
 void geode_context_set_config_file(struct geode_context* ctx, char* config_file) {
     ctx->main_config_path = config_file;
+}
+
+void geode_context_set_store_path(struct geode_context* ctx, char* store_path) {
+    ctx->store_path = store_path;
 }
 
 _Noreturn void geode_throw_err(struct geode_context* ctx, struct geode_error err) {

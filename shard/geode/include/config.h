@@ -6,6 +6,8 @@
 struct geode_context;
 
 #define GEODE_DEFAULT_CONFIG_FILE "etc/configuration.shard"
+#define GEODE_DEFAULT_STORE_PATH "etc/geode/store"
+#define GEODE_PRELUDE_FILE "prelude.shard"
 #define GEODE_DEFAULT_PREFIX "/"
 
 struct open_shard_source {

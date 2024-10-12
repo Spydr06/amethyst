@@ -589,6 +589,15 @@ SHARD_DECL void shard_dump_pattern(struct shard_context* ctx, struct shard_strin
 SHARD_DECL void shard_dump_token(char* dest, size_t n, const struct shard_token* tok);
 SHARD_DECL void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const struct shard_expr* expr);
 
+struct shard_open_source {
+    struct shard_source source;
+    struct shard_expr expr;
+    struct shard_value result;    
+};
+
+SHARD_DECL struct shard_open_source* shard_get_open(struct shard_context* ctx, const char* origin);
+SHARD_DECL int shard_register_open(struct shard_context* ctx, const char* origin, struct shard_open_source* source);
+
 #ifdef _LIBSHARD_INTERNAL
     #include <libshard-internal.h>
 #endif /* _LIBSHARD_INTERAL */

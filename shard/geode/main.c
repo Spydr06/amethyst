@@ -27,6 +27,7 @@ static const struct action cmdline_actions[] = {
 static const struct option cmdline_options[] = {
     {"help",    no_argument,       NULL, 'h'},
     {"prefix",  required_argument, NULL, 'p'},
+    {"store",   required_argument, NULL, 's'},
     {"config",  required_argument, NULL, 'c'},
     {"verbose", no_argument,       NULL, 'v'},
     {NULL,      0,                 NULL, 0  }
@@ -49,6 +50,7 @@ static void help(struct geode_context* ctx) {
     printf("\nOptions:\n");
     printf("  -h, --help              Print this help text and exit.\n");
     printf("  -p, --prefix <path>     Set the system prefix. [%s]\n", ctx->prefix);
+    printf("  -s, --store <path>      Set the system store path. [%s]\n", ctx->store_path);
     printf("  -c, --config <path>     Set the system configuration path. [%s]\n", ctx->main_config_path);
     printf("  -v, --verbose           Enable verbose output.\n");
 
@@ -105,10 +107,13 @@ int main(int argc, char** argv) {
     geode_context_init(&ctx, argv[0], error_handler);
 
     int ch, long_index;
-    while((ch = getopt_long(argc, argv, "vp:c:h", cmdline_options, &long_index)) != EOF) {
+    while((ch = getopt_long(argc, argv, "vp:c:s:h", cmdline_options, &long_index)) != EOF) {
         switch(ch) {
             case 'p':
                 geode_context_set_prefix(&ctx, optarg);
+                break;
+            case 's':
+                geode_context_set_store_path(&ctx, optarg);
                 break;
             case 'c':
                 geode_context_set_config_file(&ctx, optarg);

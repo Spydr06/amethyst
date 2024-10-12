@@ -49,6 +49,7 @@ struct geode_context {
     bool shard_initialized;
 
     char* main_config_path;
+    char* store_path;
     const char* prefix;
     struct open_shard_source configuration;
 
@@ -67,6 +68,7 @@ void geode_free(struct geode_context* ctx, void* ptr);
 
 void geode_context_set_prefix(struct geode_context* ctx, const char* prefix);
 void geode_context_set_config_file(struct geode_context* ctx, char* config_file);
+void geode_context_set_store_path(struct geode_context* ctx, char* store_path);
 
 int geode_open_shard_file(const char* path, struct shard_source* dest, const char* restrict mode);
 

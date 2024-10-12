@@ -472,6 +472,27 @@ static struct shard_value builtin_shardPath(volatile struct shard_evaluator* e) 
     return LIST_VAL(head);
 }
 
+static struct shard_value builtin_import(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value val = shard_eval_lazy2(e, *args); 
+    const char* filepath;
+
+    switch(val.type) {
+        case SHARD_VAL_STRING:
+            filepath = val.string;
+            break;
+        case SHARD_VAL_PATH:
+            filepath = val.path;
+            break;
+        default:
+            shard_eval_throw(e, *loc, "`builtins.import` expects a string or path");
+    }
+
+    struct shard_source import_src;
+    int err = e->ctx->open(filepath, &import_src, "r");
+    if(err)
+        shard_eval_throw(e, *loc, "could not open `%s`: %s", filepath, strerror(err));
+}
+
 LAZY_STATIC_EXPR(currentTime, BUILTIN_EXPR(builtin_currentTime))
 LAZY_STATIC_EXPR(shardPath, BUILTIN_EXPR(builtin_shardPath))
 
@@ -494,6 +515,7 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
         { "floor", shard_unlazy(ctx, BUILTIN_VAL(builtin_floor, 1)) },
         { "genList", shard_unlazy(ctx, BUILTIN_VAL(builtin_genList, 2)) },
         { "head", shard_unlazy(ctx, BUILTIN_VAL(builtin_head, 1)) },
+        { "import", shard_unlazy(ctx, BUILTIN_VAL(builtin_import, 1)) },
         { "isAttrs", shard_unlazy(ctx, BUILTIN_VAL(builtin_isAttrs, 1)) },
         { "isBool", shard_unlazy(ctx, BUILTIN_VAL(builtin_isBool, 1)) },
         { "isFloat", shard_unlazy(ctx, BUILTIN_VAL(builtin_isFloat, 1)) },
