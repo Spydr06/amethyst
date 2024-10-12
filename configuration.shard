@@ -2,6 +2,7 @@
     
     initrd = {
         enabled = true;
-        compression = { method = archive.ustar; format = archive.uncompressed };
+        compression = { method = archive.ustar; format = archive.uncompressed; }; 
     };
 }
+

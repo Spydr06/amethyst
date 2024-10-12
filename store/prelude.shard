@@ -1,0 +1,16 @@
+#
+# Geode prelude file
+# This file gets passed to the system configuration by geode
+#
+
+{
+    archive = {
+        ustar = "ustar";
+        uncompressed = null;
+    };
+
+    pkgs = {
+
+    };
+}
+

@@ -10,6 +10,8 @@ SHARD_OBJECT ?= $(SHARD_BUILD_DIR)/libshard.o
 GEODE_DIR ?= shard/geode
 GEODE_HOST_BIN ?= $(SHARD_DIR)/build/geode-host
 
+STORE_DIR ?= store
+
 SYSTEM_CONFIGURATION ?= configuration.shard
 
 LIMINE_DIR ?= limine
@@ -164,9 +166,9 @@ $(GEODE_HOST_BIN): $(SHARD_DIR)
 .PHONY: initrd
 initrd: $(INITRD)
 
-$(INITRD): $(GEODE_HOST_BIN) $(SYSTEM_CONFIGURATION)
+$(INITRD): $(GEODE_HOST_BIN) $(SYSTEM_CONFIGURATION) $(STORE_DIR)
 	mkdir -p $(dir $(INITRD))
-	$(GEODE_HOST_BIN) bootstrap -p $(INITRD_PREFIX) -c $(SYSTEM_CONFIGURATION) -v initrd $(INITRD)
+	$(GEODE_HOST_BIN) bootstrap -p $(INITRD_PREFIX) -c $(SYSTEM_CONFIGURATION) -s $(STORE_DIR) -v initrd $(INITRD)
 
 .PHONY: iso
 iso: $(ISO)

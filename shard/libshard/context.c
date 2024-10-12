@@ -24,8 +24,9 @@ void shard_deinit(struct shard_context* ctx) {
         
         struct shard_open_source* source = pair->value;
         if(source->opened && source->auto_close) {
-            if(source->auto_free)
-                ctx->free((void*) source->source.origin);
+// TODO:
+//            if(source->auto_free)
+//                ctx->free((void*) source->source.origin);
             source->source.close(&source->source);
             source->opened = false;
         }

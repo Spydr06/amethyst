@@ -73,17 +73,18 @@ static inline int any_err(int* errors, size_t len) {
 }
 
 static int consume(struct parser* p, enum shard_token_type token_type) {
-    if(p->token.type == token_type)
+    enum shard_token_type current_type = p->token.type;
+    if(current_type == token_type)
         return advance(p);
 
-    if(p->token.type == SHARD_TOK_ERR)
+    if(current_type == SHARD_TOK_ERR)
         return EINVAL;
 
     advance(p);
     return errorf(
         p,
         "unexpected token `%s`, expect token `%s`",
-        shard_token_type_to_str(p->token.type),
+        shard_token_type_to_str(current_type),
         shard_token_type_to_str(token_type)
     );
 }
