@@ -8,6 +8,8 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define LEN(arr) (sizeof((arr)) / sizeof((arr)[0]))
 
+#define LSTR(str) ((char[]){str})
+
 #define TUPLE(...) { __VA_ARGS__ }
 
 #define C_RED "\033[31m"

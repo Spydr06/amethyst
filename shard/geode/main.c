@@ -72,6 +72,9 @@ static void error_handler(struct geode_context* ctx, struct geode_error err) {
             for(int i = 0; i < num; i++)
                 geode_print_shard_error(err.payload.shard.errs + i);
         } break;
+        case GEODE_ERR_CONFIGURATION:
+            errorf("Configuration error: %s\n", err.payload.config.msg);
+            break;
         case GEODE_ERR_UNRECOGNIZED_ACTION:
             errorf("Unrecognized action `%s`.\nTry `%s --help` for more information.\n", err.payload.action, ctx->prog_name);
             break;

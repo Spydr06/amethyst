@@ -11,6 +11,9 @@ struct geode_context;
 #define GEODE_DEFAULT_PREFIX "/"
 
 void geode_load_config(struct geode_context* ctx);
+bool geode_config_loaded(struct geode_context* ctx);
+
+struct shard_value* geode_get_config_attr(struct geode_context* ctx, char* attr_name);
 
 #endif /* _GEODE_CONFIG_H */
 

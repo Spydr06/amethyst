@@ -12,6 +12,7 @@ typedef __attribute__((noreturn)) void (*geode_error_handler_t)(struct geode_con
 enum geode_error_type {
     GEODE_ERR_LIBSHARD_INIT = 1,
     GEODE_ERR_SHARD,
+    GEODE_ERR_CONFIGURATION,
     GEODE_ERR_UNRECOGNIZED_ACTION,
     GEODE_ERR_UNRECOGNIZED_ARGUMENT,
     GEODE_ERR_NO_ACTION,
@@ -28,6 +29,7 @@ struct geode_error {
         const char* argument;
         struct { const char* path; int err_no; } file;
         struct { struct shard_error* errs; int num; } shard;
+        struct { struct shard_value* val; const char* msg; } config;
     } payload;
 };
 
