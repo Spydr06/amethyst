@@ -75,14 +75,16 @@ int shard_set_get(struct shard_set* set, shard_ident_t attr, struct shard_lazy_v
     // linear probing
     for(size_t i = 0; i < set->capacity; i++) {
         if(set->entries[index].key == attr) {
-            *value = set->entries[index].value;
+            if(value)
+                *value = set->entries[index].value;
             return 0;
         }
 
         index = probe_next(set, index);
     }
 
-    *value = NULL;
+    if(value)
+        *value = NULL;
     return ENOENT;
 }
 

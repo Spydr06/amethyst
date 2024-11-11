@@ -29,6 +29,8 @@ char* stpncpy(char *restrict dst, const char *restrict src, size_t dsize);
 int strncmp(const char* _l, const char* _r, size_t n);
 int strcmp(const char* _l, const char* _r);
 
+char* strtok(char* restrict str, const char* restrict delim);
+
 char* strerror(int errnum);
 
 char* strcat(char* restrict dst, const char* restrict src);

@@ -246,6 +246,10 @@ SHARD_DECL void shard_include_dir(struct shard_context* ctx, char* path);
 
 SHARD_DECL void shard_set_current_system(struct shard_context* ctx, const char* current_system);
 
+SHARD_DECL int shard_define(struct shard_context* ctx, shard_ident_t ident, struct shard_lazy_value* value);
+SHARD_DECL int shard_define_function(struct shard_context* ctx, shard_ident_t ident, struct shard_value (*callback)(volatile struct shard_evaluator*, struct shard_lazy_value**, struct shard_location*), unsigned arity);
+SHARD_DECL int shard_define_constant(struct shard_context* ctx, shard_ident_t ident, struct shard_value value);
+
 SHARD_DECL void shard_deinit(struct shard_context* ctx);
 
 SHARD_DECL shard_ident_t shard_get_ident(struct shard_context* ctx, const char* ident);

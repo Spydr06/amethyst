@@ -1,6 +1,7 @@
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
 
+#include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
 #include <errno.h>
@@ -550,7 +551,7 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
         shard_set_put(builtin_set, shard_get_ident(ctx, builtins[i].ident), builtins[i].value);
     }
 
-    struct shard_set* global_scope = shard_set_init(ctx, 4);
+    struct shard_set* global_scope = shard_set_init(ctx, 8);
     shard_set_put(global_scope, shard_get_ident(ctx, "true"),     shard_unlazy(ctx, BOOL_VAL(true)));
     shard_set_put(global_scope, shard_get_ident(ctx, "false"),    shard_unlazy(ctx, BOOL_VAL(false)));
     shard_set_put(global_scope, shard_get_ident(ctx, "null"),     shard_unlazy(ctx, NULL_VAL()));
@@ -560,5 +561,69 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
     dest->outer = NULL;
     
     ctx->builtin_intialized = true;    
+}
+
+int shard_define(struct shard_context* ctx, shard_ident_t ident, struct shard_lazy_value* value) {
+    if(!ctx->builtin_intialized || !ident)
+        return EINVAL;
+
+    int res = 0;
+
+    char* ident_copy = ctx->malloc(strlen(ident) * sizeof(char));
+    memcpy(ident_copy, ident, (strlen(ident) + 1) * sizeof(char));
+
+    char *next, *last = strtok(ident_copy, ".");
+    
+    struct shard_set* namespace = ctx->builtin_scope.bindings;
+
+    while((next = strtok(NULL, "."))) {
+        if(strlen(next) == 0) 
+            return EINVAL;
+
+        struct shard_lazy_value* lazy_val;
+        if(shard_set_get(namespace, shard_get_ident(ctx, last), &lazy_val)) { 
+            if(shard_eval_lazy(ctx, lazy_val)) {
+                res = EINVAL;
+                goto cleanup;
+            }
+
+            struct shard_value *next_namespace = &lazy_val->eval;
+            if(next_namespace->type != SHARD_VAL_SET) {
+                res = EEXIST;
+                goto cleanup;
+            }
+
+            namespace = next_namespace->set;
+        }
+        else {
+            struct shard_value next_namespace = SET_VAL(shard_set_init(ctx, 32));
+            shard_set_put(namespace, shard_get_ident(ctx, last), shard_unlazy(ctx, next_namespace));
+
+            namespace = next_namespace.set;
+        }
+
+        last = next;
+    }
+    
+    shard_ident_t attr = shard_get_ident(ctx, last);
+
+    if(shard_set_get(namespace, attr, NULL)) {
+        res = EEXIST;
+        goto cleanup;
+    }
+
+    shard_set_put(namespace, attr, value);
+
+cleanup:
+    ctx->free(ident_copy);
+    return res;
+}
+
+int shard_define_function(struct shard_context* ctx, shard_ident_t ident, struct shard_value (*callback)(volatile struct shard_evaluator*, struct shard_lazy_value**, struct shard_location*), unsigned arity) {
+    return shard_define(ctx, ident, shard_unlazy(ctx, BUILTIN_VAL(callback, arity)));
+}
+
+int shard_define_constant(struct shard_context* ctx, shard_ident_t ident, struct shard_value value) {
+    return shard_define(ctx, ident, shard_unlazy(ctx, value));
 }
 

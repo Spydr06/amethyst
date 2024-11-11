@@ -1,4 +1,5 @@
 #include "string.h"
+#include <kernelio.h>
 
 #include <ctype.h>
 #include <stdint.h>
@@ -232,6 +233,13 @@ int strncmp(const char *_l, const char *_r, size_t n)
 char* strcat(char* restrict dest, const char* restrict src) {
     strcpy(dest + strlen(dest), src);
     return dest;
+}
+
+char* strtok(char* restrict str, const char* restrict delim) {
+    (void) str;
+    (void) delim;
+    unimplemented();
+    return NULL;
 }
 
 char* strerror(int errnum) {
