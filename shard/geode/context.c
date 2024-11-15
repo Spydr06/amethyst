@@ -259,3 +259,22 @@ _Noreturn void geode_throw_err(struct geode_context* ctx, struct geode_error err
     unreachable();
 }
 
+struct shard_value geode_call_file(struct geode_context* ctx, const char* script_path) {
+    struct shard_open_source* source = shard_open(&ctx->shard_ctx, script_path);
+    if(!source)
+        geode_throw(ctx, FILE_IO, .file=TUPLE(.err_no=errno,.path=script_path));
+    
+    int err = shard_eval(&ctx->shard_ctx, source);
+    if(err)
+        geode_throw(ctx, SHARD, .shard=TUPLE(.num=err,.errs=shard_get_errors(&ctx->shard_ctx)));
+
+    infof(ctx, "Loaded script `%s`.\n", script_path);
+
+    struct shard_value result = {0};
+    err = shard_call(&ctx->shard_ctx, source->result, ctx->configuration, &result);
+    if(err)
+        geode_throw(ctx, SHARD, .shard=TUPLE(.num=err, .errs=shard_get_errors(&ctx->shard_ctx)));
+
+    return result;
+}
+

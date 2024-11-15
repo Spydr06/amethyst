@@ -66,6 +66,10 @@ struct shard_error* shard_get_errors(struct shard_context* ctx) {
     return ctx->errors.items;
 }
 
+size_t shard_get_num_errors(struct shard_context* ctx) {
+    return ctx->errors.count;
+}
+
 void shard_remove_errors(struct shard_context* context) {
     context->errors.count = 0;
 }

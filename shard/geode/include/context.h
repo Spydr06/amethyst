@@ -4,6 +4,8 @@
 #include "config.h"
 #include <libshard.h>
 
+#define _(str) str
+
 struct geode_error;
 struct geode_context;
 
@@ -72,6 +74,8 @@ void geode_free(struct geode_context* ctx, void* ptr);
 void geode_context_set_prefix(struct geode_context* ctx, const char* prefix);
 void geode_context_set_config_file(struct geode_context* ctx, char* config_file);
 void geode_context_set_store_path(struct geode_context* ctx, char* store_path);
+
+struct shard_value geode_call_file(struct geode_context* ctx, const char* script_path);
 
 int geode_open_shard_file(const char* path, struct shard_source* dest, const char* restrict mode);
 

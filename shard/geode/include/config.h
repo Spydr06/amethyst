@@ -8,6 +8,7 @@ struct geode_context;
 #define GEODE_DEFAULT_CONFIG_FILE "etc/configuration.shard"
 #define GEODE_DEFAULT_STORE_PATH "etc/geode/store"
 #define GEODE_PRELUDE_FILE "prelude.shard"
+#define GEODE_BOOSTRAP_FILE "bootstrap.shard"
 #define GEODE_DEFAULT_PREFIX "/"
 
 void geode_load_config(struct geode_context* ctx);

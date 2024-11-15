@@ -20,11 +20,9 @@ LIMINE_LOADERS := $(LIMINE_DIR)/limine-bios.sys $(LIMINE_DIR)/limine-bios-cd.bin
 KERNEL_ELF ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).elf
 KERNEL_SYM ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).sym
 
-ISOROOT_DIR ?= $(BUILD_DIR)/iso
-ISO ?= amethyst.iso
+BOOTSTRAP_DIR ?= $(BUILD_DIR)/bootstrap
 
-INITRD ?= $(ISOROOT_DIR)/boot/initrd
-INITRD_PREFIX ?= $(BUILD_DIR)/initrd-prefix
+ISO ?= amethyst.iso
 
 TOOLPREFIX ?= $(ARCH)-elf-
 
@@ -163,12 +161,12 @@ $(GEODE_HOST_BIN): $(SHARD_DIR)
 	@echo "  MAKE  $(SHARD_DIR) geode [HOST]"
 	@$(MAKE) -C $(SHARD_DIR) geode
 
-.PHONY: initrd
-initrd: $(INITRD)
+.PHONY: bootstrap
+bootstrap: $(BOOTSTRAP_DIR)
 
-$(INITRD): $(GEODE_HOST_BIN) $(SYSTEM_CONFIGURATION) $(STORE_DIR)
-	mkdir -p $(dir $(INITRD))
-	$(GEODE_HOST_BIN) bootstrap -p $(INITRD_PREFIX) -c $(SYSTEM_CONFIGURATION) -s $(STORE_DIR) -v initrd $(INITRD)
+$(BOOTSTRAP_DIR): $(GEODE_HOST_BIN) $(SYSTEM_CONFIGURATION) $(STORE_DIR) $(KERNEL_ELF)
+	mkdir -p $(BOOTSTRAP_DIR)
+	$(GEODE_HOST_BIN) bootstrap --prefix=$(BOOTSTRAP_DIR) --config=$(SYSTEM_CONFIGURATION) --store=$(STORE_DIR) --verbose
 
 .PHONY: iso
 iso: $(ISO)
@@ -180,32 +178,32 @@ $(LIMINE_DIR)/limine: $(LIMINE_DIR)
 	@echo "  MAKE  $(LIMINE_DIR)"
 	@$(MAKE) -C $(LIMINE_DIR) limine CC=gcc LD=ld
 
-$(ISO): $(KERNEL_ELF) | $(LIMINE_DIR)/limine $(INITRD) $(ISOROOT_DIR)/boot/limine/limine.cfg
-	@echo "  CP    $< $(ISOROOT_DIR)/boot"
-	@cp $< $(ISOROOT_DIR)/boot
+$(ISO): $(KERNEL_ELF) | $(LIMINE_DIR)/limine $(BOOTSTRAP_DIR)/boot/limine/limine.cfg
+	@echo "  CP    $< $(BOOTSTRAP_DIR)/boot"
+	@cp $< $(BOOTSTRAP_DIR)/boot
 	
-	@echo "  CP    $(LIMINE_LOADERS) $(ISOROOT_DIR)/boot/limine"
-	@cp $(LIMINE_LOADERS) $(ISOROOT_DIR)/boot/limine
+	@echo "  CP    $(LIMINE_LOADERS) $(BOOTSTRAP_DIR)/boot/limine"
+	@cp $(LIMINE_LOADERS) $(BOOTSTRAP_DIR)/boot/limine
 
-	@echo "  MKDIR $(ISOROOT_DIR)/EFI/BOOT"
-	@mkdir -p $(ISOROOT_DIR)/EFI/BOOT
+	@echo "  MKDIR $(BOOTSTRAP_DIR)/EFI/BOOT"
+	@mkdir -p $(BOOTSTRAP_DIR)/EFI/BOOT
 
-	@echo "  CP    $(LIMINE_DIR)/BOOTX64.EFI $(ISOROOT_DIR)/EFI/BOOT"
-	@cp $(LIMINE_DIR)/BOOTX64.EFI $(ISOROOT_DIR)/EFI/BOOT
-	@echo "  CP    $(LIMINE_DIR)/BOOTIA32.EFI $(ISOROOT_DIR)/EFI_BOOT"
-	@cp $(LIMINE_DIR)/BOOTIA32.EFI $(ISOROOT_DIR)/EFI_BOOT
+	@echo "  CP    $(LIMINE_DIR)/BOOTX64.EFI $(BOOTSTRAP_DIR)/EFI/BOOT"
+	@cp $(LIMINE_DIR)/BOOTX64.EFI $(BOOTSTRAP_DIR)/EFI/BOOT
+	@echo "  CP    $(LIMINE_DIR)/BOOTIA32.EFI $(BOOTSTRAP_DIR)/EFI_BOOT"
+	@cp $(LIMINE_DIR)/BOOTIA32.EFI $(BOOTSTRAP_DIR)/EFI_BOOT
 	
 	@echo "  XORRISO      $@"
 	@xorriso -as mkisofs -b boot/limine/limine-bios-cd.bin \
 		-no-emul-boot -boot-load-size 4 -boot-info-table \
         --efi-boot boot/limine/limine-uefi-cd.bin \
         -efi-boot-part --efi-boot-image --protective-msdos-label \
-        $(ISOROOT_DIR) -o $@
+        $(BOOTSTRAP_DIR) -o $@
 
 	@echo "  BIOS-INSTALL $@"
 	@$(LIMINE_DIR)/limine bios-install $@
 
-$(ISOROOT_DIR)/boot/limine/limine.cfg: limine.cfg.in
+$(BOOTSTRAP_DIR)/boot/limine/limine.cfg: limine.cfg.in
 	@mkdir -p $(dir $@)
 	@echo "  GEN   $@"
 	@sed -e 's|@VERSION@|$(VERSION)|g' \
@@ -238,7 +236,7 @@ test:
 clean:
 	rm -rf $(BUILD_DIR)
 	rm -rf $(LIMINE_DIR)/boot
-	rm -rf $(ISOROOT_DIR)
+	rm -rf $(BOOTSTRAP_DIR)
 	rm -f $(VERSION_H)
 	rm -rf $(SHARD_DIR)/build
 

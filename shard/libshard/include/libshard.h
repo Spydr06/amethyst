@@ -187,6 +187,7 @@ struct shard_error {
 };
 
 struct shard_error* shard_get_errors(struct shard_context* context);
+size_t shard_get_num_errors(struct shard_context* context);
 
 void shard_remove_errors(struct shard_context* context);
 
@@ -276,6 +277,8 @@ SHARD_DECL struct shard_value shard_eval_addition(volatile struct shard_evaluato
 SHARD_DECL struct shard_value shard_eval_subtraction(volatile struct shard_evaluator* e, struct shard_value left, struct shard_value right, struct shard_location* loc);
 SHARD_DECL struct shard_value shard_eval_multiplication(volatile struct shard_evaluator* e, struct shard_value left, struct shard_value right, struct shard_location* loc);
 SHARD_DECL struct shard_value shard_eval_division(volatile struct shard_evaluator* e, struct shard_value left, struct shard_value right, struct shard_location* loc);
+
+SHARD_DECL int shard_call(struct shard_context* ctx, struct shard_value func, struct shard_value* arg, struct shard_value* result);
 
 enum shard_token_type {
     SHARD_TOK_EOF = 0,

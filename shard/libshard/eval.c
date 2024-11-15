@@ -781,7 +781,7 @@ int shard_eval_lazy(struct shard_context* ctx, struct shard_lazy_value* value) {
     volatile struct shard_evaluator e;
     evaluator_init(&e, ctx, &exception);
 
-    if(setjmp(*e.exception) == 0) {
+    if(setjmp(*e.exception) == SHARD_EVAL_OK) {
         e.scope = value->scope;
         value->eval = eval(&e, value->lazy);
         value->evaluated = true;
@@ -822,4 +822,19 @@ finish:
     return ctx->errors.count;
 }
 
+SHARD_DECL int shard_call(struct shard_context* ctx, struct shard_value func, struct shard_value* arg, struct shard_value* result) {
+    jmp_buf exception;
+    volatile struct shard_evaluator e;
+    evaluator_init(&e, ctx, &exception);
+
+    if(setjmp(*e.exception) == SHARD_EVAL_OK) {
+        e.scope = &ctx->builtin_scope;
+
+        *result = eval_call_value(&e, func, shard_unlazy(ctx, *arg), (struct shard_location){.src=NULL,.line=1,.offset=0,.width=1});
+    }
+
+    evaluator_free(&e);
+
+    return ctx->errors.count; 
+}
 

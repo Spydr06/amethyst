@@ -1,3 +1,4 @@
+#include "libshard.h"
 #include <bootstrap.h>
 #include <geode.h>
 #include <config.h>
@@ -53,6 +54,14 @@ static void create_prefix(struct geode_context* ctx) {
         geode_throw(ctx, MKDIR, .file=TUPLE(ctx->prefix, errno));
 }
 
+static char* get_bootstrap_script_path(struct geode_context* ctx) {
+    size_t path_len = strlen(ctx->store_path) + strlen(GEODE_BOOSTRAP_FILE) + 2;
+    char* path = geode_malloc(ctx, path_len);
+    snprintf(path, path_len, "%s/%s", ctx->store_path, GEODE_BOOSTRAP_FILE);
+
+    return path;
+}
+
 int geode_bootstrap(struct geode_context* ctx, int argc, char** argv) {
     struct bootstrap_flags flags = {0};
 
@@ -85,12 +94,18 @@ int geode_bootstrap(struct geode_context* ctx, int argc, char** argv) {
     infof(ctx, "Bootstrapping `%s` to `%s`... (This could take a while)\n", ctx->main_config_path, ctx->prefix);    
 
     create_prefix(ctx);
-    geode_load_config(ctx);    
+    geode_load_config(ctx);
 
+    char* bootstrap_script_path = get_bootstrap_script_path(ctx);
+    struct shard_value boostrap_result = geode_call_file(ctx, bootstrap_script_path);
 
-    if(flags.initrd_path) {
-        geode_generate_initrd(ctx, flags.initrd_path);
-    }
+    struct shard_string str = {0};
+    shard_value_to_string(&ctx->shard_ctx, &str, &boostrap_result, 10);
+    shard_string_push(&ctx->shard_ctx, &str, '\0');
+
+    printf("Bootstrap result: %s\n", str.items);
+
+    shard_string_free(&ctx->shard_ctx, &str);
 
     return 0;
 }

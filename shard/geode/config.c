@@ -10,8 +10,6 @@
 #include <memory.h>
 #include <stdlib.h>
 
-#define _(str) str
-
 static const char loader_fmt[] = _("\n\
 # Loads the prelude and configuration files, then applies the prelude to the configuration.\n\
 #   prelude :: map\n\
