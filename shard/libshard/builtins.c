@@ -560,16 +560,18 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
     dest->bindings = global_scope;
     dest->outer = NULL;
     
-    ctx->builtin_intialized = true;    
+    ctx->builtin_initialized = true;    
 }
 
 int shard_define(struct shard_context* ctx, shard_ident_t ident, struct shard_lazy_value* value) {
-    if(!ctx->builtin_intialized || !ident)
+    if(!ctx->builtin_initialized)
+        shard_get_builtins(ctx, &ctx->builtin_scope);
+    if(!ctx->builtin_initialized || !ident)
         return EINVAL;
 
     int res = 0;
 
-    char* ident_copy = ctx->malloc(strlen(ident) * sizeof(char));
+    char* ident_copy = ctx->malloc((strlen(ident) + 1) * sizeof(char));
     memcpy(ident_copy, ident, (strlen(ident) + 1) * sizeof(char));
 
     char *next, *last = strtok(ident_copy, ".");
@@ -581,7 +583,7 @@ int shard_define(struct shard_context* ctx, shard_ident_t ident, struct shard_la
             return EINVAL;
 
         struct shard_lazy_value* lazy_val;
-        if(shard_set_get(namespace, shard_get_ident(ctx, last), &lazy_val)) { 
+        if(shard_set_get(namespace, shard_get_ident(ctx, last), &lazy_val) == 0) { 
             if(shard_eval_lazy(ctx, lazy_val)) {
                 res = EINVAL;
                 goto cleanup;
@@ -598,7 +600,7 @@ int shard_define(struct shard_context* ctx, shard_ident_t ident, struct shard_la
         else {
             struct shard_value next_namespace = SET_VAL(shard_set_init(ctx, 32));
             shard_set_put(namespace, shard_get_ident(ctx, last), shard_unlazy(ctx, next_namespace));
-
+            
             namespace = next_namespace.set;
         }
 
@@ -607,7 +609,7 @@ int shard_define(struct shard_context* ctx, shard_ident_t ident, struct shard_la
     
     shard_ident_t attr = shard_get_ident(ctx, last);
 
-    if(shard_set_get(namespace, attr, NULL)) {
+    if(shard_set_get(namespace, attr, NULL) == 0) {
         res = EEXIST;
         goto cleanup;
     }

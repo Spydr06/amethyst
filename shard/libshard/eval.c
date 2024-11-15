@@ -806,7 +806,7 @@ int shard_eval(struct shard_context* ctx, struct shard_open_source* source) {
         volatile struct shard_evaluator e;
         evaluator_init(&e, ctx, &exception);
 
-        if(!ctx->builtin_intialized)
+        if(!ctx->builtin_initialized)
             shard_get_builtins(ctx, &ctx->builtin_scope);
 
         e.scope = &ctx->builtin_scope;

@@ -1,1 +1,5 @@
-config: null
+config: 
+    let 
+        ensureExists = { path, default ? null }: assert geode.file.exists path; default;
+    in
+    ensureExists { path = geode.prefix; }

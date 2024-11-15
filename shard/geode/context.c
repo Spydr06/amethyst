@@ -7,6 +7,7 @@
 #include <geode.h>
 #include <context.h>
 #include <config.h>
+#include <builtins.h>
 
 #include <libshard.h>
 

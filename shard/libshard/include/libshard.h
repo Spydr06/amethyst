@@ -236,7 +236,7 @@ struct shard_context {
 
     struct shard_gc gc;
 
-    bool builtin_intialized;
+    bool builtin_initialized;
     struct shard_scope builtin_scope;
 };
 

@@ -4,6 +4,7 @@
 
 #include <context.h>
 #include <bootstrap.h>
+#include <builtins.h>
 
 #include <getopt.h>
 #include <setjmp.h>
@@ -137,6 +138,8 @@ int main(int argc, char** argv) {
 
     if(optind >= argc)
         geode_throw(&ctx, NO_ACTION, );
+
+    geode_load_builtins(&ctx);
 
     const struct action* action = cmdline_actions;
     bool found = false;

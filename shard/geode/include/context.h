@@ -4,6 +4,10 @@
 #include "config.h"
 #include <libshard.h>
 
+#ifndef __len
+    #define __len(arr) (sizeof((arr)) / sizeof(*(arr)))
+#endif
+
 #define _(str) str
 
 struct geode_error;
