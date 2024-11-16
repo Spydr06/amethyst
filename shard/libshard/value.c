@@ -23,7 +23,7 @@ struct shard_value shard_value_copy(volatile struct shard_evaluator* e, struct s
     }
 }
 
-void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* val, int max_depth) {
+int shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* val, int max_depth) {
     static int indentation_depth = 0;
     static char buf[48];
     switch(val->type) {
@@ -115,6 +115,8 @@ void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, 
             dynarr_append_many(ctx, str, buf, strlen(buf));
             break;
     }
+
+    return ctx->errors.count;
 }
 
 

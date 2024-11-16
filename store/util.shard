@@ -10,8 +10,11 @@
         cp = args: 
             geode.proc.spawn "cp" (builtins.map builtins.toString args) true;
         
-        make = 
-            args: geode.proc.spawn "make" (builtins.map builtins.toString args) true;
+        make = args: 
+            geode.proc.spawn "make" (builtins.map builtins.toString args) true;
+
+        find = args: 
+            geode.proc.spawnPipe "find" (builtins.map builtins.toString args) "";
 
         nproc = geode.proc.spawn "nproc" [] true;
     };

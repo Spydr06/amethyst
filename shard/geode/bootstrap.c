@@ -100,12 +100,15 @@ int geode_bootstrap(struct geode_context* ctx, int argc, char** argv) {
     struct shard_value boostrap_result = geode_call_file(ctx, bootstrap_script_path);
 
     struct shard_string str = {0};
-    shard_value_to_string(&ctx->shard_ctx, &str, &boostrap_result, 10);
+    int err = shard_value_to_string(&ctx->shard_ctx, &str, &boostrap_result, 10);
     shard_string_push(&ctx->shard_ctx, &str, '\0');
 
     printf("Bootstrap result: %s\n", str.items);
 
     shard_string_free(&ctx->shard_ctx, &str);
+
+    if(err)
+        geode_throw(ctx, SHARD, .shard=TUPLE(.errs=shard_get_errors(&ctx->shard_ctx), .num=err));
 
     return 0;
 }

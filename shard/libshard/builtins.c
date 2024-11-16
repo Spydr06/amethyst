@@ -146,6 +146,39 @@ static struct shard_value builtin_map(volatile struct shard_evaluator* e, struct
     return LIST_VAL(result_head);
 }
 
+static struct shard_value builtin_split(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value delim = shard_eval_lazy2(e, args[0]);
+    if(delim.type != SHARD_VAL_STRING)
+        shard_eval_throw(e, *loc, "`builtins.split` expects first argument to be of type `string`");
+
+    struct shard_value string = shard_eval_lazy2(e, args[1]);
+    if(string.type != SHARD_VAL_STRING)
+        shard_eval_throw(e, *loc, "`builtins.split` expects second argument to be of type `string`");
+
+    char* string_copy = shard_gc_malloc(e->gc, (string.strlen + 1) * sizeof(char));
+    memcpy(string_copy, string.string, (string.strlen + 1) * sizeof(char));
+
+    struct shard_list *head = NULL, *prev = NULL, *next = NULL;
+
+    char* sect = strtok(string_copy, delim.string);
+    while(sect != NULL) {
+        next = shard_gc_malloc(e->gc, sizeof(struct shard_list));
+        next->value = shard_unlazy(e->ctx, STRING_VAL(sect, strlen(sect)));
+        next->next = NULL;
+
+        if(!head)
+            head = next;
+
+        if(prev)
+            prev->next = next;
+
+        prev = next;
+        sect = strtok(NULL, delim.string);
+    }
+
+    return LIST_VAL(head);
+}
+
 static struct shard_value builtin_abort(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
     struct shard_value arg = shard_eval_lazy2(e, *args);
     if(arg.type != SHARD_VAL_STRING)
@@ -565,6 +598,7 @@ LAZY_STATIC_EXPR(currentTime, BUILTIN_EXPR(builtin_currentTime))
 LAZY_STATIC_EXPR(shardPath, BUILTIN_EXPR(builtin_shardPath))
 
 void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
+    struct shard_lazy_value* import = shard_unlazy(ctx, BUILTIN_VAL(builtin_import, 1));
     struct builtin builtins[] = {
         { "abort", shard_unlazy(ctx, BUILTIN_VAL(builtin_abort, 1)) },
         { "add", shard_unlazy(ctx, BUILTIN_VAL(builtin_add, 2)) },
@@ -584,7 +618,7 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
         { "floor", shard_unlazy(ctx, BUILTIN_VAL(builtin_floor, 1)) },
         { "genList", shard_unlazy(ctx, BUILTIN_VAL(builtin_genList, 2)) },
         { "head", shard_unlazy(ctx, BUILTIN_VAL(builtin_head, 1)) },
-        { "import", shard_unlazy(ctx, BUILTIN_VAL(builtin_import, 1)) },
+        { "import", import },
         { "isAttrs", shard_unlazy(ctx, BUILTIN_VAL(builtin_isAttrs, 1)) },
         { "isBool", shard_unlazy(ctx, BUILTIN_VAL(builtin_isBool, 1)) },
         { "isFloat", shard_unlazy(ctx, BUILTIN_VAL(builtin_isFloat, 1)) },
@@ -601,6 +635,7 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
         { "seq", shard_unlazy(ctx, BUILTIN_VAL(builtin_seq, 2)) },
         { "shardPath", shard_lazy(ctx, GET_LAZY(shardPath), NULL) },
         { "shardVersion", shard_unlazy(ctx, CSTRING_VAL(SHARD_VERSION)) },
+        { "split", shard_unlazy(ctx, BUILTIN_VAL(builtin_split, 2)) },
         { "sub", shard_unlazy(ctx, BUILTIN_VAL(builtin_sub, 2)) },
         { "tail", shard_unlazy(ctx, BUILTIN_VAL(builtin_tail, 1)) },
         { "toString", shard_unlazy(ctx, BUILTIN_VAL(builtin_toString, 1)) },
@@ -614,10 +649,11 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
         shard_set_put(builtin_set, shard_get_ident(ctx, builtins[i].ident), builtins[i].value);
     }
 
-    struct shard_set* global_scope = shard_set_init(ctx, 8);
+    struct shard_set* global_scope = shard_set_init(ctx, 9);
     shard_set_put(global_scope, shard_get_ident(ctx, "true"),     shard_unlazy(ctx, BOOL_VAL(true)));
     shard_set_put(global_scope, shard_get_ident(ctx, "false"),    shard_unlazy(ctx, BOOL_VAL(false)));
     shard_set_put(global_scope, shard_get_ident(ctx, "null"),     shard_unlazy(ctx, NULL_VAL()));
+    shard_set_put(global_scope, shard_get_ident(ctx, "import"),   import);
     shard_set_put(global_scope, shard_get_ident(ctx, "builtins"), shard_unlazy(ctx, SET_VAL(builtin_set)));
 
     dest->bindings = global_scope;

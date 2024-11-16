@@ -1,5 +1,10 @@
 let 
     util = import ./util.shard; 
 in rec {
-    indexPkgs = util.shell.find [ ]
+    pkgIndex = let 
+            found = util.shell.find [(geode.store + "/pkgs") "-type" "f" "-name" "*.shard"];
+        in assert found.exitCode == 0; builtins.split "\n" found.stdout;
+
+    pkgs = builtins.map import pkgIndex;
 }
+

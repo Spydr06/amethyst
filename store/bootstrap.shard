@@ -1,1 +1,1 @@
-config: geode.proc.spawnPipe "ls" ["-al"] ""
+config: config.pkgs

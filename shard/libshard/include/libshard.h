@@ -597,7 +597,7 @@ SHARD_DECL int shard_set_get(struct shard_set* set, shard_ident_t attr, struct s
 SHARD_DECL void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest);
 
 SHARD_DECL struct shard_value shard_value_copy(volatile struct shard_evaluator* e, struct shard_value val);
-SHARD_DECL void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* value, int max_depth);
+SHARD_DECL int shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* value, int max_depth);
 
 SHARD_DECL const char* shard_token_type_to_str(enum shard_token_type token_type);
 
