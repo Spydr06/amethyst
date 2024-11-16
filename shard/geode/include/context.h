@@ -75,6 +75,8 @@ void* geode_calloc(struct geode_context* ctx, size_t nmemb, size_t size);
 void* geode_realloc(struct geode_context* ctx, void* ptr, size_t size);
 void geode_free(struct geode_context* ctx, void* ptr);
 
+char* geode_strdup(struct geode_context* ctx, const char* str);
+
 void geode_context_set_prefix(struct geode_context* ctx, const char* prefix);
 void geode_context_set_config_file(struct geode_context* ctx, char* config_file);
 void geode_context_set_store_path(struct geode_context* ctx, char* store_path);

@@ -1,5 +1,9 @@
 { pkgs, archive, ... }: {
-    
+    bootloader.limine = {
+        enabled = true;
+        uefi = true;
+    };
+
     initrd = {
         enabled = true;
         compression = { method = archive.ustar; format = archive.uncompressed; }; 

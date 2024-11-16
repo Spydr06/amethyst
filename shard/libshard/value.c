@@ -24,6 +24,7 @@ struct shard_value shard_value_copy(volatile struct shard_evaluator* e, struct s
 }
 
 void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* val, int max_depth) {
+    static int indentation_depth = 0;
     static char buf[48];
     switch(val->type) {
         case SHARD_VAL_BOOL:
@@ -76,24 +77,37 @@ void shard_value_to_string(struct shard_context* ctx, struct shard_string* str, 
             dynarr_append(ctx, str, ']');
         } break;
         case SHARD_VAL_SET: {
+            char line_sep = val->set->capacity > 2 ? '\n' : ' ';
+            if(line_sep == '\n')
+                indentation_depth++;
             dynarr_append(ctx, str, '{');
-            dynarr_append(ctx, str, ' ');
+
+            dynarr_append(ctx, str, line_sep);
 
             for(size_t i = 0; i < val->set->capacity; i++) {
                 if(!val->set->entries[i].key)
                     continue;
 
+                for(int j = 0; line_sep == '\n' && j < indentation_depth; j++)
+                    dynarr_append_many(ctx, str, "    ", 4);
+
                 dynarr_append_many(ctx, str, val->set->entries[i].key, strlen(val->set->entries[i].key));
                 dynarr_append_many(ctx, str, " = ", 3);
 
-                if(!val->set->entries[i].value->evaluated)
-                    assert(shard_eval_lazy(ctx, val->set->entries[i].value) == 0);
-                shard_value_to_string(ctx, str, &val->set->entries[i].value->eval, max_depth--);
+                if(!val->set->entries[i].value->evaluated && shard_eval_lazy(ctx, val->set->entries[i].value) != 0)
+                    dynarr_append_many(ctx, str, "<error>", 7);
+                else
+                    shard_value_to_string(ctx, str, &val->set->entries[i].value->eval, max_depth--);
 
                 dynarr_append(ctx, str, ';');
-                dynarr_append(ctx, str, ' ');
+                dynarr_append(ctx, str, line_sep);
             }
 
+            for(int j = 0; line_sep == '\n' && j < indentation_depth - 1; j++)
+                    dynarr_append_many(ctx, str, "    ", 4);
+
+            if(line_sep == '\n')
+                indentation_depth--;
             dynarr_append(ctx, str, '}');
         } break;
         case SHARD_VAL_BUILTIN:

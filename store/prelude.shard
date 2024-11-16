@@ -3,14 +3,14 @@
 # This file gets passed to the system configuration by geode
 #
 
-{
+let 
+    util = import ./util.shard; 
+in {
     archive = {
         ustar = "ustar";
         uncompressed = null;
     };
 
-    pkgs = {
-
-    };
+    pkgs = import ./pkgs.shard;
 }
 

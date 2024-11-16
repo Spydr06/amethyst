@@ -1,0 +1,11 @@
+with import <geode>; {
+    bootloader.limine = pkgs.defaultPackage {
+        unpack = null;
+        patch = null;
+        configure = null;
+        build = null;
+        check = null;
+        install = null;
+    }
+}
+

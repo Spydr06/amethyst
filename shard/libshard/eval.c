@@ -331,6 +331,34 @@ struct shard_value shard_eval_addition(volatile struct shard_evaluator* e, struc
             }
             return STRING_VAL(sum, len);
         }
+
+        case SHARD_VAL_PATH: {
+            char* sum = 0;
+            size_t len = 0;
+            switch(right.type) {
+                case SHARD_VAL_PATH:
+                    len = left.pathlen + right.pathlen;
+                    sum = shard_gc_malloc(e->gc, (len + 1) * sizeof(char));
+                    sum[0] = '\0';
+                    strcat(sum, left.path);
+                    strcat(sum, right.path);
+                    break;
+                case SHARD_VAL_STRING:
+                    len = left.pathlen + right.strlen;
+                    if(right.string[0] != '/')
+                        len++;
+                    sum = shard_gc_malloc(e->gc, (len + 1) * sizeof(char));
+                    sum[0] = '\0';
+                    strcat(sum, left.path);
+                    if(right.string[0] != '/')
+                        strcat(sum, "/");
+                    strcat(sum, right.string);
+                    break;
+                default:
+                    goto fail;
+            }
+            return PATH_VAL(sum, len);
+        }
         
         default:
             is_left = true;

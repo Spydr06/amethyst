@@ -1,0 +1,27 @@
+{
+    ensureExists = { path, default ? null }: assert geode.file.exists path; default;
+    
+    mkdirIfNotExists = path: if geode.file.exists path
+        then 0
+        else assert (geode.file.mkdir path) == 0; path;
+
+    # utility functions that mimic shell commands
+    shell = {
+        cp = args: 
+            geode.proc.spawn "cp" (builtins.map builtins.toString args) true;
+        
+        make = 
+            args: geode.proc.spawn "make" (builtins.map builtins.toString args) true;
+
+        nproc = geode.proc.spawn "nproc" [] true;
+    };
+
+    pkg = {
+        null = { enabled = false; };
+    };
+
+    paths = {
+        prefix = util.ensureExists { path = geode.prefix; default = geode.prefix; };
+        store = util.ensureExists { path = geode.store; default = geode.store; };
+    };
+}

@@ -1,0 +1,5 @@
+let 
+    util = import ./util.shard; 
+in rec {
+    indexPkgs = util.shell.find [ ]
+}

@@ -197,10 +197,12 @@ shard_dynarr(shard_string_list, char*);
 shard_dynarr(shard_expr_list, struct shard_expr);
 
 SHARD_DECL void shard_string_append(struct shard_context* ctx, struct shard_string* str, const char* str2);
+SHARD_DECL void shard_string_appendn(struct shard_context* ctx, struct shard_string* str, const char* str2, size_t size);
 SHARD_DECL void shard_string_push(struct shard_context* ctx, struct shard_string* str, char c);
 SHARD_DECL void shard_string_free(struct shard_context* ctx, struct shard_string* str);
 
 SHARD_DECL void shard_gc_string_append(volatile struct shard_gc* gc, struct shard_string* str, const char* str2);
+SHARD_DECL void shard_gc_string_appendn(volatile struct shard_gc* gc, struct shard_string* str, const char* str2, size_t size);
 SHARD_DECL void shard_gc_string_push(volatile struct shard_gc* ctx, struct shard_string* str, char c);
 SHARD_DECL void shard_gc_string_free(volatile struct shard_gc* ctx, struct shard_string* str);
 
@@ -238,6 +240,8 @@ struct shard_context {
 
     bool builtin_initialized;
     struct shard_scope builtin_scope;
+
+    void* userp;
 };
 
 #define shard_init(ctx) shard_init_ext((ctx), __builtin_frame_address(0))
@@ -571,6 +575,8 @@ struct shard_list {
     struct shard_list* next;
     struct shard_lazy_value* value;   
 };
+
+SHARD_DECL size_t shard_list_length(struct shard_list* list);
 
 struct shard_set {
     size_t size;

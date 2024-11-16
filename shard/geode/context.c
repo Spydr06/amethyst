@@ -139,7 +139,8 @@ int geode_context_init(struct geode_context* ctx, const char* prog_name, geode_e
         .dirname = dirname,
         .access = access,
         .open = geode_open_shard_file,
-        .home_dir = nullptr
+        .home_dir = nullptr,
+        .userp = ctx
     };
 
     int err = shard_init(&ctx->shard_ctx);
@@ -165,6 +166,13 @@ void geode_context_free(struct geode_context* ctx) {
         free(bucket);
         bucket = next;
     }
+}
+
+char* geode_strdup(struct geode_context* ctx, const char* str) {
+    size_t size = strlen(str) + 1;
+    char* new = geode_malloc(ctx, size);
+    memcpy(new, str, size);
+    return new;
 }
 
 void* geode_malloc(struct geode_context* ctx, size_t size) {

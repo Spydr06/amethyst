@@ -1,2 +1,2 @@
-builtins.catAttrs "a" [{a = 1;} {b = 0;} {a = 2;}]
+builtins.map (num: num > 5) [1 2 3 4 5 6 7 8 9 10]
 
