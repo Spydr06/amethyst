@@ -94,7 +94,7 @@ static int parse_expr(struct parser* p, struct shard_expr* expr, enum precedence
 static int parse_escape_code(struct parser* p, const char* ptr, char* c) {
     switch(*ptr) {
         case 'e':
-            *c = 33;
+            *c = 033;
             break;
         case 'n':
             *c = '\n';

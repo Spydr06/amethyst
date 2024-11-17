@@ -1,14 +1,8 @@
-{ pkgs, archive, prelude, ... }: prelude.defaultConfig {
-    bootloader.limine = {
-        enabled = true;
-        uefi = true;
-    };
+{ pkgs, archive, prelude, ... }: prelude.makeConfig {
+    boot.loader.limine.enabled = true;
 
-    initrd = {
-        enabled = true;
-        compression = { method = archive.ustar; format = archive.uncompressed; }; 
-    };
-    
-    pkgs = pkgs;
+    environment.packages = with pkgs; [
+        limine
+    ];
 }
 

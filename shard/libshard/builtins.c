@@ -1,3 +1,4 @@
+#include <string.h>
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
 
@@ -235,6 +236,45 @@ static struct shard_value builtin_attrValues(volatile struct shard_evaluator* e,
 
     // TODO: sort after keys alphabetically
     return LIST_VAL(head);
+}
+
+static struct shard_value merge_set(volatile struct shard_evaluator* e, struct shard_set* fst, struct shard_set* snd) {
+    struct shard_set* dest = shard_set_init(e->ctx, fst->size + snd->size);
+
+    size_t i;
+    for(i = 0; i < fst->capacity; i++) {
+        if(fst->entries[i].key)
+            shard_set_put(dest, fst->entries[i].key, fst->entries[i].value);
+    }
+
+    for(i = 0; i < snd->capacity; i++) {
+        if(snd->entries[i].key) {
+
+            struct shard_lazy_value* fst_attr, *snd_attr = snd->entries[i].value;
+            struct shard_value fst_attr_value, snd_attr_value;
+            if(shard_set_get(dest, snd->entries[i].key, &fst_attr) == 0 && 
+                    (fst_attr_value = shard_eval_lazy2(e, fst_attr)).type == SHARD_VAL_SET &&
+                    (snd_attr_value = shard_eval_lazy2(e, snd_attr)).type == SHARD_VAL_SET) {
+                shard_set_put(dest, snd->entries[i].key, shard_unlazy(e->ctx, merge_set(e, fst_attr_value.set, snd_attr_value.set)));
+            }
+            else
+                shard_set_put(dest, snd->entries[i].key, snd->entries[i].value);
+        }
+    }
+
+    return SET_VAL(dest);
+}
+
+static struct shard_value builtin_mergeTree(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value a = shard_eval_lazy2(e, args[0]);
+    if(a.type != SHARD_VAL_SET)
+        shard_eval_throw(e, *loc, "`builtins.mergeTree` expects first argument to be of type `set`");
+
+    struct shard_value b = shard_eval_lazy2(e, args[1]);
+    if(b.type != SHARD_VAL_SET)
+        shard_eval_throw(e, *loc, "`builtins.mergeTree` expects second argument to be of type `set`");
+
+    return merge_set(e, a.set, b.set);
 }
 
 static struct shard_value builtin_bitAnd(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
@@ -570,6 +610,24 @@ static struct shard_value builtin_seq(volatile struct shard_evaluator* e, struct
     return shard_eval_lazy2(e, args[1]);
 }
 
+static struct shard_value builtin_seqList(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value list = shard_eval_lazy2(e, *args);
+    if(list.type != SHARD_VAL_LIST)
+        shard_eval_throw(e, *loc, "`builtins.seqList` expects a list");
+
+    struct shard_list* list_cur = list.list.head;
+    struct shard_list* last = NULL;
+
+    while(list_cur) {
+        if(last)
+            shard_eval_lazy2(e, last->value);
+        last = list_cur;
+        list_cur = list_cur->next;
+    }
+
+    return last ? shard_eval_lazy2(e, last->value) : NULL_VAL();
+}
+
 static struct shard_value builtin_currentTime(volatile struct shard_evaluator* e) {
     (void) e;
     return INT_VAL(time(NULL));
@@ -657,8 +715,10 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
         { "langVersion", shard_unlazy(ctx, INT_VAL(SHARD_VERSION_X)) },
         { "length", shard_unlazy(ctx, BUILTIN_VAL(builtin_length, 1)) },
         { "map", shard_unlazy(ctx, BUILTIN_VAL(builtin_map, 2)) },
+        { "mergeTree", shard_unlazy(ctx, BUILTIN_VAL(builtin_mergeTree, 2)) },
         { "mul", shard_unlazy(ctx, BUILTIN_VAL(builtin_mul, 2)) },
         { "seq", shard_unlazy(ctx, BUILTIN_VAL(builtin_seq, 2)) },
+        { "seqList", shard_unlazy(ctx, BUILTIN_VAL(builtin_seqList, 1)) },
         { "shardPath", shard_lazy(ctx, GET_LAZY(shardPath), NULL) },
         { "shardVersion", shard_unlazy(ctx, CSTRING_VAL(SHARD_VERSION)) },
         { "split", shard_unlazy(ctx, BUILTIN_VAL(builtin_split, 2)) },

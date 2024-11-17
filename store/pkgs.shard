@@ -1,18 +1,29 @@
-let 
-    util = import ./util.shard; 
-in rec {
+with import ./geode.shard; 
+rec {
     pkgIndex = let 
             found = util.shell.find [(geode.store + "/pkgs") "-type" "f" "-name" "*.shard"];
         in assert found.exitCode == 0; builtins.split "\n" found.stdout;
 
-    pkgOpts = pkg: let 
-            pkgDecl = builtins.attrValues pkg;
-        in if (builtins.length pkgDecl) > 0
-            then (builtins.head pkgDecl).opts or {}
-            else {};
+    pkgAttrs = pkg: builtins.head (builtins.attrValues pkg);
 
-    pkgs = builtins.map import pkgIndex;
+    pkgOpts = pkg: (pkgAttrs pkg).opts or {};
+    pkgName = pkg: (pkgAttrs pkg).name or null;
 
-    defaultConfig = geode.debug.dump (builtins.foldl (a: b: a // b) {} (builtins.map pkgOpts pkgs));
+    installPipeline = config: pkg: let
+            noEnableFlag = c: true;
+            wrap = elem: if elem == null then [] else [elem];
+        in if (pkg.isEnabled or noEnableFlag) config
+            then   (wrap pkg.unpack or null)
+                ++ (wrap pkg.patch or null)
+                ++ (wrap pkg.configure or null)
+                ++ (wrap pkg.build or null)
+                ++ (wrap pkg.check or null)
+                ++ (wrap pkg.install or null)
+            else [];
+
+    pkgList = builtins.map import pkgIndex;
+    pkgs = builtins.foldl util.merge {} pkgList;
+
+    defaultConfig = builtins.foldl builtins.mergeTree templates.staticConfig (builtins.map pkgOpts pkgList);
 }
 

@@ -1,18 +1,22 @@
 {
     limine = {
+        name = "limine";
+
         opts = {
-            bootloader.limine = {
+            boot.loader.limine = {
                 enabled = false;
-                uefi = true;
+                efi = true;
             };
         };
 
-        unpack = null;
-        patch = null;
-        configure = null;
-        build = null;
-        check = null;
-        install = null;
+        isEnabled = config: config.boot.loader.limine.enabled;
+
+        unpack = geode.debug.dump "unpack";
+        patch = geode.debug.dump "patch";
+        configure = geode.debug.dump "configure";
+        build = geode.debug.dump "build";
+        check = geode.debug.dump "check";
+        install = geode.debug.dump "install";
     };
 }
 

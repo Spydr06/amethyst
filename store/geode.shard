@@ -1,0 +1,71 @@
+let 
+    pkgmgr = import ./pkgs.shard;
+in {
+    util = {
+        ensureExists = { path, default ? null }: assert geode.file.exists path; default;
+
+        mkdirIfNotExists = path: if geode.file.exists path
+            then 0
+            else assert (geode.file.mkdir path) == 0; path;
+
+        merge = fst: snd: fst // snd;
+
+        # utility functions that mimic shell commands
+        shell = {
+            cp = args: 
+                geode.proc.spawn "cp" (builtins.map builtins.toString args) true;
+
+            make = args: 
+                geode.proc.spawn "make" (builtins.map builtins.toString args) true;
+
+            find = args: 
+                geode.proc.spawnPipe "find" (builtins.map builtins.toString args) "";
+
+            nproc = geode.proc.spawn "nproc" [] true;
+        };
+
+        paths = {
+            prefix = util.ensureExists { path = geode.prefix; default = geode.prefix; };
+            store = util.ensureExists { path = geode.store; default = geode.store; };
+        };
+
+        archive = {
+            mkisofs = { input, output ? "amethyst.iso", uefi ? null }: geode.proc.spawn "xorriso" [
+                "-as" "mkisofs"
+                input
+                "-o" output
+            ] true;
+        };
+
+        io = rec {
+            term = rec {
+                reset = "\e[0m";
+                bold = "\e[1m";
+                
+                red = "\e[31m";
+                green = "\e[32m";
+                yellow = "\e[33m";
+                blue = "\e[34m";
+                magenta = "\e[35m";
+                cyan = "\e[36m";
+
+                color = c: s: c + s + reset;
+            };
+
+            fmtMajor = str: term.bold + (term.color term.cyan str);
+
+            logMajor = str: task: builtins.seq (geode.debug.println (fmtMajor str)) task;
+        };
+    };
+
+    templates = {
+        staticConfig = {
+            boot.kernelParams = [];
+            boot.initrd = {
+                enabled = false;
+            };
+
+            environment.systemPackages = [];
+        };
+    };
+}

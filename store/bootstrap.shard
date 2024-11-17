@@ -1,1 +1,11 @@
-config: config
+with import ./geode.shard; 
+config:
+let
+    pkgmgr = import ./pkgs.shard;
+
+    bootstrapPkg = pkg: util.io.logMajor ("Installing " + pkg.name + "...") (builtins.seqList (pkgmgr.installPipeline config pkg));
+
+    bootstrapPkgs = pkgList: builtins.map bootstrapPkg pkgList;
+in 
+    bootstrapPkgs config.environment.packages
+
