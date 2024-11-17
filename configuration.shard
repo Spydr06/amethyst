@@ -1,4 +1,4 @@
-{ pkgs, archive, ... }: {
+{ pkgs, archive, prelude, ... }: prelude.defaultConfig {
     bootloader.limine = {
         enabled = true;
         uefi = true;
@@ -8,7 +8,7 @@
         enabled = true;
         compression = { method = archive.ustar; format = archive.uncompressed; }; 
     };
-
+    
     pkgs = pkgs;
 }
 

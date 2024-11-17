@@ -5,12 +5,17 @@
 
 let 
     util = import ./util.shard; 
+    pkgmgr = import ./pkgs.shard;
 in {
     archive = {
         ustar = "ustar";
         uncompressed = null;
     };
 
-    pkgs = import ./pkgs.shard;
+    pkgs = pkgmgr.pkgs;
+
+    prelude = {
+        defaultConfig = config: pkgmgr.defaultConfig // config;
+    };
 }
 

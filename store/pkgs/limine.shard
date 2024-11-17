@@ -1,5 +1,12 @@
 {
     limine = {
+        opts = {
+            bootloader.limine = {
+                enabled = false;
+                uefi = true;
+            };
+        };
+
         unpack = null;
         patch = null;
         configure = null;

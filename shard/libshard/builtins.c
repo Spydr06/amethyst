@@ -310,6 +310,31 @@ static struct shard_value builtin_catAttrs(volatile struct shard_evaluator* e, s
     return LIST_VAL(head);
 }
 
+static struct shard_value builtin_foldl(volatile struct shard_evaluator* e, struct shard_lazy_value** args,  struct shard_location* loc) {
+    struct shard_value op = shard_eval_lazy2(e, args[0]);
+    if(!(op.type & SHARD_VAL_CALLABLE))
+        shard_eval_throw(e, *loc, "`builtins.foldl` expects first argument to be of type `function`");
+
+    struct shard_value list = shard_eval_lazy2(e, args[2]);
+    if(list.type != SHARD_VAL_LIST)
+        shard_eval_throw(e, *loc, "`builtins.foldl` expects third argument to be of type `list`");
+
+    struct shard_lazy_value* result = args[1];
+    struct shard_list* list_cur = list.list.head;
+
+    while(list_cur) {    
+        struct shard_value op2 = shard_eval_call(e, op, result, *loc);
+        if(!(op2.type & SHARD_VAL_CALLABLE))
+            shard_eval_throw(e, *loc, "`builtins.foldl` expects first argument to take two call arguments");
+
+        result = shard_unlazy(e->ctx, shard_eval_call(e, op2, list_cur->value, *loc));
+
+        list_cur = list_cur->next;
+    }
+
+    return shard_eval_lazy2(e, result);
+}
+
 static struct shard_value builtin_genList(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
     struct shard_value generator = shard_eval_lazy2(e, args[0]);
     if(!(generator.type & SHARD_VAL_CALLABLE))
@@ -616,6 +641,7 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
         { "currentTime", shard_lazy(ctx, GET_LAZY(currentTime), NULL) },
         { "div", shard_unlazy(ctx, BUILTIN_VAL(builtin_div, 2)) },
         { "floor", shard_unlazy(ctx, BUILTIN_VAL(builtin_floor, 1)) },
+        { "foldl", shard_unlazy(ctx, BUILTIN_VAL(builtin_foldl, 3)) },
         { "genList", shard_unlazy(ctx, BUILTIN_VAL(builtin_genList, 2)) },
         { "head", shard_unlazy(ctx, BUILTIN_VAL(builtin_head, 1)) },
         { "import", import },

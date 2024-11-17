@@ -5,6 +5,14 @@ in rec {
             found = util.shell.find [(geode.store + "/pkgs") "-type" "f" "-name" "*.shard"];
         in assert found.exitCode == 0; builtins.split "\n" found.stdout;
 
+    pkgOpts = pkg: let 
+            pkgDecl = builtins.attrValues pkg;
+        in if (builtins.length pkgDecl) > 0
+            then (builtins.head pkgDecl).opts or {}
+            else {};
+
     pkgs = builtins.map import pkgIndex;
+
+    defaultConfig = geode.debug.dump (builtins.foldl (a: b: a // b) {} (builtins.map pkgOpts pkgs));
 }
 

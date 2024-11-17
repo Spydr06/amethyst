@@ -19,12 +19,16 @@
         nproc = geode.proc.spawn "nproc" [] true;
     };
 
-    pkg = {
-        null = { enabled = false; };
-    };
-
     paths = {
         prefix = util.ensureExists { path = geode.prefix; default = geode.prefix; };
         store = util.ensureExists { path = geode.store; default = geode.store; };
+    };
+
+    archive = {
+        mkisofs = { input, output ? "amethyst.iso", uefi ? null }: geode.proc.spawn "xorriso" [
+                "-as" "mkisofs"
+                input
+                "-o" output
+            ] true;
     };
 }

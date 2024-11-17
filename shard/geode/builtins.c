@@ -16,6 +16,7 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 
+static struct shard_value builtin_debug_dump(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_file_exists(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_file_mkdir(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_errno_toString(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
@@ -28,6 +29,7 @@ static const struct {
     struct shard_value (*callback)(volatile struct shard_evaluator*, struct shard_lazy_value**, struct shard_location*);
     unsigned arity;
 } geode_builtin_functions[] = {
+    {"geode.debug.dump", builtin_debug_dump, 1},
     {"geode.file.exists", builtin_file_exists, 1},
     {"geode.file.mkdir", builtin_file_mkdir, 1},
     {"geode.errno.toString", builtin_errno_toString, 1},
@@ -69,6 +71,24 @@ void geode_load_builtins(struct geode_context* ctx) {
 
         assert(err == 0 && "shard_define_function returned error");
     }
+}
+
+static struct shard_value builtin_debug_dump(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location*) {
+    struct shard_value arg = shard_eval_lazy2(e, *args);
+
+    struct geode_context* geode_ctx = e->ctx->userp;
+
+    struct shard_string str = {0};
+    int err = shard_value_to_string(e->ctx, &str, &arg, 10);
+    if(err != 0)
+        geode_throw(geode_ctx, SHARD, .shard=TUPLE(.num=err, .errs=shard_get_errors(e->ctx)));
+    shard_string_push(e->ctx, &str, '\0');
+
+    infof(geode_ctx, "`geode.debug.dump`: %s\n", str.items);
+
+    shard_string_free(e->ctx, &str);
+
+    return arg;
 }
 
 static struct shard_value builtin_file_exists(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
