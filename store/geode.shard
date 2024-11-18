@@ -68,4 +68,6 @@ in {
             environment.systemPackages = [];
         };
     };
+
+    pkgs = pkgmgr.pkgs;
 }

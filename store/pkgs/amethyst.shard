@@ -1,0 +1,9 @@
+with import ./../geode.shard; {
+    amethyst-kernel = {
+        name = "amethyst-kernel";
+
+        buildDependencies = with pkgs; [
+            limine
+        ];
+    };
+}

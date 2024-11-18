@@ -472,6 +472,9 @@ static inline struct shard_value eval_concat(volatile struct shard_evaluator* e,
         shard_eval_throw(e, expr->loc, "`++`: right operand is not a list");
 
     struct shard_list* last = values[0].list.head;
+    if(!last)
+        return values[1];
+
     while(last->next)
         last = last->next;
 

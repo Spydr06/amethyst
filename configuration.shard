@@ -2,6 +2,7 @@
     boot.loader.limine.enabled = true;
 
     environment.packages = with pkgs; [
+        amethyst-kernel
         limine
     ];
 }

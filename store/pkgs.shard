@@ -9,16 +9,30 @@ rec {
     pkgOpts = pkg: (pkgAttrs pkg).opts or {};
     pkgName = pkg: (pkgAttrs pkg).name or null;
 
-    installPipeline = config: pkg: let
-            noEnableFlag = c: true;
+    pkgBuildDependencies = pkg: pkg.buildDependencies or [];
+
+    announceBuild = pkg: util.io.logMajor ("Building " + pkg.name + "...");
+
+    announceInstall = pkg: util.io.logMajor ("Installing " + pkg.name + "...");
+
+    buildPipeline = pkg: let 
             wrap = elem: if elem == null then [] else [elem];
-        in if (pkg.isEnabled or noEnableFlag) config
-            then   (wrap pkg.unpack or null)
+        in  builtins.foldl (a: b: a ++ b) [] (builtins.map buildPipeline (pkgBuildDependencies pkg))
+            ++ (announceBuild pkg (
+                (wrap pkg.unpack or null)
                 ++ (wrap pkg.patch or null)
                 ++ (wrap pkg.configure or null)
                 ++ (wrap pkg.build or null)
                 ++ (wrap pkg.check or null)
-                ++ (wrap pkg.install or null)
+            ));
+
+    installPipeline = config: pkg: let
+            noEnableFlag = c: true;
+            wrap = elem: if elem == null then [] else [elem];
+        in if (pkg.isEnabled or noEnableFlag) config
+            then
+                (buildPipeline pkg)
+                ++ (announceInstall pkg (wrap pkg.install or null))
             else [];
 
     pkgList = builtins.map import pkgIndex;
