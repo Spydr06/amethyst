@@ -500,6 +500,14 @@ static struct shard_value builtin_length(volatile struct shard_evaluator* e, str
     return INT_VAL(i);
 }
 
+static struct shard_value builtin_toPath(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value str = shard_eval_lazy2(e, *args);
+    if(str.type != SHARD_VAL_STRING)
+        shard_eval_throw(e, *loc, "`builtins.toPath` expects argument to be of type `string`");
+
+    return PATH_VAL(str.string, str.strlen);
+}
+
 static struct shard_value builtin_toString(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
     struct shard_value arg = shard_eval_lazy2(e, *args);
     switch(arg.type) {
@@ -724,6 +732,7 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
         { "split", shard_unlazy(ctx, BUILTIN_VAL(builtin_split, 2)) },
         { "sub", shard_unlazy(ctx, BUILTIN_VAL(builtin_sub, 2)) },
         { "tail", shard_unlazy(ctx, BUILTIN_VAL(builtin_tail, 1)) },
+        { "toPath", shard_unlazy(ctx, BUILTIN_VAL(builtin_toPath, 1)) },
         { "toString", shard_unlazy(ctx, BUILTIN_VAL(builtin_toString, 1)) },
         { "tryEval", shard_unlazy(ctx, BUILTIN_VAL(builtin_tryEval, 1)) },
         { "typeOf", shard_unlazy(ctx, BUILTIN_VAL(builtin_typeOf, 1)) },

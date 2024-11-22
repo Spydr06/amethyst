@@ -18,6 +18,7 @@
 
 static struct shard_value builtin_debug_dump(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_debug_println(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
+static struct shard_value builtin_debug_unimplemented(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_file_exists(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_file_mkdir(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_errno_toString(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
@@ -32,6 +33,7 @@ static const struct {
 } geode_builtin_functions[] = {
     {"geode.debug.dump", builtin_debug_dump, 1},
     {"geode.debug.println", builtin_debug_println, 1},
+    {"geode.debug.unimplemented", builtin_debug_unimplemented, 1},
     {"geode.file.exists", builtin_file_exists, 1},
     {"geode.file.mkdir", builtin_file_mkdir, 1},
     {"geode.errno.toString", builtin_errno_toString, 1},
@@ -46,7 +48,8 @@ static void load_constants(struct geode_context* ctx) {
         struct shard_value value;
     } builtin_constants[] = {
         {"geode.prefix", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->prefix, .pathlen=strlen(ctx->prefix)}},
-        {"geode.store", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->store_path, .pathlen=strlen(ctx->store_path)}}
+        {"geode.store", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->store_path, .pathlen=strlen(ctx->store_path)}},
+        {"geode.architecture", (struct shard_value){.type=SHARD_VAL_STRING, .string="x86_64", .strlen=6}}, // TODO: make properly
     };
 
     for(size_t i = 0; i < __len(builtin_constants); i++) {
@@ -102,6 +105,14 @@ static struct shard_value builtin_debug_println(volatile struct shard_evaluator*
     fputc('\n', stdout);
 
     return arg;
+}
+
+static struct shard_value builtin_debug_unimplemented(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value msg = shard_eval_lazy2(e, *args);
+    if(msg.type != SHARD_VAL_STRING)
+        shard_eval_throw(e, *loc, "`geode.debug.unimplemented` expects argument to be of type `string`");
+
+    shard_eval_throw(e, *loc, "`geode.debug.unimplemented` called unimplemented value: %s", msg.string);
 }
 
 static struct shard_value builtin_file_exists(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {

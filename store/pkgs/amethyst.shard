@@ -1,9 +1,21 @@
 with import ./../geode.shard; {
-    amethyst-kernel = {
+    amethyst-kernel = rec {
         name = "amethyst-kernel";
+        version = "0.0.1";
+
+        buildDir = "./build";
+        kernelElf = "amethyst-" + version + "-" + geode.architecture + ".elf";
 
         buildDependencies = with pkgs; [
             limine
         ];
+
+        # configure = util.proc.spawn "sed" [""] true;
+
+        build = util.shell.make [(buildDir + "/" + kernelElf)];
+
+        check = assert geode.file.exists (builtins.toPath (buildDir + "/" + kernelElf)); null;
+
+        install = geode.debug.unimplemented "install amethyst-kernel";
     };
 }
