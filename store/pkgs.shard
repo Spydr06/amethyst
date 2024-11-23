@@ -38,6 +38,6 @@ rec {
     pkgList = builtins.map import pkgIndex;
     pkgs = builtins.foldl util.merge {} pkgList;
 
-    defaultConfig = builtins.foldl builtins.mergeTree templates.staticConfig (builtins.map pkgOpts pkgList);
+    defaultConfig = templates.staticConfig;
 }
 

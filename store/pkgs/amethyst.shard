@@ -1,21 +1,34 @@
 with import ./../geode.shard; {
-    amethyst-kernel = rec {
+    amethyst-kernel = lib.mkPackage rec {
         name = "amethyst-kernel";
         version = "0.0.1";
 
         buildDir = "./build";
         kernelElf = "amethyst-" + version + "-" + geode.architecture + ".elf";
 
+        buildTarget = buildDir + "/" + kernelElf;
+
+        config = {
+            kernel.arguments = [];
+            boot = {
+                loader.timeout = 5;
+            };
+        };
+
         buildDependencies = with pkgs; [
             limine
         ];
 
-        # configure = util.proc.spawn "sed" [""] true;
+        configureLimineConf = let
+                template = "./limine.conf.in";
+            in geode.proc.spawn "sed" [""] true;
 
-        build = util.shell.make [(buildDir + "/" + kernelElf)];
+        configure = geode.debug.dump config; #configureLimineConf;
 
-        check = assert geode.file.exists (builtins.toPath (buildDir + "/" + kernelElf)); null;
+        build = util.shell.make [buildTarget];
 
-        install = geode.debug.unimplemented "install amethyst-kernel";
+        check = assert geode.file.exists (builtins.toPath buildTarget); null;
+
+        install = util.installFile { src = buildTarget; dst = "/boot/" + kernelElf; mode = "755"; };
     };
 }

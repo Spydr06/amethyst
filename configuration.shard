@@ -1,8 +1,8 @@
-{ pkgs, archive, prelude, ... }: prelude.makeConfig {
-    boot.loader.limine.enabled = true;
+{ pkgs, archive, prelude, ... }: prelude.makeConfig rec {
+    initrd.enabled = true;
 
     environment.packages = with pkgs; [
-        amethyst-kernel
+        (amethyst-kernel { kernel.arguments = [ "log-syscalls" ]; })
         limine
     ];
 }

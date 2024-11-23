@@ -282,6 +282,8 @@ SHARD_DECL struct shard_value shard_eval_subtraction(volatile struct shard_evalu
 SHARD_DECL struct shard_value shard_eval_multiplication(volatile struct shard_evaluator* e, struct shard_value left, struct shard_value right, struct shard_location* loc);
 SHARD_DECL struct shard_value shard_eval_division(volatile struct shard_evaluator* e, struct shard_value left, struct shard_value right, struct shard_location* loc);
 
+SHARD_DECL void shard_update_set_scopes(volatile struct shard_evaluator* e, struct shard_set* new, struct shard_set* old);
+
 SHARD_DECL int shard_call(struct shard_context* ctx, struct shard_value func, struct shard_value* arg, struct shard_value* result);
 
 enum shard_token_type {

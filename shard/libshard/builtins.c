@@ -262,6 +262,9 @@ static struct shard_value merge_set(volatile struct shard_evaluator* e, struct s
         }
     }
 
+    shard_update_set_scopes(e, dest, fst);
+    shard_update_set_scopes(e, dest, snd);
+
     return SET_VAL(dest);
 }
 

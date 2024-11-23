@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <libgen.h>
 
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -19,6 +20,8 @@
 static struct shard_value builtin_debug_dump(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_debug_println(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_debug_unimplemented(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
+static struct shard_value builtin_file_basename(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
+static struct shard_value builtin_file_dirname(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_file_exists(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_file_mkdir(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_errno_toString(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
@@ -34,6 +37,8 @@ static const struct {
     {"geode.debug.dump", builtin_debug_dump, 1},
     {"geode.debug.println", builtin_debug_println, 1},
     {"geode.debug.unimplemented", builtin_debug_unimplemented, 1},
+    {"geode.file.basename", builtin_file_basename, 1},
+    {"geode.file.dirname", builtin_file_dirname, 1},
     {"geode.file.exists", builtin_file_exists, 1},
     {"geode.file.mkdir", builtin_file_mkdir, 1},
     {"geode.errno.toString", builtin_errno_toString, 1},
@@ -113,6 +118,40 @@ static struct shard_value builtin_debug_unimplemented(volatile struct shard_eval
         shard_eval_throw(e, *loc, "`geode.debug.unimplemented` expects argument to be of type `string`");
 
     shard_eval_throw(e, *loc, "`geode.debug.unimplemented` called unimplemented value: %s", msg.string);
+}
+
+static struct shard_value builtin_file_basename(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value arg = shard_eval_lazy2(e, *args);
+    if(arg.type != SHARD_VAL_PATH)
+        shard_eval_throw(e, *loc, "`geode.file.basename` expects argument to be of type `path`");
+
+    char* path_copy = strdup(arg.path);
+    char* base = basename(path_copy);
+    size_t base_len = strlen(base);
+
+    char* gc_base = shard_gc_malloc(e->gc, base_len + 1);
+    memcpy(gc_base, base, base_len);
+
+    free(path_copy);
+
+    return (struct shard_value){.type=SHARD_VAL_PATH, .path=gc_base, .pathlen=base_len};
+}
+
+static struct shard_value builtin_file_dirname(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value arg = shard_eval_lazy2(e, *args);
+    if(arg.type != SHARD_VAL_PATH)
+        shard_eval_throw(e, *loc, "`geode.file.basename` expects argument to be of type `path`");
+
+    char* path_copy = strdup(arg.path);
+    char* dir = dirname(path_copy);
+    size_t dir_len = strlen(dir);
+
+    char* gc_dir = shard_gc_malloc(e->gc, dir_len + 1);
+    memcpy(gc_dir, dir, dir_len);
+
+    free(path_copy);
+
+    return (struct shard_value){.type=SHARD_VAL_PATH, .path=gc_dir, .pathlen=dir_len};
 }
 
 static struct shard_value builtin_file_exists(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {

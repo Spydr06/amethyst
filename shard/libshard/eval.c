@@ -499,6 +499,9 @@ static inline struct shard_value eval_merge(volatile struct shard_evaluator* e, 
     if(!set)
         shard_eval_throw(e, expr->loc, "`//`: %s", strerror(errno));
 
+    shard_update_set_scopes(e, set, values[0].set);
+    shard_update_set_scopes(e, set, values[1].set);
+
     return SET_VAL(set);
 }
 
@@ -867,5 +870,19 @@ SHARD_DECL int shard_call(struct shard_context* ctx, struct shard_value func, st
     evaluator_free(&e);
 
     return ctx->errors.count; 
+}
+
+SHARD_DECL void shard_update_set_scopes(volatile struct shard_evaluator* e, struct shard_set* new, struct shard_set* old) {
+    struct shard_scope* new_scope = scope_init(e, new);
+
+    for(size_t i = 0; i < new->size; i++) {
+        struct shard_lazy_value* entr = new->entries[i].value;
+        if(!new->entries[i].key || entr->evaluated || entr->scope->bindings != old)
+            continue;
+        
+        new_scope->outer = entr->scope->outer;
+
+        new->entries[i].value = shard_lazy(e->ctx, entr->lazy, new_scope);
+    }
 }
 

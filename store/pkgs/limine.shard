@@ -2,15 +2,6 @@
     limine = {
         name = "limine";
 
-        opts = {
-            boot.loader.limine = {
-                enabled = false;
-                efi = true;
-            };
-        };
-
-        isEnabled = config: config.boot.loader.limine.enabled;
-
         unpack = geode.debug.dump "unpack";
         patch = geode.debug.dump "patch";
         configure = geode.debug.dump "configure";
