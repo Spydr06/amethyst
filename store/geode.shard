@@ -24,6 +24,8 @@ in {
             in assert (mkdirRec dstDir) == 0;
                 shell.install ["-m" mode src (geode.prefix + dst)];
 
+        installFiles = builtins.map installFile;
+
         # utility functions that mimic shell commands
         shell = {
             cp = args: 

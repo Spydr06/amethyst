@@ -688,6 +688,25 @@ static struct shard_value builtin_import(volatile struct shard_evaluator* e, str
     return source->result;
 }
 
+static struct shard_value builtin_when(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value condition = shard_eval_lazy2(e, args[0]);
+    if(condition.type != SHARD_VAL_BOOL)
+        shard_eval_throw(e, *loc, "`builtins.when` expects condition to be of type bool");
+
+    if(!condition.boolean)
+        return LIST_VAL(NULL);
+
+    struct shard_value value = shard_eval_lazy2(e, args[1]);
+    if(value.type == SHARD_VAL_LIST)
+        return value;
+    else {
+        struct shard_list* head = shard_gc_malloc(e->gc, sizeof(struct shard_list));
+        head->value = shard_unlazy(e->ctx, value);
+        head->next = NULL;
+        return LIST_VAL(head);
+    }
+}
+
 LAZY_STATIC_EXPR(currentTime, BUILTIN_EXPR(builtin_currentTime))
 LAZY_STATIC_EXPR(shardPath, BUILTIN_EXPR(builtin_shardPath))
 
@@ -739,6 +758,7 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
         { "toString", shard_unlazy(ctx, BUILTIN_VAL(builtin_toString, 1)) },
         { "tryEval", shard_unlazy(ctx, BUILTIN_VAL(builtin_tryEval, 1)) },
         { "typeOf", shard_unlazy(ctx, BUILTIN_VAL(builtin_typeOf, 1)) },
+        { "when", shard_unlazy(ctx, BUILTIN_VAL(builtin_when, 2)) },
     };
 
     struct shard_set* builtin_set = shard_set_init(ctx, LEN(builtins));

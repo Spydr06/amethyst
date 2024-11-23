@@ -1,13 +1,43 @@
-{
-    limine = {
+with import ./../geode.shard; {
+    limine = lib.mkPackage rec {
         name = "limine";
+        
+        config = {
+            boot.loader.platform = {
+                efi = true;
+                bios = true;
+            };
+        };
 
-        unpack = geode.debug.dump "unpack";
-        patch = geode.debug.dump "patch";
-        configure = geode.debug.dump "configure";
-        build = geode.debug.dump "build";
-        check = geode.debug.dump "check";
-        install = geode.debug.dump "install";
+        limineDir = builtins.toPath "./limine";
+
+        limineBin = "limine";
+
+        limineLoaders = 
+            (builtins.when config.boot.loader.platform.bios [ "limine-bios.sys" "limine-bios-cd.bin" ]) ++
+            (builtins.when config.boot.loader.platform.efi "limine-uefi-cd.bin");
+
+        bootX64Efi = "BOOTX64.EFI";
+        bootIA32Efi = "BOOTIA32.EFI";
+
+        check = util.ensureExists { path = limineDir; };
+
+        install = util.installFiles (
+            (builtins.map (loader: {
+                src = limineDir + loader;
+                dst = /boot/limine/ + loader;
+            }) limineLoaders) ++
+            (builtins.when config.boot.loader.platform.efi [
+                { src = limineDir + bootX64Efi; dst = /EFI/BOOT + bootX64Efi; }
+                { src = limineDir + bootIA32Efi; dst = /EFI/BOOT + bootIA32Efi; }
+            ])
+        );
+
+        hooks = {
+            postMkIso = iso: if config.boot.loader.platform.bios 
+                then geode.proc.spawn (limineDir + limineBin) [ "bios-install" iso ] true
+                else null;
+        };
     };
 }
 
