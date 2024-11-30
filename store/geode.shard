@@ -32,7 +32,7 @@ in {
                 geode.proc.spawn "cp" (builtins.map builtins.toString args) true;
 
             make = args: 
-                geode.proc.spawn "make" (builtins.map builtins.toString args) true;
+                geode.proc.spawn "make" (builtins.map builtins.toString (args ++ ["-j" (geode.proc.nJobs)])) true;
 
             find = args: 
                 geode.proc.spawnPipe "find" (builtins.map builtins.toString args) "";

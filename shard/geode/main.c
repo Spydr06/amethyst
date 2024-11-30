@@ -31,6 +31,7 @@ static const struct option cmdline_options[] = {
     {"store",   required_argument, NULL, 's'},
     {"config",  required_argument, NULL, 'c'},
     {"verbose", no_argument,       NULL, 'v'},
+    {"jobs",    required_argument, NULL, 'j'},
     {NULL,      0,                 NULL, 0  }
 };
 
@@ -100,7 +101,7 @@ static void error_handler(struct geode_context* ctx, struct geode_error err) {
 }
 
 int main(int argc, char** argv) {
-    int ret = EXIT_SUCCESS;
+    int err, ret = EXIT_SUCCESS;
     if(setjmp(err_recovery)) {
         // exit gracefully
         ret = EXIT_FAILURE;
@@ -111,7 +112,7 @@ int main(int argc, char** argv) {
     geode_context_init(&ctx, argv[0], error_handler);
 
     int ch, long_index;
-    while((ch = getopt_long(argc, argv, "vp:c:s:h", cmdline_options, &long_index)) != EOF) {
+    while((ch = getopt_long(argc, argv, "vp:c:s:j:h", cmdline_options, &long_index)) != EOF) {
         switch(ch) {
             case 'p':
                 geode_context_set_prefix(&ctx, optarg);
@@ -121,6 +122,13 @@ int main(int argc, char** argv) {
                 break;
             case 'c':
                 geode_context_set_config_file(&ctx, optarg);
+                break;
+            case 'j':
+                if((err = geode_context_set_nproc(&ctx, optarg))) {
+                    fprintf(stderr, "error parsing option argument to `-j`/`--jobs`: %s.\n", strerror(err));
+                    ret = 1;
+                    goto finish;
+                }
                 break;
             case 'h':
                 help(&ctx);

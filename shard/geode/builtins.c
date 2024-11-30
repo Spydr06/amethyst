@@ -55,6 +55,7 @@ static void load_constants(struct geode_context* ctx) {
         {"geode.prefix", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->prefix, .pathlen=strlen(ctx->prefix)}},
         {"geode.store", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->store_path, .pathlen=strlen(ctx->store_path)}},
         {"geode.architecture", (struct shard_value){.type=SHARD_VAL_STRING, .string="x86_64", .strlen=6}}, // TODO: make properly
+        {"geode.proc.nJobs", (struct shard_value){.type=SHARD_VAL_INT, .integer=ctx->nproc}},
     };
 
     for(size_t i = 0; i < __len(builtin_constants); i++) {

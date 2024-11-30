@@ -131,6 +131,8 @@ int geode_context_init(struct geode_context* ctx, const char* prog_name, geode_e
     ctx->store_path       = GEODE_DEFAULT_PREFIX GEODE_DEFAULT_STORE_PATH;
     ctx->prefix           = GEODE_DEFAULT_PREFIX;
 
+    ctx->nproc = 1;
+
     ctx->shard_ctx = (struct shard_context){
         .malloc = malloc,
         .realloc = realloc,
@@ -261,6 +263,12 @@ void geode_context_set_config_file(struct geode_context* ctx, char* config_file)
 
 void geode_context_set_store_path(struct geode_context* ctx, char* store_path) {
     ctx->store_path = store_path;
+}
+
+int geode_context_set_nproc(struct geode_context* ctx, const char* nproc_arg) {
+    errno = 0;
+    ctx->nproc = (int) strtol(nproc_arg, NULL, 10);
+    return errno;
 }
 
 _Noreturn void geode_throw_err(struct geode_context* ctx, struct geode_error err) {

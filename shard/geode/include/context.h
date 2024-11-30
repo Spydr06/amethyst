@@ -48,6 +48,8 @@ struct geode_context {
     const char* prog_name;
     const char* current_action;
 
+    int nproc;
+
     struct {
         bool verbose   : 1;
         int __unused__ : 7;
@@ -80,6 +82,8 @@ char* geode_strdup(struct geode_context* ctx, const char* str);
 void geode_context_set_prefix(struct geode_context* ctx, const char* prefix);
 void geode_context_set_config_file(struct geode_context* ctx, char* config_file);
 void geode_context_set_store_path(struct geode_context* ctx, char* store_path);
+
+int geode_context_set_nproc(struct geode_context* ctx, const char* nproc_arg);
 
 struct shard_value geode_call_file(struct geode_context* ctx, const char* script_path);
 
