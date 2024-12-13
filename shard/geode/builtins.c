@@ -52,6 +52,7 @@ static void load_constants(struct geode_context* ctx) {
         const char* ident;
         struct shard_value value;
     } builtin_constants[] = {
+        {"geode.configuration", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->main_config_path, .pathlen=strlen(ctx->main_config_path)}},
         {"geode.prefix", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->prefix, .pathlen=strlen(ctx->prefix)}},
         {"geode.store", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->store_path, .pathlen=strlen(ctx->store_path)}},
         {"geode.architecture", (struct shard_value){.type=SHARD_VAL_STRING, .string="x86_64", .strlen=6}}, // TODO: make properly

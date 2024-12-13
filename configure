@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+
+set -e
+
+SCRIPT_DIR="$(dirname $0)"
+BUILD_DIR="$(pwd)"
+
+HOST_BUILD_DIR="./host"
+
+HOST_CFLAGS="-std=c2x"
+
+function error() {
+    echo "$0: error: $1"
+    exit 1
+}
+
+function show_help() {
+    echo "\`$0\` configures the amethyst build system."
+    echo
+    echo "Usage: $0 [OPTION]... [VAR=VALUE]..."
+    echo
+    echo "To assign environment variables (e.g., CC, CFLAGS...), specify them as"
+    echo "VAR=VALUE.  See below for descriptions of some of the useful variables."
+    echo
+    echo "Defaults for the options are specified in brackets."
+    echo
+    echo "Options:"
+    echo "  -h, --help                     display this help text and exit"
+    echo "      --host-build-prefix=<path> sets the build directory for host tools"
+    echo
+}
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h | --help)
+            show_help
+            exit
+            ;;
+        --host-build-prefix=*)
+            HOST_BUILD_DIR="${1#*=}"
+            ;;
+        *=*)
+            export $1;
+            ;;
+        *)
+            error "unknown option -- '$1'"
+            ;;
+    esac
+    shift
+done
+
+function check_os() {
+    os=$OSTYPE
+    echo "checking host system type... $os"
+
+    if [[ $os != "linux-gnu"* ]]; then
+        error "host system does not match \`linux-gnu\`"
+    fi
+}
+
+check_os
+
+mkdir -p $HOST_BUILD_DIR
+
+function check_tool() {
+    return $(command -v "$1" > /dev/null 2>&1)
+}
+
+function verify_tool_found() {
+    echo -n "checking for $1... "
+    if check_tool $1; then
+        echo "found."
+    else
+        echo "not found."
+        error "\`$1\` could not be found. Be sure \`$1\` is in your PATH."
+    fi
+}
+
+echo -n "checking for C compiler (host)... "
+if [ -z "$HOST_CC" ]; then
+    compilers=("gcc" "clang" "cc")
+    
+    for compiler in "${compilers[@]}"; do
+        if check_tool "$compiler"; then
+            export HOST_CC=$compiler
+            break
+        fi
+    done
+
+    if [ -z "$HOST_CC" ]; then
+        echo "not found"
+        error "no suitable C compiler found (host)."
+    fi
+fi
+echo "$HOST_CC"
+
+function test_c2x_compiler() {
+    echo -n "checking weather the C compiler ($1) works... "
+    
+    test_file="$BUILD_DIR/test.c"
+    test_exec="$BUILD_DIR/test.out"
+
+    cat << EOF > $test_file
+int main() {
+    #ifdef __STDC_VERSION__
+        #if __STDC_VERSION__ >= 202000L
+            return 0;
+        #else
+            return 255;
+        #endif
+    #else
+        #error C standard version not specified
+    #endif
+}
+EOF
+
+    if "$1" -std=c2x -o $test_exec $test_file; then
+        echo "yes"
+    else
+        echo "no"
+        error "\`$1\` was unable to compile a simple test file."
+    fi
+
+    echo -n "checking weather the C compiler ($1) supports -std=c2x... "
+    if $test_exec; then
+        echo "yes" 
+    else
+        echo "no"
+        error "\`$1\` does not support -std=c2x."
+    fi
+
+    [ -e $test_file ] && rm -f $test_file
+    [ -e $test_exec ] && rm -f $test_exec
+}
+
+test_c2x_compiler $HOST_CC
+
+
+verify_tool_found sed
+
+echo "configure done."
+echo
+
+#sed -e '' "$SCRIPT_DIR/bootstrap.sh.in" > "$BUILD_DIR/bootstrap.sh"
+
+function generate_file() {
+    echo -n "generating $1... "
+    
+    src_file="$SCRIPT_DIR/$1.in"
+    dst_file="$BUILD_DIR/$1"
+
+    sed_args=$(printf -- "-e %s " "${@:2}")
+
+    mkdir -p $(dirname $dst_file)
+
+    sed $sed_args $src_file
+
+    echo "done."
+
+    echo $dst_file
+}
+
+generate_file bootstrap.sh 's|@HOST_CC@|$(HOST_CC)|g' 
+chmod +x bootstrap.sh
+
+echo "done."
+echo
+
+

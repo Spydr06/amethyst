@@ -1,8 +1,8 @@
-#include "libshard.h"
 #include <bootstrap.h>
 #include <geode.h>
 #include <config.h>
 #include <context.h>
+#include <package.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -96,7 +96,10 @@ int geode_bootstrap(struct geode_context* ctx, int argc, char** argv) {
     create_prefix(ctx);
     geode_load_config(ctx);
 
-    char* bootstrap_script_path = get_bootstrap_script_path(ctx);
+    struct package_index index;
+    int err = geode_index_packages(ctx, &index);
+
+/*    char* bootstrap_script_path = get_bootstrap_script_path(ctx);
     struct shard_value boostrap_result = geode_call_file(ctx, bootstrap_script_path);
 
     struct shard_string str = {0};
@@ -109,7 +112,7 @@ int geode_bootstrap(struct geode_context* ctx, int argc, char** argv) {
 
     if(err)
         geode_throw(ctx, SHARD, .shard=TUPLE(.errs=shard_get_errors(&ctx->shard_ctx), .num=err));
-
+*/
     return 0;
 }
 

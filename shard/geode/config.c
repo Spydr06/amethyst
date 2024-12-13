@@ -1,4 +1,4 @@
-#include "libshard-util.h"
+#include "fs_util.h"
 #include <config.h>
 
 #include <geode.h>
@@ -10,37 +10,17 @@
 #include <memory.h>
 #include <stdlib.h>
 
-static const char loader_fmt[] = _("\n\
-# Loads the prelude and configuration files, then applies the prelude to the configuration.\n\
-#   prelude :: map\n\
-#   config :: map -> map\n\
-\n\
-with builtins; let\n\
-    prelude = import \"%s/%s\";\n\
-    config = import \"%s\";\n\
-in config prelude\n\
-");
+static struct shard_open_source* prelude(struct geode_context* ctx) {
+    const char* parts[] = {
+        ctx->store_path,
+        GEODE_PRELUDE_FILE,
+        NULL
+    };
 
-static struct shard_open_source* get_loader(struct geode_context* ctx) {
-    struct shard_open_source* open = malloc(sizeof(struct shard_open_source));
-    memset(open, 0, sizeof(struct shard_open_source));
+    char* prelude_file;
+    assert(geode_concat_paths(ctx, &prelude_file, NULL, parts) == 0);
 
-    size_t loader_size = strlen(loader_fmt) + strlen(ctx->store_path) + strlen(ctx->main_config_path) + strlen(GEODE_PRELUDE_FILE) + 1;
-
-    char* loader = geode_calloc(ctx, loader_size, sizeof(char));
-    snprintf(loader, loader_size, loader_fmt, ctx->store_path, GEODE_PRELUDE_FILE, ctx->main_config_path);
-
-    int err = shard_string_source(&ctx->shard_ctx, &open->source, __FILE_NAME__ "/<loader>", loader, strlen(loader), 0);
-    if(err)
-        geode_throw(ctx, FILE_IO, .file=TUPLE("loader source", err));
-
-    open->opened = true;
-    open->auto_close = true;
-    open->auto_free = true;
-
-    shard_register_open(&ctx->shard_ctx, "<loader>", false, open);
-
-    return open;
+    return shard_open(&ctx->shard_ctx, prelude_file);
 }
 
 static void compile_configuration(struct geode_context* ctx, struct shard_open_source* loader) {
@@ -62,7 +42,7 @@ void geode_load_config(struct geode_context* ctx) {
     if(geode_config_loaded(ctx))
         return;
 
-    compile_configuration(ctx, get_loader(ctx));
+    compile_configuration(ctx, prelude(ctx));
     verify_configuration(ctx);
 
     infof(ctx, "Loaded configuration `%s`.\n", ctx->main_config_path);

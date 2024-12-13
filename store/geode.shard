@@ -3,6 +3,8 @@ let
 in {
     lib = rec {
         mkPackage = pkgSet: pkgSet // { __functor = self: config: builtins.mergeTree self { config = config; }; };
+
+        mkConfig = config: config;
     };
 
     util = rec {

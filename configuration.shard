@@ -1,4 +1,4 @@
-{ pkgs, archive, prelude, ... }: prelude.mkConfig rec {
+{ pkgs, lib, ... }: lib.mkConfig rec {
     initrd.enabled = true;
 
     environment.packages = with pkgs; [

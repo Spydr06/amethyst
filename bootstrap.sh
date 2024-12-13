@@ -91,7 +91,11 @@ CFLAGS="${USE_GCBOEHM}" make -C ${SCRIPT_DIR}/shard -j${NJOBS} ${GEODE_BIN} BUIL
 
 [ -e ${GEODE_BIN} ] || error "compiling host geode binary failed."
 
+set -x
+
 ${GEODE_BIN} bootstrap --prefix=${BOOTSTRAP_DIR} --config=${CONFIGURATION_FILE} --store=${STORE_DIR} -j${NJOBS} --verbose
+
+set +x
 
 [ $? != 0 ] && error "boostrapping failed."
 
