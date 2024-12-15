@@ -25,6 +25,7 @@ enum geode_error_type {
     GEODE_ERR_MISSING_PARAMETER,
     GEODE_ERR_FILE_IO,
     GEODE_ERR_MKDIR,
+    GEODE_ERR_PACKAGE_SPEC
 };
 
 struct geode_error {
@@ -36,6 +37,7 @@ struct geode_error {
         struct { const char* path; int err_no; } file;
         struct { struct shard_error* errs; int num; } shard;
         struct { struct shard_value* val; const char* msg; } config;
+        struct { struct package_spec* spec; const char* msg; } pkgspec;
     } payload;
 };
 

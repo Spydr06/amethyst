@@ -98,6 +98,7 @@ int geode_bootstrap(struct geode_context* ctx, int argc, char** argv) {
 
     struct package_index index;
     int err = geode_index_packages(ctx, &index);
+    assert(err == 0);
 
 /*    char* bootstrap_script_path = get_bootstrap_script_path(ctx);
     struct shard_value boostrap_result = geode_call_file(ctx, bootstrap_script_path);

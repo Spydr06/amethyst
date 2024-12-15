@@ -5,6 +5,7 @@
 #include <context.h>
 #include <bootstrap.h>
 #include <builtins.h>
+#include <package.h>
 
 #include <getopt.h>
 #include <setjmp.h>
@@ -94,6 +95,9 @@ static void error_handler(struct geode_context* ctx, struct geode_error err) {
             break;
         case GEODE_ERR_UNRECOGNIZED_ARGUMENT:
             errorf("Unrecognized argument `%s` to action `%s`.\nTry `%s %s help` for more information.\n", err.payload.argument, ctx->current_action, ctx->prog_name, ctx->current_action);
+            break;
+        case GEODE_ERR_PACKAGE_SPEC:
+            geode_print_package_spec_error(ctx, err.payload.pkgspec.spec, err.payload.pkgspec.msg);
             break;
     }
 

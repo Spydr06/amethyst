@@ -1,34 +1,32 @@
-with import ./../geode.shard; {
-    amethyst-kernel = lib.mkPackage rec {
-        name = "amethyst-kernel";
-        version = "0.0.1";
+with import ./../geode.shard; lib.mkPackage rec {
+    name = "amethyst-kernel";
+    version = "0.0.1";
 
-        buildDir = "./build";
-        kernelElf = "amethyst-" + version + "-" + geode.architecture + ".elf";
+    buildDir = "./build";
+    kernelElf = "amethyst-" + version + "-" + geode.architecture + ".elf";
 
-        buildTarget = buildDir + "/" + kernelElf;
+    buildTarget = buildDir + "/" + kernelElf;
 
-        config = {
-            kernel.arguments = [];
-            boot = {
-                loader.timeout = 5;
-            };
+    config = {
+        kernel.arguments = [];
+        boot = {
+            loader.timeout = 5;
         };
-
-        buildDependencies = with pkgs; [
-            limine
-        ];
-
-        configureLimineConf = let
-                template = "./limine.conf.in";
-            in geode.proc.spawn "sed" [""] true;
-
-        configure = geode.debug.dump config; #configureLimineConf;
-
-        build = util.shell.make [buildTarget];
-
-        check = assert geode.file.exists (builtins.toPath buildTarget); null;
-
-        install = util.installFile { src = buildTarget; dst = "/boot/" + kernelElf; mode = "755"; };
     };
-}
+
+    buildDependencies = with pkgs; [
+        limine
+    ];
+
+    configureLimineConf = let
+        template = "./limine.conf.in";
+    in geode.proc.spawn "sed" [""] true;
+
+    configure = geode.debug.dump config; #configureLimineConf;
+
+    build = util.shell.make [buildTarget];
+
+    check = assert geode.file.exists (builtins.toPath buildTarget); null;
+
+    install = util.installFile { src = buildTarget; dst = "/boot/" + kernelElf; mode = "755"; };
+};

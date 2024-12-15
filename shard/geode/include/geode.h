@@ -21,6 +21,8 @@
 #define C_RST "\033[0m"
 #define C_NOBLD "\033[22m"
 
+#define SPECIAL_QUOTE(str) "‘" str "’"
+
 #define errorf(fmt, ...) (fprintf(stderr, C_RED C_BLD "[error]" C_NOBLD " " fmt C_RST __VA_OPT__(,) __VA_ARGS__))
 
 #define infof(ctx, ...) ((ctx)->flags.verbose ? fprintf(stdout, C_BLD "[info]" C_NOBLD " " __VA_ARGS__) : 0)

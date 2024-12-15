@@ -5,7 +5,10 @@
 
 #include <stdint.h>
 
+#include "mem_util.h"
 #include "context.h"
+
+typedef dynarr_g(struct package_spec) package_specs_t;
 
 enum license : int8_t {
     LICENSE_UNKNOWN = -1,
@@ -44,18 +47,25 @@ struct package_spec {
     struct shard_value build;
     struct shard_value check;
     struct shard_value install;
+
+    struct shard_open_source* source;
 };
 
 struct package_index {
-    struct package_spec* packages;
-    size_t num_packages;
+    dynarr_charptr_t spec_files;
+    package_specs_t specs;
 };
 
 int geode_index_packages(struct geode_context* ctx, struct package_index* index);
 
+int geode_compile_package_spec(struct geode_context* ctx, struct package_spec* spec, const char* filename);
+int geode_validate_package_spec(struct geode_context* ctx, struct package_spec* spec);
+
 int geode_load_package(struct geode_context* ctx, struct package_spec* spec, struct shard_lazy_value* src);
 
+_Noreturn void geode_throw_package_error(struct geode_context* ctx, struct package_spec* spec, const char* fmt, ...);
 
+void geode_print_package_spec_error(struct geode_context* ctx, struct package_spec* spec, const char* msg);
 
 #endif /* _SHARD_PACKAGE_H */
 
