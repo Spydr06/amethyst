@@ -34,6 +34,7 @@ char* strtok(char* restrict str, const char* restrict delim);
 char* strerror(int errnum);
 
 char* strcat(char* restrict dst, const char* restrict src);
+char* strncat(char* restrict dest, const char* restrict src, size_t size);
 
 #endif /* _AMETHYST_LIBC_STRING_H */
 

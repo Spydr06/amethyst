@@ -127,6 +127,35 @@ struct shard_lazy_value* package_spec_expect_attr(struct geode_context* ctx, str
     return lazy;
 }
 
+void package_spec_expect_type(struct geode_context* ctx, struct package_spec* spec, const char* attr, struct shard_value* value, enum shard_value_type type) {
+    if(value->type & type)
+        return;
+
+    char buf1[128], buf2[128];
+    geode_throw_package_error(ctx, spec, C_BLD "attribute `%s`" C_RST " does not match expected " C_BLD "type `%s`" C_RST ", got `%s`",
+            attr,
+            shard_value_type_to_str(type, buf1, 128),
+            shard_value_type_to_str(value->type, buf2, 128)
+    );
+}
+
+struct shard_value package_spec_expect_typed_attr(struct geode_context* ctx, struct package_spec* spec, const char* attr, enum shard_value_type expected_type) {
+    struct shard_lazy_value* lazy = package_spec_expect_attr(ctx, spec, attr);
+    int err = shard_eval_lazy(&ctx->shard_ctx, lazy);
+    if(err)
+        geode_throw(ctx, SHARD, .shard=TUPLE(.num=err, .errs=shard_get_errors(&ctx->shard_ctx)));
+
+    package_spec_expect_type(ctx, spec, "name", &lazy->eval, expected_type);
+
+    return lazy->eval;
+}
+
+struct shard_lazy_value* package_spec_get_attr(struct geode_context* ctx, struct package_spec* spec, const char* attr) {
+    struct shard_lazy_value* lazy;
+
+    return (shard_set_get(spec->source->result.set, shard_get_ident(&ctx->shard_ctx, attr), &lazy)) ? NULL : lazy;    
+}
+
 int geode_validate_package_spec(struct geode_context* ctx, struct package_spec* spec) {
     if(!spec->source || !spec->source->evaluated)
         return EINVAL;
@@ -136,7 +165,9 @@ int geode_validate_package_spec(struct geode_context* ctx, struct package_spec* 
     if(spec_val.type != SHARD_VAL_SET)
         geode_throw_package_error(ctx, spec, "specification does not evaluate to type `set`");
 
-    struct shard_lazy_value* name = package_spec_expect_attr(ctx, spec, "name");
+    struct shard_value name = package_spec_expect_typed_attr(ctx, spec, "name", SHARD_VAL_STRING);
+
+    printf("pkg: \"%s\"\n", name.string);
 
     return 0;
 }

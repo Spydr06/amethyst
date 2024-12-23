@@ -119,4 +119,41 @@ int shard_value_to_string(struct shard_context* ctx, struct shard_string* str, c
     return ctx->errors.count;
 }
 
+char* shard_value_type_to_str(enum shard_value_type type, char* buf, size_t buf_size) {
+    static const char* strs[] = {
+        "null",
+        "bool",
+        "int",
+        "float",
+        "string",
+        "path",
+        "list",
+        "set",
+        "function",
+        "builtin",
+    };
 
+    if(!buf)
+        return NULL;
+
+    *buf = '\0';
+
+    bool first = true;
+    for(size_t i = 0; i < LEN(strs); i++) {
+        uint32_t mask = 1 << i;
+
+        if(!(type & mask))
+            continue;
+
+        if(!first)
+            strncat(buf, "|", buf_size);
+
+        strncat(buf, strs[i], buf_size);
+        first = false;
+    }
+
+    if(strnlen(buf, buf_size) == 0)
+        strncat(buf, "<unknown>", buf_size);
+
+    return buf;
+}

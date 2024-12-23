@@ -63,7 +63,8 @@ int geode_validate_package_spec(struct geode_context* ctx, struct package_spec* 
 
 int geode_load_package(struct geode_context* ctx, struct package_spec* spec, struct shard_lazy_value* src);
 
-_Noreturn void geode_throw_package_error(struct geode_context* ctx, struct package_spec* spec, const char* fmt, ...);
+_Noreturn __attribute__((format(printf, 3, 4)))
+void geode_throw_package_error(struct geode_context* ctx, struct package_spec* spec, const char* fmt, ...);
 
 void geode_print_package_spec_error(struct geode_context* ctx, struct package_spec* spec, const char* msg);
 

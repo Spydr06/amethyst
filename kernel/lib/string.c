@@ -235,6 +235,14 @@ char* strcat(char* restrict dest, const char* restrict src) {
     return dest;
 }
 
+char* strncat(char* restrict dest, const char* restrict src, size_t size) {
+    char *a = dest;
+	dest += strlen(dest);
+	while (size && *src) size--, *dest++ = *src++;
+	*dest++ = 0;
+	return a;
+}
+
 char* strtok(char* restrict str, const char* restrict delim) {
     (void) str;
     (void) delim;
