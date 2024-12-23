@@ -327,6 +327,7 @@ enum shard_token_type {
     SHARD_TOK_LOGAND, // &&
     SHARD_TOK_LOGOR, // ||
     SHARD_TOK_LOGIMPL, // ->
+    SHARD_TOK_DOLLAR, // $
 
     // keywords
     SHARD_TOK_REC,

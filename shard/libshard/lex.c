@@ -78,6 +78,7 @@ static const unsigned token_widths[] = {
     2,
     2,
     2,
+    1,
     3,
     2,
     2,
@@ -497,6 +498,9 @@ repeat:
             break;
         case '@':
             KEYWORD_TOK(token, src, AT);
+            break;
+        case '$':
+            KEYWORD_TOK(token, src, DOLLAR);
             break;
         case '=':
             if((c = src->getc(src)) == '=')

@@ -653,6 +653,9 @@ static int parse_prefix_expr(struct parser* p, struct shard_expr* expr) {
             return parse_ternary(p, expr);
         case SHARD_TOK_LET:
             return parse_let(p, expr);
+        case SHARD_TOK_DOLLAR:
+            advance(p);
+            return parse_expr(p, expr, PREC_LOWEST);
         default: {
             if(p->token.type == SHARD_TOK_ERR)
                 return EINVAL;

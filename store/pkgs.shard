@@ -32,7 +32,7 @@ rec {
         in if (pkg.isEnabled or noEnableFlag) config
             then
                 (buildPipeline pkg)
-                ++ (announceInstall pkg (wrap pkg.install or null))
+                ++ (announceInstall pkg $ wrap pkg.install or null)
             else [];
 
     pkgList = builtins.map import pkgIndex;

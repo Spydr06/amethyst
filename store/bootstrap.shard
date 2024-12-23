@@ -6,6 +6,11 @@ let
     bootstrapPkg = pkg: (builtins.seqList (pkgmgr.installPipeline config pkg));
 
     bootstrapPkgs = pkgList: builtins.map bootstrapPkg pkgList;
+
+    createIso = file: (util.io.logMajor $ "Creating ISO `" + file + "`");
 in 
-    bootstrapPkgs config.environment.packages
+    builtins.seqList [
+        (bootstrapPkgs config.environment.packages)
+        (createIso "amethyst.iso")
+    ]
 
