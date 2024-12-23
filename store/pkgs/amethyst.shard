@@ -8,6 +8,9 @@ with import ./../geode.shard; {
 
         buildTarget = buildDir + "/" + kernelElf;
 
+        limineConfigTemplate = "limine.cfg.in";
+        limineConfigPath = /boot/limine/limine.cfg;
+
         config = {
             kernel.arguments = [];
             boot = {
@@ -19,16 +22,20 @@ with import ./../geode.shard; {
             limine
         ];
 
-        configureLimineConf = let
-                template = "./limine.conf.in";
-            in geode.proc.spawn "sed" [""] true;
-
-        configure = geode.debug.dump config; #configureLimineConf;
+        limineConfig = template: 
+            let sed = geode.proc.spawnPipe "sed" [
+                    "-e" ("s|@VERSION@|" + version + "|g")
+                    "-e" ("s|@KERNEL_ELF@|" + kernelElf + "|")
+                    template
+                ] "";
+            in assert sed.exitCode == 0; sed.stdout;
 
         build = util.shell.make [buildTarget];
 
         check = assert geode.file.exists (builtins.toPath buildTarget); null;
 
-        install = util.installFile { src = buildTarget; dst = "/boot/" + kernelElf; mode = "755"; };
+        install = builtins.seq
+            (util.installFile { src = buildTarget; dst = /boot/ + kernelElf; mode = "755"; })
+            (util.writeFile (util.paths.prefix + limineConfigPath) $ limineConfig "limine.cfg.in");
     };
 }

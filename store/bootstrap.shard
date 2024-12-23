@@ -3,11 +3,20 @@ config:
 let
     pkgmgr = import ./pkgs.shard;
 
-    bootstrapPkg = pkg: (builtins.seqList (pkgmgr.installPipeline config pkg));
+    bootstrapPkg = pkg: builtins.seqList $ pkgmgr.installPipeline config pkg;
 
     bootstrapPkgs = pkgList: builtins.map bootstrapPkg pkgList;
 
-    createIso = file: (util.io.logMajor $ "Creating ISO `" + file + "`");
+    createIso = file: builtins.seqList [
+        (util.io.logMajor $ "Creating Image " + file + "...")
+        (util.shell.xorriso [
+            # TODO: make bootloader-generic
+            "-as" "mkisofs" "-b" "boot/limine/limine-bios-cd.bin"
+            "-no-emul-boot" "-boot-load-size" 4 "-boot-info-table"
+            (util.paths.prefix) "-o" file            
+        ])
+        (geode.proc.spawn "limine/limine" ["bios-install" file] true)
+    ];
 in 
     builtins.seqList [
         (bootstrapPkgs config.environment.packages)

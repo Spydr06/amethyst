@@ -1,3 +1,4 @@
+#include <stdio.h>
 #define _POSIX_C_SOURCE 200809L
 
 #include <geode.h>
@@ -24,6 +25,7 @@ static struct shard_value builtin_file_basename(volatile struct shard_evaluator*
 static struct shard_value builtin_file_dirname(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_file_exists(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_file_mkdir(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
+static struct shard_value builtin_file_writeFile(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_errno_toString(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_error_throw(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_proc_spawn(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
@@ -41,6 +43,7 @@ static const struct {
     {"geode.file.dirname", builtin_file_dirname, 1},
     {"geode.file.exists", builtin_file_exists, 1},
     {"geode.file.mkdir", builtin_file_mkdir, 1},
+    {"geode.file.writeFile", builtin_file_writeFile, 2},
     {"geode.errno.toString", builtin_errno_toString, 1},
     {"geode.error.throw", builtin_error_throw, 1},
     {"geode.proc.spawn", builtin_proc_spawn, 3},
@@ -169,6 +172,26 @@ static struct shard_value builtin_file_mkdir(volatile struct shard_evaluator* e,
         shard_eval_throw(e, *loc, "`geode.file.mkdir` expects argument to be of type `path`");
 
     return (struct shard_value){.type=SHARD_VAL_INT, .integer=mkdir(arg.path, 0777)};
+}
+
+static struct shard_value builtin_file_writeFile(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value file = shard_eval_lazy2(e, args[0]);
+    struct shard_value data = shard_eval_lazy2(e, args[1]);
+
+    if(file.type != SHARD_VAL_PATH)
+        shard_eval_throw(e, *loc, "`geode.file.writeFile` expects first argument to be of type `path`");
+
+    if(data.type != SHARD_VAL_STRING)
+        shard_eval_throw(e, *loc, "`geode.file.writeFile` expects second argument to be of type `string`");    
+
+    FILE* fp = fopen(file.string, "w");
+    if(!fp)
+        return (struct shard_value){.type=SHARD_VAL_INT, .integer=errno};
+
+    int err = fwrite(data.string, data.strlen, sizeof(char), fp);
+    int err2 = fclose(fp);
+
+    return (struct shard_value){.type=SHARD_VAL_INT, .integer=(err || err2)};
 }
 
 static struct shard_value builtin_errno_toString(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {

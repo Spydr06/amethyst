@@ -2,7 +2,7 @@ let
     pkgmgr = import ./pkgs.shard;
 in {
     lib = rec {
-        mkPackage = pkgSet: pkgSet // { __functor = self: config: builtins.mergeTree self { config = config; }; };
+        mkPackage = pkgSet: pkgSet // { __functor = self: config: builtins.mergeTree self { inherit config; }; };
     };
 
     util = rec {
@@ -26,6 +26,10 @@ in {
 
         installFiles = builtins.map installFile;
 
+        writeFile = file: data: builtins.seq
+            (mkdirRec $ geode.file.dirname file)
+            (geode.file.writeFile file $ builtins.toString data);
+
         # utility functions that mimic shell commands
         shell = {
             cp = args: 
@@ -40,12 +44,15 @@ in {
             install = args:
                 geode.proc.spawn "install" (builtins.map builtins.toString args) true;
 
+            xorriso = args:
+                geode.proc.spawn "xorriso" (builtins.map builtins.toString args) true;
+
             nproc = geode.proc.spawn "nproc" [] true;
         };
 
         paths = {
-            prefix = util.ensureExists { path = geode.prefix; default = geode.prefix; };
-            store = util.ensureExists { path = geode.store; default = geode.store; };
+            prefix = ensureExists { path = geode.prefix; default = geode.prefix; };
+            store = ensureExists { path = geode.store; default = geode.store; };
         };
 
         archive = {
