@@ -80,7 +80,7 @@ in {
 
             fmtMajor = str: term.bold + (term.color term.cyan str);
 
-            logMajor = str: task: builtins.seq (geode.debug.println (fmtMajor str)) task;
+            logMajor = str: task: builtins.seq (geode.debug.println $ fmtMajor str) task;
         };
     };
 
@@ -88,6 +88,8 @@ in {
         staticConfig = {
             boot.kernelParams = [];
             boot.initrd = {
+                compression = "ustar";
+                path = /boot/initrd;
                 enabled = false;
             };
 

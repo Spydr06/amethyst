@@ -1,5 +1,5 @@
 { pkgs, archive, prelude, ... }: prelude.mkConfig rec {
-    initrd.enabled = true;
+    boot.initrd.enabled = true;
 
     environment.packages = with pkgs; [
         (amethyst-kernel { kernel.arguments = [ "log-syscalls" ]; })

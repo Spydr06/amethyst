@@ -7,8 +7,13 @@ let
 
     bootstrapPkgs = pkgList: builtins.map bootstrapPkg pkgList;
 
+    createInitrd = initrd: builtins.seqList [
+        (util.io.logMajor ("Creating initrd " + (builtins.toString initrd.path) + "...") null)
+        (geode.proc.spawn "tar" [("--format=" + initrd.compression) "-czf" (builtins.toString $ util.paths.prefix + initrd.path) (builtins.toString geode.prefix)] true)
+    ];
+
     createIso = file: builtins.seqList [
-        (util.io.logMajor $ "Creating Image " + file + "...")
+        (util.io.logMajor ("Creating Image " + file + "...") null)
         (util.shell.xorriso [
             # TODO: make bootloader-generic
             "-as" "mkisofs" "-b" "boot/limine/limine-bios-cd.bin"
@@ -20,6 +25,7 @@ let
 in 
     builtins.seqList [
         (bootstrapPkgs config.environment.packages)
+        (builtins.when config.boot.initrd.enabled $ createInitrd config.boot.initrd)
         (createIso "amethyst.iso")
     ]
 
