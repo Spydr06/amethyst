@@ -8,6 +8,18 @@ in {
     util = rec {
         ensureExists = { path, default ? null }: assert geode.file.exists path; default;
 
+        dirEnts = dir: let
+                found = shell.find [
+                    dir
+                    "("
+                    "-type" "f"
+                    "-o" "-type" "d"
+                    ")"
+                    "-printf"
+                    "%P\n"
+                ];
+            in assert found.exitCode == 0; builtins.split "\n" found.stdout;
+
         mkdirIfNotExists = path: if geode.file.exists path
             then 0
             else assert (geode.file.mkdir path) == 0; path;

@@ -9,7 +9,17 @@ let
 
     createInitrd = initrd: builtins.seqList [
         (util.io.logMajor ("Creating initrd " + (builtins.toString initrd.path) + "...") null)
-        (geode.proc.spawn "tar" [("--format=" + initrd.compression) "-czf" (builtins.toString $ util.paths.prefix + initrd.path) (builtins.toString geode.prefix)] true)
+        (geode.proc.spawn "tar"
+            ([
+                ("--format=" + initrd.compression)
+                "-cf"
+                (builtins.toString $ util.paths.prefix + initrd.path)
+                "--no-recursion" "-C"
+                (builtins.toString geode.prefix)
+#                "-T"
+            ] ++ (util.dirEnts geode.prefix))
+            true
+        )
     ];
 
     createIso = file: builtins.seqList [
