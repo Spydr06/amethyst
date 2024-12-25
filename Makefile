@@ -10,19 +10,11 @@ SHARD_OBJECT ?= $(SHARD_BUILD_DIR)/libshard.o
 GEODE_DIR ?= shard/geode
 GEODE_HOST_BIN ?= $(SHARD_DIR)/build/geode-host
 
-STORE_DIR ?= store
-
-SYSTEM_CONFIGURATION ?= configuration.shard
-
 LIMINE_DIR ?= limine
 LIMINE_LOADERS := $(LIMINE_DIR)/limine-bios.sys $(LIMINE_DIR)/limine-bios-cd.bin $(LIMINE_DIR)/limine-uefi-cd.bin
 
 KERNEL_ELF ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).elf
 KERNEL_SYM ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).sym
-
-BOOTSTRAP_DIR ?= $(BUILD_DIR)/bootstrap
-
-ISO ?= amethyst.iso
 
 TOOLPREFIX ?= $(ARCH)-elf-
 
@@ -76,15 +68,6 @@ override OBJCOPY := $(TOOLPREFIX)objcopy
 CONSOLEFONT_OBJECT ?= $(BUILD_DIR)/default.psf.o
 CONSOLEFONT ?= fonts/default.psf
 
-TAR ?= tar
-
-GDB ?= gdb
-GDBFLAGS := -ex "target remote localhost:1234" \
-			-ex "symbol-file $(KERNEL_SYM)"
-
-override QEMU := qemu-system-$(ARCH)
-QEMUFLAGS += -m 2G -serial stdio -smp cpus=4 -no-reboot -no-shutdown
-
 ifeq ($(ARCH), x86_64)
 	C_CXX_FLAGS += -m64 -march=x86-64 -mcmodel=large -mno-red-zone -mno-mmx -mno-sse2
 	SOURCES += $(shell find $(ARCH_DIR) $(SOURCE_PATTERN))
@@ -99,9 +82,6 @@ CXXFLAGS += -std=c++2x $(C_CXX_FLAGS)
 OBJECTS := $(patsubst %, $(BUILD_DIR)/%.o, $(SOURCES))
 
 VERSION_H := include/version.h
-
-.PHONY: all
-all: $(ISO)
 
 .PHONY: kernel
 kernel: $(KERNEL_ELF)
@@ -162,76 +142,9 @@ $(GEODE_HOST_BIN): $(SHARD_DIR)
 	@CFLAGS=$(HOST_CFLAGS) LDFLAGS=$(HOST_LDFLAGS) C_CXX_FLAGS=$(HOST_C_CXX_FLAGS) CXXFLAGS=$(HOST_CXXFLAGS)\
 		$(MAKE) -C $(SHARD_DIR) geode
 
-.PHONY: bootstrap
-bootstrap: $(BOOTSTRAP_DIR)
-
-$(BOOTSTRAP_DIR): $(GEODE_HOST_BIN) $(SYSTEM_CONFIGURATION) $(STORE_DIR)
-	mkdir -p $(BOOTSTRAP_DIR)
-	$(GEODE_HOST_BIN) bootstrap --prefix=$(BOOTSTRAP_DIR) --config=$(SYSTEM_CONFIGURATION) --store=$(STORE_DIR) --verbose
-
-.PHONY: iso
-iso: $(ISO)
-
-$(LIMINE_DIR):
-	$(error "limine directory missing")
-
-$(LIMINE_DIR)/limine: $(LIMINE_DIR)
-	@echo "  MAKE  $(LIMINE_DIR)"
-	@$(MAKE) -C $(LIMINE_DIR) limine CC=gcc LD=ld
-
-$(ISO): $(KERNEL_ELF) | $(LIMINE_DIR)/limine $(BOOTSTRAP_DIR)/boot/limine/limine.cfg
-	@echo "  CP    $< $(BOOTSTRAP_DIR)/boot"
-	@cp $< $(BOOTSTRAP_DIR)/boot
-	
-	@echo "  CP    $(LIMINE_LOADERS) $(BOOTSTRAP_DIR)/boot/limine"
-	@cp $(LIMINE_LOADERS) $(BOOTSTRAP_DIR)/boot/limine
-
-	@echo "  MKDIR $(BOOTSTRAP_DIR)/EFI/BOOT"
-	@mkdir -p $(BOOTSTRAP_DIR)/EFI/BOOT
-
-	@echo "  CP    $(LIMINE_DIR)/BOOTX64.EFI $(BOOTSTRAP_DIR)/EFI/BOOT"
-	@cp $(LIMINE_DIR)/BOOTX64.EFI $(BOOTSTRAP_DIR)/EFI/BOOT
-	@echo "  CP    $(LIMINE_DIR)/BOOTIA32.EFI $(BOOTSTRAP_DIR)/EFI_BOOT"
-	@cp $(LIMINE_DIR)/BOOTIA32.EFI $(BOOTSTRAP_DIR)/EFI_BOOT
-	
-	@echo "  XORRISO      $@"
-	@xorriso -as mkisofs -b boot/limine/limine-bios-cd.bin \
-		-no-emul-boot -boot-load-size 4 -boot-info-table \
-        --efi-boot boot/limine/limine-uefi-cd.bin \
-        -efi-boot-part --efi-boot-image --protective-msdos-label \
-        $(BOOTSTRAP_DIR) -o $@
-
-	@echo "  BIOS-INSTALL $@"
-	@$(LIMINE_DIR)/limine bios-install $@
-
-$(BOOTSTRAP_DIR)/boot/limine/limine.cfg: limine.cfg.in
-	@mkdir -p $(dir $@)
-	@echo "  GEN   $@"
-	@sed -e 's|@VERSION@|$(VERSION)|g' \
-		-e 's|@KERNEL_ELF@|$(notdir $(KERNEL_ELF))|' \
-		$< > $@
-
-.PHONY: run
-run: $(ISO)
-	$(QEMU) $(QEMUFLAGS) -cdrom $< -boot order=d
-
-.PHONY: run-kvm
-run-kvm: $(ISO)
-	$(QEMU) $(QEMUFLAGS) -enable-kvm -cdrom $< -boot order=d
-
-.PHONY: debug
-debug: $(ISO)
-	$(QEMU) $(QEMUFLAGS) -cdrom $< -boot order=d -s -S &
-	$(GDB) $(GDBFLAGS)
-
 .PHONY: test
 test:
 	$(MAKE) -C shard test
-
-#.PHONY: shard
-#shard:
-#	C_CXX_FLAGS=$(SAVED_C_CXX_FLAGS) CFLAGS=$(SAVED_CFLAGS) LDFLAGS=$(SAVED_LDFLAGS) \
-#		$(MAKE) -C shard BUILD_DIR=$(shell realpath $(SHARD_BUILD_DIR))
 
 .PHONY: clean
 clean:
