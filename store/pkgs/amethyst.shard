@@ -23,9 +23,11 @@ with import ./../geode.shard; {
         ];
 
         limineConfig = template: 
-            let sed = geode.proc.spawnPipe "sed" [
+            let kernelArgs = builtins.join " " config.kernel.arguments;
+                sed = geode.proc.spawnPipe "sed" [
                     "-e" ("s|@VERSION@|" + version + "|g")
                     "-e" ("s|@KERNEL_ELF@|" + kernelElf + "|")
+                    "-e" ("s|@KERNEL_ARGS@|" + kernelArgs + "|")
                     template
                 ] "";
             in assert sed.exitCode == 0; sed.stdout;

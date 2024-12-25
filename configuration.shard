@@ -4,6 +4,7 @@
     environment.packages = with pkgs; [
         (amethyst-kernel { kernel.arguments = [ "log-syscalls" ]; })
         limine
+        initsys
     ];
 }
 

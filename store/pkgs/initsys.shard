@@ -1,0 +1,14 @@
+with import ./../geode.shard; {
+    initsys = rec {
+        name = "initsys";
+        version = "0.0.1";
+
+        # TODO: fetch/verify source from repo
+        sourceDir = util.paths.store + name;
+        buildDir = sourceDir + "build";
+
+        build = util.shell.make ["-C" sourceDir];
+
+        install = util.shell.make ["-C" sourceDir "install" ("PREFIX=" + $ builtins.toString util.paths.prefix)];
+    };
+}

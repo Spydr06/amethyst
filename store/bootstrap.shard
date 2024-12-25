@@ -16,7 +16,6 @@ let
                 (builtins.toString $ util.paths.prefix + initrd.path)
                 "--no-recursion" "-C"
                 (builtins.toString geode.prefix)
-#                "-T"
             ] ++ (util.dirEnts geode.prefix))
             true
         )

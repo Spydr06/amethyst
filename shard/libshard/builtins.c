@@ -488,6 +488,32 @@ static struct shard_value builtin_isString(volatile struct shard_evaluator* e, s
     return BOOL_VAL(arg.type == SHARD_VAL_STRING);
 }
 
+static struct shard_value builtin_join(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value intermediate = shard_eval_lazy2(e, args[0]);
+    if(intermediate.type != SHARD_VAL_STRING)
+        shard_eval_throw(e, *loc, "`builtins.join` expects first argument to be of type string");
+
+    struct shard_value list = shard_eval_lazy2(e, args[1]);
+    if(list.type != SHARD_VAL_LIST)
+        shard_eval_throw(e, *loc, "`builtins.list` expects second argument to be of type list");
+
+    struct shard_string concat = {0};
+
+    struct shard_list* cur = list.list.head;
+    do {
+        struct shard_value elem = shard_eval_lazy2(e, cur->value); 
+        if(elem.type != SHARD_VAL_STRING)
+            shard_eval_throw(e, *loc, "`builtins.list` expects second argument to be a list of strings");
+
+        shard_gc_string_appendn(e->gc, &concat, elem.string, elem.strlen);
+
+        if(cur->next)
+            shard_gc_string_appendn(e->gc, &concat, intermediate.string, intermediate.strlen);
+    } while((cur = cur->next));
+
+    return STRING_VAL(concat.items, concat.count);
+}
+
 static struct shard_value builtin_length(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
     struct shard_value arg = shard_eval_lazy2(e, *args);
     if(arg.type != SHARD_VAL_LIST)
@@ -742,6 +768,7 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
         { "isNull", shard_unlazy(ctx, BUILTIN_VAL(builtin_isNull, 1)) },
         { "isPath", shard_unlazy(ctx, BUILTIN_VAL(builtin_isPath, 1)) },
         { "isString", shard_unlazy(ctx, BUILTIN_VAL(builtin_isString, 1)) },
+        { "join", shard_unlazy(ctx, BUILTIN_VAL(builtin_join, 2)) },
         { "langVersion", shard_unlazy(ctx, INT_VAL(SHARD_VERSION_X)) },
         { "length", shard_unlazy(ctx, BUILTIN_VAL(builtin_length, 1)) },
         { "map", shard_unlazy(ctx, BUILTIN_VAL(builtin_map, 2)) },

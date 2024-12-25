@@ -20,11 +20,9 @@ struct bootstrap_argument {
 };
 
 static void help(struct geode_context* ctx, struct bootstrap_flags* flags, const char*);
-static void enable_initrd(struct geode_context* ctx, struct bootstrap_flags* flags, const char* path);
 
 static const struct bootstrap_argument cmdline_arguments[] = {
     {"help",   "         Display `bootstrap` help text.", false, help},
-    {"initrd", "<path> Generate an initrd file.", true, enable_initrd},
     {NULL, NULL, false, NULL}
 };
 
@@ -41,11 +39,6 @@ static void help(struct geode_context* ctx, struct bootstrap_flags*, const char*
     printf("\nFor general help, try `%s --help`.\n", ctx->prog_name);
 
     exit(EXIT_SUCCESS);
-}
-
-static void enable_initrd(struct geode_context*, struct bootstrap_flags* flags, const char* path) {
-    assert(path);
-    flags->initrd_path = path;
 }
 
 static void create_prefix(struct geode_context* ctx) {

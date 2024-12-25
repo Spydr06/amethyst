@@ -48,7 +48,7 @@ int initrd_unpack(void) {
     size_t cleaned_bytes = 0;
 
     while(true) {
-        if(cleaned_bytes  >= PAGE_SIZE) {
+        if(cleaned_bytes >= PAGE_SIZE) {
             size_t page_count = cleaned_bytes / PAGE_SIZE;
             pmm_makefree(FROM_HHDM(cleanup), page_count);
             cleanup = (void*)((uintptr_t) cleanup + ROUND_DOWN(cleaned_bytes, PAGE_SIZE));
