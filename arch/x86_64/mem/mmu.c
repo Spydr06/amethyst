@@ -1,9 +1,15 @@
-#include "x86_64/cpu/cpu.h"
-#include "x86_64/cpu/idt.h"
-#include "x86_64/dev/pic.h"
+#include "sys/spinlock.h"
 #include <x86_64/mem/mmu.h>
+#include <x86_64/cpu/cpu.h>
+#include <x86_64/cpu/idt.h>
+#include <x86_64/cpu/smp.h>
+#include <x86_64/dev/apic.h>
+#include <x86_64/dev/pic.h>
 
 #include <mem/pmm.h>
+
+#include <sys/thread.h>
+#include <sys/proc.h>
 
 #include <limine/limine.h>
 
@@ -62,6 +68,8 @@ static volatile struct limine_kernel_address_request kernel_address_request = {
 
 static void* mmu_page = nullptr;
 static int remaining = 0;
+
+static spinlock_t shootdown_lock;
 
 static __always_inline void* next(uint64_t entry) {
     return entry ? MAKE_HHDM(entry & ADDRMASK) : nullptr;
@@ -163,8 +171,8 @@ void mmu_tlbipi(struct cpu_context* status __unused) {
 
 void mmu_apswitch(void) {
     mmu_switch(FROM_HHDM(template));
-    interrupt_register(0x0e, pfisr, nullptr, IPL_NORMAL);
-    interrupt_register(0xfe, mmu_tlbipi, pic_send_eoi, IPL_NORMAL);
+    interrupt_register(0x0e, pfisr, nullptr, IPL_IGNORE);
+    interrupt_register(0xfe, mmu_tlbipi, pic_send_eoi, IPL_IGNORE);
     idt_reload();
 }
 
@@ -258,17 +266,29 @@ void mmu_unmap(page_table_ptr_t table, void* vaddr) {
 
 void mmu_invalidate(void* vaddr) {
     mmu_tlb_shootdown(vaddr);
-    __asm__ volatile(
-        "invlpg (%%rax)"
-        :: "a"(vaddr)
-    );
+    __asm__ volatile("invlpg (%%rax)" :: "a"(vaddr) : "memory");
 }
 
 void mmu_tlb_shootdown(void *page __attribute__((unused))) {
-    if(_cpu()->thread == NULL)
+    if(_cpu()->thread == NULL || smp_cpus_awake == 1)
         return;
-    // TODO: check if only one cpu is active
-    unimplemented();
+    
+    if(page >= KERNELSPACE_START || 
+        (_cpu()->thread->proc->running_thread_count > 1 && page >= USERSPACE_START && page < USERSPACE_END)) {
+        int old_ipl = interrupt_raise_ipl(IPL_DPC);
+        spinlock_acquire(&shootdown_lock);
+
+        mmu_page = page;
+        remaining = smp_cpus_awake - 1;
+
+        smp_send_ipi(NULL, &_cpu()->isr[0xfe], SMP_IPI_OTHERCPUS, false);
+
+        while(__atomic_load_n(&remaining, __ATOMIC_SEQ_CST))
+            pause();
+
+        spinlock_release(&shootdown_lock);
+        interrupt_lower_ipl(old_ipl);
+    }
 }
 
 void* mmu_get_physical(page_table_ptr_t table, void* vaddr) {

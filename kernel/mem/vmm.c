@@ -283,12 +283,29 @@ static uintmax_t get_entry_number(struct vmm_cache* cache) {
     unreachable();
 }
 
-static void destroy_range(struct vmm_range* range, uintmax_t offset, size_t size, int flags) {
-    (void) range;
-    (void) offset;
-    (void) size;
-    (void) flags;
-    unimplemented();
+static void destroy_range(struct vmm_range* range, uintmax_t start_offset, size_t size, int flags) {
+    uintmax_t top = start_offset + size;
+
+    for(uintmax_t offset = start_offset; offset < top; offset += PAGE_SIZE) {
+        void* virt_addr = (void*) ((uintptr_t) range->start + offset);
+        void* phys_addr = mmu_get_physical(_cpu()->vmm_context->page_table, virt_addr);
+
+        if(!phys_addr)
+            continue;
+
+        /*struct thread* thread = _cpu()->thread;
+        struct proc* proc = thread ? thread->proc : NULL;
+        struct cred* cred = proc ? &proc->cred : NULL;*/
+
+        // TODO: vfs caching if range->flags & VM_FLAGS_FILE and range is cacheable!
+        
+        mmu_unmap(_cpu()->vmm_context->page_table, virt_addr);
+        if((range->flags & VMM_FLAGS_PHYSICAL) == 0)
+            pmm_release(phys_addr);
+    }
+
+    if((range->flags & VMM_FLAGS_FILE) && range->size == size)
+        vop_release(&range->vnode);
 }
 
 static void free_range(struct vmm_range* range) {
@@ -498,81 +515,81 @@ static int change_map(struct vmm_space* space, void* addr, size_t size, bool fre
                     goto finish;
                 }
             }
-            // partially change from start
-            else if(top > range->start && range->start >= addr) {
-                if(check_wr && !vnode_writable(range)) {
-                    err = EACCES;
-                    goto finish;
-                }
-
-                size_t diff = (uintptr_t) top - (uintptr_t) range->start;
-                if(free)
-                    destroy_range(range, 0, diff, 0);
-
-                range->start = (void*)((uintptr_t) range->start + diff);
-                range->size -= diff;
-
-                if(range->flags & VMM_FLAGS_FILE)
-                    range->offset += diff;
-
-                if(!free) {
-                    new_range->start = (void*)((uintptr_t) range->start - diff);
-                    new_range->size = diff;
-                    new_range->flags = range->flags;
-                    new_range->mmu_flags = new_mmu_flags;
-
-                    change_mmu_range(range, new_range->start, new_range->size, new_range->mmu_flags);
-
-                    if(range->flags & VMM_FLAGS_FILE) {
-                        new_range->vnode = range->vnode;
-                        new_range->offset = range->offset - diff;
-                        vop_hold(range->vnode);
-                    }
-
-                    insert_range(space, new_range);
-                    new_range = alloc_range();
-                    if(!new_range) {
-                        err = ENOMEM;
-                        goto finish;
-                    }
-                }
-            }
-            // partially change from end
-            else if(addr < range_top && range_top <= top) {
-                if(check_wr && !vnode_writable(range)) {
-                    err = EACCES;
-                    goto finish;
-                }
-
-                size_t diff = (uintptr_t) range_top - (uintptr_t) addr;
-                range->size -= diff;
-                if(free)
-                    destroy_range(range, range->size, diff, 0);
-                else {
-                    new_range->start = (void*)((uintptr_t) range->start + diff);
-                    new_range->size = diff;
-                    new_range->flags = range->flags;
-                    new_range->mmu_flags = new_mmu_flags;
-
-                    change_mmu_range(range, new_range->start, new_range->size, new_range->mmu_flags);
-
-                    if(range->flags & VMM_FLAGS_FILE) {
-                        new_range->vnode = range->vnode;
-                        new_range->offset = range->offset + diff;
-                        vop_hold(range->vnode);
-                    }
-
-                    insert_range(space, new_range);
-                    new_range = alloc_range();
-                    if(!new_range) {
-                        err = ENOMEM;
-                        goto finish;
-                    }
-                }
-            }
-
-            range = range->next;
         }
+        // partially change from start
+        else if(top > range->start && range->start >= addr) {
+            if(check_wr && !vnode_writable(range)) {
+                err = EACCES;
+                goto finish;
+            }
+
+            size_t diff = (uintptr_t) top - (uintptr_t) range->start;
+            if(free)
+                destroy_range(range, 0, diff, 0);
+
+            range->start = (void*)((uintptr_t) range->start + diff);
+            range->size -= diff;
+
+            if(range->flags & VMM_FLAGS_FILE)
+                range->offset += diff;
+
+            if(!free) {
+                new_range->start = (void*)((uintptr_t) range->start - diff);
+                new_range->size = diff;
+                new_range->flags = range->flags;
+                new_range->mmu_flags = new_mmu_flags;
+
+                change_mmu_range(range, new_range->start, new_range->size, new_range->mmu_flags);
+
+                if(range->flags & VMM_FLAGS_FILE) {
+                    new_range->vnode = range->vnode;
+                    new_range->offset = range->offset - diff;
+                    vop_hold(range->vnode);
+                }
+
+                insert_range(space, new_range);
+                new_range = alloc_range();
+                if(!new_range) {
+                    err = ENOMEM;
+                    goto finish;
+                }
+            }
+        }
+        // partially change from end
+        else if(addr < range_top && range_top <= top) {
+            if(check_wr && !vnode_writable(range)) {
+                err = EACCES;
+                goto finish;
+            }
+
+            size_t diff = (uintptr_t) range_top - (uintptr_t) addr;
+            range->size -= diff;
+            if(free)
+                destroy_range(range, range->size, diff, 0);
+            else {
+                new_range->start = (void*)((uintptr_t) range->start + diff);
+                new_range->size = diff;
+                new_range->flags = range->flags;
+                new_range->mmu_flags = new_mmu_flags;
+
+                change_mmu_range(range, new_range->start, new_range->size, new_range->mmu_flags);
+
+                if(range->flags & VMM_FLAGS_FILE) {
+                    new_range->vnode = range->vnode;
+                    new_range->offset = range->offset + diff;
+                    vop_hold(range->vnode);
+                }
+
+                insert_range(space, new_range);
+                new_range = alloc_range();
+                if(!new_range) {
+                    err = ENOMEM;
+                    goto finish;
+                }
+            }
+        }
+
+        range = range->next;
     }
 
 finish:

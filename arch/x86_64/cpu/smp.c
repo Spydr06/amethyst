@@ -22,7 +22,7 @@
 
 #include <limine/limine.h>
 
-static size_t cpus_awake = 1;
+size_t smp_cpus_awake = 1;
 
 static volatile struct limine_smp_request smp_request = {
     .id = LIMINE_SMP_REQUEST,
@@ -44,7 +44,7 @@ static __noreturn void cpu_wakeup(struct limine_smp_info* smp_info) {
     apic_initap();
     apic_timer_init();
 
-    __atomic_add_fetch(&cpus_awake, 1, __ATOMIC_SEQ_CST);
+    __atomic_add_fetch(&smp_cpus_awake, 1, __ATOMIC_SEQ_CST);
 
     scheduler_apentry();
 
@@ -85,9 +85,13 @@ void smp_init(void) {
     }
 
     if(wakeup_fn == cpu_wakeup)
-        while(__atomic_load_n(&cpus_awake, __ATOMIC_SEQ_CST) != cpu_count)
+        while(__atomic_load_n(&smp_cpus_awake, __ATOMIC_SEQ_CST) != cpu_count)
             pause();
 
     klog(INFO, "awoke other processors");
+}
+
+void smp_send_ipi(struct cpu* cpu, struct isr* isr, enum smp_ipi_target target, bool nmi) {
+    apic_send_ipi(cpu ? cpu->id : 0, ISR_ID_TO_VECTOR(isr->id), target, nmi ? APIC_MODE_NMI : 0, 0);
 }
 

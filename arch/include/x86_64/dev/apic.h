@@ -53,6 +53,10 @@ struct io_apic_desc {
     int top;
 };
 
+enum apic_mode : uint8_t {
+    APIC_MODE_NMI = 4
+};
+
 enum io_apic_register : uint8_t {
     IOAPIC_REG_ID,
     IOAPIC_REG_ENTRYCOUNT,
@@ -86,6 +90,7 @@ void apic_init(void);
 void apic_initap(void);
 void apic_timer_init(void);
 
+void apic_send_ipi(uint8_t cpu, uint8_t vec, uint8_t dest, enum apic_mode mode, uint8_t level);
 void apic_send_eoi(uint32_t irq);
 
 size_t apic_lapic_count(void);

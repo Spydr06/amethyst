@@ -37,6 +37,8 @@
 
 #define SYSCALL_INTERRUPT 0x80
 
+#define ISR_ID_TO_VECTOR(id) ((id) & 0xffffffff)
+
 struct cpu_context;
 
 struct interrupt_descriptor {

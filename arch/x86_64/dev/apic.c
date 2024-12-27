@@ -213,6 +213,13 @@ void apic_send_eoi(__unused uint32_t irq) {
     lapic_write(APIC_REG_EOI, 0);
 }
 
+void apic_send_ipi(uint8_t cpu, uint8_t vec, uint8_t dest, enum apic_mode mode, uint8_t level) {
+    lapic_write(APIC_REG_ICR_HI, (uint32_t) cpu << 24);
+    lapic_write(APIC_REG_ICR_LO, vec | (level << 4) | (mode << 11) | (dest << 18) | (1 << 14));
+    while(lapic_read(APIC_REG_ICR_LO) & APIC_REG_ICR_LO_STATUS)
+        pause();
+}
+
 size_t apic_lapic_count(void) {
     return lapic_count;
 }
