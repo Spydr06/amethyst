@@ -119,25 +119,37 @@ rec {
 
         announceInstall = pkg: util.io.logMajor ("Installing " + pkg.name + "...");
 
-        buildPipeline = config: pkg: let 
-            wrap = elem: if elem == null then [] else [elem];
-        in  builtins.foldl (a: b: a ++ b) [] (builtins.map (installPipeline config) $ pkgBuildDependencies pkg)
+        newTask = name: task: if task == null then [] else
+            [{ inherit name task; }];
+
+        buildPipeline = config: pkg: builtins.foldl (a: b: a ++ b) [] (builtins.map (installPipeline config) $ pkgBuildDependencies pkg)
             ++ (announceBuild pkg (
-                        (wrap pkg.unpack or null)
-                        ++ (wrap pkg.patch or null)
-                        ++ (wrap pkg.configure or null)
-                        ++ (wrap pkg.build or null)
-                        ++ (wrap pkg.check or null)
-                        ));
+                (newTask "fetch" pkg.fetch or null)
+                ++ (newTask "unpack" pkg.unpack or null)
+                ++ (newTask "patch" pkg.patch or null)
+                ++ (newTask "configure" pkg.configure or null)
+                ++ (newTask "build" pkg.build or null)
+                ++ (newTask "check" pkg.check or null)
+            ));
 
         installPipeline = config: pkg: let
             noEnableFlag = c: true;
-        wrap = elem: if elem == null then [] else [elem];
         in if (pkg.isEnabled or noEnableFlag) config
-            then
-            (buildPipeline config pkg)
-            ++ (announceInstall pkg $ wrap pkg.install or null)
+            then (buildPipeline config pkg) ++ (announceInstall pkg $ newTask "install" pkg.install or null)
             else [];
+
+        installPkg = pkg: with builtins;
+            let
+                taskError = msg: name: geode.error.throw $ "Task '" + name + "' on package '" + pkg.name + "' " + msg + ".";
+                successful = name: task: 
+                    if isNull task then true
+                    else if isInt task then task == 0
+                    else if isList task then all (successful name) task
+                    else taskError "returned unexpected value" name;
+                reportError = { name, task }: if successful name task 
+                    then true 
+                    else taskError ("returned non-zero exit code: " + $ toString task) name;
+            in all reportError $ manager.installPipeline config pkg;
     };
 
     pkgIndex = let 

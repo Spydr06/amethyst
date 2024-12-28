@@ -34,10 +34,9 @@ with import ./../geode.shard; {
 
         build = util.shell.make [buildTarget];
 
-        check = assert geode.file.exists (builtins.toPath buildTarget); null;
-
-        install = builtins.seq
+        install = [
             (util.installFile { src = buildTarget; dst = /boot/ + kernelElf; mode = "755"; })
-            (util.writeFile (util.paths.prefix + limineConfigPath) $ limineConfig "limine.cfg.in");
+            (util.writeFile (util.paths.prefix + limineConfigPath) $ limineConfig "limine.cfg.in")
+        ];
     };
 }

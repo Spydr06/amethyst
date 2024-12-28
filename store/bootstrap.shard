@@ -1,8 +1,6 @@
 with import ./geode.shard; 
 config: let
-    bootstrapPkg = pkg: builtins.seqList $ manager.installPipeline config pkg;
-
-    bootstrapPkgs = pkgList: builtins.map bootstrapPkg pkgList;
+    bootstrapPkgs = pkgList: builtins.map manager.installPkg pkgList;
 
     createInitrd = initrd: builtins.seqList [
         (util.io.logMajor ("Creating initrd " + (builtins.toString initrd.path) + "...") null)
