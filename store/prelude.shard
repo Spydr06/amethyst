@@ -3,19 +3,16 @@
 # This file gets passed to the system configuration by geode
 #
 
-let 
-    util = import ./util.shard; 
-    pkgmgr = import ./pkgs.shard;
-in {
+with import ./geode.shard; {
     archive = {
         ustar = "ustar";
         uncompressed = null;
     };
 
-    pkgs = pkgmgr.pkgs;
+    inherit pkgs;
 
     prelude = {
-        mkConfig = config: builtins.mergeTree pkgmgr.defaultConfig config;
+        mkConfig = config: builtins.mergeTree templates.staticConfig config;
     };
 }
 

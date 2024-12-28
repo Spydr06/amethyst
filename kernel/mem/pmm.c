@@ -47,14 +47,16 @@ static void allocate(struct page* page);
 
 void pmm_init(struct mmap* mmap) {
     assert(hhdm_request.response);
-    hhdm_base = hhdm_request.response->offset;
 
     klog(INFO, "total memory: 0x%zx bytes (%Zu)", mmap->memory_size, mmap->memory_size);
+
+    hhdm_base = hhdm_request.response->offset;
     memory_size = mmap->memory_size;
 
     pages = MAKE_HHDM(mmap->biggest_entry->base);
     page_count = ROUND_UP(mmap->top, PAGE_SIZE) / PAGE_SIZE;
     memset(pages, 0, page_count * sizeof(struct page));
+
     klog(INFO, "%zu pages used for page list", ROUND_UP(page_count * sizeof(struct page), PAGE_SIZE) / PAGE_SIZE);
 
     for(size_t i = 0; i < mmap->mmap->entry_count; i++) {
@@ -84,7 +86,10 @@ void* pmm_alloc_page(enum pmm_section_type section) {
         page = free_lists[i];
         if(page) {
             free_list_remove(page);
-            break;
+//            klog(WARN, "(%p) rc: %lu (%lu remaining | %d / %d)", page, page->refcount, free_page_count, i, section);
+            assert(page->refcount == 0);
+  //          if(page->refcount == 0)
+                break;
         }
     }
 
@@ -195,6 +200,7 @@ void pmm_makefree(void* addr, size_t count) {
 }
 
 static void free_list_insert(struct page* page) {
+    assert(page->refcount == 0);
     uintmax_t page_id = PAGE_GETID(page);
     PAGE_BOUNDCHK(page_id);
 

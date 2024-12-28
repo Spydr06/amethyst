@@ -12,7 +12,6 @@ MEMORY="4G"
 CPUS=4
 QEMU_ARCH=x86_64
 QEMU_IMAGE="$SCRIPT_DIR/amethyst.iso"
-SYMBOL_FILE="$BUILD_DIR/amethyst-0.0.1-${ARCH}"
 
 function error() {
     BRED="\033[1;31m"
@@ -78,6 +77,7 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+SYMBOL_FILE="$BUILD_DIR/amethyst-0.0.1-${QEMU_ARCH}.sym"
 
 QEMU="qemu-system-${QEMU_ARCH}"
 QEMUFLAGS+="-m ${MEMORY} -serial stdio -smp cpus=${CPUS} -no-reboot -no-shutdown -cdrom ${QEMU_IMAGE} -boot order=d"

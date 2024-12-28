@@ -1,9 +1,6 @@
 with import ./geode.shard; 
-config:
-let
-    pkgmgr = import ./pkgs.shard;
-
-    bootstrapPkg = pkg: builtins.seqList $ pkgmgr.installPipeline config pkg;
+config: let
+    bootstrapPkg = pkg: builtins.seqList $ manager.installPipeline config pkg;
 
     bootstrapPkgs = pkgList: builtins.map bootstrapPkg pkgList;
 

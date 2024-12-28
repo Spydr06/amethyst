@@ -1,19 +1,10 @@
 with import ./../geode.shard; {
-    initsys = rec {
-        name = "initsys";
+    libc = rec {
+        name = "libc";
         version = "0.0.1";
 
-        # TODO: fetch/verify source from repo
         sourceDir = util.paths.store + name;
         buildDir = sourceDir + "build";
-
-        buildDependencies = with pkgs; [
-            libc
-        ];
-
-        runtimeDependencies = with pkgs; [
-            libc
-        ];
 
         build = util.shell.make ["-C" sourceDir];
 

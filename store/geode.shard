@@ -1,6 +1,4 @@
-let 
-    pkgmgr = import ./pkgs.shard;
-in {
+rec {
     lib = rec {
         mkPackage = pkgSet: pkgSet // { __functor = self: config: builtins.mergeTree self { inherit config; }; };
     };
@@ -109,5 +107,44 @@ in {
         };
     };
 
-    pkgs = pkgmgr.pkgs;
+    manager = rec {
+        pkgAttrs = pkg: builtins.head (builtins.attrValues pkg);
+
+        pkgOpts = pkg: (pkgAttrs pkg).opts or {};
+        pkgName = pkg: (pkgAttrs pkg).name or null;
+
+        pkgBuildDependencies = pkg: pkg.buildDependencies or [];
+
+        announceBuild = pkg: util.io.logMajor ("Building " + pkg.name + "...");
+
+        announceInstall = pkg: util.io.logMajor ("Installing " + pkg.name + "...");
+
+        buildPipeline = config: pkg: let 
+            wrap = elem: if elem == null then [] else [elem];
+        in  builtins.foldl (a: b: a ++ b) [] (builtins.map (installPipeline config) $ pkgBuildDependencies pkg)
+            ++ (announceBuild pkg (
+                        (wrap pkg.unpack or null)
+                        ++ (wrap pkg.patch or null)
+                        ++ (wrap pkg.configure or null)
+                        ++ (wrap pkg.build or null)
+                        ++ (wrap pkg.check or null)
+                        ));
+
+        installPipeline = config: pkg: let
+            noEnableFlag = c: true;
+        wrap = elem: if elem == null then [] else [elem];
+        in if (pkg.isEnabled or noEnableFlag) config
+            then
+            (buildPipeline config pkg)
+            ++ (announceInstall pkg $ wrap pkg.install or null)
+            else [];
+    };
+
+    pkgIndex = let 
+            found = util.shell.find [(geode.store + "/pkgs") "-type" "f" "-name" "*.shard"];
+        in assert found.exitCode == 0; builtins.split "\n" found.stdout;
+
+    pkgList = builtins.map import pkgIndex;
+    pkgs = builtins.foldl util.merge {} pkgList;
 }
+

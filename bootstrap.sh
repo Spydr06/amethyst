@@ -13,6 +13,8 @@ USE_GCBOEHM="-DSHARD_USE_GCBOEHM"
 CONFIGURATION_FILE="${SCRIPT_DIR}/configuration.shard"
 STORE_DIR="${SCRIPT_DIR}/store"
 
+RUN_AFTERWARDS=0
+
 function error() {
     BRED="\033[1;31m"
     RST="\033[0m"
@@ -32,6 +34,7 @@ function show_help() {
     echo
     echo "Options:"
     echo "  -h, --help              display this help text and exit"
+    echo "  -r, --run               execute \`run.sh\` after bootstrapping"
     echo "      --clean             clean the build files and exit"
     echo "  -jN, --jobs=N           use N parallel threads for building"
     echo "      --build-dir=<path>  put build files in <path> [$BUILD_DIR]"
@@ -69,6 +72,9 @@ while [[ $# -gt 0 ]]; do
             clean_build_files
             exit 0
             ;;
+        -r | --run)
+            RUN_AFTERWARDS=1
+            ;;
         -h | --help)
             show_help
             ;;
@@ -97,3 +103,8 @@ ${GEODE_BIN} bootstrap --prefix=${BOOTSTRAP_DIR} --config=${CONFIGURATION_FILE} 
 
 echo "bootstrapping done."
 
+if [ $RUN_AFTERWARDS -ne 0 ]; then
+    pushd $SCRIPT_DIR
+    ./run.sh
+    popd
+fi
