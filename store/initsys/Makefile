@@ -6,7 +6,6 @@ OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 
 TARGET := $(BUILD_DIR)/init
 
-CFLAGS += -Iinclude -ffreestanding -nostdlib
 LDFLAGS += -static
 
 .PHONY: all
@@ -15,7 +14,7 @@ all: $(TARGET)
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(dir $@)
 	@echo "  CCLD  $@ ($^)"
-	@$(LD) $(LDFLAGS) -o $@ $^
+	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 $(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)

@@ -15,7 +15,9 @@ with import ./../geode.shard; {
             libc
         ];
 
-        build = util.shell.make ["-C" sourceDir];
+        build = util.shell.make ["-C" sourceDir 
+  #          ("CFLAGS=-specs=" + $ builtins.toString util.paths.gcc_specs)
+        ];
 
         install = util.shell.make ["-C" sourceDir "install" ("PREFIX=" + $ builtins.toString util.paths.prefix)];
     };

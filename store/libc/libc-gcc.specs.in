@@ -13,11 +13,5 @@
 @PREFIX@/@LIBDIR@/crtend.o @PREFIX@/@LIBDIR@/crtn.o
 
 *link:
--static -nostdlib
-
-*esp_link:
-
-*esp_options:
-
-*esp_cpp_options:
+-static -nostdlib -L@PREFIX@/@LIBDIR@ -lc
 

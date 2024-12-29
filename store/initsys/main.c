@@ -1,7 +1,6 @@
-static const char message[] = "Hello, World <3\n";
+static const char message[] = "Hello, World <2\n";
 
-__attribute__((naked, section(".text"), used))
-_Noreturn void _start(void)  {    
+int main() {
     __asm__ volatile (
         "mov %[num], %%rax;"
         "mov %[fd], %%rdi;"
@@ -12,6 +11,7 @@ _Noreturn void _start(void)  {
         :   "rax","rdi","rsi","rdx"
     );
 
-    __asm__ volatile (".l: jmp .l");
+    while(1);
+    return 0;
 }
 

@@ -47,17 +47,17 @@ $(BUILD_DIR)/%.o: $(CRT_DIR)/%.c
 $(NATIVE_GCC_SPECS): libc-gcc.specs.in
 	@mkdir -p $(dir $@)
 	@echo "  GEN   $@"
-	@sed -e 's|@PREFIX@|/|g' 		    \
-		-e 's|@INCDIR@|$(INCLUDE_DIR)|' \
-		-e 's|@LIBDIR@|$(LIB_DIR)|'     \
+	@sed -e 's|@PREFIX@|/|g' 		     \
+		-e 's|@INCDIR@|$(INCLUDE_DIR)|g' \
+		-e 's|@LIBDIR@|$(LIB_DIR)|g'     \
 		$< > $@
 
 $(CROSS_GCC_SPECS): libc-gcc.specs.in
 	@mkdir -p $(dir $@)
 	@echo "  GEN   $@"
 	@sed -e 's|@PREFIX@|$(PREFIX)|g'     \
-		-e 's|@INCDIR@|$(INCLUDE_DIR)|' \
-		-e 's|@LIBDIR@|$(LIB_DIR)|'		\
+		-e 's|@INCDIR@|$(INCLUDE_DIR)|g' \
+		-e 's|@LIBDIR@|$(LIB_DIR)|g'	 \
 		$< > $@
 
 .PHONY: install

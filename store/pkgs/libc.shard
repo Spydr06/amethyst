@@ -11,10 +11,13 @@ with import ./../geode.shard; {
             ("PREFIX=" + $ builtins.toString util.paths.prefix)
         ];
 
-        install = util.shell.make [
-            "-C" sourceDir 
-            "install"
-            ("PREFIX=" + $ builtins.toString util.paths.prefix)
+        install = builtins.seqList [
+            (util.shell.make [
+                "-C" sourceDir 
+                "install"
+                ("PREFIX=" + $ builtins.toString util.paths.prefix)
+            ])
+            (geode.setenv "CFLAGS" $ "-specs=" + (builtins.toString util.paths.gcc_specs) + " " + $ let cflags = geode.getenv "CFLAGS"; in if cflags == null then "" else cflags)
         ];
     };
 }

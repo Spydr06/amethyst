@@ -60,9 +60,12 @@ rec {
             nproc = geode.proc.spawn "nproc" [] true;
         };
 
-        paths = {
+        paths = rec {
             prefix = ensureExists { path = geode.prefix; default = geode.prefix; };
             store = ensureExists { path = geode.store; default = geode.store; };
+
+            gcc_specs = let path = prefix + "/lib/gcc/cross-libc.specs"; 
+                in ensureExists { inherit path; default = path; };
         };
 
         archive = {
