@@ -1,21 +1,33 @@
-PREFIX ?=
+PREFIX ?= /
 
 BUILD_DIR := build
-
+INCLUDE_DIR := include
 LIB_DIR := lib
+CRT_DIR := crt
 
-LIB_SOURCES := $(shell find lib -name '*.c' -or -name '*.S')
+LIB_SOURCES := $(shell find $(LIB_DIR) -name '*.c' -or -name '*.S')
 LIB_OBJECTS := $(patsubst %,$(BUILD_DIR)/%.o,$(LIB_SOURCES))
 
-LIB_OBJECT := libc.o
+LIB_A := $(BUILD_DIR)/libc.a
 
-CFLAGS += -Iinclude -nostdlib -nostartfiles
+CRT_SOURCES := $(shell find $(CRT_DIR) -name '*.c')
+CRT_OBJECTS := $(patsubst $(CRT_DIR)/%.c,$(BUILD_DIR)/%.o,$(CRT_SOURCES))
+
+CFLAGS += -I$(INCLUDE) -nostdlib -nostartfiles
+
+NATIVE_GCC_SPECS := $(BUILD_DIR)/gcc/native-libc.specs
+CROSS_GCC_SPECS := $(BUILD_DIR)/gcc/cross-libc.specs
+
+TARGETS := $(LIB_A) $(CRT_OBJECTS) $(NATIVE_GCC_SPECS) $(CROSS_GCC_SPECS)
+INSTALL_TARGETS := $(patsubst $(BUILD_DIR)/%,$(PREFIX)/lib/%,$(TARGETS))
 
 .PHONY: all
-all: $(LIB_OBJECT)
+all: $(TARGETS)
 
-$(LIB_OBJECT): $(LIB_OBJECTS)
-	$(LD) $(LDFLAGS) -o $@ $<
+$(LIB_A): $(LIB_OBJECTS)
+	@mkdir -p $(dir $@)
+	@echo "  AR    $@"
+	@$(AR) rcs $@ $<
 
 $(BUILD_DIR)/%.c.o: %.c
 	@mkdir -p $(dir $@)
@@ -27,11 +39,38 @@ $(BUILD_DIR)/%.S.o: %.S
 	@echo "  AS    $<"
 	@$(AS) $(ASFLAGS) -o $@ $<
 
+$(BUILD_DIR)/%.o: $(CRT_DIR)/%.c
+	@mkdir -p $(dir $@)
+	@echo "  CC    $<"
+	@$(CC) $(CFLAGS) -c -o $@ $<
+
+$(NATIVE_GCC_SPECS): libc-gcc.specs.in
+	@mkdir -p $(dir $@)
+	@echo "  GEN   $@"
+	@sed -e 's|@PREFIX@|/|g' 		    \
+		-e 's|@INCDIR@|$(INCLUDE_DIR)|' \
+		-e 's|@LIBDIR@|$(LIB_DIR)|'     \
+		$< > $@
+
+$(CROSS_GCC_SPECS): libc-gcc.specs.in
+	@mkdir -p $(dir $@)
+	@echo "  GEN   $@"
+	@sed -e 's|@PREFIX@|$(PREFIX)|g'     \
+		-e 's|@INCDIR@|$(INCLUDE_DIR)|' \
+		-e 's|@LIBDIR@|$(LIB_DIR)|'		\
+		$< > $@
+
 .PHONY: install
-install: $(LIB_OBJECT)
-	install -m 666 $(LIB_OBJECT) $(PREFIX)/lib
-	install -d include $(PREFIX)/usr/include
+install: $(INSTALL_TARGETS)
+	@echo "  INSTALL include -> $(PREFIX)/include"
+	@install -d include $(PREFIX)/include
+
+$(PREFIX)/lib/%: $(BUILD_DIR)/%
+	@mkdir -p $(dir $@)
+	@echo "  INSTALL $< -> $@"
+	@install -m 666 $< $@
 
 .PHONY: clean
 clean:
+	rm -rf $(TARGETS)
 	rm -rf $(BUILD_DIR)

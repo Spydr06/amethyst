@@ -9,7 +9,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <libgen.h>
@@ -188,10 +187,10 @@ static struct shard_value builtin_file_writeFile(volatile struct shard_evaluator
     if(!fp)
         return (struct shard_value){.type=SHARD_VAL_INT, .integer=errno};
 
-    int err = fwrite(data.string, data.strlen, sizeof(char), fp);
-    int err2 = fclose(fp);
+    fwrite(data.string, data.strlen, sizeof(char), fp);
+    int err = fclose(fp);
 
-    return (struct shard_value){.type=SHARD_VAL_INT, .integer=(err || err2)};
+    return (struct shard_value){.type=SHARD_VAL_INT, .integer=err};
 }
 
 static struct shard_value builtin_errno_toString(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {

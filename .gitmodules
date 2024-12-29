@@ -3,3 +3,6 @@
     url = https://github.com/limine-bootloader/limine
     branch = v7.x-binary
 
+[submodule "store/mlibc"]
+	path = store/mlibc
+	url = https://github.com/managarm/mlibc

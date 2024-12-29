@@ -1,0 +1,23 @@
+%rename cpp_options old_cpp_options
+
+*cpp_options:
+-nostdinc -isystem @PREFIX@/@INCDIR@ -isystem include%s %(old_cpp_options)
+
+*cc1:
+%(cci_cpu) -nostdinc -isystem @PREFIX@/@INCDIR@ -isystem include%s
+
+*startfile:
+@PREFIX@/@LIBDIR@/crt0.o @PREFIX@/@LIBDIR@/crti.o @PREFIX@/@LIBDIR@/crtbegin.o
+
+*endfile:
+@PREFIX@/@LIBDIR@/crtend.o @PREFIX@/@LIBDIR@/crtn.o
+
+*link:
+-static -nostdlib
+
+*esp_link:
+
+*esp_options:
+
+*esp_cpp_options:
+

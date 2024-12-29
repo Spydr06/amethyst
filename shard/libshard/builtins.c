@@ -559,7 +559,20 @@ static struct shard_value builtin_toString(volatile struct shard_evaluator* e, s
             snprintf(buf, 32, "%ld", arg.integer);
             return CSTRING_VAL(buf);
         } break;
-        // TODO: lists
+        case SHARD_VAL_LIST: {
+            struct shard_string accum = {0};
+            shard_gc_string_appendn(e->gc, &accum, "[", 1);
+
+            for(struct shard_list* head = arg.list.head; head; head = head->next) {
+                struct shard_value elem_str = builtin_toString(e, &head->value, loc);
+                assert(elem_str.type == SHARD_VAL_STRING);
+
+                shard_gc_string_appendn(e->gc, &accum, elem_str.string, elem_str.strlen);
+                shard_gc_string_appendn(e->gc, &accum, head->next ? " " : "]", 1);
+            }
+
+            return STRING_VAL(accum.items, accum.count);
+        } break;
         case SHARD_VAL_SET: {
             struct shard_lazy_value* val;
             if(shard_set_get(arg.set, shard_get_ident(e->ctx, "__toString"), &val))

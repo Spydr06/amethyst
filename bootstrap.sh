@@ -35,7 +35,8 @@ function show_help() {
     echo "Options:"
     echo "  -h, --help              display this help text and exit"
     echo "  -r, --run               execute \`run.sh\` after bootstrapping"
-    echo "      --clean             clean the build files and exit"
+    echo "  -c, --clean             clean the build files and exit"
+    echo "  -C, --clean-all         clean the build files of all subprojects"
     echo "  -jN, --jobs=N           use N parallel threads for building"
     echo "      --build-dir=<path>  put build files in <path> [$BUILD_DIR]"
     echo "      --store-dir=<path>  set the geode store dir to <path> [$STORE_DIR]"
@@ -45,7 +46,17 @@ function show_help() {
 }
 
 function clean_build_files() {
-    [ -e ${BUILD_DIR} ] && rm -r ${BUILD_DIR}
+    make -C $SCRIPT_DIR clean
+    [ -e amethyst.iso ] && rm -r amethyst.iso
+}
+
+function clean_store_build_files() {
+    echo "here"
+    for dir in "$STORE_DIR"/*/; do
+        if [ -f "${dir}Makefile" ]; then
+            make -C "${dir}" clean
+        fi
+    done
 }
 
 while [[ $# -gt 0 ]]; do
@@ -68,14 +79,19 @@ while [[ $# -gt 0 ]]; do
         --disable-gcboehm)
             USE_GCBOEHM=""
             ;;
-        --clean)
+        -c|--clean)
             clean_build_files
             exit 0
             ;;
-        -r | --run)
+        -C|--clean-all)
+            clean_store_build_files
+            clean_build_files
+            exit 0
+            ;;
+        -r|--run)
             RUN_AFTERWARDS=1
             ;;
-        -h | --help)
+        -h|--help)
             show_help
             ;;
         (*=*)
@@ -108,3 +124,4 @@ if [ $RUN_AFTERWARDS -ne 0 ]; then
     ./run.sh
     popd
 fi
+

@@ -6,8 +6,15 @@ with import ./../geode.shard; {
         sourceDir = util.paths.store + name;
         buildDir = sourceDir + "build";
 
-        build = util.shell.make ["-C" sourceDir];
+        build = util.shell.make [
+            "-C" sourceDir
+            ("PREFIX=" + $ builtins.toString util.paths.prefix)
+        ];
 
-        install = util.shell.make ["-C" sourceDir "install" ("PREFIX=" + $ builtins.toString util.paths.prefix)];
+        install = util.shell.make [
+            "-C" sourceDir 
+            "install"
+            ("PREFIX=" + $ builtins.toString util.paths.prefix)
+        ];
     };
 }
