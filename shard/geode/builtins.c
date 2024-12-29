@@ -29,6 +29,10 @@ static struct shard_value builtin_errno_toString(volatile struct shard_evaluator
 static struct shard_value builtin_error_throw(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_proc_spawn(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
 static struct shard_value builtin_proc_spawnPipe(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
+static struct shard_value builtin_setenv(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
+static struct shard_value builtin_getenv(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
+static struct shard_value builtin_unsetenv(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
+
 
 static const struct {
     const char* ident;
@@ -47,6 +51,9 @@ static const struct {
     {"geode.error.throw", builtin_error_throw, 1},
     {"geode.proc.spawn", builtin_proc_spawn, 3},
     {"geode.proc.spawnPipe", builtin_proc_spawnPipe, 3},
+    {"geode.setenv", builtin_setenv, 2},
+    {"geode.getenv", builtin_getenv, 1},
+    {"geode.unsetenv", builtin_unsetenv, 1},
 };
 
 static void load_constants(struct geode_context* ctx) {
@@ -396,3 +403,36 @@ static struct shard_value builtin_proc_spawnPipe(volatile struct shard_evaluator
 
     return (struct shard_value){.type=SHARD_VAL_SET, .set=result};
 }
+
+static struct shard_value builtin_setenv(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value var = shard_eval_lazy2(e, args[0]);
+    if(var.type != SHARD_VAL_STRING)
+        shard_eval_throw(e, *loc, "`geode.setenv` expects first argument to be of type `string`.");
+
+    struct shard_value val = shard_eval_lazy2(e, args[1]);
+    if(val.type != SHARD_VAL_STRING)
+        shard_eval_throw(e, *loc, "`geode.setenv` expects second argument to be of type `string`.");
+
+return (struct shard_value){.type=SHARD_VAL_INT, .integer=setenv(var.string, val.string, true)};
+}
+
+static struct shard_value builtin_getenv(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value arg = shard_eval_lazy2(e, *args);
+    if(arg.type != SHARD_VAL_STRING)
+        shard_eval_throw(e, *loc, "`geode.getenv` expects argument to be of type `string`.");
+
+    const char* val = getenv(arg.string);
+    if(!val)
+        return (struct shard_value){.type=SHARD_VAL_NULL};
+
+    return (struct shard_value){.type=SHARD_VAL_STRING, .string=val, .strlen=strlen(val)};
+}
+
+static struct shard_value builtin_unsetenv(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value arg = shard_eval_lazy2(e, *args);
+    if(arg.type != SHARD_VAL_STRING)
+        shard_eval_throw(e, *loc, "`geode.unsetenv` expects argument to be of type `string`.");
+
+    return (struct shard_value){.type=SHARD_VAL_INT,.integer=unsetenv(arg.string)};
+}
+

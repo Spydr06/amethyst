@@ -20,6 +20,19 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifdef __x86_64__
+#define HOST_ARCH GEODE_ARCH_X86_64
+#else
+#define HOST_ARCH GEODE_ARCH_UNKNOWN
+#endif
+
+static const char* arch_strings[] = {
+    "unknown",
+    "x86_64"
+};
+
+static_assert(__len(arch_strings) == __GEODE_ARCH_NUM);
+
 static int _getc(struct shard_source* src) {
     return fgetc(src->userp);
 }
@@ -130,6 +143,8 @@ int geode_context_init(struct geode_context* ctx, const char* prog_name, geode_e
     ctx->main_config_path = GEODE_DEFAULT_PREFIX GEODE_DEFAULT_CONFIG_FILE;
     ctx->store_path       = GEODE_DEFAULT_PREFIX GEODE_DEFAULT_STORE_PATH;
     ctx->prefix           = GEODE_DEFAULT_PREFIX;
+    ctx->arch = HOST_ARCH;
+    ctx->cross_arch = HOST_ARCH;
 
     ctx->nproc = 1;
 
@@ -293,5 +308,20 @@ struct shard_value geode_call_file(struct geode_context* ctx, const char* script
         geode_throw(ctx, SHARD, .shard=TUPLE(.num=err, .errs=shard_get_errors(&ctx->shard_ctx)));
 
     return result;
+}
+
+const char* geode_arch_to_string(enum geode_architecture arch) {
+    return arch >= 0 && arch < __GEODE_ARCH_NUM 
+        ? EITHER(arch_strings[arch], arch_strings[GEODE_ARCH_UNKNOWN])
+        : arch_strings[GEODE_ARCH_UNKNOWN];
+}
+
+enum geode_architecture geode_string_to_arch(const char* str) {
+    for(enum geode_architecture a = 0; a < __GEODE_ARCH_NUM; a++) {
+        if(strcmp(str, arch_strings[a]) == 0)
+            return a;
+    }
+
+    return GEODE_ARCH_UNKNOWN;
 }
 

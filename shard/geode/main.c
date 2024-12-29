@@ -95,6 +95,9 @@ static void error_handler(struct geode_context* ctx, struct geode_error err) {
         case GEODE_ERR_UNRECOGNIZED_ARGUMENT:
             errorf("Unrecognized argument `%s` to action `%s`.\nTry `%s %s help` for more information.\n", err.payload.argument, ctx->current_action, ctx->prog_name, ctx->current_action);
             break;
+        case GEODE_ERR_ELSE:
+            errorf("%s", err.payload._else);
+            break;
     }
 
     longjmp(err_recovery, err.type); 

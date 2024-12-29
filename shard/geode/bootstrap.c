@@ -1,3 +1,4 @@
+#include "buildchain.h"
 #include "libshard.h"
 #include <bootstrap.h>
 #include <geode.h>
@@ -20,9 +21,11 @@ struct bootstrap_argument {
 };
 
 static void help(struct geode_context* ctx, struct bootstrap_flags* flags, const char*);
+static void set_cross_arch(struct geode_context* ctx, struct bootstrap_flags* flags, const char* arch);
 
 static const struct bootstrap_argument cmdline_arguments[] = {
-    {"help",   "         Display `bootstrap` help text.", false, help},
+    {"help", "         Display `bootstrap` help text.", false, help},
+    {"arch", "         Set the target architecture.", true, set_cross_arch},
     {NULL, NULL, false, NULL}
 };
 
@@ -39,6 +42,16 @@ static void help(struct geode_context* ctx, struct bootstrap_flags*, const char*
     printf("\nFor general help, try `%s --help`.\n", ctx->prog_name);
 
     exit(EXIT_SUCCESS);
+}
+
+static void set_cross_arch(struct geode_context* ctx, struct bootstrap_flags* flags, const char* arch_str) {
+    (void) flags;
+
+    enum geode_architecture arch = geode_string_to_arch(arch_str);
+    if(arch == GEODE_ARCH_UNKNOWN)
+        geode_throw(ctx, UNRECOGNIZED_ARGUMENT, .argument=arch_str);
+
+    ctx->cross_arch = arch;
 }
 
 static void create_prefix(struct geode_context* ctx) {
@@ -85,6 +98,10 @@ int geode_bootstrap(struct geode_context* ctx, int argc, char** argv) {
     }
 
     infof(ctx, "Bootstrapping `%s` to `%s`... (This could take a while)\n", ctx->main_config_path, ctx->prefix);    
+
+    struct geode_buildchain cross_chain;
+    buildchain_setup_cross_env(ctx, &cross_chain);
+    buildchain_setenv(ctx, &cross_chain);
 
     create_prefix(ctx);
     geode_load_config(ctx);
