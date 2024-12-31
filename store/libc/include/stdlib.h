@@ -5,7 +5,10 @@
 extern "C" {
 #endif
 
-void _Exit(int status);
+_Noreturn void exit(int status);
+_Noreturn void _Exit(int status);
+
+int atexit(void (*func)(void));
 
 #ifdef __cplusplus
 }

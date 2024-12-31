@@ -23,7 +23,6 @@ extern _Noreturn void __libc_entry(int (*main_fn)(int argc, char* argv[], char* 
     parse_exec_stack(stack_base, &stack_data);
 
     int exit_code = main_fn(stack_data.argc, stack_data.argv, stack_data.envp);
-
-    _Exit(exit_code);
+    exit(exit_code);
 }
 
