@@ -10,6 +10,11 @@ _Noreturn void _Exit(int status);
 
 int atexit(void (*func)(void));
 
+#ifdef _AMETHYST_SOURCE
+    int getargc(void);
+    char* getargv(int argc);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

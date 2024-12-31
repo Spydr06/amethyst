@@ -16,7 +16,7 @@ static int __attribute__((section("data"))) slot;
 
 static void funcs_on_exit(void) {
     for(; head; head = head->next, slot = COUNT)
-        while(slot--)
+        while(slot-- > 0)
             head->f[slot]();
 }
 
