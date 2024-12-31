@@ -19,15 +19,21 @@ NATIVE_GCC_SPECS := $(BUILD_DIR)/gcc/native-libc.specs
 CROSS_GCC_SPECS := $(BUILD_DIR)/gcc/cross-libc.specs
 
 TARGETS := $(LIB_A) $(CRT_OBJECTS) $(NATIVE_GCC_SPECS) $(CROSS_GCC_SPECS)
-INSTALL_TARGETS := $(patsubst $(BUILD_DIR)/%,$(PREFIX)/lib/%,$(TARGETS))
+
+PUBLIC_HEADERS := $(shell find $(INCLUDE_DIR) -name '*.h')
+
+INSTALL_TARGETS := $(patsubst $(BUILD_DIR)/%,$(PREFIX)/lib/%,$(TARGETS)) $(patsubst %,$(PREFIX)/%,$(PUBLIC_HEADERS))
+
+CFLAGS += -nostdinc -nostdlib -nostartfiles -I$(INCLUDE_DIR) -I$(LIB_DIR)/$(INCLUDE_DIR) -Wall -Wextra -pedantic
+LDFLAGS += -nostdlib -nostartfiles
 
 .PHONY: all
 all: $(TARGETS)
 
 $(LIB_A): $(LIB_OBJECTS)
 	@mkdir -p $(dir $@)
-	@echo "  AR    $@"
-	@$(AR) rcs $@ $<
+	@echo "  AR    $@ ($^)"
+	@$(AR) rcs $@ $^
 
 $(BUILD_DIR)/%.c.o: %.c
 	@mkdir -p $(dir $@)
@@ -68,7 +74,12 @@ install: $(INSTALL_TARGETS)
 $(PREFIX)/lib/%: $(BUILD_DIR)/%
 	@mkdir -p $(dir $@)
 	@echo "  INSTALL $< -> $@"
-	@install -m 666 $< $@
+	@install -m 644 $< $@
+
+$(PREFIX)/$(INCLUDE_DIR)/%: $(INCLUDE_DIR)/%
+	@mkdir -p $(dir $@)
+	@echo "  INSTALL $< -> $@"
+	@install -m 644 $< $@
 
 .PHONY: clean
 clean:
