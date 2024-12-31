@@ -4,7 +4,11 @@
 #include <cdefs.h>
 #include <stdarg.h>
 
-#define panic(...) (__panic(__FILE__, __LINE__, __func__, __VA_ARGS__))
+#include <cpu/cpu.h>
+
+#define panic_r(ctx, ...) (__panic(__FILE__, __LINE__, __func__, (ctx), __VA_ARGS__))
+#define panic(...) panic_r(nullptr, __VA_ARGS__)
+
 #define klog(sev, ...) (__klog(KLOG_##sev, __FILENAME__, __VA_ARGS__))
 #define klog_inl(sev, ...) (__klog_inl(KLOG_##sev, __FILENAME__, __VA_ARGS__))
 
@@ -35,14 +39,15 @@ extern enum klog_severity klog_min_severity;
 void __klog(enum klog_severity severity, const char* file, const char* format, ...) __attribute__((format(printf, 3, 4)));
 void __klog_inl(enum klog_severity severity, const char* file, const char* format, ...) __attribute__((format(printf, 3, 4)));
 
-__noreturn void __panic(const char* file, int line, const char* function, const char* error, ...)
-    __attribute__((format(printf, 4, 5)));
+__noreturn void __panic(const char* file, int line, const char* function, struct cpu_context* ctx, const char* error, ...)
+    __attribute__((format(printf, 5, 6)));
 
 void stdin_push_char(char c);
 char kgetc(void);
 char* kgets(char* s, unsigned size);
 
 void dump_stack(void);
+void dump_registers(struct cpu_context* ctx);
 
 #endif /* _AMETHYST_KERNELIO_H */
 

@@ -1,4 +1,5 @@
 #include "sys/spinlock.h"
+#include "x86_64/trace.h"
 #include <x86_64/mem/mmu.h>
 #include <x86_64/cpu/cpu.h>
 #include <x86_64/cpu/idt.h>
@@ -155,10 +156,10 @@ static uint64_t* get_page(page_table_ptr_t top, void* vaddr) {
     return pt + pt_offset;
 }
 
-static void pfisr(struct cpu_context* status __unused) {
+static void pfisr(struct cpu_context* status) {
     // TODO
-//    panic("Page fault");
-    klog(ERROR, __FILE__ ":pfisr() called");
+    panic_r(status, "Page fault");
+//    klog(ERROR, __FILE__ ":pfisr() called");
 }
 
 void mmu_tlbipi(struct cpu_context* status __unused) {
@@ -313,7 +314,7 @@ __noreturn void page_fault_handler(struct cpu_context* status) {
     uint64_t *pdpr_table = (uint64_t*) (SIGN_EXTENSION | ENTRIES_TO_ADDRESS(510l, 510l, 510l, (uint64_t) pml4));
     uint64_t *pml4_table = (uint64_t*) (SIGN_EXTENSION | ENTRIES_TO_ADDRESS(510l, 510l, 510l, 510l));*/
 
-    panic(
+    panic_r(status,
         "Page Fault at address %p:\n"
         "    Error flags: FETCH(%lu) - RSVD(%lu) - ACCESS(%lu) - WRITE(%lu) - PRESENT(%lu)"
       /*  "    Page Entries: pd: %p - pdpr: %p - pml4: %p\n"

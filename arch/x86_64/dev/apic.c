@@ -128,12 +128,12 @@ void apic_init(void) {
     idt_change_eoi(apic_send_eoi);
 }
 
-static void spurious(struct cpu_context* ctx __unused) {
-    panic("Spurious interrupt!");
+static void spurious(struct cpu_context* ctx) {
+    panic_r(ctx, "Spurious interrupt!");
 }
 
-static void nmi(struct cpu_context* ctx __unused) {
-    panic("NMI interrupt!");
+static void nmi(struct cpu_context* ctx) {
+    panic_r(ctx, "NMI interrupt!");
 }
 
 void apic_initap(void) {

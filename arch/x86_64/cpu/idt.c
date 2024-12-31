@@ -111,7 +111,7 @@ static void double_fault_handler(struct cpu_context* status) {
 }
 
 static void divide_error_handler(struct cpu_context* status) {
-    panic("Division by Zero (%lu).", status->error_code);
+    panic_r(status, "Division by Zero (%lu).", status->error_code);
 }
 
 static void load_default(void) {
@@ -273,9 +273,9 @@ extern void __isr(struct cpu_context* ctx, register_t vector) {
 
     if(!isr->handler) {
         if(vector < __len(exception_names))
-            panic("Unhandled Interrupt %llu: %s.", (unsigned long long) vector, exception_names[vector]);
+            panic_r(ctx, "Unhandled Interrupt %llu: %s.", (unsigned long long) vector, exception_names[vector]);
         else
-            panic("Unhandled Interrupt %llu.", (unsigned long long) vector);
+            panic_r(ctx, "Unhandled Interrupt %llu.", (unsigned long long) vector);
     }
 
     if(_cpu()->ipl > isr->priority) {
