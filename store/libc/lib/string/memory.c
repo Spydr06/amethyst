@@ -160,17 +160,27 @@ void* memset(void* s, int c, size_t n) {
     return s;
 }
 
-void* memchr(const void* s, int c, size_t n);
-void* memrchr(const void* s, int c, size_t n);
+void* memchr(const void* s, int c, size_t n) {
+    const uint8_t* bytes = s;
+    for(size_t i = 0; i < n; i++)
+        if(bytes[i] == (uint8_t) c)
+            return (void*) (bytes + i);
+    return NULL;
+}
 
-int memcmp(const void* s1, const void* s2, size_t n);
+int memcmp(const void* s1, const void* s2, size_t n) {
+    for(size_t i = 0; i < n; i++) {
+        uint8_t a_byte = ((const uint8_t*) s1)[i];
+        uint8_t b_byte = ((const uint8_t*) s2)[i];
 
-void* memccpy(void* restrict d, const void* restrict s, int c, size_t n);
+        if(a_byte < b_byte)
+            return -1;
+        if(a_byte > b_byte)
+            return 1;
+    }
 
-void* memmmem(const void* haystack, size_t haystacklen, const void* needle, size_t needlelen);
-
-void* memrchr(const void* s, int c, size_t n);
-void* mempcpy(void* d, const void* s, size_t n);
+    return 0;
+}
 
 #pragma GCC diagnostic pop
 

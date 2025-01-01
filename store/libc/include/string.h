@@ -61,7 +61,7 @@ char* strerror(int _errno);
     #endif
 
     #if defined(_XOPEN_SOURCE) || defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE
-        void* memmmem(const void* haystack, size_t haystacklen, const void* needle, size_t needlelen);
+        void* memmem(const void* haystack, size_t haystacklen, const void* needle, size_t needlelen);
 
         char* strtok_r(char* restrict s, const char* restrict delim, char** restrict saveptr);
         int strerror_r(int _errno, char* d, size_t n);
