@@ -2,6 +2,9 @@
 
 #include <stdint.h>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+
 #define ld(p, T) ({ T _v; __builtin_memcpy(&_v, (p), sizeof(_v)); (p) += sizeof(_v); _v; })
 #define st(p, v) do { __builtin_memcpy((p), &(v), sizeof((v))); (p) += sizeof((v)); } while(0)
 
@@ -168,4 +171,6 @@ void* memmmem(const void* haystack, size_t haystacklen, const void* needle, size
 
 void* memrchr(const void* s, int c, size_t n);
 void* mempcpy(void* d, const void* s, size_t n);
+
+#pragma GCC diagnostic pop
 
