@@ -55,27 +55,27 @@ char* strerror(int _errno);
 
     size_t strlcat(char* d, const char* s, size_t n);
     size_t strlcpy(char* d, const char* s, size_t n);
-    
-    #if defined(_XOPEN_SOURCE)
-        void* memccpy(void* restrict d, const void* restrict s, int c, size_t n);
-    #endif
+#endif
 
-    #if defined(_XOPEN_SOURCE) || defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE
-        void* memmem(const void* haystack, size_t haystacklen, const void* needle, size_t needlelen);
+#if defined(_BSD_SOURCE) || defined(_GNU_SOURCE) || defined(_XOPEN_SOURCE)
+    void* memccpy(void* restrict d, const void* restrict s, int c, size_t n);
+#endif
 
-        char* strtok_r(char* restrict s, const char* restrict delim, char** restrict saveptr);
-        int strerror_r(int _errno, char* d, size_t n);
+#if defined(_BSD_SOURCE) || defined(_GNU_SOURCE) || defined(_XOPEN_SOURCE) || defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE)
+    void* memmem(const void* haystack, size_t haystacklen, const void* needle, size_t needlelen);
 
-        char* stpcpy(char* restrict d, const char* restrict s);
-        char* stpncpy(char* restrict d, const char* restrict s, size_t n);
+    char* strtok_r(char* restrict s, const char* restrict delim, char** restrict saveptr);
+    int strerror_r(int _errno, char* d, size_t n);
 
-        size_t strnlen(const char* s, size_t n);
+    char* stpcpy(char* restrict d, const char* restrict s);
+    char* stpncpy(char* restrict d, const char* restrict s, size_t n);
 
-        char* strdup(const char* s);
-        char* strndup(const char* s, size_t n);
+    size_t strnlen(const char* s, size_t n);
 
-        char* strsignal(int sig);
-    #endif
+    char* strdup(const char* s);
+    char* strndup(const char* s, size_t n);
+
+    char* strsignal(int sig);
 #endif
 
 #if defined(_GNU_SOURCE)

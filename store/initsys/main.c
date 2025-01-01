@@ -1,9 +1,10 @@
 #include <unistd.h>
+#include <string.h>
 #include <errno.h>
 
 int main(int argc, char** argv) {
     char msg[] = "Hello, World!\n";
-    write(1, msg, sizeof(msg) - 1);
+    write(1, msg, strlen(msg));
 
     int fd = open("/include/unistd.h", 0, 0);
     if(fd < 0)
