@@ -87,22 +87,35 @@ void* memcpy(void* restrict d, const void* restrict s, size_t n) {
     return d;
 }
 
-void* memmove(void* d, const void* restrict s, size_t n) {
-    uintptr_t udst = (uintptr_t) d;
-    uintptr_t usrc = (uintptr_t) s;
+void *memmove(void *dest, const void *src, size_t n)
+{
+	char *d = dest;
+	const char *s = src;
 
-    if(udst < usrc || usrc + n > udst)
-        return memcpy(d, s, n);
+	if (d==s) return d;
+	if ((uintptr_t)s-(uintptr_t)d-n <= -2*n) return memcpy(d, s, n);
 
-    if(udst > usrc) {
-        char* dst = d;
-        const char* src = s;
+	if (d<s) {
+		if ((uintptr_t)s % sizeof(size_t) == (uintptr_t)d % sizeof(size_t)) {
+			while ((uintptr_t)d % sizeof(size_t)) {
+				if (!n--) return dest;
+				*d++ = *s++;
+			}
+			for (; n>=sizeof(size_t); n-=sizeof(size_t), d+=sizeof(size_t), s+=sizeof(size_t)) *(size_t *)d = *(size_t *)s;
+		}
+		for (; n; n--) *d++ = *s++;
+	} else {
+		if ((uintptr_t)s % sizeof(size_t) == (uintptr_t)d % sizeof(size_t)) {
+			while ((uintptr_t)(d+n) % sizeof(size_t)) {
+				if (!n--) return dest;
+				d[n] = s[n];
+			}
+			while (n>=sizeof(size_t)) n-=sizeof(size_t), *(size_t *)(d+n) = *(size_t *)(s+n);
+		}
+		while (n) n--, d[n] = s[n];
+	}
 
-        for(size_t i = 0; i < n; i++)
-            dst[n - i - 1] = src[n - i - 1];
-    }
-
-    return d;
+	return dest;
 }
 
 // optimization idea from mlibc

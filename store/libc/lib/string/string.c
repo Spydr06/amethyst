@@ -118,5 +118,3 @@ size_t strlen(const char* s) {
     return l;
 }
 
-char* strerror(int _errno);
-
