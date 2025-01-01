@@ -27,6 +27,7 @@ static struct vfsops vfsops = {
 static struct vops vnode_ops = {
     .create = devfs_create,
     .open = devfs_open,
+    .read = devfs_read,
     .write = devfs_write,
     .setattr = devfs_setattr,
     .inactive = devfs_inactive,
@@ -284,6 +285,23 @@ int devfs_open(struct vnode** nodep, int flags, struct cred* __unused) {
         return 0;
 
     return dev_node->devops->open(dev_node->vattr.rdev_minor, nodep, flags);
+}
+
+int devfs_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_read, struct cred* cred) {
+    if(node->type == V_TYPE_DIR)
+        return EISDIR;
+
+    if(node->type != V_TYPE_BLKDEV && node->type != V_TYPE_CHDEV)
+        return ENODEV;
+
+    struct dev_node* dev_node = (struct dev_node*) node;
+    if(dev_node->master)
+        dev_node = dev_node->master;
+
+    if(dev_node->devops->read == NULL)
+        return ENODEV;
+
+    return dev_node->devops->read(dev_node->vattr.rdev_minor, buffer, size, offset, flags, bytes_read);
 }
 
 int devfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_written, struct cred* __unused) {

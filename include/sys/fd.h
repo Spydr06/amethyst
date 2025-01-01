@@ -6,6 +6,8 @@
 #include <sys/mutex.h>
 #include <cdefs.h>
 
+#define FDTABLE_LIMIT 256
+
 enum file_flags {
     FILE_READ = 1,
     FILE_WRITE = 2
@@ -22,6 +24,9 @@ enum o_flags {
     O_TRUNC    = 01000,
     O_APPEND   = 02000,
     O_NONBLOCK = 04000,
+    // ...
+    O_DIRECTORY = 0100000,
+    O_CLOEXEC   = 02000000,
     // ...
 };
 
@@ -45,6 +50,8 @@ struct file* fd_allocate(void);
 void fd_free(struct file* file);
 
 struct file* fd_get(size_t fd);
+int fd_new(int flags, struct file** file, int* fd);
+int fd_close(int fd);
 
 static inline void fd_hold(struct file* file) {
     __atomic_add_fetch(&file->ref_count, 1, __ATOMIC_SEQ_CST);

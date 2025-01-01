@@ -1,3 +1,4 @@
+#include "x86_64/mem/mmu.h"
 #include <sys/syscall.h>
 
 #include <sys/proc.h>
@@ -8,15 +9,18 @@
 #include <errno.h>
 #include <math.h>
 
-__syscall syscallret_t _sys_write(struct cpu_context* __unused, int fd, void* buffer, size_t size) {
+static struct cred* get_cred(void) {
+    return &_cpu()->thread->proc->cred;
+}
+
+__syscall syscallret_t _sys_write(struct cpu_context* __unused, int fd, const void* buffer, size_t size) {
     syscallret_t ret = {
         .ret = -1,
         ._errno = 0
     };
 
-    void* kernel_buff = vmm_map(nullptr, MAX(size, 1), VMM_FLAGS_ALLOCATE, MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, nullptr);
-    if(!kernel_buff) {
-        ret._errno = ENOMEM;
+    if(!is_userspace_addr(buffer)) {
+        ret._errno = EFAULT;
         return ret;
     }
 
@@ -26,10 +30,6 @@ __syscall syscallret_t _sys_write(struct cpu_context* __unused, int fd, void* bu
         ret._errno = EBADF;
         goto cleanup;
     }
-
-    ret._errno = memcpy_from_user(kernel_buff, buffer, size);
-    if(ret._errno)
-        goto cleanup;
 
     if(!size) {
         ret.ret = 0;
@@ -43,7 +43,7 @@ __syscall syscallret_t _sys_write(struct cpu_context* __unused, int fd, void* bu
         struct vattr attr;
 
         vop_lock(file->vnode);
-        ret._errno = vop_getattr(file->vnode, &attr, &_cpu()->thread->proc->cred);
+        ret._errno = vop_getattr(file->vnode, &attr, get_cred());
         vop_release(&file->vnode);
         if(ret._errno)
             goto cleanup;
@@ -51,7 +51,7 @@ __syscall syscallret_t _sys_write(struct cpu_context* __unused, int fd, void* bu
         offset = attr.size;
     }
 
-    ret._errno = vfs_write(file->vnode, kernel_buff, size, offset, &bytes_written, file_to_vnode_flags(file->flags));
+    ret._errno = vfs_write(file->vnode, buffer, size, offset, &bytes_written, file_to_vnode_flags(file->flags));
     if(ret._errno)
         goto cleanup;
 
@@ -62,7 +62,6 @@ cleanup:
     if(file)
         fd_release(file);
 
-    vmm_unmap(kernel_buff, MAX(size, 1), 0);
     return ret;
 }
 

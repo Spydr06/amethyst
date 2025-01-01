@@ -204,15 +204,11 @@ static int tmpfs_close(struct vnode* node __unused, int flags __unused, struct c
 }
 
 static int tmpfs_getattr(struct vnode* node, struct vattr* attr, struct cred* cred __unused) {
-    vop_lock(node);
-
     struct tmpfs_node* tmpnode = (struct tmpfs_node*) node;
     *attr = tmpnode->vattr;
     attr->blocks_used = ROUND_UP(attr->size, PAGE_SIZE) / PAGE_SIZE;
     attr->dev_major = 0;
     attr->dev_minor = ((struct tmpfs*) node->vfs)->id;
-
-    vop_unlock(node);
     return 0;
 }
 

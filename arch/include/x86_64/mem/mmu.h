@@ -45,6 +45,8 @@ void mmu_invalidate(void* vaddr);
 
 __noreturn void page_fault_handler(struct cpu_context* status);
 
+bool is_userspace_addr(const void* addr);
+
 static __always_inline void mmu_switch(page_table_ptr_t table) {
     __asm__ volatile(
         "mov %%rax, %%cr3"

@@ -1,6 +1,7 @@
 #ifndef _AMETHYST_CPU_SYSCALLS_H
 #define _AMETHYST_CPU_SYSCALLS_H
 
+#include <abi.h>
 #include <cdefs.h>
 #include <cpu/cpu.h>
 #include <kernelio.h>
@@ -39,7 +40,10 @@ __syscall syscallret_t _syscall_invalid(struct cpu_context* ctx);
 
 // actual syscalls located in `kernel/sys/syscalls/`
 
-__syscall syscallret_t _sys_write(struct cpu_context* ctx, int fd, void* buffer, size_t size);
+__syscall syscallret_t _sys_read(struct cpu_context* ctx, int fd, void* buffer, size_t size);
+__syscall syscallret_t _sys_write(struct cpu_context* ctx, int fd, const void* buffer, size_t size);
+__syscall syscallret_t _sys_open(struct cpu_context* ctx, const char* path, int flags, mode_t mode);
+__syscall syscallret_t _sys_close(struct cpu_context* ctx, int fd);
 
 __syscall syscallret_t _sys_exit(struct cpu_context* ctx, int exit_code);
 __syscall syscallret_t _sys_knldebug(struct cpu_context* ctx, enum klog_severity severity, const char* user_buffer, size_t buffer_size);

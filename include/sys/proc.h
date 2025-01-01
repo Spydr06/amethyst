@@ -7,6 +7,8 @@
 #include <sys/spinlock.h>
 #include <sys/semaphore.h>
 #include <sys/fd.h>
+#include <sys/thread.h>
+#include <cpu/cpu.h>
 
 #include <filesystem/virtual.h>
 
@@ -40,6 +42,10 @@ struct proc {
     semaphore_t wait_sem;
     spinlock_t exiting;
 };
+
+static inline mode_t umask(mode_t mode) {
+    return mode & ~_cpu()->thread->proc->umask;
+}
 
 #endif /* _AMETHYST_SYS_PROC_H */
 

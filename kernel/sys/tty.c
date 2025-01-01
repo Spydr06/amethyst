@@ -17,10 +17,12 @@ mutex_t list_mutex;
 static struct tty* tty_list[TTY_MAX_COUNT];
 
 static void inactive(int minor); 
+static int read(int minor, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_read);
 static int write(int minor, void* _buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_written);
 
 static struct devops devops = {
     .write = write,
+    .read = read,
     .inactive = inactive
 };
 
@@ -66,6 +68,12 @@ static void inactive(int minor) {
 
     tty_destroy(tty);
 } 
+
+static int read(int minor, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_read) {
+    struct tty* tty = tty_get(minor);
+    if(!tty)
+        return ENODEV;
+}
 
 static int write(int minor, void* buffer, size_t size, uintmax_t __unused, int __unused, size_t* bytes_written) {
     struct tty* tty = tty_get(minor);
