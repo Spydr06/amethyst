@@ -54,10 +54,10 @@ static int load(struct vnode* node, Elf64_Phdr* phdr) {
     uintptr_t mem_address = phdr->p_vaddr;
 
     uintmax_t offset = phdr->p_offset;
-    uintmax_t file_size = phdr->p_filesz;
-    uintmax_t mem_size = phdr->p_memsz;
+    size_t file_size = phdr->p_filesz;
+    size_t mem_size = phdr->p_memsz;
 
-    enum mmu_flags mmu_flags = phdr_to_mmu_flags(phdr->p_flags);
+    enum mmu_flags mmu_flags = phdr_to_mmu_flags(phdr->p_flags) | MMU_FLAGS_WRITE | MMU_FLAGS_READ;
     uintmax_t first_page_offset = mem_address % PAGE_SIZE;
 
     // unaligned first page
@@ -65,7 +65,7 @@ static int load(struct vnode* node, Elf64_Phdr* phdr) {
         size_t first_page_count = MIN(file_size, PAGE_SIZE - first_page_offset);
         void* page = (void*) ROUND_DOWN(mem_address, PAGE_SIZE);
 
-        if(!vmm_map(page, PAGE_SIZE, VMM_FLAGS_EXACT | VMM_FLAGS_ALLOCATE, mmu_flags | MMU_FLAGS_WRITE, nullptr))
+        if(!vmm_map(page, PAGE_SIZE, VMM_FLAGS_EXACT | VMM_FLAGS_ALLOCATE, MMU_FLAGS_USER | mmu_flags, nullptr))
             return ENOMEM;
 
         if((err = read_exact(node, (void*) mem_address, first_page_count, offset)))
@@ -92,27 +92,24 @@ static int load(struct vnode* node, Elf64_Phdr* phdr) {
 
     // map middle of file
     size_t file_page_count = file_size / PAGE_SIZE;
-
     if(file_page_count) {
-        struct vmm_file_desc vfd = {
-            .node = node,
-            .offset = offset
-        };
-
-        if(!vmm_map((void*) mem_address, file_page_count, VMM_FLAGS_EXACT | VMM_FLAGS_PAGESIZE | VMM_FLAGS_FILE, mmu_flags, &vfd))
+        if(!vmm_map((void*) mem_address, file_page_count, VMM_FLAGS_EXACT | VMM_FLAGS_ALLOCATE | VMM_FLAGS_PAGESIZE, MMU_FLAGS_USER | mmu_flags, nullptr))
             return ENOMEM;
 
         size_t byte_size = file_page_count * PAGE_SIZE;
+        if((err = read_exact(node, (void*) mem_address, byte_size, offset)))
+            return err;
+
         mem_address += byte_size;
         mem_size -= byte_size;
         file_size -= byte_size;
-        offset -= byte_size;
+        offset += byte_size;
     }
 
     // map end of file
     size_t last_page_count = file_size % PAGE_SIZE;
     if(last_page_count) {
-        if(!vmm_map((void*) mem_address, PAGE_SIZE, VMM_FLAGS_EXACT | VMM_FLAGS_ALLOCATE, mmu_flags | MMU_FLAGS_WRITE, nullptr))
+        if(!vmm_map((void*) mem_address, PAGE_SIZE, VMM_FLAGS_EXACT | VMM_FLAGS_ALLOCATE, MMU_FLAGS_USER | mmu_flags, nullptr))
             return ENOMEM;
 
         if((err = read_exact(node, (void*) mem_address, last_page_count, offset)))
@@ -171,6 +168,8 @@ int elf_load(struct vnode* node, void* base, void** entry, char** interpreter, E
 
     for(size_t i = 0; i < header.e_phnum; i++) {
         phdrs[i].p_vaddr += (uintptr_t) base;
+
+        klog(DEBUG, "phdr %zu: %d @ %p", i, phdrs[i].p_type, (void*) phdrs[i].p_vaddr);
         
         switch(phdrs[i].p_type) {
             case PT_INTERP:

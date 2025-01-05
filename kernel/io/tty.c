@@ -1,4 +1,3 @@
-#include "init/cmdline.h"
 #include <io/tty.h>
 
 #include <sys/tty.h>

@@ -1,5 +1,4 @@
-#include "sys/spinlock.h"
-#include "x86_64/trace.h"
+#include <stdint.h>
 #include <x86_64/mem/mmu.h>
 #include <x86_64/cpu/cpu.h>
 #include <x86_64/cpu/idt.h>
@@ -8,13 +7,16 @@
 #include <x86_64/dev/pic.h>
 
 #include <mem/pmm.h>
+#include <mem/vmm.h>
 
 #include <sys/thread.h>
 #include <sys/proc.h>
+#include <sys/spinlock.h>
 
 #include <limine/limine.h>
 
 #include <assert.h>
+#include <errno.h>
 #include <string.h>
 #include <kernelio.h>
 
@@ -25,6 +27,14 @@
 #define PML4MASK 0b111111111000000000000000000000000000000000000000ul
 
 #define INTERMEDIATE_FLAGS (MMU_FLAGS_WRITE | MMU_FLAGS_READ | MMU_FLAGS_USER)
+
+#define FLAGS_MASK (MMU_FLAGS_WRITE | MMU_FLAGS_READ | MMU_FLAGS_NOEXEC | MMU_FLAGS_USER)
+
+enum pf_error {
+    PF_ERROR_PRESENT = 1,
+    PF_ERROR_WRITE,
+    PF_ERROR_FETCH = 16
+};
 
 enum paging_depth : int8_t {
     DEPTH_PML4 = 0,
@@ -157,9 +167,28 @@ static uint64_t* get_page(page_table_ptr_t top, void* vaddr) {
 }
 
 static void pfisr(struct cpu_context* status) {
-    // TODO
-    panic_r(status, "Page fault");
-//    klog(ERROR, __FILE__ ":pfisr() called");
+    struct thread* thread = _cpu()->thread;
+
+    interrupt_set(true);
+    
+    uintptr_t pf_addr = status->cr2;
+    bool in_userspace = status->cs != 8;
+
+    if(thread && thread->user_memcpy_context) {
+        memcpy(status, thread->user_memcpy_context, sizeof(struct cpu_context));
+        thread->user_memcpy_context = nullptr;
+        CPU_RET(status) = EFAULT;
+    }
+    else {
+        char perms[4] = {
+            status->error_code & PF_ERROR_PRESENT ? 'r' : '-',
+            status->error_code & PF_ERROR_WRITE ? 'w' : '-',
+            status->error_code & PF_ERROR_FETCH ? 'x' : '-',
+            '\0'
+        };
+        
+        panic_r(status, "Page Fault at %p (\"%s\", %s)", (void*) pf_addr, perms, in_userspace ? "user" : "kernel");
+    }
 }
 
 void mmu_tlbipi(struct cpu_context* status __unused) {
@@ -257,6 +286,14 @@ bool mmu_map(page_table_ptr_t table, void* paddr, void* vaddr, enum mmu_flags fl
     return add_page(table, vaddr, entry, 0);
 }
 
+void mmu_remap(page_table_ptr_t table, void* paddr, void* vaddr, enum mmu_flags flags) {
+    uint64_t* entry_ptr = get_page(table, vaddr);
+    if(!entry_ptr)
+        return;
+    uintptr_t addr = paddr ? (uintptr_t) paddr & ADDRMASK : *entry_ptr & ADDRMASK;
+    *entry_ptr = addr | flags;
+}
+
 void mmu_unmap(page_table_ptr_t table, void* vaddr) {
     uint64_t* entry = get_page(table, vaddr);
     if(!entry)
@@ -299,39 +336,18 @@ void* mmu_get_physical(page_table_ptr_t table, void* vaddr) {
     return (void*) (*entry & ADDRMASK);
 }
 
-__noreturn void page_fault_handler(struct cpu_context* status) {
-    uint64_t cr2 = 0;
-    __asm__ volatile (
-        "mov %%cr2, %0"
-        : "=r" (cr2)
-    );
+bool mmu_get_flags(page_table_ptr_t table, void* vaddr, enum mmu_flags* mmu_flags) {
+    uint64_t* entry = get_page(table, vaddr);
+    if(!entry)
+        return false;
 
-    /*uint64_t cr2_offset = cr2 & VM_OFFSET_MASK;
-    uint64_t pd = PD_ENTRY(cr2_offset);
-    uint64_t pdpr = PDPR_ENTRY(cr2_offset);
-    uint64_t pml4 = PML4_ENTRY(cr2_offset);
-    uint64_t *pd_table = (uint64_t*) (SIGN_EXTENSION | ENTRIES_TO_ADDRESS(510l, 510l, (uint64_t) pml4, (uint64_t) pdpr));
-    uint64_t *pdpr_table = (uint64_t*) (SIGN_EXTENSION | ENTRIES_TO_ADDRESS(510l, 510l, 510l, (uint64_t) pml4));
-    uint64_t *pml4_table = (uint64_t*) (SIGN_EXTENSION | ENTRIES_TO_ADDRESS(510l, 510l, 510l, 510l));*/
+    *mmu_flags = *entry & FLAGS_MASK;
+    return true;
+}
 
-    panic_r(status,
-        "Page Fault at address %p:\n"
-        "    Error flags: FETCH(%lu) - RSVD(%lu) - ACCESS(%lu) - WRITE(%lu) - PRESENT(%lu)"
-      /*  "    Page Entries: pd: %p - pdpr: %p - pml4: %p\n"
-        "                  pd  [%p] = %p\n"
-        "                  pdpr[%p] = %p\n"
-        "                  pml4[%p] = %p"*/,
-        (void*) cr2,
-        status->error_code & FETCH_VIOLATION,
-        status->error_code & RESERVED_VIOLATION,
-        status->error_code & ACCESS_VIOLATION,
-        status->error_code & WRITE_VIOLATION,
-        status->error_code & PRESENT_VIOLATION/*,
-        (void*) pd, (void*) pdpr, (void*) pml4,
-        (void*) pd, (void*) pd_table[pd],
-        (void*) pdpr, (void*) pdpr_table[pdpr],
-        (void*) pml4, (void*) pml4_table[pml4]*/
-    );
+bool mmu_is_present(page_table_ptr_t table, void* vaddr) {
+    uint64_t* entry = get_page(table, vaddr);
+    return entry ? (bool) *entry : false;
 }
 
 bool is_userspace_addr(const void* addr) {

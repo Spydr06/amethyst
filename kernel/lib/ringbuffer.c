@@ -1,6 +1,7 @@
 #include <ringbuffer.h>
 
 #include <mem/vmm.h>
+#include <kernelio.h>
 #include <errno.h>
 #include <math.h>
 
@@ -23,12 +24,8 @@ void ringbuffer_destroy(ringbuffer_t *ringbuffer) {
 }
 
 size_t ringbuffer_read(ringbuffer_t *ringbuffer, void *buffer, size_t count) {
-    size_t occupancy = ringbuffer_occupancy(ringbuffer);
-    count = MIN(count, occupancy);
-
-    size_t first_pass_offset = ringbuffer->read % ringbuffer->size;
-    size_t first_pass_remaining = ringbuffer->size - first_pass_offset;
-    size_t first_pass_count = MIN(count, first_pass_remaining);
-
-
+    (void) ringbuffer;
+    (void) buffer;
+    (void) count;
+    unimplemented();
 }

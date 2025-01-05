@@ -1,4 +1,3 @@
-#include "x86_64/mem/mmu.h"
 #include <mem/vmm.h>
 #include <mem/pmm.h>
 #include <mem/slab.h>
@@ -12,6 +11,7 @@
 #include <errno.h>
 #include <math.h>
 #include <cdefs.h>
+#include <string.h>
 
 #define RANGE_TOP(range) ((void*) ((uintptr_t) (range)->start + (range)->size))
 
@@ -20,6 +20,13 @@ static struct vmm_space kernel_space = {
     .start = KERNELSPACE_START,
     .end = KERNELSPACE_END
 };
+
+extern uint8_t _TEXT_START_[];
+extern uint8_t _TEXT_END_[];
+extern uint8_t _RODATA_START_[];
+extern uint8_t _RODATA_END_[];
+extern uint8_t _DATA_START_[];
+extern uint8_t _DATA_END_[];
 
 static struct vmm_cache* cache_list;
 static struct scache* ctx_cache;
@@ -51,6 +58,14 @@ void vmm_init(struct mmap* mmap) {
         const struct limine_memmap_entry* entry = mmap->mmap->entries[i];
         assert(vmm_map(MAKE_HHDM(entry->base), entry->length, VMM_FLAGS_EXACT, MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, nullptr));
     }
+
+    // map kernel
+    assert(vmm_map(&_TEXT_START_, (uintptr_t) &_TEXT_END_ - (uintptr_t) &_TEXT_START_, VMM_FLAGS_EXACT, MMU_FLAGS_READ, nullptr));
+    assert(vmm_map(&_RODATA_START_, (uintptr_t) &_RODATA_END_ - (uintptr_t) &_RODATA_START_, VMM_FLAGS_EXACT, MMU_FLAGS_READ | MMU_FLAGS_NOEXEC, nullptr));
+    assert(vmm_map(&_DATA_START_, (uintptr_t) &_DATA_END_ - (uintptr_t) &_DATA_START_, VMM_FLAGS_EXACT, MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, nullptr));
+    
+    // null page
+    vmm_map(MAKE_HHDM((void*) nullptr), PAGE_SIZE, VMM_FLAGS_EXACT, MMU_FLAGS_NOEXEC, nullptr);
 }
 
 void vmm_apinit(void) {
@@ -141,7 +156,11 @@ void* vmm_map(void* addr, size_t size, enum vmm_flags flags, enum mmu_flags mmu_
     range->mmu_flags = mmu_flags;
     
     if(flags & VMM_FLAGS_FILE) {
-        unimplemented();
+        struct vmm_file_desc* desc = private;
+        assert((desc->offset % PAGE_SIZE) == 0);
+        range->vnode = desc->node;
+        range->offset = desc->offset;
+        vop_hold(desc->node);
     }
 
     if(flags & VMM_FLAGS_PHYSICAL) {
@@ -158,10 +177,8 @@ void* vmm_map(void* addr, size_t size, enum vmm_flags flags, enum mmu_flags mmu_
     else if(flags & VMM_FLAGS_ALLOCATE) {
         for(uintmax_t i = 0; i < size; i += PAGE_SIZE) {
             void* allocated = pmm_alloc_page(PMM_SECTION_DEFAULT);
-            if(!allocated) {
-                ret_addr = nullptr;
+            if(!allocated)
                 goto cleanup;
-            }
 
             if(!mmu_map(_cpu()->vmm_context->page_table, allocated, (void*)((uintptr_t) start + i), mmu_flags)) {
                 for(uintmax_t j = 0; j < size; j += PAGE_SIZE) {
@@ -173,7 +190,12 @@ void* vmm_map(void* addr, size_t size, enum vmm_flags flags, enum mmu_flags mmu_
                         mmu_unmap(_cpu()->vmm_context->page_table, virt);
                     }
                 }
+
+                mmu_invalidate(start);
+                goto cleanup;
             }
+
+            memset(MAKE_HHDM(allocated), 0, PAGE_SIZE);
         }
     }
 
@@ -236,6 +258,16 @@ static struct vmm_space* get_space(void* vaddr) {
         return &kernel_space;
     else
         return nullptr;
+}
+
+static struct vmm_range* get_range(struct vmm_space* space, void* addr) {
+    struct vmm_range* range = space->ranges;
+    for(; range; range = range->next) {
+        if(addr >= range->start && addr < RANGE_TOP(range))
+            break;
+    }
+
+    return range;
 }
 
 static void* get_free_range(struct vmm_space* space, void* addr, size_t size) {
@@ -403,14 +435,34 @@ fragmentation_check:
 
         free_range(new_range);
     }
-}
 
-static void change_mmu_range(struct vmm_range* range, void* base, size_t size, enum mmu_flags new_flags) {
-    (void) range;
-    (void) base;
-    (void) size;
-    (void) new_flags;
+}
+#define CHANGE_MASK_CHECK(m, f, c, n) \
+	if (((n) & (f)) == 0 && ((c) & (f))) \
+			m |= f;
+
+static void change_mmu_range(struct vmm_range* range __unused, void* base, size_t size, enum mmu_flags new_flags) {
     unimplemented();
+    for(uintmax_t offset = 0; offset < size; offset += PAGE_SIZE) {
+        void* address = (void*)((uintptr_t) base + offset);
+
+        enum mmu_flags current_flags;
+        if(!mmu_get_flags(_cpu()->vmm_context->page_table, address, &current_flags))
+            continue;
+
+        void* physical = mmu_get_physical(_cpu()->vmm_context->page_table, address);
+
+        uintmax_t mask = 0;
+        CHANGE_MASK_CHECK(mask, MMU_FLAGS_READ, current_flags, new_flags);
+        CHANGE_MASK_CHECK(mask, MMU_FLAGS_WRITE, current_flags, new_flags);
+        CHANGE_MASK_CHECK(mask, MMU_FLAGS_USER, current_flags, new_flags);
+        CHANGE_MASK_CHECK(mask, MMU_FLAGS_NOEXEC, current_flags, new_flags);
+
+        // TODO: handle cached vfs entries
+        
+        if(mask)
+            mmu_remap(_cpu()->vmm_context->page_table, physical, address, current_flags & ~mask);
+    }
 }
 
 static __always_inline bool vnode_writable(struct vmm_range* range) {

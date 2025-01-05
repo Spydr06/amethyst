@@ -1,4 +1,5 @@
 #include "filesystem/virtual.h"
+#include "kernelio.h"
 #include "sys/termios.h"
 #include <sys/tty.h>
 #include <sys/mutex.h>
@@ -73,6 +74,13 @@ static int read(int minor, void* buffer, size_t size, uintmax_t offset, int flag
     struct tty* tty = tty_get(minor);
     if(!tty)
         return ENODEV;
+
+    (void) buffer;
+    (void) size;
+    (void) offset;
+    (void) flags;
+    (void) bytes_read;
+    unimplemented();
 }
 
 static int write(int minor, void* buffer, size_t size, uintmax_t __unused, int __unused, size_t* bytes_written) {

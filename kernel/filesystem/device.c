@@ -287,7 +287,7 @@ int devfs_open(struct vnode** nodep, int flags, struct cred* __unused) {
     return dev_node->devops->open(dev_node->vattr.rdev_minor, nodep, flags);
 }
 
-int devfs_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_read, struct cred* cred) {
+int devfs_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_read, struct cred* __unused) {
     if(node->type == V_TYPE_DIR)
         return EISDIR;
 

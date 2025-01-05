@@ -9,7 +9,7 @@
 #include <assert.h>
 #include <errno.h>
 
-__syscall syscallret_t _sys_open(struct cpu_context *ctx, const char *path, int flags, mode_t mode) {
+__syscall syscallret_t _sys_open(struct cpu_context* __unused, const char *path, int flags, mode_t mode) {
     syscallret_t ret = {
         .ret = -1,
         ._errno = -1

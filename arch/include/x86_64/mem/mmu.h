@@ -36,9 +36,13 @@ page_table_ptr_t mmu_new_table(void);
 void mmu_destroy_table(page_table_ptr_t table);
 
 bool mmu_map(page_table_ptr_t table, void* paddr, void* vaddr, enum mmu_flags flags);
+void mmu_remap(page_table_ptr_t table, void* paddr, void* vaddr, enum mmu_flags flags);
 void mmu_unmap(page_table_ptr_t table, void* vaddr);
 
 void* mmu_get_physical(page_table_ptr_t table, void* vaddr);
+
+bool mmu_get_flags(page_table_ptr_t table, void* vaddr, enum mmu_flags* mmu_flags);
+bool mmu_is_present(page_table_ptr_t table, void* vaddr);
 
 void mmu_tlb_shootdown(void* page);
 void mmu_invalidate(void* vaddr);

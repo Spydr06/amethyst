@@ -115,7 +115,6 @@ static void divide_error_handler(struct cpu_context* status) {
 }
 
 static void load_default(void) {
-    interrupt_register(PAGE_FAULT, page_fault_handler, nullptr, IPL_NORMAL);
     interrupt_register(DOUBLE_FAULT, double_fault_handler, nullptr, IPL_NORMAL);
     interrupt_register(DIVIDE_ERROR, divide_error_handler, nullptr, IPL_NORMAL);
 }

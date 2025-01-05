@@ -229,6 +229,10 @@ static inline int vop_symlink(struct vnode* node, const char* name, struct vattr
     return node->ops->symlink(node, name, attr, path, cred);
 }
 
+static inline int vop_mmap(struct vnode* node, void *addr, uintmax_t offset, int flags, struct cred *cred){
+    return node->ops->mmap(node, addr, offset, flags, cred);
+}
+
 static inline void vop_init(struct vnode* node, struct vops* vops, enum vflags flags, enum vtype type, struct vfs* vfs) {
     node->ops = vops;
 
