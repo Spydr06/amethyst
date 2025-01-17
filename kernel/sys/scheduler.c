@@ -348,9 +348,9 @@ void scheduler_init(void) {
 
     spinlock_init(run_queue_lock);
 
-    _cpu()->idle_thread = sched_new_thread(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr);
+    _cpu()->idle_thread = sched_new_thread(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr, nullptr);
     assert(_cpu()->idle_thread);
-    _cpu()->thread = sched_new_thread(nullptr, PAGE_SIZE * 32, 0, nullptr, nullptr);
+    _cpu()->thread = sched_new_thread(nullptr, PAGE_SIZE * 32, 0, nullptr, nullptr, nullptr);
     assert(_cpu()->thread);
 
     // install scheduling timer
@@ -366,7 +366,7 @@ void scheduler_apentry(void) {
     assert(_cpu()->scheduler_stack);
     _cpu()->scheduler_stack = (void*)((uintptr_t) _cpu()->scheduler_stack + SCHEDULER_STACK_SIZE);
 
-    _cpu()->idle_thread = sched_new_thread(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr);
+    _cpu()->idle_thread = sched_new_thread(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr, nullptr);
     assert(_cpu()->idle_thread);
 
     // install scheduling timer
@@ -376,7 +376,7 @@ void scheduler_apentry(void) {
     timer_resume(_cpu()->timer);
 }
 
-struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack) {
+struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack, void* user_brk) {
     struct thread* thread = slab_alloc(thread_cache);
     if(!thread)
         return nullptr;
@@ -393,6 +393,7 @@ struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority
     thread->pin = THREAD_UNPINNED;
     
     thread->vmm_context = proc ? nullptr : &vmm_kernel_context;
+    thread->user_break = thread->user_break_base = user_brk;
     thread->proc = proc;
     thread->priority = priority;
     if(proc) {
@@ -547,7 +548,7 @@ extern __syscall void _sched_userspace_check(struct cpu_context* context, bool s
 #define STACK_TOP        ((void*) 0x0000800000000000)
 #define INTERPRETER_BASE ((void*) 0x00000beef0000000)
 
-static int load_interpreter(const char* interpreter, void** entry) {
+static int load_interpreter(const char* interpreter, void** entry, void** brk) {
     if(!interpreter)
         return 0;
 
@@ -559,8 +560,9 @@ static int load_interpreter(const char* interpreter, void** entry) {
 
     Elf64_auxv_list_t interp_auxv;
     char* interp_interp = nullptr;
+    void* interp_brk;
 
-    if((err = elf_load(interp_node, INTERPRETER_BASE, entry, &interp_interp, &interp_auxv)))
+    if((err = elf_load(interp_node, INTERPRETER_BASE, entry, &interp_interp, &interp_auxv, &interp_brk)))
         return err;
 
     assert(!interp_interp);
@@ -587,12 +589,16 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
     Elf64_auxv_list_t auxv;
     char* interpreter = nullptr;
     void* entry;
+    void* brk = nullptr;
 
-    if((err = elf_load(exec_node, nullptr, &entry, &interpreter, &auxv)))
+    if((err = elf_load(exec_node, nullptr, &entry, &interpreter, &auxv, &brk)))
         return err;
 
-    if((err = load_interpreter(interpreter, &entry)))
+    if((err = load_interpreter(interpreter, &entry, &brk)))
         return err;
+
+    if(brk)
+        klog(INFO, "break: %p", brk);
 
     struct vnode* tty_node;
     assert(devfs_find("tty0", &tty_node) == 0);
@@ -624,7 +630,7 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
 
     vmm_switch_context(&vmm_kernel_context);
 
-    struct thread* user_thread = sched_new_thread(entry, PAGE_SIZE * 16, 1, proc, stack);
+    struct thread* user_thread = sched_new_thread(entry, PAGE_SIZE * 16, 1, proc, stack, brk);
     assert(user_thread);
 
     // TODO: proc

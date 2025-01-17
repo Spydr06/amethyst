@@ -7,6 +7,9 @@
 extern "C" {
 #endif
 
+int brk(void* addr);
+void* sbrk(intptr_t increment);
+
 int open(const char* pathname, int flags, mode_t mode);
 int close(int fd);
 

@@ -41,6 +41,8 @@ typedef unsigned int uint32_t;
 typedef unsigned _Int64 uint64_t;
 typedef unsigned _Int64 uintmax_t;
 
+typedef _Int64 off_t;
+
 typedef uint32_t mode_t;
 
 typedef __builtin_va_list va_list;

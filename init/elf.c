@@ -48,7 +48,7 @@ static enum mmu_flags phdr_to_mmu_flags(Elf64_Word p_flags) {
     return mmu_flags;
 };
 
-static int load(struct vnode* node, Elf64_Phdr* phdr) {
+static int load(struct vnode* node, Elf64_Phdr* phdr, void** brk) {
     int err = 0;
 
     uintptr_t mem_address = phdr->p_vaddr;
@@ -126,10 +126,13 @@ static int load(struct vnode* node, Elf64_Phdr* phdr) {
             return ENOMEM;
     }
 
+    if(brk)
+        *brk = (void*) MAX((uintptr_t) *brk, ROUND_UP(mem_address, PAGE_SIZE));
+
     return 0;
 }
 
-int elf_load(struct vnode* node, void* base, void** entry, char** interpreter, Elf64_auxv_list_t* auxv) {
+int elf_load(struct vnode* node, void* base, void** entry, char** interpreter, Elf64_auxv_list_t* auxv, void** brk) {
     if(node->type != V_TYPE_REGULAR)
         return EACCES;
 
@@ -169,7 +172,7 @@ int elf_load(struct vnode* node, void* base, void** entry, char** interpreter, E
     for(size_t i = 0; i < header.e_phnum; i++) {
         phdrs[i].p_vaddr += (uintptr_t) base;
 
-        klog(DEBUG, "phdr %zu: %d @ %p", i, phdrs[i].p_type, (void*) phdrs[i].p_vaddr);
+        klog(DEBUG, "phdr %zu: %d @ %p (%Zu)", i, phdrs[i].p_type, (void*) phdrs[i].p_vaddr, phdrs[i].p_memsz);
         
         switch(phdrs[i].p_type) {
             case PT_INTERP:
@@ -179,7 +182,7 @@ int elf_load(struct vnode* node, void* base, void** entry, char** interpreter, E
                 auxv->phdr.a_un.a_val = phdrs[i].p_vaddr;
                 break;
             case PT_LOAD:
-                if((err = load(node, phdrs + i)))
+                if((err = load(node, phdrs + i, brk)))
                     goto cleanup;
                 break;
             default:

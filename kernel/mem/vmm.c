@@ -442,7 +442,6 @@ fragmentation_check:
 			m |= f;
 
 static void change_mmu_range(struct vmm_range* range __unused, void* base, size_t size, enum mmu_flags new_flags) {
-    unimplemented();
     for(uintmax_t offset = 0; offset < size; offset += PAGE_SIZE) {
         void* address = (void*)((uintptr_t) base + offset);
 

@@ -6,6 +6,7 @@
 
 #include <sys/spinlock.h>
 #include <cpu/cpu.h>
+#include <mem/vmm.h>
 
 #define THREAD_UNPINNED ((cpuid_t) -1)
 
@@ -37,6 +38,8 @@ struct thread {
 
     struct vmm_context* vmm_context;
     struct proc* proc;
+    void* user_break_base;
+    void* user_break;
 
     enum thread_flags flags;
     int priority;
@@ -68,6 +71,8 @@ struct thread {
         bool stopped;
     } signals;
 };
+
+static_assert(sizeof(struct thread) <= PAGE_SIZE);
 
 #endif /* _AMETHYST_SCHEDULER_THREAD_H */
 
