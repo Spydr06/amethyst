@@ -45,6 +45,15 @@ typedef uint32_t mode_t;
 
 typedef __builtin_va_list va_list;
 
+typedef struct _mbstate mbstate_t;
+
+typedef struct _fpos64 {
+    size_t dummy;
+} fpos_t;
+
+struct _IO_FILE;
+typedef struct _IO_FILE FILE;
+
 #ifdef __cplusplus
 }
 #endif
