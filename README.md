@@ -52,14 +52,13 @@ See its source in [./shard/geode](./shard/geode) and the package store in [./sto
 
 Features:
 
-- [ ] `bootstrap`: Build a new fully functioning system from a single configuration file *[in progress]*
+- [x] `bootstrap`: Build a new fully functioning system from a single configuration file *[in progress]*
 - [ ] `rebuild`: Rebuild the system root on the go
 - [ ] `update`: Pull store updates from the internet and do a full rebuild
 - [ ] ...
 
 > [!WARNING]
-> `geode` is in especially early development state. To get a booting system image, please refer to commit [`7029ae7`](https://github.com/Spydr06/amethyst/tree/7029ae760673b8c08ae2168262de664acbf1bf8a) until `geode` is able to bootstrap the full system.
-
+> `geode` is in especially early development state. Expect crashes and cryptic error messages.
 ## Building
 
 ### Build Dependencies:
@@ -83,27 +82,35 @@ $ git clone https://github.com/spydr06/amethyst --recursive
 $ cd amethyst
 ```
 
-2. Build the ISO image:
+2. Bootstrap the OS with the following command:
 
 ```console
-$ make
+$ ./bootstrap.sh
 ```
 
 > [!NOTE]
 > When compiling for the first time, bootstrapping the system can take several minutes.
+> 
+> You can speed up the process by utilizing more cpu cores using the `-jN` flag.
 
 ### Running in a VM
 
 To run amethyst in `qemu`, use either the `run` or `run-kvm` make targets in order to run with or without KVM enabled.
 
 ```console
-$ make run
+$ ./run.sh
 ```
 
 or (with KVM):
 
 ```console
-$ make run-kvm
+$ ./run.sh -K
+```
+
+or (for debugging with `gdb`):
+
+```console
+$ ./run.sh -d
 ```
 
 ## Contributing
@@ -115,6 +122,10 @@ Please note that this is a *toy* OS. Hardware support and system stability are n
 ## License
 
 Amethyst, Shard and Geode are licensed under the [MIT License](https://mit-license.org/). See [./LICENSE](./LICENSE) for more information.
+
+The C standard library (`store/libc`) uses partially (e.g. `mallocng`) code from [musl libc](https://musl.libc.org/).
+See musl's [COPYRIGHT](https://git.musl-libc.org/cgit/musl/tree/COPYRIGHT) file for more information.
+I do not take credit for these segments of the code.
 
 For all other parts (`pci.ids`, `limine`, `libarchive`, ...), their respective licenses apply. I take no credit at these projects.
 
