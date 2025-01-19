@@ -12,6 +12,8 @@ extern "C" {
 #if defined(__x86_64__) || defined(__x86_64)
     #define __BYTE_ORDER 1234
 
+    #define __WORDSIZE 64
+
     #define _Addr long
     #define _Reg long
     #define _Int64 long

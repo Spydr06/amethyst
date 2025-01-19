@@ -393,7 +393,10 @@ struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority
     thread->pin = THREAD_UNPINNED;
     
     thread->vmm_context = proc ? nullptr : &vmm_kernel_context;
-    thread->user_break = thread->user_break_base = user_brk;
+    thread->user_brk = (struct brk){
+        .base = user_brk,
+        .top = user_brk
+    };
     thread->proc = proc;
     thread->priority = priority;
     if(proc) {

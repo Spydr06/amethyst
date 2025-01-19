@@ -24,6 +24,12 @@ enum wakeup_reason {
     WAKEUP_REASON_INTERRUPTED = -1
 };
 
+struct brk {
+    void* base;
+    void* top;
+    size_t limit;
+};
+
 struct thread {
     void* kernel_stack_top;
     void* kernel_stack;
@@ -38,8 +44,7 @@ struct thread {
 
     struct vmm_context* vmm_context;
     struct proc* proc;
-    void* user_break_base;
-    void* user_break;
+    struct brk user_brk;
 
     enum thread_flags flags;
     int priority;
