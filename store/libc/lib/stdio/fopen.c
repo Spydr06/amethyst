@@ -2,8 +2,11 @@
 
 #include <bits/fcntl.h>
 #include <string.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+
+FILE *ofl_head = NULL;
 
 int _fmodeflags(const char* mode) {
     int fl;
@@ -30,8 +33,28 @@ int _fmodeflags(const char* mode) {
 }
 
 FILE* _fdopen(int fd, const char* mode) {
-    // FIXME: unimplemented until heap allocator is in place
-    return NULL;
+    if(!strchr("rwa", *mode)) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    FILE* f = malloc(sizeof(FILE) + BUFSIZ + MAX_UNGET);
+    if(!f)
+        return 0;
+    
+    memset(f, 0, sizeof(FILE));
+
+    f->fd = fd;
+    f->buf = (unsigned char*) f + sizeof(FILE) + MAX_UNGET;
+    f->buf_size = BUFSIZ;
+    f->lbf = EOF;
+
+    f->read = __file_read;
+    f->write = __file_write;
+    f->seek = __file_seek;
+    f->close = __file_close;
+
+    return ofl_add(f);
 }
 
 FILE* fopen(const char *restrict filename, const char *restrict mode) {
