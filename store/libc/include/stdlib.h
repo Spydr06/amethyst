@@ -7,8 +7,10 @@ extern "C" {
 
 #include <bits/alltypes.h>
 
-_Noreturn void exit(int status);
-_Noreturn void _Exit(int status);
+void abort(void) __attribute__((__noreturn__));
+
+void exit(int status) __attribute__((__noreturn__));
+void _Exit(int status) __attribute__((__noreturn__));
 
 int atexit(void (*func)(void));
 

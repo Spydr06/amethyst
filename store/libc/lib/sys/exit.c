@@ -1,3 +1,4 @@
+#include "internal/file.h"
 #include <stdlib.h>
 
 #include <sys/syscall.h>
@@ -43,3 +44,10 @@ int atexit(void (*func)(void)) {
     
     return 0;
 }
+
+_Noreturn void abort(void) {
+    // TODO: raise(SIGABRT);
+    // TODO: raise(SIGKILL);
+    _Exit(127);
+}
+
