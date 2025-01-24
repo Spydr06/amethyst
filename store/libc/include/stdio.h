@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include <stdarg.h>
 #include <bits/alltypes.h>
 
 #define BUFSIZ 1024
@@ -38,6 +39,21 @@ int fputs(const char *restrict s, FILE *restrict stream);
 int puts(const char *restrict s);
 
 int fflush(FILE* stream);
+
+int printf(const char *restrict format, ...);
+int vprintf(const char *restrict format, va_list ap);
+
+int fprintf(FILE *restrict stream, const char *restrict format, ...);
+int vfprintf(FILE *restrict stream, const char *restrict format, va_list ap);
+
+int dprintf(int fd, const char *restrict format, ...);
+int vdprintf(int fd, const char *restrict format, va_list ap);
+
+int sprintf(char *restrict str, const char *restrict format, ...);
+int vsprintf(char *restrict str, const char *restrict format, va_list ap);
+
+int snprintf(char *restrict str, size_t size, const char *restrict format, ...);
+int vsnprintf(char *restrict str, size_t size, const char *restrict format, va_list ap);
 
 #ifdef __cplusplus
 }
