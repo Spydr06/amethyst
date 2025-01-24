@@ -16,6 +16,9 @@ LIMINE_LOADERS := $(LIMINE_DIR)/limine-bios.sys $(LIMINE_DIR)/limine-bios-cd.bin
 KERNEL_ELF ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).elf
 KERNEL_SYM ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).sym
 
+BOOTSTRAP_SH := bootstrap.sh
+RUN_SH := run.sh
+
 TOOLPREFIX ?= $(ARCH)-elf-
 
 override ARCH_DIR := arch/$(ARCH)
@@ -142,6 +145,17 @@ $(GEODE_HOST_BIN): $(SHARD_DIR)
 	@CFLAGS=$(HOST_CFLAGS) LDFLAGS=$(HOST_LDFLAGS) C_CXX_FLAGS=$(HOST_C_CXX_FLAGS) CXXFLAGS=$(HOST_CXXFLAGS)\
 		$(MAKE) -C $(SHARD_DIR) geode
 
+$(BOOTSTRAP_SH):
+	chmod +x $@
+
+.PHONY: boostrap
+bootstrap: $(BOOTSTRAP_SH)
+	./$< -j$(shell nproc)
+
+.PHONY: run
+run: $(RUN_SH) | bootstrap
+	./$<
+
 .PHONY: test
 test:
 	$(MAKE) -C shard test
@@ -153,4 +167,8 @@ clean:
 	rm -rf $(BOOTSTRAP_DIR)
 	rm -f $(VERSION_H)
 	rm -rf $(SHARD_DIR)/build
+
+.PHONY: clean-all
+clean-all: $(BOOTSTRAP_SH)
+	./$< -C
 
