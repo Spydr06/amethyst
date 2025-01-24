@@ -69,10 +69,10 @@ int fputc(int c, FILE *restrict stream) {
 
 int fputs(const char *restrict s, FILE *restrict stream) {
     size_t l = strlen(s);
-    return (fwrite(s, sizeof(char), l, stream) == l) - 1;
+    return (fwrite(s, l, sizeof(char), stream) == l) - 1;
 }
 
 int puts(const char *restrict s) {
-    return fputs(s, stdout);
+    return -(fputs(s, stdout) < 0 || fputc('\n', stdout) < 0);
 }
 

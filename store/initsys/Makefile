@@ -19,7 +19,7 @@ $(TARGET): $(OBJECTS)
 $(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)
 	@echo "  CC    $^"
-	@$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.o=%.d)" -c -o $@ $^
+	@$(CC) $(CFLAGS) -ggdb -MMD -MP -MF "$(@:%.o=%.d)" -c -o $@ $^
 
 $(PREFIX)/bin:
 	mkdir $@

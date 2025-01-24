@@ -2,15 +2,17 @@
 #define _INTERNAL_FILE_H
 
 #include <stdio.h>
+#include <string.h>
 #include <bits/alltypes.h>
 
 #define MAX_UNGET 8
 
 enum file_flags {
-    F_PERM = 1,
-    F_NORD = 4,
-    F_NOWR = 8,
-    F_ERR = 16
+    F_PERM = 0x01,
+    F_NORD = 0x02,
+    F_NOWR = 0x04,
+    F_ERR  = 0x08,
+    F_EOF  = 0x10
 };
 
 struct _IO_FILE {
@@ -57,6 +59,21 @@ static inline int towrite(FILE *f) {
     f->wend = f->buf + f->buf_size;
 
     return 0;
+}
+
+static inline int toread(FILE *f) {
+    // flush buffer
+    if(f->wpos != f->wbase)
+        f->write(f, NULL, 0);
+
+    f->wpos = f->wbase = f->wend = 0;
+    if(f->flags & F_NORD) {
+        f->flags |= F_ERR;
+        return EOF;
+    }
+
+    f->rpos = f->rend = f->buf + f->buf_size;
+    return (f->flags & F_EOF) ? EOF : 0;
 }
 
 static inline int overflow(FILE *f, int _c) {
