@@ -6,7 +6,17 @@
 int main(int argc, char** argv) {
     printf("Hello, World <3\n");
 
-    FILE* f = fopen("/include/unistd.h", "r");
+    FILE* f = fopen("test.txt", "w");
+    if(!f) {
+        fprintf(stderr, "fopen() failed: %m\n");
+        return 1;
+    }
+
+    fputs("Written using fwrite()!\n", f);
+
+    fclose(f);
+
+    f = fopen("test.txt", "r");
     if(!f) {
         fprintf(stderr, "fopen() failed: %m\n");
         return 1;
@@ -19,6 +29,7 @@ int main(int argc, char** argv) {
 
     free(buf);
     fclose(f);
+
 
     while(1);
 }

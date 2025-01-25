@@ -12,7 +12,7 @@ static size_t fwrite_impl(const unsigned char *restrict s, size_t l, FILE *restr
     if(!f->wend && towrite(f))
         return 0;
 
-    if(l > (uintptr_t) f->wend - (uintptr_t) f->wpos)
+    if(l > (size_t) (f->wend - f->wpos))
         return f->write(f, s, l);
 
     if(f->lbf >= 0) {
@@ -54,6 +54,9 @@ size_t __file_write(FILE *f, const unsigned char *buf, size_t len) {
         }
     }
     
+    if(!buf || !len)
+        return 0;
+
     size_t cnt = write(f->fd, buf, len);
     if(cnt < 0)
         f->flags |= F_ERR;

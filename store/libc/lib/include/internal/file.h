@@ -80,8 +80,12 @@ static inline int overflow(FILE *f, int _c) {
     unsigned char c = _c;
     if(!f->wend && towrite(f))
         return EOF;
-    if(f->wpos != f->wend && c != f->lbf)
-        return *f->wpos++ = c;
+    if(f->wpos != f->wend) {
+        *f->wpos++ = c;
+        if(c == f->lbf)
+            f->write(f, 0, 0);
+        return c;
+    }
     if(f->write(f, &c, sizeof(char)) != 1)
         return EOF;
     return c;

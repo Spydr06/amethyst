@@ -42,8 +42,10 @@ size_t __file_read(FILE *f, unsigned char *buf, size_t len) {
             return 0;
         }
 
-        if(cnt < (ssize_t) len)
+        if(cnt < (ssize_t) len - !!f->buf_size) {
+            f->flags |= F_EOF;
             return cnt;
+        }
     }
     
     ssize_t cnt = read(f->fd, f->buf, f->buf_size);
