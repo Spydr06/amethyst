@@ -6,6 +6,7 @@
 #include <mem/heap.h>
 #include <mem/slab.h>
 #include <mem/vmm.h>
+#include <mem/page.h>
 
 #include <math.h>
 #include <assert.h>
@@ -261,10 +262,10 @@ static int tmpfs_getpage(struct vnode* node, uintmax_t offset, struct page* page
     if(err)
         return err;
 
-    void* phy = pmm_page_address(page);
+    void* phy = page_get_physical(page);
     void* phy_hhdm = MAKE_HHDM(phy);
 
-    pmm_hold(phy);
+    page_hold(page);
     page->flags |= PAGE_FLAGS_PINNED;
     memset(phy_hhdm, 0, PAGE_SIZE);
 

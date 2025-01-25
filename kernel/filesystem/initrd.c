@@ -50,7 +50,7 @@ int initrd_unpack(void) {
     while(true) {
         if(cleaned_bytes >= PAGE_SIZE) {
             size_t page_count = cleaned_bytes / PAGE_SIZE;
-            pmm_makefree(FROM_HHDM(cleanup), page_count);
+            pmm_free(FROM_HHDM(cleanup), page_count);
             cleanup = (void*)((uintptr_t) cleanup + ROUND_DOWN(cleaned_bytes, PAGE_SIZE));
             cleaned_bytes %= PAGE_SIZE;
         }
@@ -99,7 +99,7 @@ int initrd_unpack(void) {
     }
 
     // free remaining pages
-    pmm_makefree(FROM_HHDM(cleanup), ROUND_UP(cleaned_bytes, PAGE_SIZE) / PAGE_SIZE);
+    pmm_free(FROM_HHDM(cleanup), ROUND_UP(cleaned_bytes, PAGE_SIZE) / PAGE_SIZE);
 
     return 0;
 }

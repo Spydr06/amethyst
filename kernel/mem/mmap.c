@@ -7,7 +7,7 @@
 #include <string.h>
 
 const char* mmap_typestrs[] = {
-    "Available",
+    "Usable",
     "Reserved",
     "ACPI Reclaimable",
     "ACPI NVS",
@@ -30,7 +30,7 @@ int mmap_parse(struct mmap* mmap) {
         return ENOMEM;
 
     memset(mmap, 0, sizeof(struct mmap));
-    mmap->mmap = mmap_request.response;
+    mmap->map = mmap_request.response;
     
     klog(INFO, "memory map entries:");
 
@@ -39,23 +39,14 @@ int mmap_parse(struct mmap* mmap) {
 
         klog(INFO, " %2zu) %p -> %p: %s", i, (void*) entry->base, (void*) entry->base + entry->length, mmap_strtype(entry->type));
 
-        if(entry->type == MMAP_AVAILABLE || entry->type == MMAP_BOOTLOADER_RECLAIMABLE) {
-            size_t section_top = entry->base + entry->length;
-            if(section_top > mmap->top)
-                mmap->top = section_top;
-        }
-
-        if(entry->type == MMAP_AVAILABLE) {
-            if(!mmap->biggest_entry || mmap->biggest_entry->length < entry->length)
-                mmap->biggest_entry = entry;
-            mmap->memory_size += entry->length;
-        }
+        if(entry->type != LIMINE_MEMMAP_RESERVED)
+            mmap->total_memory += entry->length;
     }
 
     return 0;
 }
 
-const char* mmap_strtype(enum mmap_type type) {
+const char* mmap_strtype(uint64_t type) {
     return mmap_typestrs[type];
 }
 

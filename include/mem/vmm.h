@@ -1,7 +1,8 @@
 #ifndef _AMETHYST_MEM_VMM_H
 #define _AMETHYST_MEM_VMM_H
 
-#include "filesystem/virtual.h"
+#include <filesystem/virtual.h>
+#include <mem/slab.h>
 #include <mem/mmap.h>
 #include <mem/pmm.h>
 
@@ -94,6 +95,8 @@ void* vmm_map(void* addr, size_t size, enum vmm_flags flags, enum mmu_flags mmu_
 void vmm_unmap(void* addr, size_t size, enum vmm_flags flags);
 
 void vmm_cache_init(void);
+
+struct page* vmm_alloc_page_meta(void* physical_addr);
 
 int vmm_cache_truncate(struct vnode* vnode, uintmax_t offset);
 int vmm_cache_make_dirty(struct page* page);

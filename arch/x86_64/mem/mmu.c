@@ -222,9 +222,9 @@ void mmu_init(struct mmap* mmap) {
 
     // populate hhdm
     
-    klog_inl(INFO, "hhdm mapping... [\e[%zuC]\e[%zuD", mmap->mmap->entry_count * 2, mmap->mmap->entry_count * 2 + 1);
-    for(size_t i = 0; i < mmap->mmap->entry_count; i++) {
-        struct limine_memmap_entry* e = mmap->mmap->entries[i];
+    klog_inl(INFO, "hhdm mapping... [\e[%zuC]\e[%zuD", mmap->map->entry_count * 2, mmap->map->entry_count * 2 + 1);
+    for(size_t i = 0; i < mmap->map->entry_count; i++) {
+        struct limine_memmap_entry* e = mmap->map->entries[i];
         for(uint64_t i = 0; i < e->length; i += PAGE_SIZE) {
             uint64_t entry = ((e->base + i) & ADDRMASK) | MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC;
             assert(add_page(FROM_HHDM(template), MAKE_HHDM(e->base + i), entry, DEPTH_PML4));
@@ -269,7 +269,7 @@ static void _destroy(uint64_t* table, int depth) {
         if(depth > 0)
             _destroy(MAKE_HHDM(addr), depth - 1);
 
-        pmm_release(addr);
+        pmm_free_page(addr);
     }
 }
 
@@ -278,7 +278,7 @@ void mmu_destroy_table(page_table_ptr_t table) {
         return;
 
     _destroy(MAKE_HHDM(table), 3);
-    pmm_release(table);
+    pmm_free_page(table);
 }
 
 bool mmu_map(page_table_ptr_t table, void* paddr, void* vaddr, enum mmu_flags flags) {

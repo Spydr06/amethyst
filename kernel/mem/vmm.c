@@ -1,6 +1,7 @@
 #include <mem/vmm.h>
 #include <mem/pmm.h>
 #include <mem/slab.h>
+#include <mem/page.h>
 
 #include <filesystem/virtual.h>
 #include <sys/proc.h>
@@ -28,6 +29,8 @@ extern uint8_t _RODATA_END_[];
 extern uint8_t _DATA_START_[];
 extern uint8_t _DATA_END_[];
 
+struct scache* page_meta_cache;
+
 static struct vmm_cache* cache_list;
 static struct scache* ctx_cache;
 
@@ -54,8 +57,8 @@ void vmm_init(struct mmap* mmap) {
     vmm_switch_context(&vmm_kernel_context);
 
     // map hhdm
-    for(uint64_t i = 0; i < mmap->mmap->entry_count; i++) {
-        const struct limine_memmap_entry* entry = mmap->mmap->entries[i];
+    for(uint64_t i = 0; i < mmap->map->entry_count; i++) {
+        const struct limine_memmap_entry* entry = mmap->map->entries[i];
         assert(vmm_map(MAKE_HHDM(entry->base), entry->length, VMM_FLAGS_EXACT, MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, nullptr));
     }
 
@@ -66,6 +69,8 @@ void vmm_init(struct mmap* mmap) {
     
     // null page
     vmm_map(MAKE_HHDM((void*) nullptr), PAGE_SIZE, VMM_FLAGS_EXACT, MMU_FLAGS_NOEXEC, nullptr);
+
+    page_meta_cache = slab_newcache(sizeof(struct page), alignof(struct page), nullptr, nullptr);
 }
 
 void vmm_apinit(void) {
@@ -186,7 +191,7 @@ void* vmm_map(void* addr, size_t size, enum vmm_flags flags, enum mmu_flags mmu_
                     void* phys = mmu_get_physical(_cpu()->vmm_context->page_table, virt);
 
                     if(phys) {
-                        pmm_release(phys);
+//                        pmm_release(phys);
                         mmu_unmap(_cpu()->vmm_context->page_table, virt);
                     }
                 }
@@ -260,15 +265,6 @@ static struct vmm_space* get_space(void* vaddr) {
         return nullptr;
 }
 
-static struct vmm_range* get_range(struct vmm_space* space, void* addr) {
-    struct vmm_range* range = space->ranges;
-    for(; range; range = range->next) {
-        if(addr >= range->start && addr < RANGE_TOP(range))
-            break;
-    }
-
-    return range;
-}
 
 static void* get_free_range(struct vmm_space* space, void* addr, size_t size) {
     struct vmm_range* range = space->ranges;
@@ -315,7 +311,7 @@ static uintmax_t get_entry_number(struct vmm_cache* cache) {
     unreachable();
 }
 
-static void destroy_range(struct vmm_range* range, uintmax_t start_offset, size_t size, int flags) {
+static void destroy_range(struct vmm_range* range, uintmax_t start_offset, size_t size, int flags __unused) {
     uintmax_t top = start_offset + size;
 
     for(uintmax_t offset = start_offset; offset < top; offset += PAGE_SIZE) {
@@ -333,7 +329,7 @@ static void destroy_range(struct vmm_range* range, uintmax_t start_offset, size_
         
         mmu_unmap(_cpu()->vmm_context->page_table, virt_addr);
         if((range->flags & VMM_FLAGS_PHYSICAL) == 0)
-            pmm_release(phys_addr);
+            pmm_free_page(phys_addr); // FIXME: works ?
     }
 
     if((range->flags & VMM_FLAGS_FILE) && range->size == size)
@@ -649,4 +645,18 @@ finish:
 
     return err;
 } 
+
+struct page* vmm_alloc_page_meta(void* physical_addr) {
+    assert(page_meta_cache != nullptr);
+
+    struct page* page = slab_alloc(page_meta_cache);
+    if(!page)
+        return nullptr;
+
+    memset(page, 0, sizeof(struct page));
+    page->physical_addr = physical_addr;
+    page->refcount = 1;
+
+    return page;
+}
 

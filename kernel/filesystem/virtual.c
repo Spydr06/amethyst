@@ -3,6 +3,7 @@
 #include <cpu/cpu.h>
 #include <mem/heap.h>
 #include <mem/vmm.h>
+#include <mem/page.h>
 #include <sys/spinlock.h>
 #include <sys/mutex.h>
 #include <sys/semaphore.h>
@@ -297,7 +298,7 @@ int vfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset, s
             goto leave;
 
         size_t write_size = MIN(PAGE_SIZE - start_offset, size);
-        void* address = MAKE_HHDM(pmm_page_address(page));
+        void* address = MAKE_HHDM(page_get_physical(page));
 
         memcpy((void*) ((uintptr_t) address + start_offset), buffer, write_size);
         vmm_cache_make_dirty(page);
@@ -309,7 +310,7 @@ int vfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset, s
         if(flags & V_FFLAGS_NOCACHE)
             unimplemented();
         
-        pmm_release(FROM_HHDM(address));
+        page_release(page);
     }
     
     for(uintmax_t offset = 0; offset < page_count * PAGE_SIZE; offset += PAGE_SIZE) {
@@ -317,7 +318,7 @@ int vfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset, s
             goto leave;
         
         size_t write_size = MIN(PAGE_SIZE, size - *written);
-        void* address = MAKE_HHDM(pmm_page_address(page));
+        void* address = MAKE_HHDM(page_get_physical(page));
         memcpy(address, (void*)((uintptr_t) buffer + *written), write_size);
 
         vmm_cache_make_dirty(page);
@@ -326,7 +327,7 @@ int vfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset, s
         if(flags & V_FFLAGS_NOCACHE)
             unimplemented();
 
-        pmm_release(FROM_HHDM(address));
+        page_release(page);
     }
 
 leave:
@@ -376,7 +377,7 @@ int vfs_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, si
             goto leave;
 
         size_t read_size = MIN(PAGE_SIZE - start_offset, size);
-        void* address = MAKE_HHDM(pmm_page_address(page));
+        void* address = MAKE_HHDM(page_get_physical(page));
 
         memcpy(buffer, (void*)((uintptr_t) address + start_offset), read_size);
         *bytes_read += read_size;
@@ -388,7 +389,7 @@ int vfs_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, si
             unimplemented();
         }
 
-        pmm_release(FROM_HHDM(address));
+        page_release(page);
     }
 
     for(uintmax_t offset = 0; offset < page_count * PAGE_SIZE; offset += PAGE_SIZE) {
@@ -397,7 +398,7 @@ int vfs_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, si
             goto leave;
 
         size_t read_size = MIN(PAGE_SIZE, size - *bytes_read);
-        void* address = MAKE_HHDM(pmm_page_address(page));
+        void* address = MAKE_HHDM(page_get_physical(page));
 
         memcpy((void*)((uintptr_t) buffer + *bytes_read), address, read_size);
         *bytes_read += read_size;
@@ -407,7 +408,7 @@ int vfs_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, si
             unimplemented();
         }
 
-        pmm_release(FROM_HHDM(address));
+        page_release(page);
     }
 
 leave:

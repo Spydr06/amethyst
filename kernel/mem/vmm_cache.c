@@ -1,5 +1,6 @@
 #include <mem/vmm.h>
 
+#include <mem/page.h>
 #include <filesystem/virtual.h>
 #include <sys/timekeeper.h>
 #include <sys/mutex.h>
@@ -108,16 +109,16 @@ retry:
     volatile struct page* page = find_page(vnode, offset);
 
     if(page) {
-        pmm_hold(pmm_page_address((struct page*) page));
+        page_hold((struct page*) page);
         mutex_release(&mutex);
 
         if(new_page)
-            pmm_release(pmm_page_address(new_page));
+            page_release(new_page);
 
         // FIXME: TODO: wait for page update
 
         if(page->flags & PAGE_FLAGS_ERROR) {
-            pmm_release(pmm_page_address((struct page*) page));
+            page_release((struct page*) page);
             goto retry;
         }
 
@@ -130,7 +131,7 @@ retry:
         if(!addr)
             return ENOMEM;
 
-        new_page = pmm_get_page(addr);
+        new_page = vmm_alloc_page_meta(addr);
 
         mutex_acquire(&mutex, false);
 
@@ -156,7 +157,7 @@ retry:
             new_page->offset = 0;
 
             mutex_release(&mutex);
-            pmm_release(pmm_page_address(new_page));
+            page_release(new_page);
             // TODO: signal event
             return err;
         }
@@ -187,7 +188,7 @@ int vmm_cache_make_dirty(struct page* page) {
 
         dirty_pages = page;
 
-        pmm_hold(pmm_page_address(page));
+        page_hold(page);
         assert(page->backing);
         vop_hold(page->backing);
     }
@@ -214,3 +215,4 @@ void vmm_cache_init(void) {
 
     // TODO: sync thread...
 }
+
