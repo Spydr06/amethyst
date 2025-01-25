@@ -51,7 +51,6 @@ function clean_build_files() {
 }
 
 function clean_store_build_files() {
-    echo "here"
     for dir in "$STORE_DIR"/*/; do
         if [ -f "${dir}Makefile" ]; then
             make -C "${dir}" clean

@@ -156,6 +156,14 @@ bootstrap: $(BOOTSTRAP_SH)
 run: $(RUN_SH) | bootstrap
 	./$<
 
+.PHONY: run-kvm
+run-kvm: $(RUN_SH) | bootstrap
+	./$< -K
+
+.PHONY: debug
+debug: $(RUN_SH) | bootstrap
+	./$< -d
+
 .PHONY: test
 test:
 	$(MAKE) -C shard test
