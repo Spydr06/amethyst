@@ -57,7 +57,7 @@ size_t __file_write(FILE *f, const unsigned char *buf, size_t len) {
     if(!buf || !len)
         return 0;
 
-    size_t cnt = write(f->fd, buf, len);
+    ssize_t cnt = write(f->fd, buf, len);
     if(cnt < 0)
         f->flags |= F_ERR;
     return MAX(cnt, 0);

@@ -62,6 +62,9 @@
 #define alloc_meta __malloc_alloc_meta
 #define size_classes __malloc_size_classes
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+
 struct group {
     struct meta *meta;
     unsigned char active_idx : 5;

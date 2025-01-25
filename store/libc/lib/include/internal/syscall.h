@@ -5,9 +5,7 @@
 
 #define __SYSCALL_MAX_ARGS 6
 
-#if defined(__x86_64__) || defined(__x86_64)
-    #include <arch/x86_64/syscall.h>
-#endif
+#include <arch/syscall.h>
 
 // `__syscall()` macro and helpers from musl libc!
 #ifndef __scc

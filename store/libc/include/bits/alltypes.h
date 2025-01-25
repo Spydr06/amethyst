@@ -17,6 +17,10 @@ extern "C" {
     #define _Addr long
     #define _Reg long
     #define _Int64 long
+
+    #define __LONG_MAX 0x7fffffffffffffffL
+
+    typedef unsigned long __jmp_buf[8];
 #else
     #error Unsupported architecture!
 #endif

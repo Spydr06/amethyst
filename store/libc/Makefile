@@ -1,11 +1,15 @@
 PREFIX ?= /
 
+ARCH ?= x86_64
+ARCH_DIR := arch/$(ARCH)
+ARCH_INCLUDE_DIR := arch/$(ARCH)/include
+
 BUILD_DIR := build
 INCLUDE_DIR := include
 LIB_DIR := lib
 CRT_DIR := crt
 
-LIB_SOURCES := $(shell find $(LIB_DIR) -name '*.c' -or -name '*.S')
+LIB_SOURCES := $(shell find $(LIB_DIR) $(ARCH_DIR) -name '*.c' -or -name '*.S')
 LIB_OBJECTS := $(patsubst %,$(BUILD_DIR)/%.o,$(LIB_SOURCES))
 
 LIB_A := $(BUILD_DIR)/libc.a
@@ -24,7 +28,7 @@ PUBLIC_HEADERS := $(shell find $(INCLUDE_DIR) -name '*.h')
 
 INSTALL_TARGETS := $(patsubst $(BUILD_DIR)/%,$(PREFIX)/lib/%,$(TARGETS)) $(patsubst %,$(PREFIX)/%,$(PUBLIC_HEADERS))
 
-CFLAGS += -ggdb -nostdinc -nostdlib -nostartfiles -I$(INCLUDE_DIR) -I$(LIB_DIR)/$(INCLUDE_DIR) -Wall -Wextra -pedantic
+CFLAGS += -ggdb -nostdinc -nostdlib -nostartfiles -I$(ARCH_INCLUDE_DIR) -I$(INCLUDE_DIR) -I$(LIB_DIR)/$(INCLUDE_DIR) -Wall -Wextra -pedantic
 LDFLAGS += -nostdlib -nostartfiles
 
 .PHONY: all

@@ -1,11 +1,7 @@
 #ifndef _INTERNAL_ATOMIC_H
 #define _INTERNAL_ATOMIC_H
 
-#if defined(__x86_64__) || defined(__x86_64)
-    #include <arch/x86_64/atomic.h>
-#else
-    #error No atomic.h for this architecture
-#endif
+#include <arch/atomic.h>
 
 #include <stdint.h>
 
