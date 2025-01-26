@@ -39,6 +39,8 @@ extern enum klog_severity klog_min_severity;
 void __klog(enum klog_severity severity, const char* file, const char* format, ...) __attribute__((format(printf, 3, 4)));
 void __klog_inl(enum klog_severity severity, const char* file, const char* format, ...) __attribute__((format(printf, 3, 4)));
 
+void klog_set_log_level(const char* level);
+
 __noreturn void __panic(const char* file, int line, const char* function, struct cpu_context* ctx, const char* error, ...)
     __attribute__((format(printf, 5, 6)));
 

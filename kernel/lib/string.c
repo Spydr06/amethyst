@@ -230,6 +230,11 @@ int strncmp(const char *_l, const char *_r, size_t n)
 	return *l - *r;
 }
 
+int strcasecmp(const char* l, const char *r) {
+    for(; toupper(*l) == toupper(*r) && *l; l++, r++);
+    return *(unsigned char*) l - *(unsigned char*) r;
+}
+
 char* strcat(char* restrict dest, const char* restrict src) {
     strcpy(dest + strlen(dest), src);
     return dest;

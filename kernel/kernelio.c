@@ -325,6 +325,43 @@ void __klog_inl(enum klog_severity severity, const char* file, const char* forma
     va_end(ap);
 }
 
+static struct {
+    const char* level;
+    enum klog_severity severity;
+} log_level_strings[] = {
+    {"0", KLOG_DEBUG},
+    {"1", KLOG_DEBUG},
+    {"d", KLOG_DEBUG},
+    {"debug", KLOG_DEBUG},
+
+    {"2", KLOG_INFO},
+    {"i", KLOG_INFO},
+    {"info", KLOG_INFO},
+
+    {"3", KLOG_WARN},
+    {"w", KLOG_WARN},
+    {"warn", KLOG_WARN},
+
+    {"4", KLOG_ERROR},
+    {"e", KLOG_ERROR},
+    {"error", KLOG_ERROR}
+};
+
+void klog_set_log_level(const char* level) {
+    if(!level)
+        return;
+
+    for(size_t i = 0; i < __len(log_level_strings); i++) {
+        if(strcasecmp(level, log_level_strings[i].level))
+            continue;
+
+        klog_min_severity = log_level_strings[i].severity;
+        return;
+    }
+
+    klog(ERROR, "Kernel argument `loglevel`: Unknown parameter `%s`.", level);
+}
+
 void stdin_push_char(char c) {
     if(stdin_buffer_size >= __len(stdin_buffer)) {
         klog(WARN, "Kernel stdin buffer is full; dropping character '%c'.", c);

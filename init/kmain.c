@@ -46,6 +46,7 @@ void kmain(size_t cmdline_size, const char* cmdline)
 {
     cmdline_parse(cmdline_size, cmdline);
 
+    klog_set_log_level(cmdline_get("loglevel"));
     syscall_log_set(cmdline_get("log-syscalls") != nullptr);
     
     vmm_cache_init();
