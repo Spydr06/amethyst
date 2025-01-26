@@ -60,7 +60,7 @@ int initrd_unpack(void) {
         if(strncmp((const char*) entry.indicator, "ustar", 5))
             break;
 
-        klog(INFO, "Entry `%s`", entry.name);
+        //klog(INFO, "Entry `%s`", entry.name);
 
         struct vattr entry_attr;
         entry_attr.gid = entry.gid;

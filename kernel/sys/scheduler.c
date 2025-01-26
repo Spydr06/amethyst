@@ -601,7 +601,7 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
         return err;
 
     if(brk)
-        klog(INFO, "break: %p", brk);
+        klog(DEBUG, "break: %p", brk);
 
     struct vnode* tty_node;
     assert(devfs_find("tty0", &tty_node) == 0);

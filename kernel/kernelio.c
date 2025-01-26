@@ -271,7 +271,7 @@ enum klog_severity klog_min_severity = KLOG_DEBUG;
 #endif
 
 static const char* colors[__KLOG_MAX] = {
-    [KLOG_DEBUG] = "\e[38m",
+    [KLOG_DEBUG] = "\e[90m",
     [KLOG_INFO] = nullptr,
     [KLOG_WARN] = "\e[33m",
     [KLOG_ERROR] = "\e[31m"

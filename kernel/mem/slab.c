@@ -237,7 +237,7 @@ struct scache* slab_newcache(size_t size, size_t align, void (*ctor)(struct scac
 	cache->partial = nullptr;
 	spinlock_init(cache->lock);
 
-	klog(WARN, "new cache: size: %lu -- align: %lu -- true_size: %lu -- objcount: %lu", cache->size, cache->align, cache->true_size, cache->slab_obj_count);
+	klog(DEBUG, "new cache: size: %lu -- align: %lu -- true_size: %lu -- objcount: %lu", cache->size, cache->align, cache->true_size, cache->slab_obj_count);
 
 	return cache;
 }
