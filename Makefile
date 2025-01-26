@@ -16,8 +16,10 @@ LIMINE_LOADERS := $(LIMINE_DIR)/limine-bios.sys $(LIMINE_DIR)/limine-bios-cd.bin
 KERNEL_ELF ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).elf
 KERNEL_SYM ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).sym
 
-BOOTSTRAP_SH := bootstrap.sh
-RUN_SH := run.sh
+TOOLS_DIR ?= tools
+
+BOOTSTRAP_SH := $(TOOLS_DIR)/bootstrap.sh
+RUN_SH := $(TOOLS_DIR)/run.sh
 
 TOOLPREFIX ?= $(ARCH)-elf-
 

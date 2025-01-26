@@ -2,7 +2,7 @@
 
 set -e
 
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+PROJECT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." &> /dev/null && pwd)
 
 BUILD_DIR="$(pwd)/build"
 
@@ -10,8 +10,8 @@ NJOBS=1
 
 USE_GCBOEHM="-DSHARD_USE_GCBOEHM"
 
-CONFIGURATION_FILE="${SCRIPT_DIR}/configuration.shard"
-STORE_DIR="${SCRIPT_DIR}/store"
+CONFIGURATION_FILE="${PROJECT_DIR}/configuration.shard"
+STORE_DIR="${PROJECT_DIR}/store"
 
 RUN_AFTERWARDS=0
 
@@ -46,7 +46,7 @@ function show_help() {
 }
 
 function clean_build_files() {
-    make -C $SCRIPT_DIR clean
+    make -C $PROJECT_DIR clean
     [ -e amethyst.iso ] && rm -r amethyst.iso
 }
 
@@ -108,7 +108,7 @@ HOST_BUILD_DIR="${BUILD_DIR}/host"
 BOOTSTRAP_DIR="${BUILD_DIR}/bootstrap"
 GEODE_BIN="${HOST_BUILD_DIR}/geode-host"
 
-CFLAGS="${USE_GCBOEHM}" make -C ${SCRIPT_DIR}/shard -j${NJOBS} ${GEODE_BIN} BUILD_DIR=${HOST_BUILD_DIR}
+CFLAGS="${USE_GCBOEHM}" make -C ${PROJECT_DIR}/shard -j${NJOBS} ${GEODE_BIN} BUILD_DIR=${HOST_BUILD_DIR}
 
 [ -e ${GEODE_BIN} ] || error "compiling host geode binary failed."
 
@@ -119,8 +119,8 @@ ${GEODE_BIN} bootstrap --prefix=${BOOTSTRAP_DIR} --config=${CONFIGURATION_FILE} 
 echo "bootstrapping done."
 
 if [ $RUN_AFTERWARDS -ne 0 ]; then
-    pushd $SCRIPT_DIR
-    ./run.sh
+    pushd $PROJECT_DIR
+    tools/run.sh
     popd
 fi
 

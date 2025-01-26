@@ -6,6 +6,8 @@ A UNIX-like OS with functional configuration and scripting support.
 > This project is purely meant for educational purposes. There is no effort to produce production-ready code.
 > Expect many features to be buggy, broken or even unimplemented.
 
+![screenshot](tools/res/screenshot.png)
+
 ## Overview
 
 **This Project consists of three main pieces of software:**
@@ -85,7 +87,7 @@ $ cd amethyst
 2. Bootstrap the OS with the following command:
 
 ```console
-$ ./bootstrap.sh
+$ tools/bootstrap.sh
 ```
 
 > [!NOTE]
@@ -98,19 +100,19 @@ $ ./bootstrap.sh
 To run amethyst in `qemu`, use either the `run` or `run-kvm` make targets in order to run with or without KVM enabled.
 
 ```console
-$ ./run.sh
+$ tools/run.sh
 ```
 
 or (with KVM):
 
 ```console
-$ ./run.sh -K
+$ tools/run.sh -K
 ```
 
 or (for debugging with `gdb`):
 
 ```console
-$ ./run.sh -d
+$ tools/run.sh -d
 ```
 
 ## Contributing

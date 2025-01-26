@@ -2,16 +2,16 @@
 
 set -e
 
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+PROJECT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." &> /dev/null && pwd)
 
-BUILD_DIR="$SCRIPT_DIR/build"
+BUILD_DIR="$PROJECT_DIR/build"
 
 ENABLE_DEBUG=0
 ENABLE_KVM=0
 MEMORY="4G"
 CPUS=4
 QEMU_ARCH=x86_64
-QEMU_IMAGE="$SCRIPT_DIR/amethyst.iso"
+QEMU_IMAGE="$PROJECT_DIR/amethyst.iso"
 
 function error() {
     BRED="\033[1;31m"
