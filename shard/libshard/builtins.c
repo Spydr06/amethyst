@@ -505,8 +505,7 @@ static struct shard_value builtin_join(volatile struct shard_evaluator* e, struc
 
     struct shard_string concat = {0};
 
-    struct shard_list* cur = list.list.head;
-    do {
+    for(struct shard_list* cur = list.list.head; cur; cur = cur->next) {
         struct shard_value elem = shard_eval_lazy2(e, cur->value); 
         if(elem.type != SHARD_VAL_STRING)
             shard_eval_throw(e, *loc, "`builtins.list` expects second argument to be a list of strings");
@@ -515,9 +514,9 @@ static struct shard_value builtin_join(volatile struct shard_evaluator* e, struc
 
         if(cur->next)
             shard_gc_string_appendn(e->gc, &concat, intermediate.string, intermediate.strlen);
-    } while((cur = cur->next));
+    }
 
-    return STRING_VAL(concat.items, concat.count);
+    return STRING_VAL(EITHER(concat.items, ""), concat.count);
 }
 
 static struct shard_value builtin_length(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
