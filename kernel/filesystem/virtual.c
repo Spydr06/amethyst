@@ -442,12 +442,59 @@ int vfs_mount(struct vnode* backing, struct vnode* path_ref, const char* path, c
     spinlock_acquire(&list_lock);
 
     vfs->next = vfs_list;
+    if(vfs->next)
+        vfs->next->prev = vfs;
+    vfs->prev = nullptr;
     vfs_list = vfs;
 
     spinlock_release(&list_lock);
 
     mount_point->vfsmounted = vfs;
     vfs->node_covered = mount_point;
+
+    return 0;
+}
+
+int vfs_umount(struct vnode* path_ref, const char* path) {
+    struct vnode* cover_dir;
+    int err = vfs_lookup(&cover_dir, path_ref, path, nullptr, 0);
+    if(err)
+        return err;
+
+    struct vfs* vfs = cover_dir->vfs;
+    struct vnode* mount_point = vfs->node_covered;
+
+    if(!vfs || !mount_point || mount_point->vfsmounted != vfs || !vfs->ops->unmount)
+        return EINVAL;
+
+    struct vnode* mount_fs_root = nullptr;
+    err = vfs->ops->root(vfs, &mount_fs_root);
+    if(err)
+        return err;
+
+    if(mount_fs_root != cover_dir) // cover_dir is not mount point
+        return EINVAL;
+
+    err = vfs->ops->unmount(vfs);
+    if(err)
+        return err;
+
+    spinlock_acquire(&list_lock);
+
+    if(vfs->next)
+        vfs->next->prev = vfs->prev;
+    if(vfs->prev)
+        vfs->prev->next = vfs->next;
+
+    vfs->prev = nullptr;
+    vfs->next = nullptr;
+
+    spinlock_release(&list_lock);
+
+    mount_point->vfsmounted = nullptr;
+    vfs->node_covered = nullptr;
+
+    vop_release(&mount_point);
 
     return 0;
 }

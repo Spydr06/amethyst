@@ -54,6 +54,7 @@ int devfs_lookup(struct vnode* node, const char* name, struct vnode** result, st
 int devfs_find(const char* name, struct vnode** dest);
 
 int devfs_mount(struct vfs** vfs, struct vnode* mount_point, struct vnode* backing, void* data);
+int devfs_unmount(struct vfs* vfs);
 int devfs_create(struct vnode* parent, const char* name, struct vattr* attr, int type, struct vnode** result, struct cred* cred);
 
 int devfs_open(struct vnode** nodep, int flags, struct cred* cred);

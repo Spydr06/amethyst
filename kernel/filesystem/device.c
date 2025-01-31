@@ -21,6 +21,7 @@ static struct dev_node* devfs_root;
 
 static struct vfsops vfsops = {
     .mount = devfs_mount,
+    .unmount = devfs_unmount,
     .root = devfs_get_root
 };
 
@@ -178,6 +179,13 @@ int devfs_mount(struct vfs** vfs, struct vnode* mount_point __unused, struct vno
     *vfs = vfs_ptr;
     vfs_ptr->ops = &vfsops;
 
+    return 0;
+}
+
+int devfs_unmount(struct vfs* vfs) {
+    if(!vfs)
+        return EINVAL;
+    kfree(vfs);
     return 0;
 }
 

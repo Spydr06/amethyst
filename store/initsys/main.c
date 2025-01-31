@@ -29,6 +29,12 @@ int main(int argc, char** argv) {
 
     close(fb);
 
+    err = umount("/dev");
+    if(err) {
+        fprintf(stderr, "devfs: umount() failed: %m\n");
+        return 1;
+    }
+
     while(1);
 }
 

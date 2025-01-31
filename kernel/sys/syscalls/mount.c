@@ -1,3 +1,4 @@
+#include "filesystem/virtual.h"
 #include "sys/proc.h"
 #include <sys/syscall.h>
 
@@ -88,3 +89,38 @@ cleanup:
 
     return ret;
 }
+
+__syscall syscallret_t _sys_umount(struct cpu_context* ctx, const char* u_dir_name) {
+    syscallret_t ret = {
+        .ret = 0
+    };
+
+    size_t dir_name_len;
+    if(user_strlen(u_dir_name, &dir_name_len)) {
+        ret._errno = EINVAL;
+        return ret;
+    }
+
+    char* dir_name = kmalloc(dir_name_len + 1);
+    if(!dir_name) {
+        ret._errno = ENOMEM;
+        return ret;
+    }
+
+    struct vnode* dir_ref_node = nullptr;
+
+    if(memcpy_from_user(dir_name, u_dir_name, dir_name_len + 1))
+        goto cleanup;
+
+    dir_ref_node = dir_name[0] == '/' ? proc_get_root() : proc_get_cwd();
+
+    ret._errno = vfs_umount(dir_ref_node, dir_name);
+
+cleanup:
+    if(dir_ref_node)
+        vop_release(&dir_ref_node);
+
+    kfree(dir_name);
+    return ret;
+}
+

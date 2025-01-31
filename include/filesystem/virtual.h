@@ -79,6 +79,7 @@ struct vattr {
 
 struct vfs {
     struct vfs* next;
+    struct vfs* prev;
     struct vfsops* ops;
     struct vnode* node_covered;
     struct vnode* root;
@@ -139,7 +140,7 @@ typedef struct vops {
 enum vfs_lookup_flags {
     VFS_LOOKUP_PARENT = 0x20000000,
     VFS_LOOKUP_NOLINK = 0x40000000,
-    VFS_LOOKUP_INTERNAL = 0x80000000
+    VFS_LOOKUP_INTERNAL = 0x80000000,
 };
 
 extern struct vnode* vfs_root;
@@ -149,6 +150,7 @@ int vfs_lookup(struct vnode** dest, struct vnode* src, const char* path, char* l
 void vfs_init(void);
 
 int vfs_mount(struct vnode* backing, struct vnode* path_ref, const char* path, const char* fs_name, void* data);
+int vfs_umount(struct vnode* path_ref, const char* path);
 
 int vfs_create(struct vnode* ref, const char* path, struct vattr* attr, enum vtype type, struct vnode** node);
 int vfs_register(struct vfsops* vfsops, const char* name);
