@@ -13,6 +13,7 @@
 #include <errno.h>
 
 static int tmpfs_mount(struct vfs** vfs, struct vnode* mount_point, struct vnode* backing, void* data);
+static int tmpfs_unmount(struct vfs* vfs);
 static int tmpfs_root(struct vfs* vfs, struct vnode** node);
 
 static int tmpfs_create(struct vnode* parent, const char* name, struct vattr* attr, int type, struct vnode** result, struct cred* cred);
@@ -29,6 +30,7 @@ static int tmpfs_lookup(struct vnode* parent, const char* name, struct vnode** r
 
 static struct vfsops vfsops = {
     .mount = tmpfs_mount,
+    .unmount = tmpfs_unmount,
     .root = tmpfs_root,
 };
 
@@ -94,6 +96,19 @@ static int tmpfs_mount(struct vfs** vfs, struct vnode* mount_point __unused, str
 
     return 0;
 };
+
+static int tmpfs_unmount(struct vfs* vfs) {
+    if(!vfs)
+        return EINVAL;
+
+    struct tmpfs* fs = (struct tmpfs*) vfs;
+    kfree(fs);
+    
+    if(fs->vfs.root)
+        vop_release(&fs->vfs.root);
+
+    return 0;
+}
 
 static int tmpfs_root(struct vfs* vfs, struct vnode** node) {
     if(vfs->root) {
