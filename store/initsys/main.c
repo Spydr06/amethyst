@@ -1,35 +1,33 @@
 #include <unistd.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <stddef.h>
+#include <sys/mount.h>
+#include <sys/stat.h>
 #include <string.h>
+#include <stdlib.h>
 
 int main(int argc, char** argv) {
     printf("Hello, World <3\n");
 
-    FILE* f = fopen("test.txt", "w");
-    if(!f) {
-        fprintf(stderr, "fopen() failed: %m\n");
+    int err = mkdir("/dev", 0);
+    if(err) {
+        fprintf(stderr, "mkdir: failed creating '/dev': %m\n");
+        return 1;
+    }
+    
+    err = mount(NULL, "/dev", "devfs", 0, NULL);
+    if(err) {
+        fprintf(stderr, "devfs: mount() failed: %m\n");
         return 1;
     }
 
-    fputs("Written using fwrite()!\n", f);
-
-    fclose(f);
-
-    f = fopen("test.txt", "r");
-    if(!f) {
-        fprintf(stderr, "fopen() failed: %m\n");
+    int fb = open("/dev/fb0", O_WRONLY, 0);
+    if(!fb) {
+        fprintf(stderr, "/dev/fb0: open() failed: %m\n");
         return 1;
     }
 
-    char* buf = malloc(1024);
-    size_t r = fread(buf, 1023, sizeof(char), f);
-
-    fwrite(buf, r, sizeof(char), stdout);
-
-    free(buf);
-    fclose(f);
-
+    close(fb);
 
     while(1);
 }

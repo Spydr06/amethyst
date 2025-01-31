@@ -27,8 +27,10 @@ static struct vfsops vfsops = {
 static struct vops vnode_ops = {
     .create = devfs_create,
     .open = devfs_open,
+    .close = devfs_close,
     .read = devfs_read,
     .write = devfs_write,
+    .getattr = devfs_getattr,
     .setattr = devfs_setattr,
     .inactive = devfs_inactive,
     .lookup = devfs_lookup,
@@ -179,6 +181,17 @@ int devfs_mount(struct vfs** vfs, struct vnode* mount_point __unused, struct vno
     return 0;
 }
 
+int devfs_getattr(struct vnode* node, struct vattr* attr, struct cred* cred) {
+    struct dev_node* dev_node = (struct dev_node*) node;
+
+    if(dev_node->physical && dev_node->physical != node)
+        return vop_getattr(dev_node->physical, attr, cred);
+    
+    *attr = dev_node->vattr;
+    attr->type =node->type;
+    return 0;
+}
+
 int devfs_setattr(struct vnode* node, struct vattr* attr, int which, struct cred* cred) {
     struct dev_node* dev_node = (struct dev_node*) node;
 
@@ -285,6 +298,21 @@ int devfs_open(struct vnode** nodep, int flags, struct cred* __unused) {
         return 0;
 
     return dev_node->devops->open(dev_node->vattr.rdev_minor, nodep, flags);
+}
+
+int devfs_close(struct vnode* node, int flags, struct cred* __unused) {
+    struct dev_node* dev_node = (struct dev_node*) node;
+
+    if(node->type != V_TYPE_CHDEV && node->type != V_TYPE_BLKDEV)
+        return 0;
+
+    if(dev_node->master)
+        dev_node = dev_node->master;
+
+    if(!dev_node->devops->close)
+        return 0;
+
+    return dev_node->devops->close(dev_node->vattr.rdev_minor, flags);
 }
 
 int devfs_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_read, struct cred* __unused) {

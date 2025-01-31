@@ -37,6 +37,8 @@ struct proc {
     struct fd* fd;
     mode_t umask;
 
+    struct vnode* cwd;
+    struct vnode* root;
     spinlock_t nodes_lock;
 
     semaphore_t wait_sem;
@@ -46,6 +48,15 @@ struct proc {
 static inline mode_t umask(mode_t mode) {
     return mode & ~_cpu()->thread->proc->umask;
 }
+
+void proc_init(void);
+
+pid_t proc_new_pid(void);
+
+struct proc* proc_create(void);
+
+struct vnode* proc_get_root(void);
+struct vnode* proc_get_cwd(void);
 
 #endif /* _AMETHYST_SYS_PROC_H */
 

@@ -25,6 +25,14 @@ extern "C" {
     #error Unsupported architecture!
 #endif
 
+#if __cplusplus >= 201103L
+    #define NULL nullptr
+#elif defined(__cplusplus)
+    #define NULL 0L
+#else
+    #define NULL ((void*) 0)
+#endif
+
 typedef signed _Addr intptr_t;
 typedef unsigned _Addr uintptr_t;
 typedef _Addr ptrdiff_t;

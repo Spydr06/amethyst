@@ -1,3 +1,4 @@
+#include "sys/fb.h"
 #include "sys/syscall_log.h"
 #include <cpu/cpu.h>
 #include <drivers/pci/pci.h>
@@ -57,6 +58,7 @@ void kmain(size_t cmdline_size, const char* cmdline)
 
     pseudodevices_init();
 
+    fbdev_init();
     tty_init();
     create_ttys(); 
 

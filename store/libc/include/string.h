@@ -7,14 +7,6 @@
 extern "C" {
 #endif
 
-#if __cplusplus >= 201103L
-    #define NULL nullptr
-#elif defined(__cplusplus)
-    #define NULL 0L
-#else
-    #define NULL ((void*) 0)
-#endif
-
 void* memcpy(void* restrict d, const void* restrict s, size_t n);
 void* memmove(void* d, const void* restrict s, size_t n);
 void* memset(void* s, int c, size_t n);

@@ -79,5 +79,8 @@ struct thread {
 
 static_assert(sizeof(struct thread) <= PAGE_SIZE);
 
+void thread_init(void);
+struct thread* thread_create(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack, void* user_brk);
+
 #endif /* _AMETHYST_SCHEDULER_THREAD_H */
 

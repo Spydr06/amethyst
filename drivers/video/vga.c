@@ -1,5 +1,3 @@
-#include "mem/pmm.h"
-#include "mem/vmm.h"
 #include <cdefs.h>
 #include <stdint.h>
 #include <drivers/video/vga.h>
@@ -13,16 +11,16 @@
 
 struct vga vga;
 
-static volatile struct limine_framebuffer_request framebuffer_request = {
+volatile struct limine_framebuffer_request limine_fb_request = {
     .id = LIMINE_FRAMEBUFFER_REQUEST,
     .revision = 0
 };
 
 int vga_init(void) {
-    if(!framebuffer_request.response || !framebuffer_request.response->framebuffer_count)
+    if(!limine_fb_request.response || !limine_fb_request.response->framebuffer_count)
         return ENOMEM;
 
-    struct limine_framebuffer* fb = framebuffer_request.response->framebuffers[0];
+    struct limine_framebuffer* fb = limine_fb_request.response->framebuffers[0];
     
     vga.mode = VGA_RGBA_FRAMEBUFFER; // TODO: check for this
     vga.pitch = fb->pitch;
@@ -34,7 +32,6 @@ int vga_init(void) {
 
     vga.framebuffer = fb->address;
     vga.address = vga.framebuffer;
-
 
     return 0;
 }

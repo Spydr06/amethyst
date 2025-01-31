@@ -32,6 +32,8 @@ struct vga {
 extern struct vga vga;
 extern uint32_t vga_color_map[256];
 
+extern volatile struct limine_framebuffer_request limine_fb_request;
+
 int vga_init(void);
 
 void vga_put_pixel(uint32_t x, uint32_t y, uint32_t color);

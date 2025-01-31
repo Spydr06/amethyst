@@ -1,6 +1,5 @@
 #include "filesystem/device.h"
 #include "filesystem/virtual.h"
-#include "mem/heap.h"
 #include "sys/fd.h"
 #include "sys/semaphore.h"
 #include "sys/syscall.h"
@@ -44,18 +43,11 @@ struct check_args {
     uint64_t syscall_ret;
 };
 
-static struct scache* thread_cache;
-static struct scache* proc_cache;
-
 static spinlock_t run_queue_lock;
 static uint64_t run_queue_bitmap;
 
 static struct run_queue run_queue[RUN_QUEUE_COUNT];
 
-static hashtable_t pid_table;
-mutex_t sched_pid_table_mutex;
-
-static pid_t current_pid = 1;
 
 void sched_pin(cpuid_t pin) {
     bool interrupt_status = interrupt_set(false);
@@ -334,13 +326,8 @@ int sched_yield(void) {
 
 // main scheduler entry
 void scheduler_init(void) {
-    thread_cache = slab_newcache(sizeof(struct thread), 0, nullptr, nullptr);
-    assert(thread_cache);
-    proc_cache = slab_newcache(sizeof(struct proc), 0, nullptr, nullptr);
-    assert(proc_cache);
-
-    assert(hashtable_init(&pid_table, 100) == 0);
-    mutex_init(&sched_pid_table_mutex);
+    proc_init();
+    thread_init();
 
     _cpu()->scheduler_stack = vmm_map(nullptr, SCHEDULER_STACK_SIZE, VMM_FLAGS_ALLOCATE, MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, nullptr);
     assert(_cpu()->scheduler_stack);
@@ -348,9 +335,9 @@ void scheduler_init(void) {
 
     spinlock_init(run_queue_lock);
 
-    _cpu()->idle_thread = sched_new_thread(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr, nullptr);
+    _cpu()->idle_thread = thread_create(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr, nullptr);
     assert(_cpu()->idle_thread);
-    _cpu()->thread = sched_new_thread(nullptr, PAGE_SIZE * 32, 0, nullptr, nullptr, nullptr);
+    _cpu()->thread = thread_create(nullptr, PAGE_SIZE * 32, 0, nullptr, nullptr, nullptr);
     assert(_cpu()->thread);
 
     // install scheduling timer
@@ -366,7 +353,7 @@ void scheduler_apentry(void) {
     assert(_cpu()->scheduler_stack);
     _cpu()->scheduler_stack = (void*)((uintptr_t) _cpu()->scheduler_stack + SCHEDULER_STACK_SIZE);
 
-    _cpu()->idle_thread = sched_new_thread(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr, nullptr);
+    _cpu()->idle_thread = thread_create(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr, nullptr);
     assert(_cpu()->idle_thread);
 
     // install scheduling timer
@@ -374,46 +361,6 @@ void scheduler_apentry(void) {
 
     // start scheduling timer
     timer_resume(_cpu()->timer);
-}
-
-struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack, void* user_brk) {
-    struct thread* thread = slab_alloc(thread_cache);
-    if(!thread)
-        return nullptr;
-
-    memset(thread, 0, sizeof(struct thread));
-
-    thread->kernel_stack = vmm_map(nullptr, kernel_stack_size, VMM_FLAGS_ALLOCATE, MMU_FLAGS_WRITE | MMU_FLAGS_READ | MMU_FLAGS_NOEXEC, nullptr);
-    if(!thread->kernel_stack) {
-        slab_free(thread_cache, thread);
-        return nullptr;
-    }
-
-    thread->kernel_stack_top = (void*)((uintptr_t) thread->kernel_stack + kernel_stack_size);
-    thread->pin = THREAD_UNPINNED;
-    
-    thread->vmm_context = proc ? nullptr : &vmm_kernel_context;
-    thread->user_brk = (struct brk){
-        .base = user_brk,
-        .top = user_brk
-    };
-    thread->proc = proc;
-    thread->priority = priority;
-    if(proc) {
-        PROC_HOLD(proc);
-        thread->tid = __atomic_fetch_add(&current_pid, 1, __ATOMIC_SEQ_CST);
-    }
-
-    cpu_ctx_init(&thread->context, proc, true);
-    cpu_extra_ctx_init(&thread->extra_context);
-
-    CPU_SP(&thread->context) = proc ? (register_t) user_stack : (register_t) thread->kernel_stack_top;
-    CPU_IP(&thread->context) = (register_t) ip;
-
-    spinlock_init(thread->sleep_lock);
-    spinlock_init(thread->signals.lock);
-
-    return thread;
 }
 
 static void _internal_thread_exit(struct cpu_context* __unused, void* __unused) {
@@ -459,48 +406,6 @@ static __noreturn void sched_thread_exit(void) {
 
 static void sched_stop_other_threads(void) {
     // TODO:
-}
-
-struct proc* sched_new_proc(void) {
-    struct proc* proc = slab_alloc(proc_cache);
-    if(!proc)
-        return nullptr;
-
-    memset(proc, 0, sizeof(struct proc));
-
-    mutex_init(&proc->mutex);
-    spinlock_init(proc->nodes_lock);
-    
-    proc->pid = __atomic_fetch_add(&current_pid, 1, __ATOMIC_SEQ_CST);
-
-    proc->ref_count = 1;
-    proc->state = PROC_STATE_NORMAL;
-    proc->running_thread_count = 1;
-    
-    proc->fd_count = 3;
-    proc->fd_first = 1;
-    mutex_init(&proc->fd_mutex);
-
-    proc->fd = kmalloc(sizeof(struct fd) * proc->fd_count);
-    if(!proc->fd) {
-        slab_free(proc_cache, proc);
-        return nullptr;
-    }
-
-    proc->umask = 022;
-    
-    semaphore_init(&proc->wait_sem, 0);
-
-    mutex_acquire(&sched_pid_table_mutex, false);
-    if(hashtable_set(&pid_table, proc, &proc->pid, sizeof(pid_t), true)) {
-        mutex_release(&sched_pid_table_mutex);
-        kfree(proc->fd);
-        slab_free(proc_cache, proc);
-        return nullptr;
-    }
-    mutex_release(&sched_pid_table_mutex);
-
-    return proc;
 }
 
 static void userspace_check(struct check_args* __unused) {
@@ -581,7 +486,7 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
 
     vmm_switch_context(vmm_ctx);
 
-    struct proc* proc = sched_new_proc();
+    struct proc* proc = proc_create();
     assert(proc);
     
     struct vnode* exec_node;
@@ -626,6 +531,11 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
     proc->fd[0] = (struct fd){.file = stdin,  .flags = 0};
     proc->fd[1] = (struct fd){.file = stdout, .flags = 0};
     proc->fd[2] = (struct fd){.file = stderr, .flags = 0};
+
+    proc->cwd = vfs_root;
+    vop_hold(vfs_root);
+    proc->root = vfs_root;
+    vop_hold(vfs_root);
     
     void* stack = elf_prepare_stack(STACK_TOP, &auxv, argv, envp);
     if(!stack)
@@ -633,7 +543,7 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
 
     vmm_switch_context(&vmm_kernel_context);
 
-    struct thread* user_thread = sched_new_thread(entry, PAGE_SIZE * 16, 1, proc, stack, brk);
+    struct thread* user_thread = thread_create(entry, PAGE_SIZE * 16, 1, proc, stack, brk);
     assert(user_thread);
 
     // TODO: proc
