@@ -5,19 +5,27 @@
 #include <errno.h>
 
 #include <limine/limine.h>
+#include <mem/heap.h>
+#include <mem/user.h>
 
 #include <filesystem/device.h>
 #include <kernelio.h>
 #include <drivers/video/vga.h>
 
+static size_t fb_count;
+static struct fb_fix_screeninfo* fix_infos;
+static struct fb_var_screeninfo* var_infos;
+
 static int fb_read(int minor, void* buffer, size_t size, uintmax_t offset, int flags, size_t *readc);
 static int fb_write(int minor, void* buffer, size_t size, uintmax_t offset, int flags, size_t *writec);
 static int fb_maxseek(int minor, size_t* max);
+static int fb_ioctl(int minor, uint64_t request, void* arg, int* result);
 
 static struct devops fb_ops = {
     .read = fb_read,
     .write = fb_write,
     .maxseek = fb_maxseek,
+    .ioctl = fb_ioctl
 };
 
 static inline const struct limine_framebuffer* fb_get(int minor) {
@@ -72,19 +80,60 @@ static int fb_maxseek(int minor, size_t* max) {
     return 0;
 }
 
+static int fb_ioctl(int minor, uint64_t request, void* arg, int* __unused) {
+    if(minor < 0 || (size_t) minor >= fb_count)
+        return ENODEV;
+
+    switch(request) {
+        case FBIOGET_FSCREENINFO:
+            return memcpy_maybe_to_user(arg, fix_infos + minor, sizeof(struct fb_fix_screeninfo));
+        case FBIOGET_VSCREENINFO:
+            return memcpy_maybe_to_user(arg, var_infos + minor, sizeof(struct fb_var_screeninfo));
+        default:
+            return ENOTTY;
+    }
+}
+
 void fbdev_init(void) {
     if(!limine_fb_request.response || !limine_fb_request.response->framebuffer_count) {
         klog(WARN, "No framebuffer devices found\n");
         return;
     }
 
+    fb_count = limine_fb_request.response->framebuffer_count;
+    fix_infos = kcalloc(fb_count, sizeof(struct fb_fix_screeninfo));
+    var_infos = kcalloc(fb_count, sizeof(struct fb_var_screeninfo));
+
     char name[64];
 
-    for(size_t i = 0; i < limine_fb_request.response->framebuffer_count; i++) {
+    for(size_t i = 0; i < fb_count; i++) {
         struct limine_framebuffer* fb = limine_fb_request.response->framebuffers[i];
 
         memcpy(name, "fb", 3);
         utoa((uint64_t) i, name + 2, 10);
+
+        struct fb_var_screeninfo* var = var_infos + i;
+        var->xres = fb->width;
+        var->yres = fb->height;
+        var->bits_per_pixel = fb->bpp;
+        var->red.msb_right = 1;
+        var->red.offset = fb->red_mask_shift;
+        var->red.length = fb->red_mask_size;
+        var->green.msb_right = 1;
+        var->green.offset = fb->green_mask_shift;
+        var->green.length = fb->green_mask_size;
+        var->blue.msb_right = 1;
+        var->blue.offset = fb->blue_mask_shift;
+        var->blue.length = fb->blue_mask_size;
+        var->trans.msb_right = 1;
+
+        struct fb_fix_screeninfo* fix = fix_infos + i;
+        strncpy(fix->id, "LIMINE FB", __len(fix->id));
+        fix->smem_start = fb->address;
+        fix->smem_len = fb->height * fb->pitch;
+        fix->type = FB_TYPE_PACKED_PIXELS;
+        fix->visual = FB_VISUAL_TRUECOLOR;
+        fix->line_length = fb->pitch;
 
         int err = devfs_register(&fb_ops, name, V_TYPE_CHDEV, DEV_MAJOR_FB, i, 0666);
         if(err) {

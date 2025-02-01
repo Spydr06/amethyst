@@ -128,7 +128,7 @@ typedef struct vops {
 	int (*munmap)(struct vnode *node, void *addr, uintmax_t offset, int flags, struct cred *cred);
 	int (*getdents)(struct vnode *node, struct dent *buffer, size_t count, uintmax_t offset, size_t *readcount);
 	int (*isatty)(struct vnode *node);
-	int (*ioctl)(struct vnode *node, unsigned long request, void *arg, int *result);
+	int (*ioctl)(struct vnode *node, unsigned long request, void *arg, int *result, struct cred* cred);
 	int (*maxseek)(struct vnode *node, size_t *max);
 	int (*resize)(struct vnode *node, size_t newsize, struct cred *cred);
 	int (*rename)(struct vnode *source, char *oldname, struct vnode *target, char *newname, int flags);
@@ -245,6 +245,10 @@ static inline void vop_init(struct vnode* node, struct vops* vops, enum vflags f
     node->type = type;
     node->vfs = vfs;
     node->vfsmounted = nullptr;
+}
+
+static inline int vop_ioctl(struct vnode* node, unsigned long request, void* arg, int* result, struct cred* cred) {
+    return node->ops->ioctl(node, request, arg, result, cred);
 }
 
 static inline int vop_resize(struct vnode *node, size_t newsize, struct cred *cred) {

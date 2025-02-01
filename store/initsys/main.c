@@ -3,8 +3,10 @@
 #include <stddef.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <string.h>
 #include <stdlib.h>
+#include <amethyst/fb.h>
 
 struct target {
     const char* mount_point;
@@ -49,6 +51,14 @@ int main(int argc, char** argv) {
         fprintf(stderr, "/dev/fb0: open() failed: %m\n");
         return 1;
     }
+
+    struct fb_var_screeninfo fb_info;
+    int err = ioctl(fb, FBIOGET_VSCREENINFO, &fb_info);
+    if(!err) {
+        fprintf(stderr, "/dev/fb0: ioctl() failed: %m\n");
+    }
+
+    printf("fb: %ux%u\n", fb_info.xres, fb_info.yres);
 
     close(fb);
 

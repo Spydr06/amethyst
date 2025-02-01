@@ -66,6 +66,7 @@ int devfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset,
 int devfs_setattr(struct vnode* node, struct vattr* attr, int which, struct cred* cred);
 int devfs_getattr(struct vnode* node, struct vattr* attr, struct cred* cred);
 
+int devfs_ioctl(struct vnode* node, unsigned long request, void* arg, int* ret, struct cred* cred);
 int devfs_inactive(struct vnode* node);
 
 #endif /* _AMETHYST_FILESYSTEM_DEVICE_H */

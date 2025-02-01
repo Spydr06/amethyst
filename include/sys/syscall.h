@@ -23,6 +23,7 @@ enum syscall {
     _SYS_brk      = 12,
     _SYS_mount    = 13,
     _SYS_umount   = 14,
+    _SYS_ioctl    = 16,
     _SYS_exit     = 60,
     _SYS_knldebug = 255
 };
@@ -60,6 +61,8 @@ __syscall syscallret_t _sys_brk(struct cpu_context* ctx, void* addr);
 
 __syscall syscallret_t _sys_mount(struct cpu_context* ctx, char* u_backing, char* u_dir_name, char* u_type, register_t flags, void* data);
 __syscall syscallret_t _sys_umount(struct cpu_context* ctx, const char* u_dir_name);
+
+__syscall syscallret_t _sys_ioctl(struct cpu_context* ctx, int fd, unsigned long request, void* arg);
 
 __syscall syscallret_t _sys_exit(struct cpu_context* ctx, int exit_code);
 __syscall syscallret_t _sys_knldebug(struct cpu_context* ctx, enum klog_severity severity, const char* user_buffer, size_t buffer_size);

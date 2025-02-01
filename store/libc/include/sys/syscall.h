@@ -17,6 +17,7 @@ extern "C" {
 #define SYS_brk         12
 #define SYS_mount       13
 #define SYS_umount      14
+#define SYS_ioctl       16
 #define SYS_exit        60
 #define SYS_debuglog    255
 

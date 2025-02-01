@@ -3,6 +3,7 @@
 #include <mem/user.h>
 #include <cpu/cpu.h>
 #include <sys/thread.h>
+#include <errno.h>
 
 //
 // memcpy
@@ -29,7 +30,21 @@ int memcpy_from_user(void *kernel_dest, const void *user_src, size_t size) {
         .size = size
     };
 
-    // TODO: check if `user_src` really is a user address
+    if(!is_userspace_addr(user_src))
+        return EFAULT;
+
+    return _context_save_and_call(_memcpy, nullptr, &desc);
+}
+
+int memcpy_to_user(void* user_dest, const void* kernel_src, size_t size) {
+    struct memcpy_desc desc = {
+        .dst = user_dest,
+        .src = kernel_src,
+        .size = size
+    };
+
+    if(is_userspace_addr(user_dest) == false)
+        return EFAULT;
 
     return _context_save_and_call(_memcpy, nullptr, &desc);
 }

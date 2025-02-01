@@ -34,6 +34,7 @@ static struct vops vnode_ops = {
     .getattr = devfs_getattr,
     .setattr = devfs_setattr,
     .inactive = devfs_inactive,
+    .ioctl = devfs_ioctl,
     .lookup = devfs_lookup,
 };
 
@@ -397,3 +398,15 @@ int devfs_inactive(struct vnode* node) {
     slab_free(node_cache, node);
     return 0;
 }
+
+int devfs_ioctl(struct vnode* node, unsigned long request, void* arg, int* ret, struct cred* __unused) {
+    if(node->type != V_TYPE_BLKDEV && node->type != V_TYPE_CHDEV)
+        return ENODEV;
+
+    struct dev_node* dev_node = (struct dev_node*) node;
+    if(dev_node->master)
+        dev_node = dev_node->master;
+
+    return dev_node->devops->ioctl ? dev_node->devops->ioctl(dev_node->vattr.dev_minor, request, arg, ret) : ENOTTY;
+}
+
