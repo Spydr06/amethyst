@@ -12,6 +12,7 @@ MEMORY="4G"
 CPUS=4
 QEMU_ARCH=x86_64
 QEMU_IMAGE="$PROJECT_DIR/amethyst.iso"
+GDB=gdb
 
 function error() {
     BRED="\033[1;31m"
@@ -69,6 +70,9 @@ while [[ $# -gt 0 ]]; do
         --image=*)
             QEMU_IMAGE=${1#*=}
             ;;
+        (--gdb=*)
+            GDB=${1#*=}
+            ;;
         *)
             error "unknown option -- '$1'"
             ;;
@@ -91,7 +95,7 @@ fi
 
 if [ $ENABLE_DEBUG -eq 1 ]; then
     $QEMU $QEMUFLAGS -s -S &
-    gdb -ex "target remote localhost:1234" -ex "symbol-file ${SYMBOL_FILE}"
+    $GDB -ex "target remote localhost:1234" -ex "symbol-file ${SYMBOL_FILE}"
 else
     $QEMU $QEMUFLAGS
 fi

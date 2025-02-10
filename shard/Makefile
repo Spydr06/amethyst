@@ -47,7 +47,7 @@ override CFLAGS := $(call unique, $(CFLAGS))
 
 ifneq (,$(findstring SHARD_USE_GCBOEHM, $(CFLAGS)))
 	LIBSHARD_OBJECTS += $(GCBOEHM_LIB)
-	CFLAGS += -I$(GCBOEHM_SRC_DIR)/include
+	override CFLAGS += -I$(GCBOEHM_SRC_DIR)/include
 endif
 
 .PHONY: all
@@ -92,7 +92,7 @@ $(LIBSHARD_OBJ): $(LIBSHARD_OBJECTS) | $(BUILD_DIR)
 	@echo "  LD    $@"
 	@$(LD) -r $^ -o $@
 
-$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR) $(GCBOEHM_LIB) 
 	@echo "  CC    $^"
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) $(if $(filter $(GEODE_DIR)/%,$<),$(GEODE_CFLAGS)) -MMD -MP -MF "$(@:%.o=%.d)" -c $^ -o $@
