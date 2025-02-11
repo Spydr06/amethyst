@@ -24,7 +24,13 @@ config: let
             "-no-emul-boot" "-boot-load-size" 4 "-boot-info-table"
             (util.paths.prefix) "-o" file            
         ])
-        (geode.proc.spawn "limine/limine" ["bios-install" file] true)
+
+        (let installCmd = if (geode.getenv "NIXOS_HOST") == null
+            then [ "limine/limine" "bios-install" file ]
+            else [ "steam-run" "limine/limine" "bios-install" file ];
+        in
+            (geode.proc.spawn (builtins.head installCmd) (builtins.tail installCmd) true)
+        )
     ];
 in 
     builtins.seqList [
