@@ -40,7 +40,7 @@ with import ./../geode.shard; {
         hooks = {
             postMkIso = iso: with builtins; 
             let
-                installer = biosInstaller "foo";
+                installer = biosInstaller iso;
             in if config.boot.loader.platform.bios 
                 then geode.proc.spawn (head installer) (tail installer) true
                 else null;
