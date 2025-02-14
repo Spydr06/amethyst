@@ -1,6 +1,19 @@
-# Amethyst 
+<div align="center">
 
-A UNIX-like OS with functional configuration and scripting support.
+<table>
+    <tr>
+        <td>
+            <img width="128" src="./tools/res/amethyst-hd.png"></img>
+        </td>
+        <td valign="center">
+            <h1>Amethyst</h1>
+        </td>
+    </tr>
+</table>
+
+<h3>A UNIX-like OS with functional configuration and scripting support.</h3>
+
+</div>
 
 > [!IMPORTANT]
 > This project is purely meant for educational purposes. There is no effort to produce production-ready code.
