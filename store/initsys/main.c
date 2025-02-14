@@ -6,6 +6,7 @@
 #include <sys/ioctl.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/mman.h>
 #include <amethyst/fb.h>
 
 struct target {
@@ -52,13 +53,19 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    struct fb_var_screeninfo fb_info;
-    int err = ioctl(fb, FBIOGET_VSCREENINFO, &fb_info);
-    if(!err) {
-        fprintf(stderr, "/dev/fb0: ioctl() failed: %m\n");
+    struct fb_var_screeninfo fb_vi;
+    ioctl(fb, FBIOGET_VSCREENINFO, &fb_vi);
+
+    struct fb_fix_screeninfo fb_fi;
+    ioctl(fb, FBIOGET_FSCREENINFO, &fb_fi);
+
+    void* fb_buf = mmap(NULL, fb_fi.smem_len, PROT_WRITE, MAP_SHARED, fb, 0);
+    if(!fb_buf) {
+        fprintf(stderr, "/dev/fb0: mmap() failed: %m\n");
     }
 
-    printf("fb: %ux%u\n", fb_info.xres, fb_info.yres);
+    memset(fb_buf, 0xff, fb_fi.smem_len);
+    printf("Here!\n");
 
     close(fb);
 

@@ -69,5 +69,7 @@ int devfs_getattr(struct vnode* node, struct vattr* attr, struct cred* cred);
 int devfs_ioctl(struct vnode* node, unsigned long request, void* arg, int* ret, struct cred* cred);
 int devfs_inactive(struct vnode* node);
 
+int devfs_mmap(struct vnode* node, void* addr, uintmax_t offset, int flags, struct cred* cred);
+
 #endif /* _AMETHYST_FILESYSTEM_DEVICE_H */
 

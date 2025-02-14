@@ -51,7 +51,7 @@ __syscall syscallret_t _sys_write(struct cpu_context* __unused, int fd, const vo
         offset = attr.size;
     }
 
-    ret._errno = vfs_write(file->vnode, buffer, size, offset, &bytes_written, file_to_vnode_flags(file->flags));
+    ret._errno = vfs_write(file->vnode, (void*) buffer, size, offset, &bytes_written, file_to_vnode_flags(file->flags));
     if(ret._errno)
         goto cleanup;
 

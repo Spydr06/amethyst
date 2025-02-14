@@ -39,6 +39,7 @@ static struct vmm_space* get_space(void* vaddr);
 
 static void free_range(struct vmm_range* range);
 static struct vmm_range* alloc_range(void);
+static void* get_range(struct vmm_space* space, void* addr);
 static void* get_free_range(struct vmm_space* space, void* addr, size_t offset);
 static void insert_range(struct vmm_space* space, struct vmm_range* range);
 static int change_map(struct vmm_space* space, void* addr, size_t size, bool free, enum vmm_flags flags, enum mmu_flags new_mmu_flags);
@@ -155,6 +156,7 @@ void* vmm_map(void* addr, size_t size, enum vmm_flags flags, enum mmu_flags mmu_
     if(!(range = alloc_range()))
         goto cleanup;
 
+    ret_addr = start;
     range->start = start;
     range->size = size;
     range->flags = VMM_PERMANENT_FLAGS_MASK & flags;
@@ -236,6 +238,69 @@ void vmm_unmap(void* addr, size_t size, enum vmm_flags flags) {
     mutex_release(&space->lock);
 }
 
+bool vmm_pagefault(void* addr, bool user, enum vmm_action actions) {
+    if(!user && addr > USERSPACE_END)
+        return false;
+
+    addr = (void*) ROUND_DOWN((uintptr_t) addr, PAGE_SIZE);
+    struct vmm_space* space = get_space(addr);
+
+    if(!space || (space == &kernel_space && user)) {
+        klog(ERROR, "no such space or space accessed in kernel\n");
+        return false;
+    }
+
+    mutex_acquire(&space->lock, false);
+
+    bool handled = false;
+    struct vmm_range* range = get_range(space, addr);
+    if(!range)
+        goto cleanup;
+
+    enum vmm_action invalid_actions = 0;
+    if(!(range->mmu_flags & MMU_FLAGS_READ))
+        invalid_actions |= VMM_ACTION_READ;
+    if(!(range->mmu_flags & MMU_FLAGS_WRITE))
+        invalid_actions |= VMM_ACTION_WRITE;
+    if(range->mmu_flags & MMU_FLAGS_NOEXEC)
+        invalid_actions |= VMM_ACTION_EXEC;
+
+    if(invalid_actions & actions) {
+        char invalid_str[4], action_str[4];
+        vmm_action_as_str(invalid_actions, invalid_str);
+        vmm_action_as_str(actions, action_str);
+
+        klog(ERROR, "memory actions are not disjunct: %x <> %x [%s <> %s]", invalid_actions, actions, invalid_str, action_str);
+        goto cleanup;
+    }
+
+    struct thread* thread = _cpu()->thread;
+    struct proc* proc = thread ? thread->proc : NULL;
+    struct cred* cred = proc ? &proc->cred : NULL;
+
+    if(!mmu_is_present(thread->vmm_context->page_table, addr)) {
+        // page not present in page tables
+        if(range->flags & VMM_FLAGS_FILE) {
+            uintmax_t map_offset = (uintptr_t) addr - (uintptr_t) range->start;
+            vop_lock(range->vnode);
+            assert(vop_mmap(range->vnode, addr, range->offset + map_offset, V_FFLAGS_READ | mmu_to_vnode_flags(range->mmu_flags) | (range->flags & VMM_FLAGS_SHARED ? V_FFLAGS_SHARED : 0), cred) == 0);
+            vop_unlock(range->vnode);
+            handled = true;
+        }
+    }
+    else if(!mmu_is_writable(thread->vmm_context->page_table, addr)) {
+        here();
+    }
+    else
+        handled = true;
+
+
+cleanup:
+    mutex_release(&space->lock);
+
+    return handled;
+}
+
 static struct vmm_cache* new_cache(void) {
     struct vmm_cache* ptr = pmm_alloc_page(PMM_SECTION_DEFAULT);
     if(!ptr)
@@ -265,6 +330,15 @@ static struct vmm_space* get_space(void* vaddr) {
         return nullptr;
 }
 
+static void* get_range(struct vmm_space* space, void* addr) {
+    struct vmm_range* range = space->ranges;
+    while(range) {
+        if(addr >= range->start && addr < RANGE_TOP(range))
+            break;
+        range = range->next;
+    }
+    return range;
+}
 
 static void* get_free_range(struct vmm_space* space, void* addr, size_t size) {
     struct vmm_range* range = space->ranges;

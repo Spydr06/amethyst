@@ -90,7 +90,7 @@ cleanup:
     return ret;
 }
 
-__syscall syscallret_t _sys_umount(struct cpu_context* ctx, const char* u_dir_name) {
+__syscall syscallret_t _sys_umount(struct cpu_context* __unused, const char* u_dir_name) {
     syscallret_t ret = {
         .ret = 0
     };

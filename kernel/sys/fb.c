@@ -1,8 +1,10 @@
+#include "filesystem/virtual.h"
 #include <sys/fb.h>
 
 #include <stddef.h>
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 
 #include <limine/limine.h>
 #include <mem/heap.h>
@@ -20,12 +22,14 @@ static int fb_read(int minor, void* buffer, size_t size, uintmax_t offset, int f
 static int fb_write(int minor, void* buffer, size_t size, uintmax_t offset, int flags, size_t *writec);
 static int fb_maxseek(int minor, size_t* max);
 static int fb_ioctl(int minor, uint64_t request, void* arg, int* result);
+static int fb_mmap(int minor, void* addr, uintmax_t offset, int flags);
 
 static struct devops fb_ops = {
     .read = fb_read,
     .write = fb_write,
     .maxseek = fb_maxseek,
-    .ioctl = fb_ioctl
+    .ioctl = fb_ioctl,
+    .mmap = fb_mmap,
 };
 
 static inline const struct limine_framebuffer* fb_get(int minor) {
@@ -77,6 +81,34 @@ static int fb_maxseek(int minor, size_t* max) {
         return ENODEV;
 
     *max = fb->pitch * fb->height;
+    return 0;
+}
+
+static int fb_mmap(int minor, void* addr, uintmax_t offset, int flags) {
+    const struct limine_framebuffer* fb = fb_get(minor);
+    if(!fb)
+        return ENODEV;
+
+    uintmax_t end = fb->pitch * fb->height;
+    assert(offset < end);
+
+    if(flags & V_FFLAGS_SHARED) {
+        assert((offset % PAGE_SIZE) == 0);
+        return mmu_map(_cpu()->thread->vmm_context->page_table, FROM_HHDM((void*)((uintptr_t) fb->address + offset)), addr, vnode_to_mmu_flags(flags)) ? 0 : ENOMEM;
+    }
+
+    size_t size = offset + PAGE_SIZE < end ? PAGE_SIZE : end - offset;
+    void* paddr = pmm_alloc_page(PMM_SECTION_DEFAULT);
+    if(!paddr)
+        return ENOMEM;
+
+    memcpy(MAKE_HHDM(paddr), (void*)((uintptr_t) fb->address + offset), size);
+
+    if(!mmu_map(_cpu()->thread->vmm_context->page_table, paddr, addr, vnode_to_mmu_flags(flags))) {
+        pmm_free_page(paddr);
+        return ENOMEM;
+    }
+
     return 0;
 }
 

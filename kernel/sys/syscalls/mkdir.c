@@ -6,7 +6,7 @@
 
 #include <errno.h>
 
-__syscall syscallret_t _sys_mkdir(struct cpu_context* ctx, const char* u_path, mode_t mode) {
+__syscall syscallret_t _sys_mkdir(struct cpu_context* __unused, const char* u_path, mode_t mode) {
     syscallret_t ret = {
         .ret = -1
     };

@@ -30,12 +30,6 @@
 
 #define FLAGS_MASK (MMU_FLAGS_WRITE | MMU_FLAGS_READ | MMU_FLAGS_NOEXEC | MMU_FLAGS_USER)
 
-enum pf_error {
-    PF_ERROR_PRESENT = 1,
-    PF_ERROR_WRITE,
-    PF_ERROR_FETCH = 16
-};
-
 enum paging_depth : int8_t {
     DEPTH_PML4 = 0,
     DEPTH_PDPT = 1,
@@ -170,24 +164,30 @@ static void pfisr(struct cpu_context* status) {
     struct thread* thread = _cpu()->thread;
 
     interrupt_set(true);
-    
-    uintptr_t pf_addr = status->cr2;
+
     bool in_userspace = status->cs != 8;
+    enum vmm_action action = violation_to_vmm_action(status->error_code);
+
+
+    char perms[4];
+    vmm_action_as_str(action, perms);
+
+    klog(ERROR, "PF @ %p: %s [%d]", (void*) status->cr2, perms, in_userspace);
+
+    if(vmm_pagefault((void*) status->cr2, in_userspace, action))
+        return;
 
     if(thread && thread->user_memcpy_context) {
         memcpy(status, thread->user_memcpy_context, sizeof(struct cpu_context));
         thread->user_memcpy_context = nullptr;
         CPU_RET(status) = EFAULT;
     }
+    // TODO: signal user proc
     else {
-        char perms[4] = {
-            status->error_code & PF_ERROR_PRESENT ? 'r' : '-',
-            status->error_code & PF_ERROR_WRITE ? 'w' : '-',
-            status->error_code & PF_ERROR_FETCH ? 'x' : '-',
-            '\0'
-        };
+        char perms[4];
+        vmm_action_as_str(action, perms);
         
-        panic_r(status, "Page Fault at %p (\"%s\", %s)", (void*) pf_addr, perms, in_userspace ? "user" : "kernel");
+        panic_r(status, "Page Fault at %p (\"%s\", %s)", (void*) status->cr2, perms, in_userspace ? "user" : "kernel");
     }
 }
 
@@ -348,6 +348,11 @@ bool mmu_get_flags(page_table_ptr_t table, void* vaddr, enum mmu_flags* mmu_flag
 bool mmu_is_present(page_table_ptr_t table, void* vaddr) {
     uint64_t* entry = get_page(table, vaddr);
     return entry ? (bool) *entry : false;
+}
+
+bool mmu_is_writable(page_table_ptr_t table, void* vaddr) {
+    uint64_t* entry = get_page(table, vaddr);
+    return entry ? (*entry & MMU_FLAGS_WRITE) != 0 : false;
 }
 
 bool is_userspace_addr(const void* addr) {

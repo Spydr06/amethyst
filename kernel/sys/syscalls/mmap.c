@@ -1,3 +1,4 @@
+#include "filesystem/virtual.h"
 #include <sys/syscall.h>
 #include <sys/mmap.h>
 #include <sys/fd.h>
@@ -40,7 +41,15 @@ __syscall syscallret_t _sys_mmap(struct cpu_context* __unused, void* addr, size_
             ret._errno = EBADF;
             return ret;
         }
-        
+
+        int type = file->vnode->type;
+        if((type != V_TYPE_REGULAR && type != V_TYPE_BLKDEV && type != V_TYPE_CHDEV)
+            || ((prot & PROT_READ) && (file->flags & FILE_READ) == 0)
+            || ((flags & MAP_SHARED) && (prot & PROT_WRITE) && (file->flags & FILE_WRITE) == 0)) {
+            ret._errno = EACCES;
+            goto cleanup;
+        }
+
         vfd.node = file->vnode;
         vfd.offset = offset;
     }
@@ -53,6 +62,7 @@ __syscall syscallret_t _sys_mmap(struct cpu_context* __unused, void* addr, size_
     if(!ret.ret)
         ret._errno = ENOMEM;
 
+cleanup:
     if(as_file)
         fd_release(file);
 

@@ -5,7 +5,7 @@
 #include <mem/user.h>
 #include <errno.h>
 
-__syscall syscallret_t _sys_ioctl(struct cpu_context* ctx, int fd, unsigned long request, void* arg) {
+__syscall syscallret_t _sys_ioctl(struct cpu_context* __unused, int fd, unsigned long request, void* arg) {
     syscallret_t ret = {
         .ret = -1
     };

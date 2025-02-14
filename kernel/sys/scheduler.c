@@ -411,8 +411,7 @@ static void sched_stop_other_threads(void) {
 static void userspace_check(struct check_args* __unused) {
     if(_cpu()->thread->should_exit) {
         interrupt_set(true);
-        // THREAD EXIT
-        unimplemented();
+        sched_thread_exit();
     }
 
     // TODO: check signals
@@ -456,7 +455,7 @@ extern __syscall void _sched_userspace_check(struct cpu_context* context, bool s
 #define STACK_TOP        ((void*) 0x0000800000000000)
 #define INTERPRETER_BASE ((void*) 0x00000beef0000000)
 
-static int load_interpreter(const char* interpreter, void** entry, void** brk) {
+static int load_interpreter(const char* interpreter, void** entry) {
     if(!interpreter)
         return 0;
 
@@ -502,7 +501,7 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
     if((err = elf_load(exec_node, nullptr, &entry, &interpreter, &auxv, &brk)))
         return err;
 
-    if((err = load_interpreter(interpreter, &entry, &brk)))
+    if((err = load_interpreter(interpreter, &entry)))
         return err;
 
     if(brk)
