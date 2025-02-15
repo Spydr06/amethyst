@@ -168,6 +168,12 @@ int vfs_link(struct vnode* dest_ref, const char* dest_path, struct vnode* link_r
 
 void vfs_inactive(struct vnode* node);
 
+static inline bool vfs_is_cacheable(struct vnode *node) {
+    int type = node->type;
+    
+    return (type == V_TYPE_REGULAR || type == V_TYPE_BLKDEV) && node->ops->putpage && node->ops->getpage;
+}
+
 static inline void vop_lock(struct vnode* node) {
     mutex_acquire(&node->lock, false);
 }

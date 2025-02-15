@@ -172,7 +172,7 @@ static void pfisr(struct cpu_context* status) {
     char perms[4];
     vmm_action_as_str(action, perms);
 
-    klog(ERROR, "PF @ %p: %s [%d]", (void*) status->cr2, perms, in_userspace);
+    // klog(ERROR, "PF @ %p: %s [%d]", (void*) status->cr2, perms, in_userspace);
 
     if(vmm_pagefault((void*) status->cr2, in_userspace, action))
         return;

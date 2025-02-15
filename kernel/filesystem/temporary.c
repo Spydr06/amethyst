@@ -25,6 +25,9 @@ static int tmpfs_getattr(struct vnode* node, struct vattr* attr, struct cred* cr
 static int tmpfs_setattr(struct vnode* node, struct vattr* attr, int which, struct cred* cred);
 static int tmpfs_resize(struct vnode* node, size_t size, struct cred* cred);
 static int tmpfs_getpage(struct vnode* node, uintmax_t offset, struct page* page);
+static int tmpfs_putpage(struct vnode* node, uintmax_t offset, struct page* page);
+
+static int tmpfs_mmap(struct vnode *node, void *addr, uintmax_t offset, int flags, struct cred* cred);
 
 static int tmpfs_lookup(struct vnode* parent, const char* name, struct vnode** result, struct cred* cred);
 
@@ -42,7 +45,9 @@ static struct vops vops = {
     .setattr = tmpfs_setattr,
     .resize = tmpfs_resize,
     .getpage = tmpfs_getpage,
-    .lookup = tmpfs_lookup
+    .putpage = tmpfs_putpage,
+    .lookup = tmpfs_lookup,
+    .mmap = tmpfs_mmap,
 };
 
 static struct scache* node_cache;
@@ -284,6 +289,15 @@ static int tmpfs_getpage(struct vnode* node, uintmax_t offset, struct page* page
     page->flags |= PAGE_FLAGS_PINNED;
     memset(phy_hhdm, 0, PAGE_SIZE);
 
+    return 0;
+}
+
+static int tmpfs_putpage(struct vnode* node, uintmax_t offset, struct page* page) {
+    return 0;
+}
+
+static int tmpfs_mmap(struct vnode *node, void *addr, uintmax_t offset, int flags, struct cred* cred) {
+    panic("Tried mmap on temporary file");
     return 0;
 }
 
