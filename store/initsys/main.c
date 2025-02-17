@@ -56,8 +56,13 @@ int main(int argc, char** argv) {
 
     close(fb);
 
-    char buf[BUFSIZ];
-    getcwd(buf, BUFSIZ);
+    FILE *f = fopen("/include/unistd.h", "r");
+
+    char* line = malloc(4096);
+    while(!feof(f)) {
+        fgets(line, 4096, f);
+    }
+    free(line);
 
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         umount_target(mount_targets + i);

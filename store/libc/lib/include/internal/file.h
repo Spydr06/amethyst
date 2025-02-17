@@ -91,6 +91,13 @@ static inline int overflow(FILE *f, int _c) {
     return c;
 }
 
+static inline int underflow(FILE *f) {
+    unsigned char c;
+    if(!toread(f) && f->read(f, &c, sizeof(unsigned char)) == 1)
+        return c;
+    return EOF;
+}
+
 static inline FILE **ofl_lock(void) {
     // TODO: lock file list
     return &ofl_head;

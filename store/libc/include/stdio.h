@@ -38,7 +38,17 @@ int fputc(int c, FILE *restrict stream);
 int fputs(const char *restrict s, FILE *restrict stream);
 int puts(const char *restrict s);
 
-int fflush(FILE* stream);
+int fgetc(FILE *restrict stream);
+char *fgets(char *restrict s, int size, FILE *restrict stream);
+
+int getc(FILE *restrict stream);
+int ungetc(int c, FILE *stream);
+
+int fflush(FILE *stream);
+int feof(FILE *stream);
+
+int ferror(FILE *stream);
+int clearerr(FILE *stream);
 
 int printf(const char *restrict format, ...);
 int vprintf(const char *restrict format, va_list ap);

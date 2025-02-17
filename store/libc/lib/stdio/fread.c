@@ -63,3 +63,74 @@ size_t __file_read(FILE *f, unsigned char *buf, size_t len) {
     return len;
 }
 
+int fgetc(FILE *restrict stream) {
+    if(stream->rpos != stream->rend)
+        return *stream->rpos++;
+    else
+        return underflow(stream);
+}
+
+char *fgets(char *restrict s, int size, FILE *restrict stream) {
+    char *p = s;
+
+    if(size == 1)
+        return 0;
+    else if(size < 0) {
+        *s = '\0';
+        return NULL;
+    }
+
+    size--;
+
+    while(size) {
+        if(stream->rpos != stream->rend) {
+            unsigned char *z = memchr(stream->rpos, '\n', stream->rend - stream->rpos);
+            size_t k = z ? z - stream->rpos + 1 : stream->rend - stream->rpos;
+            k = MIN(k, (size_t) size);
+
+            memcpy(p, stream->rpos, k);
+            stream->rpos += k;
+            p += k;
+            size -= k;
+
+            if(z || !size)
+                break;
+        }
+
+        int c = fgetc(stream);
+        if(c < 0) {
+            if(p == s || !feof(stream))
+                s = NULL;
+            break;
+        }
+
+        size--;
+        if((*p++ = c) == '\n')
+            break;
+    }
+
+    if(s)
+        *p = 0;
+
+    return s;
+}
+
+int getc(FILE *restrict stream) {
+    return fgetc(stream);
+}
+
+int ungetc(int c, FILE *stream) {
+    if(c == EOF)
+        return c;
+
+    if(!stream->rpos)
+        toread(stream);
+    if(!stream->rpos || stream->rpos <= stream->buf - MAX_UNGET)
+        return EOF;
+
+    *--stream->rpos = c;
+    stream->flags &= ~F_EOF;
+
+    return (unsigned char) c;
+}
+
