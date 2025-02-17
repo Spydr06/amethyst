@@ -48,7 +48,7 @@ int fflush(FILE *stream);
 int feof(FILE *stream);
 
 int ferror(FILE *stream);
-int clearerr(FILE *stream);
+void clearerr(FILE *stream);
 
 int printf(const char *restrict format, ...);
 int vprintf(const char *restrict format, va_list ap);
