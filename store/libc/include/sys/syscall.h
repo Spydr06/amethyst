@@ -12,6 +12,7 @@ extern "C" {
 #define SYS_open        2
 #define SYS_close       3
 #define SYS_mkdir       4
+#define SYS_getcwd      5
 #define SYS_mmap        9
 #define SYS_munmap      11
 #define SYS_brk         12

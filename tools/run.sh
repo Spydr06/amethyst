@@ -26,7 +26,7 @@ function show_help() {
     echo
     echo "Usage: $0 [OPTION]... [VAR=VALUE]..."
     echo "-a <arch>, --arch=<arch>          | Set the target architecture [$QEMU_ARCH]"
-    echo "-c <ncpu>, --arch=<ncpu>          | Set the number of processors [$CPUS]"
+    echo "-c <ncpu>, --cpus=<ncpu>          | Set the number of processors [$CPUS]"
     echo "-d, --debug                       | Enable debugging via gdb"
     echo "-I <image>, --image=<image>       | Set the image file to be loaded [$QEMU_IMAGE]"
     echo "-K, --kvm                         | Enable KVM accelleration"

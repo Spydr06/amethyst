@@ -231,6 +231,45 @@ int vfs_lookup(struct vnode** dest, struct vnode* src, const char* path, char* l
     return err;
 }
 
+int vfs_realpath(struct vnode* node, char** dest_path, size_t* dest_size, enum vfs_lookup_flags flags) {
+    struct vnode *current;
+    int err = highest_node_in_mp(node, &current);
+    if(err)
+        return err;
+
+    vop_hold(current);
+
+    // check if we are in root
+    if(current == node) {
+        *dest_size += 1;
+        *dest_path = kmalloc(*dest_size * sizeof(char));
+        *dest_path[0] = PATH_SEPARATOR;
+        *dest_path[1] = '\0';
+
+        vop_release(&current);
+        return 0;
+    }
+
+    // if the root is of a mounted fs, go to it
+    if(current->flags & V_FLAGS_ROOT) {
+        struct vnode* next = lowest_node_in_mp(current);
+        if(next != current) {
+            vop_hold(next);
+            vop_release(&current);
+            current = next;
+        }
+    }
+
+    if(current->type == V_TYPE_LINK && (flags & VFS_LOOKUP_NOLINK) == 0) {
+        // TODO: dereference symlinks
+        unimplemented();
+    }
+
+    unimplemented();
+    vop_release(&current);
+    return 0;
+}
+
 int vfs_create(struct vnode* ref, const char* path, struct vattr* attr, enum vtype type, struct vnode** node) {
     struct vnode* parent;
     char* component = kmalloc(strlen(path) + 1);

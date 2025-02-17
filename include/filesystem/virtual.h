@@ -146,6 +146,7 @@ enum vfs_lookup_flags {
 extern struct vnode* vfs_root;
 
 int vfs_lookup(struct vnode** dest, struct vnode* src, const char* path, char* last_comp, enum vfs_lookup_flags flags);
+int vfs_realpath(struct vnode* node, char** dest_path, size_t* dest_size, enum vfs_lookup_flags flags);
 
 void vfs_init(void);
 

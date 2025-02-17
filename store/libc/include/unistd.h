@@ -33,6 +33,8 @@ _Noreturn void _exit(int status);
 // include <sys/syscalls.h> for syscall numbers
 long syscall(long number, ...);
 
+char *getcwd(char *buf, size_t size);
+
 #ifdef __cplusplus
 }
 #endif

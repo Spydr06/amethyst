@@ -25,5 +25,6 @@ cross.mkShell.override {
         libarchive
         libtool
         xorriso
+        dirent
     ];
 }

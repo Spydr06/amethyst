@@ -27,6 +27,7 @@ const struct syscall_entry _syscall_table[] = {
     _SYS_E(open,     "%p, %lx, %lx"),
     _SYS_E(close,    "%d"          ),
     _SYS_E(mkdir,    "%p, %lx"     ),
+    _SYS_E(getcwd,   "%p, %lx"     ),
     _SYS_E(mmap,     "%p, %zu, 0x%x, 0x%x, %d, %zu"),
     _SYS_E(munmap,   "%p, %zu"     ),
     _SYS_E(brk,      "%p"          ),
