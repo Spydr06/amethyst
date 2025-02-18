@@ -65,6 +65,15 @@ int vsprintf(char *restrict str, const char *restrict format, va_list ap);
 int snprintf(char *restrict str, size_t size, const char *restrict format, ...);
 int vsnprintf(char *restrict str, size_t size, const char *restrict format, va_list ap);
 
+int scanf(const char *restrict format, ...);
+int vscanf(const char *restrict format, va_list ap);
+
+int fscanf(FILE *restrict stream, const char *restrict format, ...);
+int vfscanf(FILE *restrict stream, const char *restrict format, va_list ap);
+
+int sscanf(const char *restrict str, const char *restrict format, ...);
+int vsscanf(const char *restrict str, const char *restrict format, va_list ap);
+
 #ifdef __cplusplus
 }
 #endif

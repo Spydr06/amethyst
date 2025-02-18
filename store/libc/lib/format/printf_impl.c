@@ -20,17 +20,6 @@ enum fmt_flags {
     FMT_PLUS      = 0x10, // '+'
 };
 
-enum length_modifier {
-    LMOD_CHAR = 1,    // hh
-    LMOD_SHORT,       // h
-    LMOD_LONG,        // l, q
-    LMOD_LONG_LONG,   // ll
-    LMOD_LONG_DOUBLE, // L
-    LMOD_INTMAX,      // j
-    LMOD_SIZE,        // z, Z
-    LMOD_PTRDIFF,     // t
-};
-
 struct printf_state {
     fmtprinter_t printer;
     void *userp;
@@ -131,40 +120,40 @@ static void _parse_precision(struct conversion *conv, const char *restrict *form
     conv->precision = _parse_int(format);
 }
 
-static void _parse_length_modifier(struct conversion *conv, const char *restrict *format) {
-    conv->length_modifier = 0;
+void _parse_length_modifier(enum length_modifier *mod, const char *restrict *format) {
+    *mod = 0;
     switch(**format) {
         case 'h':
             if((*format)[1] == 'h') {
                 (*format)++;
-                conv->length_modifier = LMOD_CHAR;
+                *mod = LMOD_CHAR;
             }
             else
-                conv->length_modifier = LMOD_SHORT;
+                *mod = LMOD_SHORT;
             break;
         case 'l':
             if((*format)[1] == 'l') {
                 (*format)++;
-                conv->length_modifier = LMOD_LONG_LONG;
+                *mod = LMOD_LONG_LONG;
             }
             else
-                conv->length_modifier = LMOD_LONG;
+                *mod = LMOD_LONG;
             break;
         case 'q':
-            conv->length_modifier = LMOD_LONG_LONG;
+            *mod = LMOD_LONG_LONG;
             break;
         case 'L':
-            conv->length_modifier = LMOD_LONG_DOUBLE;
+            *mod = LMOD_LONG_DOUBLE;
             break;
         case 'j':
-            conv->length_modifier = LMOD_INTMAX;
+            *mod = LMOD_INTMAX;
             break;
         case 'z':
         case 'Z':
-            conv->length_modifier = LMOD_SIZE;
+            *mod = LMOD_SIZE;
             break;
         case 't':
-            conv->length_modifier = LMOD_PTRDIFF;
+            *mod = LMOD_PTRDIFF;
             break;
         default:
             return;
@@ -375,12 +364,12 @@ static void _string_conversion(struct conversion *conv, struct printf_state *sta
 }
 
 static void _format(const char *restrict *format, struct printf_state *state) {
-    struct conversion conv;
+    struct conversion conv = {0};
 
     _parse_flags(&conv, format);
     _parse_width(&conv, format, state);
     _parse_precision(&conv, format, state);
-    _parse_length_modifier(&conv, format);
+    _parse_length_modifier(&conv.length_modifier, format);
 
     conv.specifier = (*format)++[0];
 
@@ -435,7 +424,7 @@ static void _format(const char *restrict *format, struct printf_state *state) {
     }
 }
 
-int printf_impl(fmtprinter_t printer, void *userp, const char *restrict format, va_list ap) {
+int printf_impl(fmtprinter_t printer, void *restrict userp, const char *restrict format, va_list ap) {
     struct printf_state state = {0};
     state.printer = printer;
     state.userp = userp;
