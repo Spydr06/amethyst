@@ -9,7 +9,7 @@
 #include <cdefs.h>
 #include <kernelio.h>
 
-#define _SYS_E(_name, _fmt) [_SYS_##_name] = ((struct syscall_entry){   \
+#define _SYS_E(_name, _fmt) [SYS_##_name] = ((struct syscall_entry){    \
         .syscall = (syscall_t) _sys_##_name,                            \
         .name = #_name,                                                 \
         .debug_fmt = _fmt                                               \

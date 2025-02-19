@@ -2,6 +2,7 @@
 #define _AMETHYST_CPU_SYSCALLS_H
 
 #include <amethyst/stat.h>
+#include <amethyst/syscall.h>
 #include <cdefs.h>
 #include <cpu/cpu.h>
 #include <kernelio.h>
@@ -11,26 +12,6 @@
 #include <stddef.h>
 
 #define __syscall __no_caller_saved_registers __general_regs_only
-
-enum syscall {
-    _SYS_read     = 0,
-    _SYS_write    = 1,
-    _SYS_open     = 2,
-    _SYS_close    = 3,
-    _SYS_stat     = 4,
-    _SYS_fstat    = 5,
-    _SYS_mkdir    = 6,
-    _SYS_getcwd   = 7,
-    _SYS_mmap     = 9,
-    _SYS_munmap   = 11,
-    _SYS_brk      = 12,
-    _SYS_mount    = 13,
-    _SYS_umount   = 14,
-    _SYS_ioctl    = 16,
-    _SYS_fork     = 57,
-    _SYS_exit     = 60,
-    _SYS_knldebug = 255
-};
 
 typedef struct {
     uint64_t ret;
