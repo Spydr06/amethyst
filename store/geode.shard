@@ -34,6 +34,11 @@ rec {
             in assert (mkdirRec dstDir) == 0;
                 shell.install ["-m" mode src (geode.prefix + dst)];
 
+        installDir = src: dst: let 
+                dstDir = geode.file.dirname (geode.prefix + dst);
+            in assert (mkdirRec dstDir) == 0;
+                shell.cp ["-r" src (geode.prefix + dst)];
+
         installFiles = builtins.map installFile;
 
         writeFile = file: data: builtins.seq

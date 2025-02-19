@@ -28,7 +28,7 @@ PUBLIC_HEADERS := $(shell find $(INCLUDE_DIR) -name '*.h')
 
 INSTALL_TARGETS := $(patsubst $(BUILD_DIR)/%,$(PREFIX)/lib/%,$(TARGETS)) $(patsubst %,$(PREFIX)/%,$(PUBLIC_HEADERS))
 
-CFLAGS += -ggdb -nostdinc -nostdlib -nostartfiles -I$(ARCH_INCLUDE_DIR) -I$(INCLUDE_DIR) -I$(LIB_DIR)/$(INCLUDE_DIR) -Wall -Wextra -pedantic
+CFLAGS += -ggdb -nostdinc -nostdlib -nostartfiles -I$(ARCH_INCLUDE_DIR) -I$(INCLUDE_DIR) -I$(LIB_DIR)/$(INCLUDE_DIR) -I$(PREFIX)/include -I$(PREFIX)/usr/include -Wall -Wextra -pedantic
 LDFLAGS += -nostdlib -nostartfiles
 
 .PHONY: all

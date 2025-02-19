@@ -7,6 +7,9 @@ with import ./../geode.shard; {
         kernelElf = "amethyst-" + version + "-" + geode.architecture + ".elf";
 
         buildTarget = buildDir + "/" + kernelElf;
+        installTarget = "install";
+
+        publicHeaderDir = "include/amethyst";
 
         limineConfigTemplate = "limine.cfg.in";
         limineConfigPath = /boot/limine/limine.cfg;
@@ -36,6 +39,7 @@ with import ./../geode.shard; {
 
         install = [
             (util.installFile { src = buildTarget; dst = /boot/ + kernelElf; mode = "755"; })
+            (util.installDir publicHeaderDir publicHeaderDir)
             (util.writeFile (util.paths.prefix + limineConfigPath) $ limineConfig "limine.cfg.in")
         ];
     };

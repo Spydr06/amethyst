@@ -9,6 +9,8 @@
 #define GiB (MiB * 1024ull)
 #define TiB (GiB * 1024ull)
 
+#define TO_DEV(major, minor) ((((major) & 0xfff) << 8) + ((minor) & 0xff))
+
 typedef int32_t pid_t;
 typedef int32_t tid_t;
 typedef int32_t gid_t;
@@ -23,24 +25,6 @@ typedef int64_t blksize_t;
 typedef uint64_t dev_t;
 typedef uint64_t nlink_t;
 typedef uint64_t blkcnt_t;
-
-struct stat {
-    dev_t dev;
-    ino_t ino;
-    nlink_t nlink;
-    mode_t mode;
-    uid_t uid;
-    gid_t gid;
-    uint32_t __pad;
-    dev_t rdev;
-    off_t size;
-    blksize_t blksize;
-    blkcnt_t blocks;
-    struct timespec atim;
-    struct timespec mtim;
-    struct timespec ctim;
-    long __reserved[3];
-};
 
 struct dent {
     ino_t d_ino;

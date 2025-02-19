@@ -5,7 +5,11 @@
 extern "C" {
 #endif
 
-#include <bits/alltypes.h>
+#ifdef _AMETHYST_KERNEL_SRC
+    #include <abi.h>
+#else
+    #include <bits/alltypes.h>
+#endif
 
 #define FB_TYPE_PACKED_PIXELS       0
 #define FB_TYPE_PLANES              1
@@ -15,6 +19,7 @@ extern "C" {
 
 #define FB_VISUAL_TRUECOLOR         0
 
+// similar to fb_fix_screeninfo in <linux/fb.h>
 struct fb_fix_screeninfo {
     char id[16];
     

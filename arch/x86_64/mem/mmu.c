@@ -168,7 +168,6 @@ static void pfisr(struct cpu_context* status) {
     bool in_userspace = status->cs != 8;
     enum vmm_action action = violation_to_vmm_action(status->error_code);
 
-
     char perms[4];
     vmm_action_as_str(action, perms);
 

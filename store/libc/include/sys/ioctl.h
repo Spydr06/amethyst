@@ -5,8 +5,8 @@
 extern "C" {
 #endif
 
-#define FBIOGET_VSCREENINFO 0x4600
-#define FBIOGET_FSCREENINFO 0x4602
+#include <amethyst/ioctl.h>
+#include <amethyst/fb.h>
 
 int ioctl(int fd, unsigned long request, void *arg);
 

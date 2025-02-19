@@ -1,7 +1,7 @@
 #ifndef _AMETHYST_CPU_SYSCALLS_H
 #define _AMETHYST_CPU_SYSCALLS_H
 
-#include <abi.h>
+#include <amethyst/stat.h>
 #include <cdefs.h>
 #include <cpu/cpu.h>
 #include <kernelio.h>
@@ -17,14 +17,17 @@ enum syscall {
     _SYS_write    = 1,
     _SYS_open     = 2,
     _SYS_close    = 3,
-    _SYS_mkdir    = 4,
-    _SYS_getcwd   = 5,
+    _SYS_stat     = 4,
+    _SYS_fstat    = 5,
+    _SYS_mkdir    = 6,
+    _SYS_getcwd   = 7,
     _SYS_mmap     = 9,
     _SYS_munmap   = 11,
     _SYS_brk      = 12,
     _SYS_mount    = 13,
     _SYS_umount   = 14,
     _SYS_ioctl    = 16,
+    _SYS_fork     = 57,
     _SYS_exit     = 60,
     _SYS_knldebug = 255
 };
@@ -53,7 +56,8 @@ __syscall syscallret_t _sys_read(struct cpu_context* ctx, int fd, void* buffer, 
 __syscall syscallret_t _sys_write(struct cpu_context* ctx, int fd, const void* buffer, size_t size);
 __syscall syscallret_t _sys_open(struct cpu_context* ctx, const char* path, int flags, mode_t mode);
 __syscall syscallret_t _sys_close(struct cpu_context* ctx, int fd);
-
+__syscall syscallret_t _sys_stat(struct cpu_context* ctx, const char* path, struct stat *statbuf);
+__syscall syscallret_t _sys_fstat(struct cpu_context* ctx, int fd, struct stat *statbuf);
 __syscall syscallret_t _sys_mkdir(struct cpu_context* ctx, const char* path, mode_t mode);
 __syscall syscallret_t _sys_getcwd(struct cpu_context* ctx, char* cwd, size_t cwd_size);
 

@@ -1,4 +1,3 @@
-#include "filesystem/virtual.h"
 #include <sys/fb.h>
 
 #include <stddef.h>
@@ -11,6 +10,7 @@
 #include <mem/user.h>
 
 #include <filesystem/device.h>
+#include <filesystem/virtual.h>
 #include <kernelio.h>
 #include <drivers/video/vga.h>
 
