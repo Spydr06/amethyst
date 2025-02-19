@@ -6,8 +6,12 @@ extern "C" {
 #endif
 
 #include <bits/alltypes.h>
+#include <amethyst/stat.h>
 
 int mkdir(const char *pathname, mode_t mode);
+
+int stat(const char *restrict pathname, struct stat *restrict buf);
+int fstat(int fd, struct stat *restrict buf);
 
 #ifdef __cplusplus
 }

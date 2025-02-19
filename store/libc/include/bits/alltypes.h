@@ -55,9 +55,20 @@ typedef unsigned int uint32_t;
 typedef unsigned _Int64 uint64_t;
 typedef unsigned _Int64 uintmax_t;
 
-typedef _Int64 off_t;
+typedef int32_t pid_t;
+typedef int32_t tid_t;
+typedef int32_t gid_t;
+typedef int32_t uid_t;
 
 typedef uint32_t mode_t;
+typedef _Int64 ino_t;
+
+typedef _Int64 off_t;
+typedef _Int64 blksize_t;
+
+typedef _Int64 dev_t;
+typedef _Int64 nlink_t;
+typedef _Int64 blkcnt_t;
 
 typedef __builtin_va_list va_list;
 
@@ -69,6 +80,13 @@ typedef struct _fpos64 {
 
 struct _IO_FILE;
 typedef struct _IO_FILE FILE;
+
+typedef _Int64 time_t;
+
+struct timespec {
+    time_t s;
+    time_t ns;
+};
 
 #ifdef __cplusplus
 }

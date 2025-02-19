@@ -12,20 +12,20 @@ extern "C" {
 #endif
 
 struct stat {
-    dev_t dev;
-    ino_t ino;
-    nlink_t nlink;
-    mode_t mode;
-    uid_t uid;
-    gid_t gid;
+    dev_t st_dev;
+    ino_t st_ino;
+    nlink_t st_nlink;
+    mode_t st_mode;
+    uid_t st_uid;
+    gid_t st_gid;
     uint32_t __pad;
-    dev_t rdev;
-    off_t size;
-    blksize_t blksize;
-    blkcnt_t blocks;
-    struct timespec atim;
-    struct timespec mtim;
-    struct timespec ctim;
+    dev_t st_rdev;
+    off_t st_size;
+    blksize_t st_blksize;
+    blkcnt_t st_blocks;
+    struct timespec st_atim;
+    struct timespec st_mtim;
+    struct timespec st_ctim;
     long __reserved[3];
 };
 

@@ -27,19 +27,19 @@ __syscall syscallret_t stat_vnode(struct vnode *vnode, struct stat *statbuf) {
     struct stat stat;
     memset(&stat, 0, sizeof(struct stat));
 
-    stat.dev = TO_DEV(attr.dev_major, attr.dev_minor);
-    stat.rdev = TO_DEV(attr.rdev_major, attr.rdev_minor);
-    stat.ino = attr.inode;
-    stat.nlink = attr.nlinks;
-    stat.mode = attr.mode;
-    stat.uid = attr.uid;
-    stat.gid = attr.gid;
-    stat.size = attr.size;
-    stat.blksize = attr.fsblock_size;
-    stat.blocks = attr.blocks_used;
-    stat.atim = attr.atime;
-    stat.mtim = attr.mtime;
-    stat.ctim = attr.ctime;
+    stat.st_dev = TO_DEV(attr.dev_major, attr.dev_minor);
+    stat.st_rdev = TO_DEV(attr.rdev_major, attr.rdev_minor);
+    stat.st_ino = attr.inode;
+    stat.st_nlink = attr.nlinks;
+    stat.st_mode = attr.mode;
+    stat.st_uid = attr.uid;
+    stat.st_gid = attr.gid;
+    stat.st_size = attr.size;
+    stat.st_blksize = attr.fsblock_size;
+    stat.st_blocks = attr.blocks_used;
+    stat.st_atim = attr.atime;
+    stat.st_mtim = attr.mtime;
+    stat.st_ctim = attr.ctime;
 
     ret._errno = memcpy_to_user(statbuf, &stat, sizeof(struct stat));
     return ret;

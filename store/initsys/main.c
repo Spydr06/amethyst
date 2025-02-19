@@ -56,6 +56,10 @@ int main(int argc, char** argv) {
 
     close(fb);
 
+    struct stat stat_buf;
+    stat("/include/unistd.h", &stat_buf);
+    printf("stat /include/unistd.h: size: %ld\n", stat_buf.st_size);
+
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         umount_target(mount_targets + i);
 
