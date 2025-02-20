@@ -35,6 +35,9 @@ __syscall syscallret_t _sys_open(struct cpu_context* __unused, const char *path,
         return ret;
     }
 
+    struct vnode* ref = path_buf[0] == '/' ? proc_get_root() : proc_get_cwd();
+    assert(ref != nullptr);
+
 retry:
     struct file* new_file = nullptr;
     int new_fd;
@@ -43,7 +46,7 @@ retry:
         goto cleanup;
 
     struct vnode* vnode = nullptr;
-    ret._errno = vfs_open(vfs_root, path_buf, file_to_vnode_flags(flags), &vnode);
+    ret._errno = vfs_open(ref, path_buf, file_to_vnode_flags(flags), &vnode);
     if(ret._errno == 0 && (flags & O_CREAT) && (flags & O_EXCL)) {
         ret._errno = EEXIST;
         goto cleanup;
@@ -57,7 +60,7 @@ retry:
             .uid = _cpu()->thread->proc->cred.uid
         };
 
-        ret._errno = vfs_create(vfs_root, path_buf, &attr, V_TYPE_REGULAR, &vnode);
+        ret._errno = vfs_create(ref, path_buf, &attr, V_TYPE_REGULAR, &vnode);
         if(ret._errno == EEXIST && (flags & O_EXCL) == 0)
             goto retry;
         if(ret._errno == 0)

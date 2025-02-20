@@ -9,7 +9,7 @@
 #include <errno.h>
 #include <math.h>
 
-__syscall syscallret_t _sys_getcwd(struct cpu_context* ctx, char* user_cwd, size_t user_cwd_size) {
+__syscall syscallret_t _sys_getcwd(struct cpu_context* __unused, char* user_cwd, size_t user_cwd_size) {
     syscallret_t ret = {
         .ret = -1,
         ._errno = -1
