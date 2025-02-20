@@ -119,4 +119,31 @@ int shard_value_to_string(struct shard_context* ctx, struct shard_string* str, c
     return ctx->errors.count;
 }
 
+bool shard_values_equal(struct shard_value* lhs, struct shard_value* rhs) {
+    if(lhs->type != rhs->type)
+        return false;
+
+    switch(lhs->type) {
+        case SHARD_VAL_NULL:
+            return true;
+        case SHARD_VAL_INT:
+            return lhs->integer == rhs->integer;
+        case SHARD_VAL_FLOAT:
+            return lhs->floating == rhs->floating;
+        case SHARD_VAL_BOOL:
+            return lhs->boolean == rhs->boolean;
+        case SHARD_VAL_PATH:
+            return strcmp(lhs->path, rhs->path) == 0;
+        case SHARD_VAL_STRING:
+            return strcmp(lhs->string, rhs->string) == 0;
+        case SHARD_VAL_FUNCTION:
+            return memcmp(&lhs->function, &rhs->function, sizeof(lhs->function)) == 0;
+        case SHARD_VAL_BUILTIN:
+            return lhs->builtin.callback == rhs->builtin.callback;
+        case SHARD_VAL_SET:
+        case SHARD_VAL_LIST:
+        default:
+            assert(false && "unimplemented!");
+    }
+}
 

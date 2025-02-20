@@ -193,31 +193,7 @@ static inline struct shard_value eval_eq(volatile struct shard_evaluator* e, str
         eval(e, expr->binop.rhs)
     };
 
-    if(values[0].type != values[1].type)
-        return BOOL_VAL(false ^ negate);
-
-    switch(values[0].type) {
-        case SHARD_VAL_NULL:
-            return BOOL_VAL(true ^ negate);
-        case SHARD_VAL_INT:
-            return BOOL_VAL((values[0].integer == values[1].integer) ^ negate);
-        case SHARD_VAL_FLOAT:
-            return BOOL_VAL((values[0].floating == values[1].floating) ^ negate);
-        case SHARD_VAL_BOOL:
-            return BOOL_VAL((values[0].boolean == values[1].boolean) ^ negate);
-        case SHARD_VAL_PATH:
-            return BOOL_VAL((strcmp(values[0].path, values[1].path) == 0) ^ negate);
-        case SHARD_VAL_STRING:
-            return BOOL_VAL((strcmp(values[0].string, values[1].string) == 0) ^ negate);
-        case SHARD_VAL_FUNCTION:
-            return BOOL_VAL((memcmp(&values[0].function, &values[1].function, sizeof(values[0].function)) == 0) ^ negate);
-        case SHARD_VAL_BUILTIN:
-            return BOOL_VAL((values[0].builtin.callback == values[1].builtin.callback) ^ negate);
-        case SHARD_VAL_SET:
-        case SHARD_VAL_LIST:
-        default:
-            shard_eval_throw(e, expr->loc, "unimplemented");
-    }
+    return BOOL_VAL(shard_values_equal(&values[0], &values[1]) ^ negate);
 }
 
 #define CMP_OP(e, expr, op) do {            \

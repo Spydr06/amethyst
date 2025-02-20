@@ -59,6 +59,25 @@ static struct shard_value builtin_div(volatile struct shard_evaluator* e, struct
     );
 }
 
+static struct shard_value builtin_elem(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
+    struct shard_value want = shard_eval_lazy2(e, args[0]);
+
+    struct shard_value list = shard_eval_lazy2(e, args[1]);
+    if(list.type != SHARD_VAL_LIST)
+        shard_eval_throw(e, *loc, "`builtins.elem` expects second argument to be of type `list`");
+
+    struct shard_list* head = list.list.head;
+    while(head) {
+        struct shard_value elem = shard_eval_lazy2(e, head->value);
+        if(shard_values_equal(&want, &elem))
+            return BOOL_VAL(true);
+
+        head = head->next;
+    }
+
+    return BOOL_VAL(false);
+}
+
 static struct shard_value builtin_evaluated(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
     (void) e;
     (void) loc;
@@ -772,6 +791,7 @@ void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest) {
         { "currentSystem", shard_unlazy(ctx, ctx->current_system ? CSTRING_VAL(ctx->current_system) : NULL_VAL()) },
         { "currentTime", shard_lazy(ctx, GET_LAZY(currentTime), NULL) },
         { "div", shard_unlazy(ctx, BUILTIN_VAL(builtin_div, 2)) },
+        { "elem", shard_unlazy(ctx, BUILTIN_VAL(builtin_elem, 2)) },
         { "evaluated", shard_unlazy(ctx, BUILTIN_VAL(builtin_evaluated, 1)) },
         { "floor", shard_unlazy(ctx, BUILTIN_VAL(builtin_floor, 1)) },
         { "foldl", shard_unlazy(ctx, BUILTIN_VAL(builtin_foldl, 3)) },

@@ -19,7 +19,10 @@ with import ./../geode.shard; {
             boot = {
                 loader.timeout = 5;
             };
+            sanitize = [];
         };
+
+        getSanitizers = builtins.join "," config.sanitize;
 
         buildDependencies = with pkgs; [
             limine
@@ -35,7 +38,7 @@ with import ./../geode.shard; {
                 ] "";
             in assert sed.exitCode == 0; sed.stdout;
 
-        build = util.shell.make [buildTarget];
+        build = util.shell.make [buildTarget ("SANITIZERS=" + getSanitizers)];
 
         install = [
             (util.installFile { src = buildTarget; dst = /boot/ + kernelElf; mode = "755"; })

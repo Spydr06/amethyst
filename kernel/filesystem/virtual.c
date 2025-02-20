@@ -83,7 +83,7 @@ void vfs_inactive(struct vnode *node) {
 }
 
 static struct cred* get_cred(void) {
-    if(!_cpu()->thread /* || !_cpu()->thread->proc */)
+    if(!_cpu()->thread || !_cpu()->thread->proc)
         return &kernel_cred;
     else
         return &_cpu()->thread->proc->cred;

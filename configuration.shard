@@ -2,10 +2,10 @@
     boot.initrd.enabled = true;
 
     environment.packages = with pkgs; [
-        (amethyst-kernel { kernel.arguments = [
-            "log-syscalls"
-            "loglevel=debug"
-        ]; })
+        (amethyst-kernel {
+            kernel.arguments = [ "loglevel=debug" ];
+            sanitize = [ "undefined" ];
+        })
         limine
         initsys
     ];

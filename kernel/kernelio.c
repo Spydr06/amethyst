@@ -311,17 +311,25 @@ static void __klog_impl(enum klog_severity severity, bool newline, const char* f
     spinlock_release(&io_lock);
 }
 
+void __vklog(enum klog_severity severity, const char *file, const char *format, va_list ap) {
+    __klog_impl(severity, true, file, format, ap);
+}
+
 void __klog(enum klog_severity severity, const char *file, const char *format, ...) {
      va_list ap;
      va_start(ap, format);
-     __klog_impl(severity, true, file, format, ap);
+     __vklog(severity, file, format, ap);
      va_end(ap);
+}
+
+void __vklog_inl(enum klog_severity severity, const char* file, const char* format, va_list ap) {
+    __klog_impl(severity, false, file, format, ap);
 }
 
 void __klog_inl(enum klog_severity severity, const char* file, const char* format, ...) {
     va_list ap;
     va_start(ap, format);
-    __klog_impl(severity, false, file, format, ap); 
+    __vklog_inl(severity, file, format, ap);
     va_end(ap);
 }
 

@@ -12,6 +12,9 @@
 #define klog(sev, ...) (__klog(KLOG_##sev, __FILENAME__, __VA_ARGS__))
 #define klog_inl(sev, ...) (__klog_inl(KLOG_##sev, __FILENAME__, __VA_ARGS__))
 
+#define vklog(sev, fmt, ap) (__vklog(KLOG_##sev, __FILENAME__, (fmt), (ap)))
+#define vklog_inl(sev, fmt, ap) (__vklog_inl(KLOG_##sev, __FILENAME__, (fmt), (ap)))
+
 #define here() (__klog(KLOG_DEBUG, __FILENAME__, "\e[34m" __FILE__ ":%d:%s(): here\e[0m", __LINE__, __func__))
 
 #define unimplemented() (panic("unimplemented()"))
@@ -28,6 +31,7 @@ enum klog_severity {
 };
 
 extern kernelio_writer_t kernelio_writer;
+extern enum klog_severity klog_min_severity;
 
 int printk(const char* restrict format, ...) __attribute__((format(printf, 1, 2)));
 int fprintk(kernelio_writer_t writer, const char* restrict format, ...) __attribute__((format(printf, 2, 3)));
@@ -35,9 +39,10 @@ int fprintk(kernelio_writer_t writer, const char* restrict format, ...) __attrib
 int vprintk(const char* restrict format, va_list ap);
 int vfprintk(kernelio_writer_t writer, const char* restrict format, va_list ap);
 
-extern enum klog_severity klog_min_severity;
 void __klog(enum klog_severity severity, const char* file, const char* format, ...) __attribute__((format(printf, 3, 4)));
+void __vklog(enum klog_severity severity, const char *file, const char *format, va_list ap);
 void __klog_inl(enum klog_severity severity, const char* file, const char* format, ...) __attribute__((format(printf, 3, 4)));
+void __vklog_inl(enum klog_severity severity, const char* file, const char* format, va_list ap);
 
 void klog_set_log_level(const char* level);
 
