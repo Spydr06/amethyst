@@ -30,6 +30,9 @@ static void __ubsan_logf(struct ubsan_source_location *location, const char* fun
     va_end(ap);
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
 void __ubsan_handle_add_overflow(struct ubsan_overflow_data *data, unsigned long ul_lhs, unsigned long ul_rhs) {
     ubsan_logf(&data->location, "triggered %s", __func__);
 }
@@ -240,5 +243,5 @@ void __ubsan_handle_implicit_conversion_abort(struct ubsan_implicit_conversion_d
     ubsan_logf(&data->location, "triggered %s", __func__);
 }
 
-
+#pragma GCC diagnostic pop
 

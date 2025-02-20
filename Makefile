@@ -40,10 +40,13 @@ override SAVED_LDFLAGS := $(LDFLAGS)
 
 C_CXX_FLAGS += -Wall -Wextra -Wno-trigraphs \
 			   -ffreestanding -fstack-protector -fno-lto -fPIE \
-			   -fsanitize="$(SANITIZERS)"	\
 		       -g \
 			   -D__$(ARCH)__ -D__$(ARCH) -D_SSP=0x$(SSP) -D_CMOS_YEAR=$(CMOS_YEAR) -D_AMETHYST_KERNEL_SRC \
 			   $(foreach i, $(INCLUDES), -I$(shell realpath $i))
+
+ifneq (, $(SANITIZERS))
+	C_CXX_FLAGS += -fsanitize="$(SANITIZERS)"
+endif
 
 override CC := $(TOOLPREFIX)gcc
 override CXX := $(TOOLPREFIX)g++
