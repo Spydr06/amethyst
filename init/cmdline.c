@@ -39,7 +39,7 @@ void cmdline_parse(size_t cmdline_size, const char* cmdline) {
         }
     }
 
-    buffer[buffer_size] = '\0';
+    buffer[buffer_size - 1] = '\0';
 
     for(size_t i = 0; i < buffer_size;) {
         char* iter = &buffer[i];

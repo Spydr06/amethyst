@@ -82,6 +82,7 @@ struct _IO_FILE;
 typedef struct _IO_FILE FILE;
 
 typedef _Int64 time_t;
+typedef _Int64 clock_t;
 
 struct timespec {
     time_t s;

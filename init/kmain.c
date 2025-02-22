@@ -20,6 +20,8 @@
 #include <assert.h>
 #include <version.h>
 
+#define DEFAULT_INIT "/bin/init"
+
 static void greet(void) {
     printk("\n \e[1;32m>>\e[0m Booting \e[95mAmethyst\e[0m version \e[97m" AMETHYST_VERSION "\e[90m (built " AMETHYST_COMPILATION_DATE " " AMETHYST_COMPILATION_TIME ")\e[1;32m <<\e[0m\n");
 }
@@ -82,9 +84,13 @@ void kmain(size_t cmdline_size, const char* cmdline)
 
     shard_subsystem_init();
 
+    const char *init = cmdline_get("init");
+    if(!init)
+        init = DEFAULT_INIT;
+
     int err = scheduler_exec(
-        "/bin/init",
-        (char*[]){"/bin/init", nullptr}, // argc
+        init,
+        (char*[]){(char*) init, nullptr}, // argc
         (char*[]){nullptr}               // envp
     );
 

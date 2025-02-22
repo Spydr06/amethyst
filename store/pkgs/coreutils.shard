@@ -1,0 +1,24 @@
+with import ./../geode.shard; {
+    coreutils = rec {
+        name = "coreutils";
+        version = "0.0.1";
+
+        # TODO: fetch/verify source from repo
+        sourceDir = util.paths.store + name;
+        buildDir = sourceDir + "build";
+
+        buildDependencies = with pkgs; [
+            libc
+        ];
+
+        runtimeDependencies = with pkgs; [
+            libc
+        ];
+
+        build = util.shell.make ["-C" sourceDir 
+  #          ("CFLAGS=-specs=" + $ builtins.toString util.paths.gcc_specs)
+        ];
+
+        install = util.shell.make ["-C" sourceDir "install" ("PREFIX=" + $ builtins.toString util.paths.prefix)];
+    };
+}

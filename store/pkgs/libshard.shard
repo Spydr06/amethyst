@@ -1,0 +1,20 @@
+with import ./../geode.shard; {
+    libshard = rec {
+        name = "libshard";
+        version = "0.0.1";
+
+        sourceDir = "shard";
+
+        buildDependencies = with pkgs; [
+            libc
+        ];
+
+        runtimeDependencies = with pkgs; [
+            libc
+        ];
+
+        build = util.shell.make ["-C" sourceDir
+            ("CFLAGS=-specs=" + $ builtins.toString util.paths.gcc_specs)
+        ];
+    };
+}

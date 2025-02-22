@@ -271,8 +271,11 @@ extern void __isr(struct cpu_context* ctx, register_t vector) {
     _cpu()->interrupt_status = false;
 
     if(!isr->handler) {
-        if(vector == 32)
+        if(vector == 32) {
+            klog(WARN, "Unhandled interrupt 32.");
             return; // mystery interrupt lol
+        }
+
         if(vector < __len(exception_names))
             panic_r(ctx, "Unhandled Interrupt %llu: %s.", (unsigned long long) vector, exception_names[vector]);
         else
