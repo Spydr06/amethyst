@@ -16,19 +16,19 @@ __syscall syscallret_t _sys_brk(struct cpu_context* __unused, void* addr) {
     };
 
     struct thread* thread = _cpu()->thread;
-    if(!thread->user_brk.base) {
+    if(!thread->vmm_context->brk.base) {
         ret._errno = ENOMEM;
         return ret;
     }
 
-    uintptr_t old_break = (uintptr_t) thread->user_brk.top; 
+    uintptr_t old_break = (uintptr_t) thread->vmm_context->brk.top; 
 
     if(!addr) {
         ret.ret = (uint64_t) old_break;
         return ret;
     }
     
-    if(addr >= USERSPACE_END || addr < thread->user_brk.base) {
+    if(addr >= USERSPACE_END || addr < thread->vmm_context->brk.base) {
         ret._errno = EINVAL;
         return ret;
     }
@@ -50,7 +50,7 @@ __syscall syscallret_t _sys_brk(struct cpu_context* __unused, void* addr) {
     }
     
     ret.ret = old_break;
-    thread->user_brk.top = (void*) new_break;
+    thread->vmm_context->brk.top = (void*) new_break;
 
     return ret;
 }

@@ -105,6 +105,8 @@ struct vmm_context* vmm_context_new(void) {
         return nullptr;
     }
     
+    memset(&ctx->brk, 0, sizeof(struct brk));
+
     return ctx;
 }
 

@@ -335,9 +335,9 @@ void scheduler_init(void) {
 
     spinlock_init(run_queue_lock);
 
-    _cpu()->idle_thread = thread_create(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr, nullptr);
+    _cpu()->idle_thread = thread_create(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr);
     assert(_cpu()->idle_thread);
-    _cpu()->thread = thread_create(nullptr, PAGE_SIZE * 32, 0, nullptr, nullptr, nullptr);
+    _cpu()->thread = thread_create(nullptr, PAGE_SIZE * 32, 0, nullptr, nullptr);
     assert(_cpu()->thread);
 
     // install scheduling timer
@@ -353,7 +353,7 @@ void scheduler_apentry(void) {
     assert(_cpu()->scheduler_stack);
     _cpu()->scheduler_stack = (void*)((uintptr_t) _cpu()->scheduler_stack + SCHEDULER_STACK_SIZE);
 
-    _cpu()->idle_thread = thread_create(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr, nullptr);
+    _cpu()->idle_thread = thread_create(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr);
     assert(_cpu()->idle_thread);
 
     // install scheduling timer
@@ -404,7 +404,7 @@ static __noreturn void sched_thread_exit(void) {
     unreachable();
 }
 
-static void sched_stop_other_threads(void) {
+void sched_stop_other_threads(void) {
     // TODO:
 }
 
@@ -451,9 +451,6 @@ extern __syscall void _sched_userspace_check(struct cpu_context* context, bool s
 
     _cpu()->interrupt_status = int_status;
 }
-
-#define STACK_TOP        ((void*) 0x0000800000000000)
-#define INTERPRETER_BASE ((void*) 0x00000beef0000000)
 
 static int load_interpreter(const char* interpreter, void** entry) {
     if(!interpreter)
@@ -542,8 +539,13 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
 
     vmm_switch_context(&vmm_kernel_context);
 
-    struct thread* user_thread = thread_create(entry, PAGE_SIZE * 16, 1, proc, stack, brk);
+    struct thread* user_thread = thread_create(entry, PAGE_SIZE * 16, 1, proc, stack);
     assert(user_thread);
+
+    vmm_ctx->brk = (struct brk){
+        .base = brk,
+        .top = brk
+    };
 
     // TODO: proc
 

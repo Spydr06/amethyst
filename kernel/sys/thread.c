@@ -13,7 +13,7 @@ void thread_init(void) {
     assert(thread_cache);
 }
 
-struct thread* thread_create(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack, void* user_brk) {
+struct thread* thread_create(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack) {
     struct thread* thread = slab_alloc(thread_cache);
     if(!thread)
         return nullptr;
@@ -30,10 +30,6 @@ struct thread* thread_create(void* ip, size_t kernel_stack_size, int priority, s
     thread->pin = THREAD_UNPINNED;
     
     thread->vmm_context = proc ? nullptr : &vmm_kernel_context;
-    thread->user_brk = (struct brk){
-        .base = user_brk,
-        .top = user_brk
-    };
     thread->proc = proc;
     thread->priority = priority;
     if(proc) {

@@ -1,3 +1,4 @@
+#include "x86_64/trace.h"
 #include <sanitize/ub.h>
 #include <kernelio.h>
 
@@ -221,6 +222,7 @@ void __ubsan_handle_type_mismatch_v1(struct ubsan_type_mismatch_data_v1 *data, u
     }
     else 
         ubsan_logf(&data->location, "Type mismatch (%s @ %p)", data->type->name, (void*) ul_pointer);
+    dump_stack();
 }
 
 void __ubsan_handle_type_mismatch_v1_abort(struct ubsan_type_mismatch_data_v1 *data, unsigned long ul_pointer) {

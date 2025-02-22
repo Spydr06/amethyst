@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/syscall.h>
 
 int draw_logo_to_fb(int fb, int scale);
 
@@ -62,6 +63,8 @@ int main(int argc, char** argv) {
 
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         umount_target(mount_targets + i);
+
+    syscall(SYS_execve, "/bin/helloworld", (char*[]){"/bin/helloworld", NULL}, (char*[]){NULL});
 
     while(1);
 }
