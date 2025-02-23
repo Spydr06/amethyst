@@ -104,7 +104,7 @@ static void error_handler(struct geode_context* ctx, struct geode_error err) {
 }
 
 int main(int argc, char** argv) {
-    int err, ret = EXIT_SUCCESS;
+    volatile int err, ret = EXIT_SUCCESS;
     if(setjmp(err_recovery)) {
         // exit gracefully
         ret = EXIT_FAILURE;

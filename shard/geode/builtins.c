@@ -367,7 +367,7 @@ static struct shard_value builtin_proc_spawnPipe(volatile struct shard_evaluator
         close(stderr_pipe[1]);
         close(stdin_pipe[0]);
 
-        write(stdin_pipe[1], input_string.string, input_string.strlen);
+        assert(write(stdin_pipe[1], input_string.string, input_string.strlen) == (ssize_t) input_string.strlen);
         close(stdin_pipe[1]);
 
         int bytes_read;

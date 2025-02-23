@@ -1,3 +1,4 @@
+#include "kernelio.h"
 #include <filesystem/temporary.h>
 #include <filesystem/virtual.h>
 #include <filesystem/device.h>
@@ -293,11 +294,20 @@ static int tmpfs_getpage(struct vnode* node, uintmax_t offset, struct page* page
 }
 
 static int tmpfs_putpage(struct vnode* node, uintmax_t offset, struct page* page) {
+    (void) node;
+    (void) offset;
+    (void) page;
+    unimplemented();
     return 0;
 }
 
 static int tmpfs_mmap(struct vnode *node, void *addr, uintmax_t offset, int flags, struct cred* cred) {
-    panic("Tried mmap on temporary file");
+    (void) node;
+    (void) addr;
+    (void) offset;
+    (void) flags;
+    (void) cred;
+    unimplemented();
     return 0;
 }
 
