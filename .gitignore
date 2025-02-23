@@ -6,9 +6,11 @@
 *.iso
 *.kdev*
 
+.cache/
+.direnv/
+.envrc
 .kdev*/
 build/
 compile_commands.json
-.cache/
 vgcore.*
 
