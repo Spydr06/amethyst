@@ -17,6 +17,8 @@
 #define SYS_mount       13
 #define SYS_umount      14
 #define SYS_ioctl       16
+#define SYS_yield       24
+#define SYS_execve      59
 #define SYS_exit        60
 #define SYS_knldebug    255
 

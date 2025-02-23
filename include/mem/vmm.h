@@ -69,7 +69,14 @@ struct vmm_space {
     void* end;
 };
 
+struct brk {
+    void* base;
+    void* top;
+    size_t limit;
+};
+
 struct vmm_context {
+    struct brk brk;
     struct vmm_space space;
     page_table_ptr_t page_table;
 };

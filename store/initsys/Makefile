@@ -7,6 +7,7 @@ OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 TARGET := $(BUILD_DIR)/init
 
 LDFLAGS += -static
+CFLAGS += -D_AMETHYST_SRC
 
 .PHONY: all
 all: $(TARGET)

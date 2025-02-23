@@ -8,6 +8,7 @@ struct exec_stack_data {
 };
 
 void __libc_register_args(int argc, char** argv);
+void __libc_register_environ(char** envp);
 
 #endif /* _INTERNAL_ENTRY_H */
 

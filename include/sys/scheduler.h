@@ -22,6 +22,8 @@ int sched_yield(void);
 int scheduler_exec(const char* path, char* argv[], char* envp[]);
 void scheduler_terminate(int status);
 
+void sched_stop_other_threads(void);
+
 struct thread* sched_new_thread(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack, void* brk);
 
 __syscall void _sched_userspace_check(struct cpu_context* context, bool syscall, uint64_t syscall_errno, uint64_t syscall_ret);

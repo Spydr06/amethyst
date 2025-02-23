@@ -64,8 +64,9 @@ int main(int argc, char** argv) {
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         umount_target(mount_targets + i);
 
-    syscall(SYS_execve, "/bin/helloworld", (char*[]){"/bin/helloworld", NULL}, (char*[]){NULL});
+    //execl("/bin/helloworld", "/bin/helloworld", NULL);
 
-    while(1);
+    while(1)
+        yield();
 }
 

@@ -18,6 +18,7 @@ extern _Noreturn void __libc_entry(int (*main_fn)(int argc, char* argv[], char* 
     parse_exec_stack(stack_base, &stack_data);
 
     __libc_register_args(stack_data.argc, stack_data.argv);
+    __libc_register_environ(stack_data.envp);
     int exit_code = main_fn(stack_data.argc, stack_data.argv, stack_data.envp);
     exit(exit_code);
 }

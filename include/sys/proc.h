@@ -45,6 +45,12 @@ struct proc {
     spinlock_t exiting;
 };
 
+static inline struct proc* current_proc(void) {
+    if(_cpu()->thread)
+        return _cpu()->thread->proc;
+    return nullptr;
+}
+
 static inline mode_t umask(mode_t mode) {
     return mode & ~_cpu()->thread->proc->umask;
 }

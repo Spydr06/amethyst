@@ -19,8 +19,19 @@ extern "C" {
 #define O_DIRECTORY 0100000
 #define O_CLOEXEC   02000000
 
+extern char **environ;
+
 int brk(void* addr);
 void* sbrk(intptr_t increment);
+
+int execve(const char *pathname, char *const argv[], char *const envp[]);
+
+int execl(const char *pathname, const char *arg, ...);
+int execlp(const char *file, const char *arg, ...);
+int execle(const char *pathname, const char* arg, ... /*, char *const envp[] */);
+int execv(const char* pathname, char *const argv[]);
+int execvp(const char *file, char *const argv[]);
+int execvpe(const char *file, char *const argv[], char *const envp[]);
 
 int open(const char* pathname, int flags, mode_t mode);
 int close(int fd);
@@ -34,6 +45,11 @@ _Noreturn void _exit(int status);
 long syscall(long number, ...);
 
 char *getcwd(char *buf, size_t size);
+
+#ifdef _AMETHYST_SRC
+    #define yield __amethyst_yield
+    void yield(void);
+#endif
 
 #ifdef __cplusplus
 }

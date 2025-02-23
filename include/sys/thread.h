@@ -24,12 +24,6 @@ enum wakeup_reason {
     WAKEUP_REASON_INTERRUPTED = -1
 };
 
-struct brk {
-    void* base;
-    void* top;
-    size_t limit;
-};
-
 struct thread {
     void* kernel_stack_top;
     void* kernel_stack;
@@ -44,7 +38,6 @@ struct thread {
 
     struct vmm_context* vmm_context;
     struct proc* proc;
-    struct brk user_brk;
 
     enum thread_flags flags;
     int priority;
@@ -79,8 +72,18 @@ struct thread {
 
 static_assert(sizeof(struct thread) <= PAGE_SIZE);
 
+static inline struct thread* current_thread(void) {
+    return _cpu()->thread;
+}
+
+static inline struct vmm_context* current_vmm_context(void) {
+    if(_cpu()->thread)
+        return _cpu()->thread->vmm_context;
+    return nullptr;
+}
+
 void thread_init(void);
-struct thread* thread_create(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack, void* user_brk);
+struct thread* thread_create(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack);
 
 #endif /* _AMETHYST_SCHEDULER_THREAD_H */
 

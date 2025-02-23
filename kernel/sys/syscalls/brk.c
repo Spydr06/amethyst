@@ -52,5 +52,6 @@ __syscall syscallret_t _sys_brk(struct cpu_context* __unused, void* addr) {
     ret.ret = old_break;
     thread->vmm_context->brk.top = (void*) new_break;
 
+    ret._errno = 0;
     return ret;
 }
