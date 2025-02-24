@@ -610,14 +610,14 @@ static inline struct shard_value eval_call_function(volatile struct shard_evalua
             if(arg.type != SHARD_VAL_SET)
                 shard_eval_throw(e, loc, "function expected argument of type set");
 
-            size_t expected_num_args = arg.set->size;
+            size_t expected_arity = arg.set->size;
             for(size_t i = 0; i < func.function.arg->attrs.count; i++) {
                 struct shard_lazy_value* val;
                 int err = shard_set_get(arg.set, func.function.arg->attrs.items[i].ident, &val);
                 if(err || !val) {
                     if(func.function.arg->attrs.items[i].value) {
                         val = shard_lazy(e->ctx, func.function.arg->attrs.items[i].value, e->scope);
-                        expected_num_args++;
+                        expected_arity++;
                     } 
                     else
                         shard_eval_throw(e, loc, "set does not contain expected attribute `%s`", func.function.arg->attrs.items[i].ident);
@@ -626,7 +626,7 @@ static inline struct shard_value eval_call_function(volatile struct shard_evalua
                 shard_set_put(set, func.function.arg->attrs.items[i].ident, val);
             }
 
-            if(!func.function.arg->ellipsis && func.function.arg->attrs.count != expected_num_args)
+            if(!func.function.arg->ellipsis && func.function.arg->attrs.count != expected_arity)
                 shard_eval_throw(e, loc, "set does not match expected attributes");
 
             if(func.function.arg->ident)
@@ -661,34 +661,47 @@ static inline struct shard_value eval_call_function(volatile struct shard_evalua
     return value;
 }
 
-static struct shard_value eval_call_builtin(volatile struct shard_evaluator* e, struct shard_value builtin, struct shard_lazy_value* arg, struct shard_location loc) {
-    assert(builtin.type == SHARD_VAL_BUILTIN);
+static struct shard_value eval_call_builtin(volatile struct shard_evaluator* e, struct shard_value value, struct shard_lazy_value* arg) {
+    assert(value.type == SHARD_VAL_BUILTIN);
 
-    if(builtin.builtin.num_expected_args == 1)
-        return builtin.builtin.callback(e, &arg, &loc);
-    else if(!builtin.builtin.num_queued_args)
-        builtin.builtin.queued_args = shard_gc_malloc(e->gc, sizeof(void*) * builtin.builtin.num_expected_args);
+    if(value.builtin.builtin->arity == 1)
+        return value.builtin.builtin->callback(e, value.builtin.builtin, &arg);
+    else if(!value.builtin.num_queued_args)
+        value.builtin.queued_args = shard_gc_malloc(e->gc, sizeof(void*) * value.builtin.builtin->arity);
 
-    builtin.builtin.queued_args[builtin.builtin.num_queued_args++] = arg;
-    if(builtin.builtin.num_queued_args != builtin.builtin.num_expected_args)
-        return builtin;
+    value.builtin.queued_args[value.builtin.num_queued_args++] = arg;
+    if(value.builtin.num_queued_args != value.builtin.builtin->arity)
+        return value;
 
-    return builtin.builtin.callback(e, builtin.builtin.queued_args, &loc);
+    return value.builtin.builtin->callback(e, value.builtin.builtin, value.builtin.queued_args);
 }
 
 static struct shard_value eval_call_functor_set(volatile struct shard_evaluator* e, struct shard_value set, struct shard_lazy_value* arg, struct shard_location loc); 
 
 static inline struct shard_value eval_call_value(volatile struct shard_evaluator* e, struct shard_value value, struct shard_lazy_value* arg, struct shard_location loc) {
+    struct shard_error_scope error_scope = {
+        .prev = e->error_scope,
+        .loc = loc
+    };
+    e->error_scope = &error_scope;
+
+    struct shard_value ret_value;
     switch(value.type) {
         case SHARD_VAL_FUNCTION:
-            return eval_call_function(e, value, arg, loc);
+             ret_value = eval_call_function(e, value, arg, loc);
+             break;
         case SHARD_VAL_SET:
-            return eval_call_functor_set(e, value, arg, loc);
+             ret_value = eval_call_functor_set(e, value, arg, loc);
+             break;
         case SHARD_VAL_BUILTIN:
-            return eval_call_builtin(e, value, arg, loc);
+             ret_value = eval_call_builtin(e, value, arg);
+             break;
         default:
             shard_eval_throw(e, loc, "attempt to call something which is not a function");
     }
+
+    e->error_scope = e->error_scope->prev;
+    return ret_value;
 }
 
 SHARD_DECL struct shard_value shard_eval_call(volatile struct shard_evaluator* e, struct shard_value value, struct shard_lazy_value* arg, struct shard_location loc) {

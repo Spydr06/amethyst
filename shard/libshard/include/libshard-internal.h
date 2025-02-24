@@ -71,14 +71,7 @@
 #define SET_VAL(_set) ((struct shard_value) { .type = SHARD_VAL_SET, .set = (_set) })
 #define FUNC_VAL(_arg, _body, _scope) ((struct shard_value) { .type = SHARD_VAL_FUNCTION, .function.arg = (_arg), .function.body = (_body), .function.scope = (_scope) })
 
-#define BUILTIN_VAL(_callback, _num_expected_args) ((struct shard_value) {  \
-        .type = SHARD_VAL_BUILTIN,                                          \
-        .builtin.callback = (_callback),                                    \
-        .builtin.queued_args = NULL,                                        \
-        .builtin.num_queued_args = 0,                                       \
-        .builtin.num_expected_args = (_num_expected_args)                   \
-    })
-
+#define BUILTIN_VAL(_builtin) ((struct shard_value) {.type = SHARD_VAL_BUILTIN, .builtin.builtin=(_builtin), .builtin.queued_args=NULL, .builtin.num_queued_args=0 })
 #ifndef _AMETHYST_STRNLEN_DEFINED
 
 static inline size_t strnlen(const char *s, size_t n)

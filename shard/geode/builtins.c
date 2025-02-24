@@ -17,43 +17,39 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 
-static struct shard_value builtin_debug_dump(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
-static struct shard_value builtin_debug_println(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
-static struct shard_value builtin_debug_unimplemented(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
-static struct shard_value builtin_file_basename(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
-static struct shard_value builtin_file_dirname(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
-static struct shard_value builtin_file_exists(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
-static struct shard_value builtin_file_mkdir(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
-static struct shard_value builtin_file_writeFile(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
-static struct shard_value builtin_errno_toString(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
-static struct shard_value builtin_error_throw(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
-static struct shard_value builtin_proc_spawn(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
-static struct shard_value builtin_proc_spawnPipe(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
-static struct shard_value builtin_setenv(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
-static struct shard_value builtin_getenv(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
-static struct shard_value builtin_unsetenv(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc);
+static struct shard_value builtin_debug_dump(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_debug_println(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_debug_unimplemented(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_file_basename(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_file_dirname(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_file_exists(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_file_mkdir(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_file_writeFile(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_errno_toString(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_error_throw(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_proc_spawn(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_proc_spawnPipe(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_setenv(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_getenv(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_unsetenv(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 
 
-static const struct {
-    const char* ident;
-    struct shard_value (*callback)(volatile struct shard_evaluator*, struct shard_lazy_value**, struct shard_location*);
-    unsigned arity;
-} geode_builtin_functions[] = {
-    {"geode.debug.dump", builtin_debug_dump, 1},
-    {"geode.debug.println", builtin_debug_println, 1},
-    {"geode.debug.unimplemented", builtin_debug_unimplemented, 1},
-    {"geode.file.basename", builtin_file_basename, 1},
-    {"geode.file.dirname", builtin_file_dirname, 1},
-    {"geode.file.exists", builtin_file_exists, 1},
-    {"geode.file.mkdir", builtin_file_mkdir, 1},
-    {"geode.file.writeFile", builtin_file_writeFile, 2},
-    {"geode.errno.toString", builtin_errno_toString, 1},
-    {"geode.error.throw", builtin_error_throw, 1},
-    {"geode.proc.spawn", builtin_proc_spawn, 3},
-    {"geode.proc.spawnPipe", builtin_proc_spawnPipe, 3},
-    {"geode.setenv", builtin_setenv, 2},
-    {"geode.getenv", builtin_getenv, 1},
-    {"geode.unsetenv", builtin_unsetenv, 1},
+static struct shard_builtin geode_builtin_functions[] = {
+    SHARD_BUILTIN("geode.debug.dump", builtin_debug_dump, SHARD_VAL_ANY),
+    SHARD_BUILTIN("geode.debug.println", builtin_debug_println, SHARD_VAL_STRING),
+    SHARD_BUILTIN("geode.debug.unimplemented", builtin_debug_unimplemented, SHARD_VAL_STRING),
+    SHARD_BUILTIN("geode.file.basename", builtin_file_basename, SHARD_VAL_PATH),
+    SHARD_BUILTIN("geode.file.dirname", builtin_file_dirname, SHARD_VAL_PATH),
+    SHARD_BUILTIN("geode.file.exists", builtin_file_exists, SHARD_VAL_PATH),
+    SHARD_BUILTIN("geode.file.mkdir", builtin_file_mkdir, SHARD_VAL_PATH),
+    SHARD_BUILTIN("geode.file.writeFile", builtin_file_writeFile, SHARD_VAL_PATH, SHARD_VAL_STRING),
+    SHARD_BUILTIN("geode.errno.toString", builtin_errno_toString, SHARD_VAL_INT),
+    SHARD_BUILTIN("geode.error.throw", builtin_error_throw, SHARD_VAL_STRING),
+    SHARD_BUILTIN("geode.proc.spawn", builtin_proc_spawn, SHARD_VAL_STRING, SHARD_VAL_LIST, SHARD_VAL_BOOL),
+    SHARD_BUILTIN("geode.proc.spawnPipe", builtin_proc_spawnPipe, SHARD_VAL_STRING, SHARD_VAL_LIST, SHARD_VAL_STRING),
+    SHARD_BUILTIN("geode.setenv", builtin_setenv, SHARD_VAL_STRING, SHARD_VAL_STRING),
+    SHARD_BUILTIN("geode.getenv", builtin_getenv, SHARD_VAL_STRING),
+    SHARD_BUILTIN("geode.unsetenv", builtin_unsetenv, SHARD_VAL_STRING),
 };
 
 static void load_constants(struct geode_context* ctx) {
@@ -82,20 +78,17 @@ void geode_load_builtins(struct geode_context* ctx) {
     load_constants(ctx);
 
     for(size_t i = 0; i < __len(geode_builtin_functions); i++) {
-        int err = shard_define_function(
+        int err = shard_define_builtin(
             &ctx->shard_ctx, 
-            geode_builtin_functions[i].ident, 
-            geode_builtin_functions[i].callback, 
-            geode_builtin_functions[i].arity
+            &geode_builtin_functions[i]
         );
 
         assert(err == 0 && "shard_define_function returned error");
     }
 }
 
-static struct shard_value builtin_debug_dump(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location*) {
-    struct shard_value arg = shard_eval_lazy2(e, *args);
-
+static struct shard_value builtin_debug_dump(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value arg = shard_builtin_eval_arg(e, builtin, args, 0);
     struct geode_context* geode_ctx = e->ctx->userp;
 
     struct shard_string str = {0};
@@ -111,10 +104,8 @@ static struct shard_value builtin_debug_dump(volatile struct shard_evaluator* e,
     return arg;
 }
 
-static struct shard_value builtin_debug_println(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
-    struct shard_value arg = shard_eval_lazy2(e, *args);
-    if(arg.type != SHARD_VAL_STRING)
-        shard_eval_throw(e, *loc, "`geode.debug.println` expects argument to be of type `string`");
+static struct shard_value builtin_debug_println(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value arg = shard_builtin_eval_arg(e, builtin, args, 0);
 
     fputs(arg.string, stdout);
     fputc('\n', stdout);
@@ -122,18 +113,14 @@ static struct shard_value builtin_debug_println(volatile struct shard_evaluator*
     return arg;
 }
 
-static struct shard_value builtin_debug_unimplemented(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
-    struct shard_value msg = shard_eval_lazy2(e, *args);
-    if(msg.type != SHARD_VAL_STRING)
-        shard_eval_throw(e, *loc, "`geode.debug.unimplemented` expects argument to be of type `string`");
+static struct shard_value builtin_debug_unimplemented(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value msg = shard_builtin_eval_arg(e, builtin, args, 0);
 
-    shard_eval_throw(e, *loc, "`geode.debug.unimplemented` called unimplemented value: %s", msg.string);
+    shard_eval_throw(e, e->error_scope->loc, "`geode.debug.unimplemented` called unimplemented value: %s", msg.string);
 }
 
-static struct shard_value builtin_file_basename(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
-    struct shard_value arg = shard_eval_lazy2(e, *args);
-    if(arg.type != SHARD_VAL_PATH)
-        shard_eval_throw(e, *loc, "`geode.file.basename` expects argument to be of type `path`");
+static struct shard_value builtin_file_basename(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value arg = shard_builtin_eval_arg(e, builtin, args, 0);
 
     char* path_copy = strdup(arg.path);
     char* base = basename(path_copy);
@@ -147,10 +134,8 @@ static struct shard_value builtin_file_basename(volatile struct shard_evaluator*
     return (struct shard_value){.type=SHARD_VAL_PATH, .path=gc_base, .pathlen=base_len};
 }
 
-static struct shard_value builtin_file_dirname(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
-    struct shard_value arg = shard_eval_lazy2(e, *args);
-    if(arg.type != SHARD_VAL_PATH)
-        shard_eval_throw(e, *loc, "`geode.file.basename` expects argument to be of type `path`");
+static struct shard_value builtin_file_dirname(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value arg = shard_builtin_eval_arg(e, builtin, args, 0);
 
     char* path_copy = strdup(arg.path);
     char* dir = dirname(path_copy);
@@ -164,31 +149,21 @@ static struct shard_value builtin_file_dirname(volatile struct shard_evaluator* 
     return (struct shard_value){.type=SHARD_VAL_PATH, .path=gc_dir, .pathlen=dir_len};
 }
 
-static struct shard_value builtin_file_exists(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
-    struct shard_value arg = shard_eval_lazy2(e, *args);
-    if(arg.type != SHARD_VAL_PATH)
-        shard_eval_throw(e, *loc, "`geode.file.exists` expects argument to be of type `path`");
+static struct shard_value builtin_file_exists(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value arg = shard_builtin_eval_arg(e, builtin, args, 0);
     
     return (struct shard_value){.type=SHARD_VAL_BOOL, .boolean=access(arg.path, F_OK) == 0};
 }
 
-static struct shard_value builtin_file_mkdir(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
-    struct shard_value arg = shard_eval_lazy2(e, *args);
-    if(arg.type != SHARD_VAL_PATH)
-        shard_eval_throw(e, *loc, "`geode.file.mkdir` expects argument to be of type `path`");
+static struct shard_value builtin_file_mkdir(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value arg = shard_builtin_eval_arg(e, builtin, args, 0);
 
     return (struct shard_value){.type=SHARD_VAL_INT, .integer=mkdir(arg.path, 0777)};
 }
 
-static struct shard_value builtin_file_writeFile(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
-    struct shard_value file = shard_eval_lazy2(e, args[0]);
-    struct shard_value data = shard_eval_lazy2(e, args[1]);
-
-    if(file.type != SHARD_VAL_PATH)
-        shard_eval_throw(e, *loc, "`geode.file.writeFile` expects first argument to be of type `path`");
-
-    if(data.type != SHARD_VAL_STRING)
-        shard_eval_throw(e, *loc, "`geode.file.writeFile` expects second argument to be of type `string`");    
+static struct shard_value builtin_file_writeFile(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value file = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value data = shard_builtin_eval_arg(e, builtin, args, 1);
 
     FILE* fp = fopen(file.string, "w");
     if(!fp)
@@ -200,10 +175,8 @@ static struct shard_value builtin_file_writeFile(volatile struct shard_evaluator
     return (struct shard_value){.type=SHARD_VAL_INT, .integer=err};
 }
 
-static struct shard_value builtin_errno_toString(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
-    struct shard_value arg = shard_eval_lazy2(e, *args);
-    if(arg.type != SHARD_VAL_INT)
-        shard_eval_throw(e, *loc, "`geode.errno.toString` expects argument to be of type `integer`");
+static struct shard_value builtin_errno_toString(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value arg = shard_builtin_eval_arg(e, builtin, args, 0);
 
     const char* strerr = strerror(arg.integer);
     assert(strerr != NULL && "strerror() should never return NULL");
@@ -211,17 +184,15 @@ static struct shard_value builtin_errno_toString(volatile struct shard_evaluator
     return (struct shard_value){.type=SHARD_VAL_STRING, .string=strerr, .strlen=strlen(strerr)};
 }
 
-static struct shard_value builtin_error_throw(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
-    struct shard_value msg = shard_eval_lazy2(e, *args);
-    if(msg.type != SHARD_VAL_STRING)
-        shard_eval_throw(e, *loc, "`geode.error.throe` expects argument to be of type `string`");
+static struct shard_value builtin_error_throw(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value msg = shard_builtin_eval_arg(e, builtin, args, 0);
 
     struct geode_context* ctx = e->ctx->userp;
 
     struct shard_error* err = geode_malloc(ctx, sizeof(struct shard_error));
     *err = (struct shard_error){
         .err = geode_strdup(ctx, msg.string),
-        .loc = *loc,
+        .loc = e->error_scope->loc,
         .heap = false,
         ._errno = 0
     };
@@ -229,18 +200,10 @@ static struct shard_value builtin_error_throw(volatile struct shard_evaluator* e
     geode_throw(ctx, SHARD, .shard=TUPLE(.num=1,.errs=err));
 }
 
-static struct shard_value builtin_proc_spawn(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
-    struct shard_value exec = shard_eval_lazy2(e, args[0]);
-    if(exec.type != SHARD_VAL_STRING)
-        shard_eval_throw(e, *loc, "`geode.proc.spawn` expects first argument to be of type `string`");
-
-    struct shard_value arg_list = shard_eval_lazy2(e, args[1]);
-    if(arg_list.type != SHARD_VAL_LIST)
-        shard_eval_throw(e, *loc, "`geode.proc.spawn` expects second argument to be of type `list`, got %d", exec.type);
-
-    struct shard_value do_wait = shard_eval_lazy2(e, args[2]);
-    if(do_wait.type != SHARD_VAL_BOOL)
-        shard_eval_throw(e, *loc, "`geode.proc.spawn` expects third argument to be of type `bool`");
+static struct shard_value builtin_proc_spawn(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value exec = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value arg_list = shard_builtin_eval_arg(e, builtin, args, 1);
+    struct shard_value do_wait = shard_builtin_eval_arg(e, builtin, args, 2);
 
     size_t argc = shard_list_length(arg_list.list.head) + 1;
     char** argv = malloc(sizeof(char*) * (argc + 1));
@@ -251,7 +214,12 @@ static struct shard_value builtin_proc_spawn(volatile struct shard_evaluator* e,
     for(struct shard_list* arg = arg_list.list.head; arg; arg = arg->next) {
         struct shard_value value = shard_eval_lazy2(e, arg->value);
         if(value.type != SHARD_VAL_STRING)
-            shard_eval_throw(e, *loc, "`geode.proc.spawn` expects second argument to be a list of strings, element `%zu` is off.", counter - 1);
+            shard_eval_throw(e, 
+                    e->error_scope->loc,
+                    "`geode.proc.spawn` expects argument `2` to be a list of strings, got element `%zu` of type `%s`.",
+                    counter - 1,
+                    shard_value_type_to_string(e->ctx, value.type)
+                );
 
         argv[counter++] = (char*) value.string;
     }
@@ -296,18 +264,10 @@ static struct shard_value builtin_proc_spawn(volatile struct shard_evaluator* e,
     return return_val;
 }
 
-static struct shard_value builtin_proc_spawnPipe(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
-    struct shard_value exec = shard_eval_lazy2(e, args[0]);
-    if(exec.type != SHARD_VAL_STRING)
-        shard_eval_throw(e, *loc, "`geode.proc.spawnPipe` expects argument to be of type `string`");
-
-    struct shard_value arg_list = shard_eval_lazy2(e, args[1]);
-    if(arg_list.type != SHARD_VAL_LIST)
-        shard_eval_throw(e, *loc, "`geode.proc.spawnPipe` expects second argument to be of type `list`, got %d", exec.type);
-
-    struct shard_value input_string = shard_eval_lazy2(e, args[2]);
-    if(input_string.type != SHARD_VAL_STRING)
-        shard_eval_throw(e, *loc, "`geode.proc.spawnPipe` expects third argument to be of type `string`");
+static struct shard_value builtin_proc_spawnPipe(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value exec = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value arg_list = shard_builtin_eval_arg(e, builtin, args, 1);
+    struct shard_value input_string = shard_builtin_eval_arg(e, builtin, args, 2);
 
     size_t argc = shard_list_length(arg_list.list.head) + 1;
     char** argv = malloc(sizeof(char*) * (argc + 1));
@@ -318,7 +278,12 @@ static struct shard_value builtin_proc_spawnPipe(volatile struct shard_evaluator
     for(struct shard_list* arg = arg_list.list.head; arg; arg = arg->next) {
         struct shard_value value = shard_eval_lazy2(e, arg->value);
         if(value.type != SHARD_VAL_STRING)
-            shard_eval_throw(e, *loc, "`geode.proc.spawnPipe` expects second argument to be a list of strings, element `%zu` is off.", counter - 1);
+            shard_eval_throw(e, 
+                    e->error_scope->loc,
+                    "`geode.proc.spawnPipe` expects argument `2` to be a list of strings, got element `%zu` of type `%s`.",
+                    counter - 1,
+                    shard_value_type_to_string(e->ctx, value.type)
+                );
 
         argv[counter++] = (char*) value.string;
     }
@@ -328,7 +293,7 @@ static struct shard_value builtin_proc_spawnPipe(volatile struct shard_evaluator
 
     struct geode_context* ctx = e->ctx->userp;
     if(ctx->flags.verbose) {
-        infof(ctx, "proc.spawn: ");
+        infof(ctx, "proc.spawnPipe: ");
         for(char** arg = argv; *arg; arg++) {
             printf("%s ", *arg);
         }
@@ -404,22 +369,15 @@ static struct shard_value builtin_proc_spawnPipe(volatile struct shard_evaluator
     return (struct shard_value){.type=SHARD_VAL_SET, .set=result};
 }
 
-static struct shard_value builtin_setenv(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
-    struct shard_value var = shard_eval_lazy2(e, args[0]);
-    if(var.type != SHARD_VAL_STRING)
-        shard_eval_throw(e, *loc, "`geode.setenv` expects first argument to be of type `string`.");
+static struct shard_value builtin_setenv(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value var = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value val = shard_builtin_eval_arg(e, builtin, args, 1);
 
-    struct shard_value val = shard_eval_lazy2(e, args[1]);
-    if(val.type != SHARD_VAL_STRING)
-        shard_eval_throw(e, *loc, "`geode.setenv` expects second argument to be of type `string`.");
-
-return (struct shard_value){.type=SHARD_VAL_INT, .integer=setenv(var.string, val.string, true)};
+    return (struct shard_value){.type=SHARD_VAL_INT, .integer=setenv(var.string, val.string, true)};
 }
 
-static struct shard_value builtin_getenv(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
-    struct shard_value arg = shard_eval_lazy2(e, *args);
-    if(arg.type != SHARD_VAL_STRING)
-        shard_eval_throw(e, *loc, "`geode.getenv` expects argument to be of type `string`.");
+static struct shard_value builtin_getenv(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value arg = shard_builtin_eval_arg(e, builtin, args, 0);
 
     const char* val = getenv(arg.string);
     if(!val)
@@ -428,10 +386,8 @@ static struct shard_value builtin_getenv(volatile struct shard_evaluator* e, str
     return (struct shard_value){.type=SHARD_VAL_STRING, .string=val, .strlen=strlen(val)};
 }
 
-static struct shard_value builtin_unsetenv(volatile struct shard_evaluator* e, struct shard_lazy_value** args, struct shard_location* loc) {
-    struct shard_value arg = shard_eval_lazy2(e, *args);
-    if(arg.type != SHARD_VAL_STRING)
-        shard_eval_throw(e, *loc, "`geode.unsetenv` expects argument to be of type `string`.");
+static struct shard_value builtin_unsetenv(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value arg = shard_builtin_eval_arg(e, builtin, args, 0);
 
     return (struct shard_value){.type=SHARD_VAL_INT,.integer=unsetenv(arg.string)};
 }

@@ -80,6 +80,7 @@ extern "C" {
 
 struct shard_alloc_map;
 struct shard_arena;
+struct shard_builtin;
 struct shard_context;
 struct shard_evaluator;
 struct shard_expr;
@@ -252,7 +253,7 @@ SHARD_DECL void shard_include_dir(struct shard_context* ctx, char* path);
 SHARD_DECL void shard_set_current_system(struct shard_context* ctx, const char* current_system);
 
 SHARD_DECL int shard_define(struct shard_context* ctx, shard_ident_t ident, struct shard_lazy_value* value);
-SHARD_DECL int shard_define_function(struct shard_context* ctx, shard_ident_t ident, struct shard_value (*callback)(volatile struct shard_evaluator*, struct shard_lazy_value**, struct shard_location*), unsigned arity);
+SHARD_DECL int shard_define_builtin(struct shard_context* ctx, struct shard_builtin* builtin);
 SHARD_DECL int shard_define_constant(struct shard_context* ctx, shard_ident_t ident, struct shard_value value);
 
 SHARD_DECL void shard_deinit(struct shard_context* ctx);
@@ -492,11 +493,17 @@ SHARD_DECL int shard_parse(struct shard_context* ctx, struct shard_source* src, 
 
 SHARD_DECL void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr);
 
+struct shard_error_scope {
+    struct shard_error_scope* prev;
+    struct shard_location loc;
+};
+
 struct shard_evaluator {
     struct shard_context* ctx;
     struct shard_gc* gc;
 
     struct shard_scope* scope;
+    struct shard_error_scope* error_scope;
     jmp_buf* exception;
 };
 
@@ -522,6 +529,32 @@ enum shard_value_type {
 };
 
 #define SHARD_VAL_CALLABLE (SHARD_VAL_FUNCTION | SHARD_VAL_BUILTIN | SHARD_VAL_SET)
+#define SHARD_VAL_ANY (SHARD_VAL_NULL | SHARD_VAL_BOOL | SHARD_VAL_INT | SHARD_VAL_FLOAT | SHARD_VAL_STRING | SHARD_VAL_PATH | SHARD_VAL_LIST | SHARD_VAL_SET | SHARD_VAL_FUNCTION | SHARD_VAL_BUILTIN)
+#define SHARD_VAL_NUMERIC (SHARD_VAL_INT | SHARD_VAL_FLOAT)
+#define SHARD_VAL_TEXTUAL (SHARD_VAL_STRING | SHARD_VAL_PATH)
+
+const char* shard_value_type_to_string(struct shard_context* ctx, enum shard_value_type type);
+
+struct shard_builtin {
+    const char* full_ident;
+    struct shard_value (*callback)(volatile struct shard_evaluator*, struct shard_builtin*, struct shard_lazy_value**);
+    unsigned arity;
+    enum shard_value_type* arg_types;
+};
+
+#define SHARD_BUILTIN(_ident, _callback, ...) ((struct shard_builtin){                          \
+        .full_ident=(_ident),                                                                   \
+        .callback=(_callback),                                                                  \
+        .arity=sizeof((enum shard_value_type[]){__VA_ARGS__}) / sizeof(enum shard_value_type),  \
+        .arg_types=(enum shard_value_type[]){__VA_ARGS__}                                       \
+    })
+
+#define SHARD_BUILTIN_CONST(_ident, _callback) ((struct shard_builtin){ \
+        .full_ident=(_ident),                                           \
+        .callback=(_callback),                                          \
+        .arity=0,                                                       \
+        .arg_types=NULL                                                 \
+    })
 
 struct shard_value {
     enum shard_value_type type;
@@ -554,9 +587,9 @@ struct shard_value {
         } function;
 
         struct {
-            struct shard_value (*callback)(volatile struct shard_evaluator*, struct shard_lazy_value**, struct shard_location*);
+            struct shard_builtin* builtin;
             struct shard_lazy_value** queued_args;
-            unsigned num_queued_args, num_expected_args;
+            unsigned num_queued_args;
         } builtin;
     };
 };
@@ -601,6 +634,8 @@ SHARD_DECL void shard_set_put(struct shard_set* set, shard_ident_t attr, struct 
 SHARD_DECL int shard_set_get(struct shard_set* set, shard_ident_t attr, struct shard_lazy_value** value);
 
 SHARD_DECL void shard_get_builtins(struct shard_context* ctx, struct shard_scope* dest);
+
+SHARD_DECL struct shard_value shard_builtin_eval_arg(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args, unsigned i);
 
 SHARD_DECL struct shard_value shard_value_copy(volatile struct shard_evaluator* e, struct shard_value val);
 SHARD_DECL int shard_value_to_string(struct shard_context* ctx, struct shard_string* str, const struct shard_value* value, int max_depth);

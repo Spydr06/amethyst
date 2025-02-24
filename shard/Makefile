@@ -42,7 +42,7 @@ endef
 override LDFLAGS +=
 override LDFLAGS := $(call unique, $(LDFLAGS))
 
-override CFLAGS += -Wall -Wextra -pedantic -std=c2x -I$(LIBSHARD_DIR)/include -g
+override CFLAGS += -Wall -Wextra -std=c2x -I$(LIBSHARD_DIR)/include -g
 override CFLAGS := $(call unique, $(CFLAGS))
 
 ifneq (,$(findstring SHARD_USE_GCBOEHM, $(CFLAGS)))

@@ -11,7 +11,7 @@ struct shard_value shard_value_copy(volatile struct shard_evaluator* e, struct s
             return val; // TODO: deep-copy
         case SHARD_VAL_BUILTIN: {
             if(val.builtin.num_queued_args) {
-                size_t size = sizeof(void*) * val.builtin.num_expected_args;
+                size_t size = sizeof(void*) * val.builtin.builtin->arity;
                 struct shard_lazy_value** copied_args = shard_gc_malloc(e->gc, size);
                 memcpy(copied_args, val.builtin.queued_args, size);
                 val.builtin.queued_args = copied_args;
@@ -139,11 +139,66 @@ bool shard_values_equal(struct shard_value* lhs, struct shard_value* rhs) {
         case SHARD_VAL_FUNCTION:
             return memcmp(&lhs->function, &rhs->function, sizeof(lhs->function)) == 0;
         case SHARD_VAL_BUILTIN:
-            return lhs->builtin.callback == rhs->builtin.callback;
+            return lhs->builtin.builtin == rhs->builtin.builtin;
         case SHARD_VAL_SET:
         case SHARD_VAL_LIST:
         default:
             assert(false && "unimplemented!");
     }
+}
+
+const char* shard_primitive_value_type_to_string(enum shard_value_type type) {
+    switch(type) {
+        case SHARD_VAL_NULL:
+            return "null";
+        case SHARD_VAL_INT:
+            return "int";
+        case SHARD_VAL_BOOL:
+            return "bool";
+        case SHARD_VAL_STRING:
+            return "string";
+        case SHARD_VAL_LIST:
+            return "list";
+        case SHARD_VAL_SET:
+            return "set";
+        case SHARD_VAL_FLOAT:
+            return "float";
+        case SHARD_VAL_FUNCTION:
+            return "function";
+        case SHARD_VAL_PATH:
+            return "path";
+        case SHARD_VAL_BUILTIN:
+            return "builtin";
+        default:
+            return "<unknown>";
+    }
+}
+
+const char* shard_value_type_to_string(struct shard_context* ctx, enum shard_value_type type) {
+    if(type == SHARD_VAL_CALLABLE)
+        return "callable";
+    else if(type == SHARD_VAL_ANY)
+        return "any";
+
+    bool first = true;
+    struct shard_string s = {0};
+
+    for(unsigned i = 0; i < sizeof(enum shard_value_type) * 8; i++) {
+        enum shard_value_type test = 1 << i;
+
+        if(!(type & test))
+            continue;
+
+        if(!first)
+            shard_gc_string_push(&ctx->gc, &s, '|');
+
+        const char* prim = shard_primitive_value_type_to_string(test);
+        shard_gc_string_append(&ctx->gc, &s, prim);
+
+        first = false;
+    }
+
+    shard_gc_string_push(&ctx->gc, &s, '\0');
+    return s.items;
 }
 
