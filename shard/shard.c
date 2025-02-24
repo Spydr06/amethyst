@@ -101,7 +101,7 @@ static void print_error(struct shard_error* error) {
     fseek(fd, line_start, SEEK_SET);
 
     char* line_str = calloc(line_end - line_start + 1, sizeof(char));
-    assert(fread(line_str, line_end - line_start, sizeof(char), fd) == (size_t) (line_end - line_start));
+    fread(line_str, line_end - line_start, sizeof(char), fd);
 
     size_t column = error->loc.offset - line_start;
 

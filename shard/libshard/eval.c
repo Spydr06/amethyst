@@ -599,6 +599,17 @@ static inline struct shard_value eval_call_function(volatile struct shard_evalua
 
     struct shard_set* set;
     struct shard_value arg;
+    if(func.function.arg->type_constraint != SHARD_VAL_ANY) {
+        arg = eval_lazy(e, arg_value);
+        if(!(arg.type & func.function.arg->type_constraint))
+            shard_eval_throw(e,
+                    loc,
+                    "function expected argument of type `%s`, but got `%s`",
+                    shard_value_type_to_string(e->ctx, func.function.arg->type_constraint),
+                    shard_value_type_to_string(e->ctx, arg.type)
+            );
+    }
+
     switch(func.function.arg->type) {
         case SHARD_PAT_IDENT:
             set = shard_set_init(e->ctx, 1);
@@ -606,9 +617,6 @@ static inline struct shard_value eval_call_function(volatile struct shard_evalua
             break;
         case SHARD_PAT_SET:
             set = shard_set_init(e->ctx, func.function.arg->attrs.count + (size_t) !!func.function.arg->ident);
-            arg = eval_lazy(e, arg_value);
-            if(arg.type != SHARD_VAL_SET)
-                shard_eval_throw(e, loc, "function expected argument of type set");
 
             size_t expected_arity = arg.set->size;
             for(size_t i = 0; i < func.function.arg->attrs.count; i++) {

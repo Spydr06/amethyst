@@ -32,6 +32,22 @@ struct parser {
     struct shard_token token;
 };
 
+static struct {
+    const char* typename;
+    enum shard_value_type type;
+} typenames[] = {
+    {"any", SHARD_VAL_ANY},
+    {"bool", SHARD_VAL_BOOL},
+    {"float", SHARD_VAL_FLOAT},
+    {"function", SHARD_VAL_FUNCTION | SHARD_VAL_BUILTIN},
+    {"int", SHARD_VAL_INT},
+    {"list", SHARD_VAL_LIST},
+    {"null", SHARD_VAL_NULL},
+    {"path", SHARD_VAL_PATH},
+    {"set", SHARD_VAL_SET},
+    {"string", SHARD_VAL_STRING},
+};
+
 static int advance(struct parser* p) {
     int err = shard_lex(p->ctx, p->src, &p->token);
     if(err) {
@@ -241,12 +257,45 @@ static int parse_function(struct parser* p, struct shard_expr* expr, struct shar
     return parse_expr(p, expr->func.body, PREC_LOWEST);
 }
 
+static int parse_type(struct parser* p, enum shard_value_type* type) {
+    (*type) = 0;
+    int err = 0;
+    do {
+        char* ident = p->token.value.string;
+        if((err = consume(p, SHARD_TOK_IDENT)))
+            return err;
+
+        bool found = false;
+        for(unsigned i = 0; i < LEN(typenames); i++) {
+            if(strcmp(ident, typenames[i].typename))
+                continue;
+                
+            found = true;
+            (*type) |= typenames[i].type;
+            break;
+        }
+
+        if(!found)
+            errorf(p, "unknown typename `%s`", ident); // soft error, no need to quit
+        
+
+        if(p->token.type == SHARD_TOK_QUESTIONMARK) {
+            (*type) |= SHARD_VAL_NULL;
+            if((err = advance(p)))
+                return err;
+        }
+    } while(p->token.type == SHARD_TOK_PIPE && !(err = advance(p)));
+
+    return err;
+}
+
 static int parse_set_pattern(struct parser* p, struct shard_pattern* pattern, shard_ident_t prefix, bool skip_lbrace, shard_ident_t first_attr) {
     pattern->type = SHARD_PAT_SET;
     pattern->ellipsis = false;
     pattern->ident = prefix;
     pattern->loc = p->token.location;
     pattern->attrs = (struct shard_binding_list){0};
+    pattern->type_constraint = SHARD_VAL_SET | SHARD_VAL_NULL;
 
     int err = skip_lbrace ? 0 : advance(p);
 
@@ -320,13 +369,26 @@ static int parse_ident(struct parser* p, struct shard_expr* expr) {
     char* ident = p->token.value.string;
     int err = advance(p);
 
+    enum shard_value_type type_constraint = SHARD_VAL_ANY;
+    
     switch(p->token.type) {
+        case SHARD_TOK_DOUBLE_COLON:
+            int err2[] = {
+                advance(p),
+                parse_type(p, &type_constraint)
+            };
+            if(any_err(err2, LEN(err2)))
+                return any_err(err2, LEN(err2));
+            if(p->token.type != SHARD_TOK_COLON)
+                return consume(p, SHARD_TOK_COLON);
+            // fallthrough
         case SHARD_TOK_COLON: {
             struct shard_pattern* arg = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_pattern));
             memset(arg, 0, sizeof(struct shard_pattern));
             arg->type = SHARD_PAT_IDENT;
             arg->ident = ident;
             arg->loc = ident_loc;
+            arg->type_constraint = type_constraint;
 
             int err2[] = {
                 err,

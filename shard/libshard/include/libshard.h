@@ -312,6 +312,7 @@ enum shard_token_type {
     SHARD_TOK_LT, // <
     SHARD_TOK_LE, // <=
     SHARD_TOK_COLON, // :
+    SHARD_TOK_DOUBLE_COLON, // ::
     SHARD_TOK_SEMICOLON, // ;
     SHARD_TOK_COMMA, // ,
     SHARD_TOK_PERIOD, // .
@@ -325,6 +326,7 @@ enum shard_token_type {
     SHARD_TOK_SUB, // -
     SHARD_TOK_MUL, // *
     SHARD_TOK_DIV, // /
+    SHARD_TOK_PIPE, // |
     SHARD_TOK_LOGAND, // &&
     SHARD_TOK_LOGOR, // ||
     SHARD_TOK_LOGIMPL, // ->
@@ -475,6 +477,26 @@ struct shard_expr {
     };
 };
 
+enum shard_value_type {
+    SHARD_VAL_NULL     = 1 << 0,
+    SHARD_VAL_BOOL     = 1 << 1,
+    SHARD_VAL_INT      = 1 << 2,
+    SHARD_VAL_FLOAT    = 1 << 3,
+    SHARD_VAL_STRING   = 1 << 4,
+    SHARD_VAL_PATH     = 1 << 5,
+    SHARD_VAL_LIST     = 1 << 6,
+    SHARD_VAL_SET      = 1 << 7,
+    SHARD_VAL_FUNCTION = 1 << 8,
+    SHARD_VAL_BUILTIN  = 1 << 9
+};
+
+#define SHARD_VAL_CALLABLE (SHARD_VAL_FUNCTION | SHARD_VAL_BUILTIN | SHARD_VAL_SET)
+#define SHARD_VAL_ANY (SHARD_VAL_NULL | SHARD_VAL_BOOL | SHARD_VAL_INT | SHARD_VAL_FLOAT | SHARD_VAL_STRING | SHARD_VAL_PATH | SHARD_VAL_LIST | SHARD_VAL_SET | SHARD_VAL_FUNCTION | SHARD_VAL_BUILTIN)
+#define SHARD_VAL_NUMERIC (SHARD_VAL_INT | SHARD_VAL_FLOAT)
+#define SHARD_VAL_TEXTUAL (SHARD_VAL_STRING | SHARD_VAL_PATH)
+
+const char* shard_value_type_to_string(struct shard_context* ctx, enum shard_value_type type);
+
 enum shard_pattern_type {
     SHARD_PAT_IDENT,
     SHARD_PAT_SET
@@ -487,6 +509,7 @@ struct shard_pattern {
     bool ellipsis; 
     struct shard_binding_list attrs; 
     shard_ident_t ident;
+    enum shard_value_type type_constraint;
 };
 
 SHARD_DECL int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr);
@@ -514,26 +537,6 @@ enum shard_evaluator_status {
 
 _Noreturn __attribute__((format(printf, 3, 4))) 
 SHARD_DECL void shard_eval_throw(volatile struct shard_evaluator* e, struct shard_location loc, const char* fmt, ...);
-
-enum shard_value_type {
-    SHARD_VAL_NULL     = 1 << 0,
-    SHARD_VAL_BOOL     = 1 << 1,
-    SHARD_VAL_INT      = 1 << 2,
-    SHARD_VAL_FLOAT    = 1 << 3,
-    SHARD_VAL_STRING   = 1 << 4,
-    SHARD_VAL_PATH     = 1 << 5,
-    SHARD_VAL_LIST     = 1 << 6,
-    SHARD_VAL_SET      = 1 << 7,
-    SHARD_VAL_FUNCTION = 1 << 8,
-    SHARD_VAL_BUILTIN  = 1 << 9
-};
-
-#define SHARD_VAL_CALLABLE (SHARD_VAL_FUNCTION | SHARD_VAL_BUILTIN | SHARD_VAL_SET)
-#define SHARD_VAL_ANY (SHARD_VAL_NULL | SHARD_VAL_BOOL | SHARD_VAL_INT | SHARD_VAL_FLOAT | SHARD_VAL_STRING | SHARD_VAL_PATH | SHARD_VAL_LIST | SHARD_VAL_SET | SHARD_VAL_FUNCTION | SHARD_VAL_BUILTIN)
-#define SHARD_VAL_NUMERIC (SHARD_VAL_INT | SHARD_VAL_FLOAT)
-#define SHARD_VAL_TEXTUAL (SHARD_VAL_STRING | SHARD_VAL_PATH)
-
-const char* shard_value_type_to_string(struct shard_context* ctx, enum shard_value_type type);
 
 struct shard_builtin {
     const char* full_ident;

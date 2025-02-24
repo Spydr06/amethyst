@@ -62,12 +62,14 @@ static const unsigned token_widths[] = {
     1,
     2,
     1,
+    2,
     1,
     1,
     1,
     3,
     2,
     2,
+    1,
     1,
     1,
     1,
@@ -422,7 +424,12 @@ repeat:
             src->ungetc(c, src);
             return lex_string(ctx, src, token, is_path_terminator, true);
         case ':':
-            KEYWORD_TOK(token, src, COLON);
+            if((c = src->getc(src)) == ':')
+                KEYWORD_TOK(token, src, DOUBLE_COLON);
+            else {
+                src->ungetc(c, src);
+                KEYWORD_TOK(token, src, COLON);
+            }
             break;
         case ';':
             KEYWORD_TOK(token, src, SEMICOLON);
@@ -441,8 +448,7 @@ repeat:
                 KEYWORD_TOK(token, src, LOGOR);
             else {
                 src->ungetc(c, src);
-                ERR_TOK(token, src, "unknownt token `|`, did you mean `||`?");
-                return EINVAL;
+                KEYWORD_TOK(token, src, PIPE);
             }
             break;
         case ',':
