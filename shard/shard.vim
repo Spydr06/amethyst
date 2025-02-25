@@ -38,7 +38,7 @@ hi def link shardOperators Operator
 syn match shardInt "[0-9][0-9']*"
 hi def link shardInt Number
 
-syn match shardFloat "[0-9][0-9']*.[0-9']*"
+syn match shardFloat "[0-9][0-9']*\.[0-9']*"
 hi def link shardFloat Float
 
 " Strings
