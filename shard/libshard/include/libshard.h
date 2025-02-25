@@ -196,6 +196,7 @@ shard_dynarr(shard_errors, struct shard_error);
 shard_dynarr(shard_string, char);
 shard_dynarr(shard_string_list, char*);
 shard_dynarr(shard_expr_list, struct shard_expr);
+shard_dynarr(shard_pattern_list, struct shard_pattern);
 
 SHARD_DECL void shard_string_append(struct shard_context* ctx, struct shard_string* str, const char* str2);
 SHARD_DECL void shard_string_appendn(struct shard_context* ctx, struct shard_string* str, const char* str2, size_t size);
@@ -344,6 +345,8 @@ enum shard_token_type {
     SHARD_TOK_IN,
     SHARD_TOK_WITH,
     SHARD_TOK_INHERIT,
+    SHARD_TOK_CASE,
+    SHARD_TOK_OF,
 
     _SHARD_TOK_LEN,
     SHARD_TOK_ERR = -1
@@ -383,6 +386,7 @@ enum shard_expr_type {
     SHARD_EXPR_NOT,
     SHARD_EXPR_NEGATE,
     SHARD_EXPR_TERNARY,
+    SHARD_EXPR_CASE_OF,
 
     SHARD_EXPR_ADD,
     SHARD_EXPR_SUB,
@@ -440,6 +444,12 @@ struct shard_expr {
             struct shard_expr* if_branch;
             struct shard_expr* else_branch;
         } ternary;
+        
+        struct {
+            struct shard_expr* cond;
+            struct shard_expr_list branches;
+            struct shard_pattern_list patterns;
+        } case_of;
 
         struct {
             struct shard_expr_list elems;
@@ -499,7 +509,7 @@ const char* shard_value_type_to_string(struct shard_context* ctx, enum shard_val
 
 enum shard_pattern_type {
     SHARD_PAT_IDENT,
-    SHARD_PAT_SET
+    SHARD_PAT_SET,
 };
 
 struct shard_pattern {
@@ -507,9 +517,10 @@ struct shard_pattern {
     struct shard_location loc;
 
     bool ellipsis; 
+    enum shard_value_type type_constraint;
+
     struct shard_binding_list attrs; 
     shard_ident_t ident;
-    enum shard_value_type type_constraint;
 };
 
 SHARD_DECL int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr);

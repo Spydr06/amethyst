@@ -1,3 +1,6 @@
-let 
-    succ = x :: int | float: x + 1;
-in succ 3.1415
+let foo = x: (case x of
+    _ :: float | int -> "numeric";
+    v -> "other: " + (builtins.typeOf v));
+in
+    foo 69
+

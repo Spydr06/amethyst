@@ -92,6 +92,8 @@ static const unsigned token_widths[] = {
     2,
     4,
     7,
+    4,
+    2
 };
 
 static_assert((sizeof(token_widths) / sizeof(unsigned)) == _SHARD_TOK_LEN);
@@ -110,6 +112,8 @@ static const struct {
     {"in", SHARD_TOK_IN},
     {"with", SHARD_TOK_WITH},
     {"inherit", SHARD_TOK_INHERIT},
+    {"case", SHARD_TOK_CASE},
+    {"of", SHARD_TOK_OF},
     {NULL, SHARD_TOK_EOF},
 };
 

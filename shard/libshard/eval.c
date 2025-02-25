@@ -556,6 +556,89 @@ static inline struct shard_value eval_ternary(volatile struct shard_evaluator* e
     return is_truthy(eval(e, expr->ternary.cond)) ? eval(e, expr->ternary.if_branch) : eval(e, expr->ternary.else_branch);
 }
 
+static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struct shard_pattern* pattern, struct shard_lazy_value* lazy_value, struct shard_location* error_loc) {
+    struct shard_value value = {0};
+    if(pattern->type_constraint != SHARD_VAL_ANY) {
+        value = eval_lazy(e, lazy_value);
+        if(!(value.type & pattern->type_constraint)) {
+            if(error_loc)
+                shard_eval_throw(e,
+                    *error_loc,
+                    "function expected argument of type `%s`, but got `%s`",
+                    shard_value_type_to_string(e->ctx, pattern->type_constraint),
+                    shard_value_type_to_string(e->ctx, value.type)
+                );
+            else
+                return NULL;
+        }
+    }
+
+    struct shard_set* set;
+    switch(pattern->type) {
+        case SHARD_PAT_IDENT:
+            set = shard_set_init(e->ctx, 1);
+            if(strcmp(pattern->ident, "_"))
+                shard_set_put(set, pattern->ident, lazy_value);
+            break;
+        case SHARD_PAT_SET:
+            set = shard_set_init(e->ctx, pattern->attrs.count + (size_t) !!pattern->ident);
+
+            size_t expected_arity = value.set->size;
+            for(size_t i = 0; i < pattern->attrs.count; i++) {
+                struct shard_lazy_value* val;
+                int err = shard_set_get(value.set, pattern->attrs.items[i].ident, &val);
+                if(err || !val) {
+                    if(pattern->attrs.items[i].value) {
+                        val = shard_lazy(e->ctx, pattern->attrs.items[i].value, e->scope);
+                        expected_arity++;
+                    } 
+                    else if(error_loc)
+                        shard_eval_throw(e, *error_loc, "set does not contain expected attribute `%s`", pattern->attrs.items[i].ident);
+                    else
+                        return NULL;
+                }
+
+                shard_set_put(set, pattern->attrs.items[i].ident, val);
+            }
+
+            if(!pattern->ellipsis && pattern->attrs.count != expected_arity) {
+                if(error_loc)
+                    shard_eval_throw(e, *error_loc, "set does not match expected attributes");
+                else
+                    return NULL;
+            }
+
+            if(pattern->ident && strcmp(pattern->ident, "_"))
+                shard_set_put(set, pattern->ident, shard_unlazy(e->ctx, SET_VAL(set)));
+            break;
+        default:
+            shard_eval_throw(e, pattern->loc, "unimplemented pattern type `%d`", pattern->type);
+    }
+
+    return set;
+}
+
+static inline struct shard_value eval_case_of(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    struct shard_lazy_value* cond = shard_lazy(e->ctx, expr->case_of.cond, e->scope);
+
+    assert(expr->case_of.patterns.count == expr->case_of.branches.count);
+    for(size_t i = 0; i < expr->case_of.patterns.count; i++) {
+        struct shard_pattern* pattern = &expr->case_of.patterns.items[i];
+        struct shard_expr* branch = &expr->case_of.branches.items[i];
+
+        struct shard_set* branch_scope = match_pattern(e, pattern, cond, NULL /* do no error on mismatch */);
+        if(!branch_scope)
+            continue;
+
+        scope_push(e, branch_scope);
+        struct shard_value res = eval(e, branch);
+        scope_pop(e);
+        return res;
+    }
+
+    shard_eval_throw(e, expr->loc, "conditional expression did not match any `case` pattern");
+}
+
 static inline struct shard_value eval_assert(volatile struct shard_evaluator* e, struct shard_expr* expr) {
     if(is_truthy(eval(e, expr->binop.lhs)))
         return eval(e, expr->binop.rhs);
@@ -597,54 +680,7 @@ static inline struct shard_value eval_with(volatile struct shard_evaluator* e, s
 static inline struct shard_value eval_call_function(volatile struct shard_evaluator* e, struct shard_value func, struct shard_lazy_value* arg_value, struct shard_location loc) {   
     assert(func.type == SHARD_VAL_FUNCTION);
 
-    struct shard_set* set;
-    struct shard_value arg;
-    if(func.function.arg->type_constraint != SHARD_VAL_ANY) {
-        arg = eval_lazy(e, arg_value);
-        if(!(arg.type & func.function.arg->type_constraint))
-            shard_eval_throw(e,
-                    loc,
-                    "function expected argument of type `%s`, but got `%s`",
-                    shard_value_type_to_string(e->ctx, func.function.arg->type_constraint),
-                    shard_value_type_to_string(e->ctx, arg.type)
-            );
-    }
-
-    switch(func.function.arg->type) {
-        case SHARD_PAT_IDENT:
-            set = shard_set_init(e->ctx, 1);
-            shard_set_put(set, func.function.arg->ident, arg_value);
-            break;
-        case SHARD_PAT_SET:
-            set = shard_set_init(e->ctx, func.function.arg->attrs.count + (size_t) !!func.function.arg->ident);
-
-            size_t expected_arity = arg.set->size;
-            for(size_t i = 0; i < func.function.arg->attrs.count; i++) {
-                struct shard_lazy_value* val;
-                int err = shard_set_get(arg.set, func.function.arg->attrs.items[i].ident, &val);
-                if(err || !val) {
-                    if(func.function.arg->attrs.items[i].value) {
-                        val = shard_lazy(e->ctx, func.function.arg->attrs.items[i].value, e->scope);
-                        expected_arity++;
-                    } 
-                    else
-                        shard_eval_throw(e, loc, "set does not contain expected attribute `%s`", func.function.arg->attrs.items[i].ident);
-                }
-
-                shard_set_put(set, func.function.arg->attrs.items[i].ident, val);
-            }
-
-            if(!func.function.arg->ellipsis && func.function.arg->attrs.count != expected_arity)
-                shard_eval_throw(e, loc, "set does not match expected attributes");
-
-            if(func.function.arg->ident)
-                shard_set_put(set, func.function.arg->ident, shard_unlazy(e->ctx, SET_VAL(set)));
-
-            break;
-        default:
-            assert(false && "unreachable");
-    }
-
+    struct shard_set* set = match_pattern(e, func.function.arg, arg_value, &loc);
     struct shard_scope* prev_scope = e->scope;
     e->scope = func.function.scope;
 
@@ -777,6 +813,8 @@ static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_
             return eval_negation(e, expr);
         case SHARD_EXPR_TERNARY:
             return eval_ternary(e, expr);
+        case SHARD_EXPR_CASE_OF:
+            return eval_case_of(e, expr);
         case SHARD_EXPR_CONCAT:
             return eval_concat(e, expr);
         case SHARD_EXPR_MERGE:

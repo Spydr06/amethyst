@@ -3,7 +3,7 @@
 
     environment.packages = with pkgs; [
         (amethyst-kernel {
-            kernel.arguments = [ "loglevel=debug" "log-syscalls" ];
+            kernel.arguments = [ "loglevel=debug" ];
             sanitize = [ "undefined" ];
         })
         limine
