@@ -1,28 +1,27 @@
 #include <cpu/cpu.h>
-#include <init/interrupts.h>
+#include <drivers/pci/pci.h>
 #include <drivers/video/console.h>
 #include <drivers/video/vga.h>
-#include <drivers/char/keyboard.h>
-#include <drivers/pci/pci.h>
+#include <init/interrupts.h>
+#include <limine/limine.h>
 #include <mem/heap.h>
-#include <mem/vmm.h>
-#include <mem/pmm.h>
 #include <mem/mmap.h>
-#include <sys/scheduler.h>
+#include <mem/pmm.h>
+#include <mem/vmm.h>
 #include <sys/dpc.h>
+#include <sys/early_timer.h>
+#include <sys/scheduler.h>
+#include <sys/timekeeper.h>
+#include <sys/tty.h>
 #include <x86_64/cpu/acpi.h>
 #include <x86_64/cpu/gdt.h>
+#include <x86_64/cpu/idt.h>
 #include <x86_64/cpu/smp.h>
 #include <x86_64/dev/apic.h>
 #include <x86_64/dev/cmos.h>
 #include <x86_64/dev/hpet.h>
 #include <x86_64/dev/pic.h>
-#include <x86_64/cpu/idt.h>
 #include <x86_64/trace.h>
-#include <limine/limine.h>
-#include <sys/tty.h>
-#include <sys/early_timer.h>
-#include <sys/timekeeper.h>
 
 #include <kernelio.h>
 #include <version.h>
@@ -61,7 +60,6 @@ __noreturn void _start(void)
     gdt_reload();
     early_timer_init();
     pic_init();
-    interrupt_register(KEYBOARD_INTERRUPT, keyboard_interrupt_handler, pic_send_eoi, IPL_KEYBOARD);
     init_interrupts();
 
     dpc_init();

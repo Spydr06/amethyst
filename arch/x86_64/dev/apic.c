@@ -53,6 +53,14 @@ static struct apic_list_header* get_entry(enum MADT_entry_type type, intptr_t nt
     return nullptr;
 }
 
+static struct io_apic_desc* io_apic_from_gsi(int gsi) {
+    for(size_t i = 0; i < io_count; i++) {
+        if(io_apics[i].base <= gsi && io_apics[i].top > gsi)
+            return &io_apics[i];
+    }
+    return NULL;
+}
+
 static uint32_t ioapic_read(void* ioapic, enum io_apic_register reg) {
     volatile uint32_t* apic = ioapic;
     *apic = (uint32_t) reg;
@@ -237,3 +245,31 @@ size_t apic_get_lapic_entries(struct lapic_entry* entries, size_t n) {
     return i;
 }
 
+void io_apic_register_interrupt(uint8_t irq, uint8_t vector, uint8_t proc, bool masked) {
+	// default settings for ISA irqs
+	uint8_t polarity = 1; // active high
+	uint8_t trigger  = 0; // edge triggered
+
+	for (uintmax_t i = 0; i < override_count; ++i) {
+		struct io_apic_override *override = (struct io_apic_override*) get_entry(MADT_TYPE_OVERRIDE, i);
+
+		if (override->irq != irq)
+			continue;
+
+		polarity = override->flags & 2 ? 1 : 0; // active low
+		trigger  = override->flags & 8 ? 1 : 0; // level triggered
+
+		irq = override->irq;
+		irq = override->gsi;
+
+		break;
+	}
+
+	struct io_apic_desc* io_apic = io_apic_from_gsi(irq);
+	assert(io_apic);
+
+	irq = irq - io_apic->base;
+
+	iored_write(io_apic->addr, irq, vector, 0, 0, polarity, trigger, masked ? 1 : 0, proc);
+
+}

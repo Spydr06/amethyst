@@ -1,7 +1,6 @@
 #include <io/tty.h>
 
 #include <sys/tty.h>
-#include <io/keyboard.h>
 #include <drivers/video/console.h>
 
 #ifdef __x86_64__
@@ -11,7 +10,6 @@
 #include <assert.h>
 #include <stddef.h>
 #include <string.h>
-#include <ctype.h>
 
 #define NUM_VGA_TTYS 1
 #define NUM_SERIAL_TTYS 1
@@ -30,7 +28,7 @@ static void tty_putchar(int c) {
     tty_process(vga_ttys[0], (char) c);
 }
 
-static void tty_keyboard_handler(struct keyboard_event event) {
+/*static void tty_keyboard_handler(struct keyboard_event event) {
     if(event.flags & KB_FLAGS_RELEASED)
         return;
 
@@ -85,7 +83,7 @@ static void tty_keyboard_handler(struct keyboard_event event) {
     size_t len = strlen(tmp);
     for(size_t i = 0; i < len; i++)
         tty_process(selected_tty, tmp[i]);
-} 
+} */
 
 void create_ttys(void) {
     vga_console_disable_writer_propagation();
@@ -95,8 +93,6 @@ void create_ttys(void) {
 
         vga_console_winsize(&vga_ttys[i]->winsize);
     }
-
-    keyboard_set_event_handler(tty_keyboard_handler);
 
 #ifdef __x86_64__
     for(size_t i = 0; i < NUM_SERIAL_TTYS; i++) {

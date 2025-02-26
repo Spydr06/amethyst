@@ -2,6 +2,7 @@
 #define _AMETHYST_LIBK_TIME_H
 
 #include <stdint.h>
+#include <stdlib.h>
 
 typedef int64_t time_t;
 
@@ -29,6 +30,10 @@ static inline struct timespec timespec_add(struct timespec a, struct timespec b)
         .ns = (a.ns + b.ns) % 1'000'000'000,
         .s = a.s + b.s + (a.ns + b.ns) / 1'000'000'000
     };
+}
+
+static inline time_t timespec_diff_ms(struct timespec a, struct timespec b) {
+    return abs(a.ns - b.ns) / 1'000 + abs(a.s - b.s) * 1'000'000;
 }
 
 time_t time(time_t* tloc);

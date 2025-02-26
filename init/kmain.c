@@ -1,6 +1,5 @@
-#include "sys/fb.h"
-#include "sys/syscall_log.h"
 #include <cpu/cpu.h>
+#include <drivers/char/ps2.h>
 #include <drivers/pci/pci.h>
 #include <drivers/video/vga.h>
 #include <filesystem/device.h>
@@ -12,8 +11,10 @@
 #include <io/tty.h>
 #include <mem/heap.h>
 #include <mem/vmm.h>
+#include <sys/fb.h>
 #include <sys/scheduler.h>
 #include <sys/subsystems/shard.h>
+#include <sys/syscall_log.h>
 #include <sys/tty.h>
 
 #include <kernelio.h>
@@ -60,6 +61,7 @@ void kmain(size_t cmdline_size, const char* cmdline)
 
     pseudodevices_init();
 
+    ps2_init();
     fbdev_init();
     tty_init();
     create_ttys(); 

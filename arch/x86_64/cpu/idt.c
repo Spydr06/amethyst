@@ -1,14 +1,15 @@
-#include "sys/scheduler.h"
 #include <x86_64/cpu/idt.h>
 #include <x86_64/dev/pic.h>
 #include <x86_64/cpu/cpu.h>
+
 #include <sys/syscall.h>
-#include <drivers/char/keyboard.h>
+#include <sys/scheduler.h>
 
 #include <cpu/cpu.h>
 #include <mem/vmm.h>
-#include <cdefs.h>
+
 #include <assert.h>
+#include <cdefs.h>
 #include <stdint.h>
 
 #include <kernelio.h>
