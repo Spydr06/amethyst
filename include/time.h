@@ -33,7 +33,7 @@ static inline struct timespec timespec_add(struct timespec a, struct timespec b)
 }
 
 static inline time_t timespec_diff_ms(struct timespec a, struct timespec b) {
-    return abs(a.ns - b.ns) / 1'000 + abs(a.s - b.s) * 1'000'000;
+    return abs(a.ns - b.ns) / 1'000'000 + abs(a.s - b.s) * 1'000;
 }
 
 time_t time(time_t* tloc);

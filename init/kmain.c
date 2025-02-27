@@ -1,3 +1,4 @@
+#include "drivers/char/keyboard.h"
 #include <cpu/cpu.h>
 #include <drivers/char/ps2.h>
 #include <drivers/pci/pci.h>
@@ -60,6 +61,8 @@ void kmain(size_t cmdline_size, const char* cmdline)
     devfs_init();
 
     pseudodevices_init();
+
+    keyboard_driver_init();
 
     ps2_init();
     fbdev_init();

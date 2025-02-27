@@ -29,3 +29,7 @@ size_t ringbuffer_read(ringbuffer_t *ringbuffer, void *buffer, size_t count) {
     (void) count;
     unimplemented();
 }
+
+size_t ringbuffer_write(ringbuffer_t* ringbuffer, void* buffer, size_t count) {
+    unimplemented();
+}

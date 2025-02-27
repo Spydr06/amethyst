@@ -54,6 +54,29 @@ static uint8_t ps2_read_data_timeout(int ms, bool* timeout) {
     return ps2_read_data();
 }
 
+bool ps2_device_write_ok(uint8_t port, uint8_t command) {
+    ps2_device_command(port, command);
+
+    for(int trials = 0; ;) {
+        bool timeout;
+        uint8_t data = ps2_read_data_timeout(100, &timeout);
+        if(timeout)
+            return false;
+
+        if(data == PS2_RESEND) {
+            if(trials++ > 5)
+                return false;
+
+            ps2_device_command(port, command);
+        }
+
+        if(data == PS2_ACK)
+            break;
+    }
+
+    return true;
+}
+
 void ps2_disable_scanning(uint8_t port) {
     ps2_device_command(port, PS2_DEVICE_CMD_DISABLE_SCANNING);
 
@@ -65,7 +88,7 @@ void ps2_disable_scanning(uint8_t port) {
 
         if(data == PS2_RESEND) {
             if(trials++ > 5) {
-                klog(WARN, "PS/2 port [%d]: too many resends", port - 1);
+                klog(WARN, "PS/2 port [%d]: too many resends", port);
                 return;
             }
 
@@ -83,7 +106,7 @@ bool ps2_enable_scanning(uint8_t port) {
         bool timeout;
         uint8_t data = ps2_read_data_timeout(100, &timeout);
         if(timeout) {
-            klog(WARN, "PS/2 port [%d]: timeout", port - 1);
+            klog(WARN, "PS/2 port [%d]: timeout", port);
             return false;
         }
 
@@ -92,7 +115,7 @@ bool ps2_enable_scanning(uint8_t port) {
 
         if(data == PS2_RESEND) {
             if(trials++ > 5) {
-                klog(WARN, "PS/2 port [%d]: too many resends", port - 1);
+                klog(WARN, "PS/2 port [%d]: too many resends", port);
                 return false;
             }
 
@@ -111,16 +134,16 @@ bool ps2_device_reset_selftest(uint8_t port) {
 
     for(int trials = 0; ;) {
         bool timeout;
-        uint8_t data = ps2_read_data_timeout(100, &timeout);
+        uint8_t data = ps2_read_data_timeout(500, &timeout);
 
         if(timeout) {
-            klog(WARN, "PS/2 port [%d]: timed out waiting for ACK", port - 1);
+            klog(WARN, "PS/2 port [%d]: timed out waiting for ACK", port);
             return false;
         }
 
         if(data == PS2_RESEND) {
             if(trials++ > 5) {
-                klog(WARN, "PS/2 port [%d]: too many resends", port - 1);
+                klog(WARN, "PS/2 port [%d]: too many resends", port);
                 return false;
             }
             
@@ -133,10 +156,10 @@ bool ps2_device_reset_selftest(uint8_t port) {
 
     for(;;) {
         bool timeout;
-        uint8_t data = ps2_read_data_timeout(1000, &timeout);
+        uint8_t data = ps2_read_data_timeout(2000, &timeout);
 
         if(timeout) {
-            klog(WARN, "PS/2 port [%d]: timed out waiting for result", port - 1);
+            klog(WARN, "PS/2 port [%d]: timed out waiting for result", port);
             return false;
         }
 
@@ -144,7 +167,7 @@ bool ps2_device_reset_selftest(uint8_t port) {
             break;
 
         if(data == PS2_DEVICE_SELFTEST_FAIL) {
-            klog(ERROR, "PS/2 port [%d]: self test failed", port - 1);
+            klog(ERROR, "PS/2 port [%d]: self test failed", port);
             return false;
         }
     }
@@ -161,7 +184,7 @@ bool ps2_device_reset_selftest(uint8_t port) {
     return true;
 }
 
-bool ps2_identify(int port, uint8_t identity[2]) {
+bool ps2_identify(uint8_t port, uint8_t identity[2]) {
     ps2_device_command(port, PS2_DEVICE_CMD_IDENTIFY);
 
     bool timeout;
@@ -229,16 +252,16 @@ void ps2_init(void) {
 
     ps2_write_command(PS2_CMD_SELFTESTP1);
     if((result = ps2_read_data()))
-        klog(ERROR, "PS/2 port [0] self test failed (expected 0, got %x)", result);
+        klog(ERROR, "PS/2 port [1] self test failed (expected 0, got %x)", result);
     else
-        working_flag |= 1;
+        working_flag |= PS2_KEYBOARD_PORT;
     
     if(dual_port) {
         ps2_write_command(PS2_CMD_SELFTESTP2);
         if((result = ps2_read_data()))
-            klog(ERROR, "PS/2 port [1] self test failed (expected 0, got %x)", result);
+            klog(ERROR, "PS/2 port [2] self test failed (expected 0, got %x)", result);
         else
-            working_flag |= 2;
+            working_flag |= PS2_MOUSE_PORT;
     }
 
     if(!working_flag) {
@@ -248,56 +271,58 @@ void ps2_init(void) {
 
     int connected_flag = 0;
 
-    if(working_flag & 1) {
-        if(ps2_device_reset_selftest(1))
-            connected_flag |= 1;
-        else
-            klog(ERROR, "PS/2 port [0] self test failed");
-    }
-
-    if(working_flag & 2) {
-        if(ps2_device_reset_selftest(2))
-            connected_flag |= 2;
+    if(working_flag & PS2_KEYBOARD_PORT) {
+        if(ps2_device_reset_selftest(PS2_KEYBOARD_PORT))
+            connected_flag |= PS2_KEYBOARD_PORT;
         else
             klog(ERROR, "PS/2 port [1] self test failed");
+    }
+
+    if(working_flag & PS2_MOUSE_PORT) {
+        if(ps2_device_reset_selftest(PS2_MOUSE_PORT))
+            connected_flag |= PS2_MOUSE_PORT;
+        else
+            klog(ERROR, "PS/2 port [2] self test failed");
     }
 
     int ok_flag = 0;
 
     klog(INFO, "\033[95mPS/2:\033[0m controller with %d ports", dual_port + 1);
 
-    if(connected_flag & 1) {
+    if(connected_flag & PS2_KEYBOARD_PORT) {
         ps2_write_command(PS2_CMD_ENABLEP1);
         uint8_t identity[2];
-        if(ps2_identify(1, identity)) {
+        if(ps2_identify(PS2_KEYBOARD_PORT, identity)) {
             ps2_keyboard_init();
             ps2_write_command(PS2_CMD_DISABLEP1);
-            ok_flag |= 1;
+            ok_flag |= PS2_KEYBOARD_PORT;
         }
         else
-            klog(WARN, "failed to identify PS/2 port [0]");
+            klog(WARN, "failed to identify PS/2 port [1]");
     }
 
-    if(connected_flag & 2) {
+    if(connected_flag & PS2_MOUSE_PORT) {
         ps2_write_command(PS2_CMD_ENABLEP2);
         uint8_t identity[2];
         if(ps2_identify(1, identity)) {
             ps2_mouse_init();
             ps2_write_command(PS2_CMD_DISABLEP2);
-            ok_flag |= 2;
+            ok_flag |= PS2_MOUSE_PORT;
         }
+        else
+            klog(WARN, "failed to identify PS/2 port [2]");
     }
 
-    if(ok_flag & 1) {
+    if(ok_flag & PS2_KEYBOARD_PORT) {
         ps2_write_command(PS2_CMD_ENABLEP1);
-        if(!ps2_enable_scanning(1))
-            klog(WARN, "failed to enable scanning for PS/2 port [0]");
+        if(!ps2_enable_scanning(PS2_KEYBOARD_PORT))
+            klog(WARN, "failed to enable scanning for PS/2 port [1]");
     }
 
-    if(ok_flag & 2) {
+    if(ok_flag & PS2_MOUSE_PORT) {
         ps2_write_command(PS2_CMD_ENABLEP2);
-        if(!ps2_enable_scanning(2))
-            klog(WARN, "falied to enable scanning for PS/2 port [1]");
+        if(!ps2_enable_scanning(PS2_MOUSE_PORT))
+            klog(WARN, "falied to enable scanning for PS/2 port [2]");
     }
 
     ps2_write_command(PS2_CMD_READCFG);

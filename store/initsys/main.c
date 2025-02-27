@@ -61,12 +61,12 @@ int main(int argc, char** argv) {
     stat("/include/unistd.h", &stat_buf);
     printf("stat /include/unistd.h: size: %ld\n", stat_buf.st_size);
 
+    while(1)
+        yield();
+
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         umount_target(mount_targets + i);
 
     //execl("/bin/helloworld", "/bin/helloworld", NULL);
-
-    while(1)
-        yield();
 }
 

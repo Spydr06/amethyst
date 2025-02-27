@@ -398,7 +398,7 @@ static int parse_pattern(struct parser* p, struct shard_pattern* pattern) {
             };
             return any_err(errs, LEN(errs));
         case SHARD_TOK_LBRACE:
-            return parse_set_pattern(p, pattern, ident, false, NULL);
+            return parse_set_pattern(p, pattern, NULL, false, NULL);
         default:
             static char buf[1024];
             shard_dump_token(buf, sizeof(buf), &p->token);

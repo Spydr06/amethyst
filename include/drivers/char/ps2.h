@@ -3,6 +3,15 @@
 
 #include <stdint.h>
 
+static const uint8_t PS2_KEYBOARD_PORT = 1;
+static const uint8_t PS2_MOUSE_PORT = 2;
+
+enum ps2_identity: uint8_t {
+    PS2_MOUSE    = 0,
+    PS2_MOUSE_Z  = 3,
+    PS2_MOUSE_5B = 4
+};
+
 enum ps2_port : uint16_t {
     PS2_PORT_DATA = 0x60,
     PS2_PORT_COMMAND = 0x64,
@@ -29,10 +38,11 @@ enum ps2_port_command : uint8_t {
 };
 
 enum ps2_device_command : uint8_t {
-    PS2_DEVICE_CMD_IDENTIFY         = 0xf2,
-    PS2_DEVICE_CMD_ENABLE_SCANNING  = 0xf4,
-    PS2_DEVICE_CMD_DISABLE_SCANNING = 0xf5,
-    PS2_DEVICE_CMD_RESET_SELFTEST   = 0xff
+    PS2_DEVICE_CMD_IDENTIFY          = 0xf2,
+    PS2_DEVICE_CMD_MOUSE_SAMPLETRATE = 0xf3,
+    PS2_DEVICE_CMD_ENABLE_SCANNING   = 0xf4,
+    PS2_DEVICE_CMD_DISABLE_SCANNING  = 0xf5,
+    PS2_DEVICE_CMD_RESET_SELFTEST    = 0xff
 };
 
 static const uint8_t PS2_SELFTEST_OK = 0x55;
@@ -50,6 +60,9 @@ enum ps2_config : uint8_t {
 void ps2_init(void);
 void ps2_keyboard_init(void);
 void ps2_mouse_init(void);
+
+bool ps2_identify(uint8_t port, uint8_t identity[2]);
+bool ps2_device_write_ok(uint8_t port, uint8_t rate);
 
 #endif /* _AMETHYST_DRIVERS_CHAR_PS2_H */
 
