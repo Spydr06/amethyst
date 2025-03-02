@@ -8,6 +8,7 @@
 #include <sys/mutex.h>
 
 #include <assert.h>
+#include <ctype.h>
 #include <errno.h>
 #include <string.h>
 
@@ -15,7 +16,7 @@
 
 static int kb_read(int minor, void* buffer, size_t size, uintmax_t offset, int flags, size_t* readc);
 
-static struct keyboard keyboard_console;
+struct keyboard keyboard_console;
 
 static hashtable_t keyboard_table;
 static mutex_t table_lock;
@@ -71,17 +72,60 @@ void keyboard_event(struct keyboard* kb, struct keyboard_event event) {
     enum ipl ipl = interrupt_raise_ipl(IPL_KEYBOARD);
 
     switch(event.keycode) {
-
-    }
+        case KEYCODE_LCTRL:
+            if (event.flags & KEYBOARD_EVENT_RELEASED)
+                kb->flags &= ~KEYBOARD_EVENT_LCTRL;
+            else
+                kb->flags |= KEYBOARD_EVENT_LCTRL;
+            break;
+        case KEYCODE_RCTRL:
+            if (event.flags & KEYBOARD_EVENT_RELEASED)
+                kb->flags &= ~KEYBOARD_EVENT_RCTRL;
+            else
+                kb->flags |= KEYBOARD_EVENT_RCTRL;
+            break;
+        case KEYCODE_CAPSLOCK:
+            if (event.flags & KEYBOARD_EVENT_RELEASED)
+                kb->flags &= ~KEYBOARD_EVENT_CAPSLOCK;
+            else
+                kb->flags |= KEYBOARD_EVENT_CAPSLOCK;
+            break;
+        case KEYCODE_LALT:
+            if (event.flags & KEYBOARD_EVENT_RELEASED)
+                kb->flags &= ~KEYBOARD_EVENT_LALT;
+            else
+                kb->flags |= KEYBOARD_EVENT_LALT;
+            break;
+        case KEYCODE_RALT:
+            if (event.flags & KEYBOARD_EVENT_RELEASED)
+                kb->flags &= ~KEYBOARD_EVENT_RALT;
+            else
+                kb->flags |= KEYBOARD_EVENT_RALT;
+            break;
+        case KEYCODE_LSHIFT:
+            if (event.flags & KEYBOARD_EVENT_RELEASED)
+                kb->flags &= ~KEYBOARD_EVENT_LSHIFT;
+            else
+                kb->flags |= KEYBOARD_EVENT_LSHIFT;
+            break;
+        case KEYCODE_RSHIFT:
+            if (event.flags & KEYBOARD_EVENT_RELEASED)
+                kb->flags &= ~KEYBOARD_EVENT_RSHIFT;
+            else
+                kb->flags |= KEYBOARD_EVENT_RSHIFT;
+            break;
+	}
 
     event.flags |= kb->flags;
 
     spinlock_acquire(&kb->lock);
-    assert(ringbuffer_write(&kb->event_buffer, &event, sizeof(struct keyboard_event)) != 0);
+    if(ringbuffer_write(&kb->event_buffer, &event, sizeof(struct keyboard_event)) != 0)
+        semaphore_signal(&kb->semaphore);
     spinlock_release(&kb->lock);
 
     spinlock_acquire(&keyboard_console.lock);
-    assert(ringbuffer_write(&keyboard_console.event_buffer, &event, sizeof(struct keyboard_event)) != 0);
+    if(ringbuffer_write(&keyboard_console.event_buffer, &event, sizeof(struct keyboard_event)) != 0)
+        semaphore_signal(&keyboard_console.semaphore);
     spinlock_release(&keyboard_console.lock);
 
     interrupt_lower_ipl(ipl);
@@ -109,7 +153,7 @@ static bool keyboard_fetch_event(struct keyboard* kb, struct keyboard_event* eve
     return ok;
 }
 
-static int keyboard_wait(struct keyboard* kb, struct keyboard_event* event) {
+int keyboard_wait(struct keyboard* kb, struct keyboard_event* event) {
     int err = semaphore_wait(&kb->semaphore, true);
     if(err)
         return err;
@@ -151,3 +195,35 @@ static int kb_read(int minor, void* buffer, size_t size, uintmax_t __unused, int
 
     return 0;
 }
+
+static char table_lowercase[128] = {
+    0, '\033', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b', '\t',
+    'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\r', 0,
+    'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`', 0, '\\',
+    'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, '*', 0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+    '7', '8', '9', '-', '4', '5', '6', '+', '1', '2', '3', '.', 0, 0, '\b', 0, '/', 0, 0, '\r', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+static char table_uppercase[128] = {
+    0, '\033', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '\b', '\t',
+    'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\r', 0,
+    'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~', 0, '|',
+    'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0, '*', 0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+    '7', '8', '9', '-', '4', '5', '6', '+', '1', '2', '3', '.', 0, 0, '\b', 0, '/', 0, 0, '\r', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+char keyboard_event_as_ascii(struct keyboard_event event) {
+    assert(event.keycode < sizeof(table_lowercase));
+
+    if(event.flags & KEYBOARD_EVENT_CAPSLOCK) {
+        if(event.flags & (KEYBOARD_EVENT_LSHIFT | KEYBOARD_EVENT_RSHIFT))
+            return tolower(table_uppercase[event.keycode]);
+        return toupper(table_lowercase[event.keycode]);
+    }
+    else {
+        if(event.flags & (KEYBOARD_EVENT_LSHIFT | KEYBOARD_EVENT_RSHIFT))
+            return table_uppercase[event.keycode];
+        return table_lowercase[event.keycode];
+    }
+}
+

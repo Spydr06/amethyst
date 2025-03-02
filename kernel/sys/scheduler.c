@@ -27,7 +27,7 @@
 #define SCHEDULER_STACK_SIZE (PAGE_SIZE * 16)
 
 // main timer quantum
-#define QUANTUM_US 10'000
+#define QUANTUM_US 100'000
 
 #define RUN_QUEUE_COUNT ((int) sizeof(run_queue_bitmap) * 8)
 
@@ -100,9 +100,6 @@ static struct thread* dequeue_next_thread(int min_priority) {
     struct thread* thread = nullptr;
 
     for(int i = 0; i < RUN_QUEUE_COUNT && i <= min_priority && !thread; i++) {
-        if(!(run_queue_bitmap & ((uint64_t) 1 << i)))
-            continue;
-
         thread = queue_get_thread(&run_queue[i]);
         if(thread && !run_queue[i].head)
             run_queue_bitmap &= ~((uint64_t) 1 << i);
@@ -116,6 +113,8 @@ static struct thread* dequeue_next_thread(int min_priority) {
 }
 
 static void enqueue_thread(struct thread* thread) {
+    if(thread == _cpu()->idle_thread)
+        return;
     assert(!(thread->flags & THREAD_FLAGS_RUNNING));
 
     thread->flags |= THREAD_FLAGS_QUEUED;
@@ -123,9 +122,12 @@ static void enqueue_thread(struct thread* thread) {
     run_queue_bitmap |= ((uint64_t) 1 << thread->priority);
 
     thread->prev = run_queue[thread->priority].last;
-    if(thread->prev)
+    if(thread->prev == thread)
+        thread->prev = nullptr;
+    else if(thread->prev)
         thread->prev->next = thread;
-    else
+    
+    if(!thread->prev || !run_queue[thread->priority].head)
         run_queue[thread->priority].head = thread;
 
     thread->next = nullptr;
@@ -137,9 +139,12 @@ static __noreturn void switch_thread(struct thread* thread) {
 
     struct thread* current = _cpu()->thread;
     _cpu()->thread = thread;
-
+    
     if(!current || thread->vmm_context != current->vmm_context)
         vmm_switch_context(thread->vmm_context);
+
+    if(current && current->tid != thread->tid)
+        klog(DEBUG, "cpu %u: switching from [tid %d] to [tid %u]", _cpu()->id, current ? current->tid : -1, thread->tid);
 
     _cpu()->interrupt_status = CPU_CONTEXT_INTSTATUS(&thread->context);
     thread->cpu = _cpu();
@@ -154,7 +159,7 @@ static __noreturn void switch_thread(struct thread* thread) {
         spinlock_release(&current->sleep_lock);
 
     thread->flags |= THREAD_FLAGS_RUNNING;
-//    assert(!(thread->flags & THREAD_FLAGS_QUEUED));
+    assert(!(thread->flags & THREAD_FLAGS_QUEUED));
 
     spinlock_release(&run_queue_lock);
 
@@ -182,6 +187,7 @@ static __noreturn void preempt_callback(void) {
 
     spinlock_release(&run_queue_lock);    
 
+    assert(!(next->flags & THREAD_FLAGS_QUEUED));
     switch_thread(next);
 }
 
@@ -198,6 +204,7 @@ __noreturn void sched_stop_thread(void) {
 
     spinlock_release(&run_queue_lock);
 
+    assert(!(next->flags & THREAD_FLAGS_QUEUED));
     switch_thread(next);
 }
 
@@ -246,6 +253,8 @@ static void _yield(struct cpu_context* context, void* __unused) {
     
     if(sleeping && (thread->should_exit || got_signal) && (thread->flags & THREAD_FLAGS_INTERRUPTIBLE)) {
         sleeping = false;
+        if(next)
+            enqueue_thread(next);
         next = nullptr;
         thread->flags &= ~(THREAD_FLAGS_SLEEP | THREAD_FLAGS_INTERRUPTIBLE);
         thread->wakeup_reason = WAKEUP_REASON_INTERRUPTED;
@@ -256,13 +265,17 @@ static void _yield(struct cpu_context* context, void* __unused) {
         CPU_CONTEXT_THREADSAVE(thread, context);
 
         thread->flags &= ~THREAD_FLAGS_RUNNING;
-        if(sleeping == false)
+        if(!sleeping)
             enqueue_thread(thread);
 
         if(!next)
             next = _cpu()->idle_thread;
 
         spinlock_release(&run_queue_lock);
+
+        if(next->flags & THREAD_FLAGS_QUEUED) {
+            klog(ERROR, "is_idle_thread: %d", _cpu()->idle_thread == next);
+        }
         switch_thread(next);
     }
 
@@ -302,7 +315,10 @@ void sched_queue(struct thread* thread) {
     bool int_state = interrupt_set(false);
     spinlock_acquire(&run_queue_lock);
 
-    assert((thread->flags & THREAD_FLAGS_QUEUED) == 0 && (thread->flags & THREAD_FLAGS_RUNNING) == 0);
+    if(thread->flags & THREAD_FLAGS_QUEUED || thread->flags & THREAD_FLAGS_RUNNING) {
+        klog(WARN, "tried queueing already present thread [tid: %u]", thread->tid);
+        return;
+    }
 
     enqueue_thread(thread);
 

@@ -1,4 +1,5 @@
 #include "filesystem/virtual.h"
+#include "io/poll.h"
 #include "kernelio.h"
 #include "sys/termios.h"
 #include <sys/tty.h>
@@ -75,12 +76,34 @@ static int read(int minor, void* buffer, size_t size, uintmax_t offset, int flag
     if(!tty)
         return ENODEV;
 
-    (void) buffer;
-    (void) size;
-    (void) offset;
-    (void) flags;
-    (void) bytes_read;
-    unimplemented();
+    *bytes_read = 0;
+    int min = (tty->termios.c_lflag & ICANON) ? 1 : tty->termios.c_cc[VMIN];
+    int time = (tty->termios.c_lflag & ICANON) ? 0 : tty->termios.c_cc[VTIME];
+
+    if(min == 0 && time == 0) {
+        mutex_acquire(&tty->read_mutex, false);
+        *bytes_read = ringbuffer_read(&tty->read_buffer, buffer, size);
+        mutex_release(&tty->read_mutex);
+        return 0;
+    }
+
+    // TODO: implement timeouts
+
+    mutex_acquire(&tty->read_mutex, false);
+    struct io_poll_queue* poll = io_poll_make(IO_POLL_IN);
+    io_poll_add(&tty->io_poll, poll);
+    mutex_release(&tty->read_mutex);
+
+    int err = io_poll_wait(poll);
+    
+    mutex_acquire(&tty->read_mutex, false);
+    *bytes_read += ringbuffer_read(&tty->read_buffer, buffer + *bytes_read, size - *bytes_read);
+    mutex_release(&tty->read_mutex);
+
+    io_poll_remove(&tty->io_poll, poll);
+    io_poll_free_queue(poll);
+
+    return err;
 }
 
 static int write(int minor, void* buffer, size_t size, uintmax_t __unused, int __unused, size_t* bytes_written) {
@@ -99,6 +122,7 @@ static int write(int minor, void* buffer, size_t size, uintmax_t __unused, int _
 
     return 0;
 }
+
 void tty_process(struct tty* tty, char c) {
     if(c == '\r' && (tty->termios.c_iflag & IGNCR))
         return;
@@ -110,20 +134,65 @@ void tty_process(struct tty* tty, char c) {
 
     // TODO: VSTART, VSTOP
 
-    char echo_char = tty->termios.c_lflag & ECHO ? c : '\0';
+    char echo = tty->termios.c_lflag & ECHO ? c : '\0';
 
     // echo control chars
     if((tty->termios.c_lflag & ECHOCTL) && (tty->termios.c_lflag & ECHO) && isctrl(c)) {
         char tmp[2] = {'^', c + 0x40};
         tty->write_to_device(tty->device_internal, tmp, 2);
-        echo_char = '\0';
+        echo = '\0';
     }
 
     // TODO: ISIG
 
-    // TODO: buffers and other flags
+    // line-based (canonical) mode, flush on `\n`, EOF, etc.
+    if(tty->termios.c_lflag & ICANON) {
+        if(c == tty->termios.c_cc[VERASE]) {
+            // backspace
+            if(tty->line_pos == 0)
+                return;
 
-    tty->write_to_device(tty->device_internal, &echo_char, 1);
+            tty->line_buffer[--tty->line_pos] = '\0';
+
+            if(tty->termios.c_lflag & ECHO)
+                tty->write_to_device(tty->device_internal, "\b \b", 3);
+            return;
+        }
+        
+        bool flush = c == tty->termios.c_cc[VEOF] || 
+                c == '\n' || 
+                c == tty->termios.c_cc[VEOL] || 
+                c == tty->termios.c_cc[VEOL2];
+
+        if(echo)
+            tty->write_to_device(tty->device_internal, &echo, 1);
+        
+        tty->line_buffer[tty->line_pos++] = c;
+        if(tty->line_pos == TTY_DEVICE_BUFFER_SIZE)
+            flush = true;
+
+        if(flush) {
+            mutex_acquire(&tty->read_mutex, false);
+            ringbuffer_write(&tty->read_buffer, tty->line_buffer, tty->line_pos);
+            mutex_release(&tty->read_mutex);
+
+            memset(tty->line_buffer, 0, TTY_DEVICE_BUFFER_SIZE);
+            tty->line_pos = 0;
+
+            io_poll_event(&tty->io_poll, IO_POLL_IN);
+        }
+
+        return;
+    }
+
+    if(echo)
+        tty->write_to_device(tty->device_internal, &c, 1);
+
+    mutex_acquire(&tty->read_mutex, false);
+    ringbuffer_write(&tty->read_buffer, &c, 1);
+    mutex_release(&tty->read_mutex);
+
+    io_poll_event(&tty->io_poll, IO_POLL_IN);
 }
 
 struct tty* tty_create(const char* name, ttydev_write_fn_t write_fn, tty_inactive_fn_t inactive_fn, void* internal) {
@@ -137,20 +206,26 @@ struct tty* tty_create(const char* name, ttydev_write_fn_t write_fn, tty_inactiv
     if(!tty->name)
         goto error;
 
-    tty->device_buffer = kmalloc(TTY_DEVICE_BUFFER_SIZE);
-    if(!tty->device_buffer)
+    tty->line_pos = 0;
+    tty->line_buffer = kmalloc(TTY_DEVICE_BUFFER_SIZE);
+    if(!tty->line_buffer)
         goto error;
 
-    // TODO: ringbuffer
+    io_poll_init(&tty->io_poll);
+
+    mutex_init(&tty->read_mutex);
+    if(ringbuffer_init(&tty->read_buffer, TTY_READ_BUFFER_SIZE))
+        goto error;
+
     int minor = register_minor(tty);
     if(minor == TTY_MAX_COUNT) {
-        // TODO: destroy ringbuffer
+        ringbuffer_destroy(&tty->read_buffer);
         goto error;
     }
 
     if(devfs_register(&devops, name, V_TYPE_CHDEV, DEV_MAJOR_TTY, minor, 0644)) {
         remove_minor(minor);
-        // TODO: destroy ringbuffer
+        ringbuffer_destroy(&tty->read_buffer);
         goto error;
     }
 
@@ -189,8 +264,8 @@ error:
     if(tty->name)
         kfree(tty->name);
 
-    if(tty->device_buffer)
-        kfree(tty->device_buffer);
+    if(tty->line_buffer)
+        kfree(tty->line_buffer);
 
     kfree(tty);
     return nullptr;
@@ -198,8 +273,8 @@ error:
 
 void tty_destroy(struct tty* tty) {
     remove_minor(tty->minor);
-    // TODO: destroy ringbuffer
-    kfree(tty->device_buffer);
+    ringbuffer_destroy(&tty->read_buffer);
+    kfree(tty->line_buffer);
     kfree(tty->name);
     kfree(tty);
 }

@@ -4,21 +4,32 @@
 #include <cdefs.h>
 #include <stddef.h>
 
+#include <io/poll.h>
+#include <ringbuffer.h>
+#include <sys/mutex.h>
 #include <sys/termios.h>
 
 #define TTY_DEVICE_BUFFER_SIZE 512
+#define TTY_READ_BUFFER_SIZE PAGE_SIZE
 
 typedef size_t (*ttydev_write_fn_t)(void* internal, const char* str, size_t size);
 typedef void (*tty_inactive_fn_t)(void* internal);
 
 struct tty {
     char* name;
-    char* device_buffer;
     
     struct vnode* master_vnode;
     int minor;
 
     struct termios termios;
+
+    struct io_poll io_poll;
+
+    mutex_t read_mutex;
+    ringbuffer_t read_buffer;
+
+    char* line_buffer;
+    size_t line_pos;
 
     ttydev_write_fn_t write_to_device;
     tty_inactive_fn_t inactive_device;

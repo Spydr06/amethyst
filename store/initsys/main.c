@@ -53,16 +53,15 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    draw_logo_to_fb(fb, 6);
+    draw_logo_to_fb(fb, 4);
 
     close(fb);
 
-    struct stat stat_buf;
-    stat("/include/unistd.h", &stat_buf);
-    printf("stat /include/unistd.h: size: %ld\n", stat_buf.st_size);
-
-    while(1)
-        yield();
+    while(1) {
+        char buffer[100];
+        fgets(buffer, 100, stdin);
+        printf("your input: \"%s\"\n", buffer);
+    }
 
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         umount_target(mount_targets + i);

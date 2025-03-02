@@ -146,7 +146,6 @@ static void keyboard_isr(struct cpu_context* __unused) {
         return;
 
     keyboard_event(&keyboard, event);
-    klog(DEBUG, "keycode: %hhx", event.keycode);
 }
 
 void ps2_keyboard_init(void) {

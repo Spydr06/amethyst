@@ -116,6 +116,13 @@ enum keycode : uint8_t {
 
 enum keyboard_flags : uint8_t {
     KEYBOARD_EVENT_RELEASED = 0x01,
+    KEYBOARD_EVENT_LALT     = 0x02,
+    KEYBOARD_EVENT_RALT     = 0x04,
+    KEYBOARD_EVENT_LSHIFT   = 0x08,
+    KEYBOARD_EVENT_RSHIFT   = 0x10,
+    KEYBOARD_EVENT_LCTRL    = 0x20,
+    KEYBOARD_EVENT_RCTRL    = 0x40,
+    KEYBOARD_EVENT_CAPSLOCK = 0x80
 };
 
 struct keyboard_event {
@@ -130,13 +137,18 @@ struct keyboard {
     enum keyboard_flags flags;
 };
 
+extern struct keyboard keyboard_console;
+
 void keyboard_driver_init(void);
 int keyboard_register(struct keyboard* kb);
 
 int keyboard_init(struct keyboard* kb);
 void keyboard_deinit(struct keyboard* kb);
 
+int keyboard_wait(struct keyboard* kb, struct keyboard_event* event);
 void keyboard_event(struct keyboard* kb, struct keyboard_event event);
+
+char keyboard_event_as_ascii(struct keyboard_event event);
 
 #endif /* _AMETHYST_DRIVERS_CHAR_KEYBOARD_H */
 
