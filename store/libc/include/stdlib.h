@@ -22,6 +22,7 @@ void free(void *ptr);
 #ifdef _AMETHYST_SOURCE
     int getargc(void);
     char* getargv(int argc);
+    char* _getprogname(void);
 #endif
 
 #ifdef __cplusplus

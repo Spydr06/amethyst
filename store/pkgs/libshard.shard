@@ -27,7 +27,7 @@ with import ./../geode.shard; rec {
         makeTarget = "shell";
         installTarget = "install-shell";
 
-        dependencies = with pkgs; [ libshard ];
+        dependencies = with pkgs; [ libshard getopt ];
 
         build = util.shell.make ["-C" sourceDir makeTarget
             ("CFLAGS=-specs=" + $ builtins.toString util.paths.gcc_specs)

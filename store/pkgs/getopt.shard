@@ -1,0 +1,18 @@
+with import ./../geode.shard; {
+    getopt = rec {
+        name = "getopt";
+        version = "4.4"; # BSD 4.4 compliant
+        license = "BSD-2-Clause";
+
+        sourceDir = util.paths.store + name;
+        buildDir = sourceDir + "build";
+
+        dependencies = with pkgs; [ libc ];
+
+        build = util.shell.make [ "-C" sourceDir ];
+
+        install = util.shell.make [ "-C" sourceDir "install"
+            ("PREFIX=" + $ builtins.toString util.paths.prefix)
+        ];
+    };
+}
