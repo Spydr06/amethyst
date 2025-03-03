@@ -175,7 +175,7 @@ install-lib: $(LIBSHARD)
 
 .PHONY: install-shell
 install-shell: $(SHELL_BIN)
-	install -m "777" $(SHELL_BIN) $(PREFIX)/lib/$(notdir $(SHELL_BIN))
+	install -m "777" $(SHELL_BIN) $(PREFIX)/bin/$(notdir $(SHELL_BIN))
 
 .PHONY: clean
 clean:

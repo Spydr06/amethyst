@@ -6,6 +6,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/syscall.h>
+#include <errno.h>
+
+static const char shell_bin[] = "/bin/shard-sh";
 
 int draw_logo_to_fb(int fb, int scale);
 
@@ -57,15 +60,13 @@ int main(int argc, char** argv) {
 
     close(fb);
 
-    while(1) {
-        char buffer[100];
-        fgets(buffer, 100, stdin);
-        printf("your input: \"%s\"\n", buffer);
-    }
+    int err = execl(shell_bin, shell_bin, NULL);
+    if(err < 0)
+        err = errno;
+
+    fprintf(stderr, "%s: error executing %s: %s\n", argv[0], shell_bin, strerror(errno));
 
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         umount_target(mount_targets + i);
-
-    //execl("/bin/helloworld", "/bin/helloworld", NULL);
 }
 
