@@ -121,7 +121,7 @@ rec {
         pkgOpts = pkg: (pkgAttrs pkg).opts or {};
         pkgName = pkg: (pkgAttrs pkg).name or null;
 
-        pkgBuildDependencies = pkg: pkg.buildDependencies or [];
+        pkgBuildDependencies = pkg: (pkg.buildDependencies or []) ++ (pkg.dependencies or []);
 
         announceBuild = pkg: util.io.logMajor ("Building " + pkg.name + "...");
 

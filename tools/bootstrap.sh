@@ -12,6 +12,7 @@ USE_GCBOEHM="-DSHARD_USE_GCBOEHM"
 
 CONFIGURATION_FILE="${PROJECT_DIR}/configuration.shard"
 STORE_DIR="${PROJECT_DIR}/store"
+SHARD_DIR="${PROJECT_DIR}/shard"
 
 RUN_AFTERWARDS=0
 
@@ -58,6 +59,10 @@ function clean_store_build_files() {
     done
 }
 
+function clean_shard_build_files() {
+    make -C $SHARD_DIR clean
+}
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         --build-dir=*)
@@ -84,6 +89,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         -C|--clean-all)
             clean_store_build_files
+            clean_shard_build_files
             clean_build_files
             exit 0
             ;;

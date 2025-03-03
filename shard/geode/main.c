@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string.h>
 
 typedef int (*action_handler_t)(struct geode_context* ctx, int argc, char** argv);
 

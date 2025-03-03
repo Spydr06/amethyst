@@ -101,7 +101,7 @@ void geode_print_shard_error(struct shard_error* error) {
     fseek(fd, line_start, SEEK_SET);
 
     char* line_str = calloc(line_end - line_start + 1, sizeof(char));
-    assert(fread(line_str, line_end - line_start, sizeof(char), fd) == line_end - line_start);
+    (void) fread(line_str, line_end - line_start, sizeof(char), fd);
 
     size_t column = error->loc.offset - line_start;
 

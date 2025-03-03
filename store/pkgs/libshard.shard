@@ -1,20 +1,51 @@
-with import ./../geode.shard; {
+with import ./../geode.shard; rec {
     libshard = rec {
         name = "libshard";
         version = "0.0.1";
 
         sourceDir = "shard";
+        makeTarget = "lib";
+        installTarget = "install-lib";
 
-        buildDependencies = with pkgs; [
-            libc
-        ];
+        dependencies = with pkgs; [ libc ];
 
-        runtimeDependencies = with pkgs; [
-            libc
-        ];
-
-        build = util.shell.make ["-C" sourceDir
+        build = util.shell.make ["-C" sourceDir makeTarget
             ("CFLAGS=-specs=" + $ builtins.toString util.paths.gcc_specs)
+            ("PREFIX=" + $ builtins.toString util.paths.prefix)
+        ];
+
+        install = util.shell.make ["-C" sourceDir installTarget
+            ("PREFIX=" + $ builtins.toString util.paths.prefix)
         ];
     };
+
+    shard-sh = rec {
+        name = "shard-sh";
+        version = "0.0.1";
+
+        sourceDir = libshard.sourceDir;
+        makeTarget = "shell";
+        installTarget = "install-shell";
+
+        dependencies = with pkgs; [ libshard ];
+
+        build = util.shell.make ["-C" sourceDir makeTarget
+            ("CFLAGS=-specs=" + $ builtins.toString util.paths.gcc_specs)
+            "LDFLAGS=-static"
+            ("PREFIX=" + $ builtins.toString util.paths.prefix)
+        ];
+
+        install = util.shell.make ["-C" sourceDir installTarget
+            ("PREFIX=" + $ builtins.toString util.paths.prefix)
+        ];
+    };
+
+    shard-full = rec {
+        name = "shard-full";
+        version = "0.0.1";
+        meta = true;
+
+        dependencies = with pkgs; [ libshard shard-sh ];
+    };
 }
+
