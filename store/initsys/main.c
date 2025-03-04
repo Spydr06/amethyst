@@ -8,7 +8,7 @@
 #include <sys/syscall.h>
 #include <errno.h>
 
-static const char shell_bin[] = "/bin/shard-sh";
+static char shell_bin[] = "/bin/shard-sh";
 
 int draw_logo_to_fb(int fb, int scale);
 
@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
 
     close(fb);
 
-    int err = execl(shell_bin, shell_bin, NULL);
+    int err = execv(shell_bin, (char* const[]){shell_bin, NULL});
     if(err < 0)
         err = errno;
 

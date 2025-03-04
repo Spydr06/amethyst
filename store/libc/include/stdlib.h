@@ -7,6 +7,9 @@ extern "C" {
 
 #include <bits/alltypes.h>
 
+#define EXIT_SUCCESS 0
+#define EXIT_FAILURE 1
+
 void abort(void) __attribute__((__noreturn__));
 
 void exit(int status) __attribute__((__noreturn__));

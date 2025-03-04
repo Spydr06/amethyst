@@ -42,7 +42,7 @@ SHELL_BIN := $(BUILD_DIR)/shard-sh
 SHELL_SOURCES := $(shell find $(SHELL_DIR) -name '*.c')
 SHELL_OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SHELL_SOURCES))
 
-SHELL_CLFAGS := -I$(SHELL_DIR)/include
+SHELL_CLFAGS := -I$(SHELL_DIR)/include -g
 SHELL_LDFLAGS :=
 
 AR ?= ar
@@ -87,7 +87,7 @@ $(BUILD_DIR):
 	@echo "  MKDIR $(BUILD_DIR)"
 	@mkdir -p $(BUILD_DIR)
 
-$(SHARD_BIN): $(BUILD_DIR)/shard.o $(BUILD_DIR)/repl.o $(LIBSHARD_OBJ)
+$(SHARD_BIN): $(LDLFLAGS) $(BUILD_DIR)/shard.o $(BUILD_DIR)/repl.o $(LIBSHARD_OBJ)
 	@echo "  LD    $@"
 	@$(CC) $(LDFLAGS) -o $@ $^
 
@@ -103,7 +103,7 @@ $(GEODE_BIN): $(GEODE_OBJECTS) $(LIBSHARD_OBJ)
 
 $(SHELL_BIN): $(SHELL_OBJECTS) $(LIBSHARD_OBJ)
 	@echo "  CCLD  $@"
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SHELL_LDFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) $(SHELL_LDFLAGS) -o $@ $^ $(LDFLAGS)
 
 .PHONY: libshard_obj
 libshard_obj: $(LIBSHARD_OBJ)

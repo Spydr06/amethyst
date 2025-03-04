@@ -39,15 +39,16 @@
 #include <string.h>
 #include <unistd.h>
 
-int	opterr = 1,		/* if error message should be printed */
-	optind = 1,		/* index into parent argv vector */
-	optopt,			/* character checked for validity */
-	optreset;		/* reset getopt */
-char	*optarg;		/* argument associated with option */
+#define _data __attribute__((section(".data")))
+_data int opterr = 1;		/* if error message should be printed */
+_data int optind = 1;		/* index into parent argv vector */
+_data int optopt;			/* character checked for validity */
+_data int optreset;		    /* reset getopt */
+_data char *optarg;		    /* argument associated with option */
 
 #define	BADCH	(int)'?'
 #define	BADARG	(int)':'
-static char EMSG[] = "";
+static _data char EMSG[] = "";
 /*
  * getopt --
  *	Parse argc/argv argument vector.

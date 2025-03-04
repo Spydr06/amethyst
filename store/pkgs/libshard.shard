@@ -29,10 +29,12 @@ with import ./../geode.shard; rec {
 
         dependencies = with pkgs; [ libshard getopt ];
 
-        build = util.shell.make ["-C" sourceDir makeTarget
-            ("CFLAGS=-specs=" + $ builtins.toString util.paths.gcc_specs)
-            "LDFLAGS=-static"
-            ("PREFIX=" + $ builtins.toString util.paths.prefix)
+        build = let 
+                prefix = builtins.toString util.paths.prefix;
+            in util.shell.make ["-C" sourceDir makeTarget
+            ("CFLAGS=-DSHARD_SHELL_VERSION=\"\\\"" + version + "\\\"\" -specs=" + $ builtins.toString util.paths.gcc_specs)
+            ("LDFLAGS=-lgetopt")
+            ("PREFIX=" + prefix)
         ];
 
         install = util.shell.make ["-C" sourceDir installTarget
