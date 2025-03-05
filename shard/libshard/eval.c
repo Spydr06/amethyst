@@ -10,6 +10,9 @@
     #define PATH_MAX 4096
 #endif
 
+#define MATCH_FAIL NULL
+#define MATCH_OK ((void*) 1)
+
 static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_expr* expr);
 
 static void evaluator_init(volatile struct shard_evaluator* eval, struct shard_context* ctx, jmp_buf* exception) {
@@ -196,55 +199,65 @@ static inline struct shard_value eval_eq(volatile struct shard_evaluator* e, str
     return BOOL_VAL(shard_values_equal(&values[0], &values[1]) ^ negate);
 }
 
-#define CMP_OP(e, expr, op) do {            \
+#define CMP_OP(e, lhs, op, rhs, loc) do {   \
         bool left_err = true;               \
-        struct shard_value values[] = {     \
-            eval((e), (expr)->binop.lhs),   \
-            eval((e), (expr)->binop.rhs)    \
-        };                                  \
                                             \
-        switch(values[0].type) {            \
+        switch(lhs.type) {                  \
             case SHARD_VAL_INT:             \
-                switch(values[1].type) {    \
+                switch(rhs.type) {          \
                     case SHARD_VAL_INT:     \
-                        return BOOL_VAL(values[0].integer op values[1].integer);   \
+                        return BOOL_VAL(lhs.integer op rhs.integer);   \
                     case SHARD_VAL_FLOAT:   \
-                        return BOOL_VAL(values[0].integer op (int64_t) values[1].floating); \
+                        return BOOL_VAL(lhs.integer op (int64_t) rhs.floating); \
                     default:                \
                         left_err = false;   \
-                        goto error;         \
                 }                           \
+                break;                      \
             case SHARD_VAL_FLOAT:           \
-                switch(values[1].type) {    \
+                switch(rhs.type) {          \
                     case SHARD_VAL_INT:     \
-                        return BOOL_VAL(values[0].floating op (double) values[1].integer);   \
+                        return BOOL_VAL(lhs.floating op (double) rhs.integer);   \
                     case SHARD_VAL_FLOAT:   \
-                        return BOOL_VAL(values[0].floating op values[1].floating); \
+                        return BOOL_VAL(lhs.floating op rhs.floating); \
                     default:                \
                         left_err = false;   \
-                        goto error;         \
+                        break;              \
                 }                           \
             default:                        \
-                goto error;                 \
         }                                   \
-    error:                                  \
-        shard_eval_throw(e, expr->loc, "`" #op "`: %s operand is not of a numeric type", left_err ? "left" : "right");\
+        shard_eval_throw(e, loc, "`" #op "`: %s operand is not of a numeric type", left_err ? "left" : "right");\
     } while(0)
 
 static inline struct shard_value eval_le(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    CMP_OP(e, expr, <=);
+    struct shard_value values[] = {
+        eval(e, expr->binop.lhs),
+        eval(e, expr->binop.rhs)
+    };
+    CMP_OP(e, values[0], <=, values[1], expr->loc);
 }
 
 static inline struct shard_value eval_lt(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    CMP_OP(e, expr, <);
+    struct shard_value values[] = {
+        eval(e, expr->binop.lhs),
+        eval(e, expr->binop.rhs)
+    };
+    CMP_OP(e, values[0], <, values[1], expr->loc);
 }
 
 static inline struct shard_value eval_ge(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    CMP_OP(e, expr, >=);
+    struct shard_value values[] = {
+        eval(e, expr->binop.lhs),
+        eval(e, expr->binop.rhs)
+    };
+    CMP_OP(e, values[0], >=, values[1], expr->loc);
 }
 
 static inline struct shard_value eval_gt(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    CMP_OP(e, expr, >);
+    struct shard_value values[] = {
+        eval(e, expr->binop.lhs),
+        eval(e, expr->binop.rhs)
+    };
+    CMP_OP(e, values[0], >, values[1], expr->loc);
 }
 
 static inline struct shard_value eval_addition(volatile struct shard_evaluator* e, struct shard_expr* expr) {
@@ -556,6 +569,28 @@ static inline struct shard_value eval_ternary(volatile struct shard_evaluator* e
     return is_truthy(eval(e, expr->ternary.cond)) ? eval(e, expr->ternary.if_branch) : eval(e, expr->ternary.else_branch);
 }
 
+static inline struct shard_value match_cmp_pattern(volatile struct shard_evaluator* e, struct shard_pattern* pattern, struct shard_lazy_value* lazy_lhs) {
+    struct shard_value lhs = eval_lazy(e, lazy_lhs);
+    struct shard_value rhs = eval(e, &pattern->cmp_to);
+
+    switch(pattern->type) {
+        case SHARD_PAT_CMP_EQ:
+            return BOOL_VAL(shard_values_equal(&lhs, &rhs));
+        case SHARD_PAT_CMP_NE:
+            return BOOL_VAL(!shard_values_equal(&lhs, &rhs));
+        case SHARD_PAT_CMP_LE:
+            CMP_OP(e, lhs, <=, rhs, pattern->loc);
+        case SHARD_PAT_CMP_LT:
+            CMP_OP(e, lhs, <, rhs, pattern->loc);
+        case SHARD_PAT_CMP_GE:
+            CMP_OP(e, lhs, >=, rhs, pattern->loc);
+        case SHARD_PAT_CMP_GT:
+            CMP_OP(e, lhs, >, rhs, pattern->loc);
+        default:
+            assert(!"unreachable");
+    }
+}
+
 static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struct shard_pattern* pattern, struct shard_lazy_value* lazy_value, struct shard_location* error_loc) {
     struct shard_value value = {0};
     if(pattern->type_constraint != SHARD_VAL_ANY) {
@@ -569,7 +604,7 @@ static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struc
                     shard_value_type_to_string(e->ctx, value.type)
                 );
             else
-                return NULL;
+                return MATCH_FAIL;
         }
     }
 
@@ -595,7 +630,7 @@ static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struc
                     else if(error_loc)
                         shard_eval_throw(e, *error_loc, "set does not contain expected attribute `%s`", pattern->attrs.items[i].ident);
                     else
-                        return NULL;
+                        return MATCH_FAIL;
                 }
 
                 shard_set_put(set, pattern->attrs.items[i].ident, val);
@@ -605,14 +640,20 @@ static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struc
                 if(error_loc)
                     shard_eval_throw(e, *error_loc, "set does not match expected attributes");
                 else
-                    return NULL;
+                    return MATCH_FAIL;
             }
 
             if(pattern->ident && strcmp(pattern->ident, "_"))
                 shard_set_put(set, pattern->ident, shard_unlazy(e->ctx, SET_VAL(set)));
             break;
         default:
-            shard_eval_throw(e, pattern->loc, "unimplemented pattern type `%d`", pattern->type);
+            if(!(pattern->type & SHARD_PAT_CMP_ANY))
+                shard_eval_throw(e, pattern->loc, "unimplemented pattern type `%d`", pattern->type);
+
+            struct shard_value match = match_cmp_pattern(e, pattern, lazy_value);
+            assert(match.type == SHARD_VAL_BOOL);
+
+            return match.boolean ? MATCH_OK : MATCH_FAIL;
     }
 
     return set;
@@ -630,9 +671,12 @@ static inline struct shard_value eval_case_of(volatile struct shard_evaluator* e
         if(!branch_scope)
             continue;
 
-        scope_push(e, branch_scope);
+        if(branch_scope != MATCH_OK)
+            scope_push(e, branch_scope);
         struct shard_value res = eval(e, branch);
-        scope_pop(e);
+
+        if(branch_scope != MATCH_OK)
+            scope_pop(e);
         return res;
     }
 
@@ -684,9 +728,12 @@ static inline struct shard_value eval_call_function(volatile struct shard_evalua
     struct shard_scope* prev_scope = e->scope;
     e->scope = func.function.scope;
 
-    scope_push(e, set);
+    if(set != MATCH_OK)
+        scope_push(e, set);
     struct shard_value value = eval(e, func.function.body);
-    scope_pop(e);
+
+    if(set != MATCH_OK)
+        scope_pop(e);
 
     e->scope = prev_scope;
 

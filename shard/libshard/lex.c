@@ -80,6 +80,7 @@ static const unsigned token_widths[] = {
     2,
     2,
     2,
+    2,
     1,
     2,
     3,
@@ -516,6 +517,8 @@ repeat:
         case '=':
             if((c = src->getc(src)) == '=')
                 KEYWORD_TOK(token, src, EQ);
+            else if(c == '>')
+                KEYWORD_TOK(token, src, ARROW);
             else {
                 src->ungetc(c, src);
                 KEYWORD_TOK(token, src, ASSIGN);

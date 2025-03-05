@@ -331,6 +331,7 @@ enum shard_token_type {
     SHARD_TOK_LOGAND, // &&
     SHARD_TOK_LOGOR, // ||
     SHARD_TOK_LOGIMPL, // ->
+    SHARD_TOK_ARROW, // =>
     SHARD_TOK_DOLLAR, // $
     SHARD_TOK_INTERPOLATION, // ${
 
@@ -508,8 +509,15 @@ enum shard_value_type {
 const char* shard_value_type_to_string(struct shard_context* ctx, enum shard_value_type type);
 
 enum shard_pattern_type {
-    SHARD_PAT_IDENT,
-    SHARD_PAT_SET,
+    SHARD_PAT_IDENT     = 0x1000,
+    SHARD_PAT_SET       = 0x2000,
+    SHARD_PAT_CMP_ANY   = 0x4000,
+    SHARD_PAT_CMP_EQ    = 0x4001,
+    SHARD_PAT_CMP_NE    = 0x4002,
+    SHARD_PAT_CMP_LT    = 0x4004,
+    SHARD_PAT_CMP_LE    = 0x4008,
+    SHARD_PAT_CMP_GT    = 0x4010,
+    SHARD_PAT_CMP_GE    = 0x4020,
 };
 
 struct shard_pattern {
@@ -521,6 +529,8 @@ struct shard_pattern {
 
     struct shard_binding_list attrs; 
     shard_ident_t ident;
+
+    struct shard_expr cmp_to;
 };
 
 SHARD_DECL int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr);

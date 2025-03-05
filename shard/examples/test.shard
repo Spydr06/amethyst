@@ -1,7 +1,8 @@
 let foo = x: (case x of
-    _ :: float | int -> "numeric";
-    { n, ... } -> foo n;
-    v -> "other: " + (builtins.typeOf v));
+    == 69            => "nice";
+    _ :: float | int => "numeric";
+    { n, ... }       => foo n;
+    v                => "other: " + (builtins.typeOf v));
 in
     foo { n = 69; }
 
