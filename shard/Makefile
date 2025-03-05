@@ -43,7 +43,7 @@ SHELL_SOURCES := $(shell find $(SHELL_DIR) -name '*.c')
 SHELL_OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SHELL_SOURCES))
 
 SHELL_CLFAGS := -I$(SHELL_DIR)/include -g
-SHELL_LDFLAGS :=
+SHELL_LDFLAGS := -ledit
 
 AR ?= ar
 RANLIB ?= ranlib
@@ -103,7 +103,7 @@ $(GEODE_BIN): $(GEODE_OBJECTS) $(LIBSHARD_OBJ)
 
 $(SHELL_BIN): $(SHELL_OBJECTS) $(LIBSHARD_OBJ)
 	@echo "  CCLD  $@"
-	$(CC) $(CFLAGS) $(SHELL_LDFLAGS) -o $@ $^ $(LDFLAGS)
+	@$(CC) $(CFLAGS) $(SHELL_LDFLAGS) -o $@ $^ $(LDFLAGS)
 
 .PHONY: libshard_obj
 libshard_obj: $(LIBSHARD_OBJ)
@@ -115,7 +115,10 @@ $(LIBSHARD_OBJ): $(LIBSHARD_OBJECTS) | $(BUILD_DIR)
 $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR) $(GCBOEHM_LIB) 
 	@echo "  CC    $^"
 	@mkdir -p $(dir $@)
-	@$(CC) $(CFLAGS) $(if $(filter $(GEODE_DIR)/%,$<),$(GEODE_CFLAGS)) -MMD -MP -MF "$(@:%.o=%.d)" -c $^ -o $@
+	@$(CC) $(CFLAGS) \
+		$(if $(filter $(GEODE_DIR)/%,$<),$(GEODE_CFLAGS)) \
+		$(if $(filter $(SHELL_DIR)/%,$<),$(SHELL_CLFAGS)) \
+		-MMD -MP -MF "$(@:%.o=%.d)" -c $^ -o $@
 
 .PHONY: gcboehm
 gcboehm: $(GCBOEHM_LIB)

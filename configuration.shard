@@ -9,7 +9,7 @@
         limine
         initsys
         coreutils
-        shard-sh
+        # shard-sh
     ];
 }
 

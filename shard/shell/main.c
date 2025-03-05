@@ -1,18 +1,27 @@
 #define _AMETHYST_SOURCE
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <getopt.h>
 #include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdnoreturn.h>
+#include <string.h>
 
 #include <libshard.h>
 
+#include "eval.h"
+#include "shell.h"
+#include "resource.h"
+
+__attribute__((section(".data")))
+struct shell shell;
+
 static noreturn void help(void) {
-    printf("Usage: %s [<input file>] [OPTIONS]\n\n", _getprogname());
+    printf("Usage: %s [<input file>] [OPTIONS]\n\n", shell.progname);
     printf("Options:\n");
     printf("  -h        Print this help text and exit.\n");
     printf("  -c <expr> Evaluate a given expression.\n");
+    printf("  -e        Exit on error.\n");
     printf("  -v        Verbose output.\n");
     printf("  -V        Print the shell version and exit.\n\n");
     exit(EXIT_SUCCESS);
@@ -28,8 +37,8 @@ static noreturn void version(void) {
     exit(EXIT_SUCCESS);
 }
 
-noreturn void verrorf(const char *fmt, va_list ap) {
-    fprintf(stdout, "%s: ", _getprogname());
+void verrorf(const char *fmt, va_list ap) {
+    fprintf(stdout, "%s: ", shell.progname);
     vfprintf(stdout, fmt, ap);
     fprintf(stdout, fmt, '\n');
     fflush(stdout);
@@ -42,41 +51,83 @@ __attribute__((format(printf, 1, 2))) void errorf(const char *fmt, ...) {
     va_end(ap);
 }
 
+void shell_cleanup(void) {
+
+}
+
 int main(int argc, char** argv) {
-    bool verbose = false;
+    shell_load_defaults();
+    shell.progname = argv[0];
+    atexit(shell_cleanup); // defer cleanup
+
     char* eval_str = NULL;
 
+    int err;
     int c;
-    while((c = getopt(argc, argv, "c:hvV")) != EOF) {
+    while((c = getopt(argc, argv, "ce:hvV")) != EOF) {
         switch(c) {
             case 'h':
                 help();
             case 'v':
-                verbose = true;
+                shell.verbose_output = true;
                 break;
             case 'V':
                 version();
             case 'c':
                 eval_str = optarg;
                 break;
+            case 'e':
+                shell.exit_on_error = true;
+                break;
 
             case '?':
             default:
-                errorf("invalid option -- '%c'\nTry `%s --help` for more information.", c, _getprogname());
+                errorf("invalid option -- '%c'\nTry `%s --help` for more information.", c, shell.progname);
                 exit(1);
         }
     }
 
     bool repl = !eval_str;
 
-    for(; optind < argc; optind++) {
-        repl = false;
-        char* filename = argv[optind];
+    if(eval_str) {
+        if(optind < argc) {
+            errorf("unexpected argument `%s`", argv[optind]);
+            exit(EXIT_FAILURE);
+        }
+
+        struct shell_resource resource;
+        if((err = resource_from_string(eval_str, false, &resource))) {
+            errorf("%s", strerror(err));
+            exit(EXIT_FAILURE);
+        }
+
+        err = shell_eval(&resource);
+
+        resource_free(&resource);
+
+        exit(err ? EXIT_FAILURE : EXIT_SUCCESS);
     }
 
-    if(!repl)
-        return EXIT_SUCCESS;
+    for(; optind < argc; optind++) {
+        repl = false;
+        char* filepath = argv[optind];
 
-    printf("Shell!\n");
-    while(1);
+        struct shell_resource resource;
+        if((err = resource_from_file(filepath, "r", &resource))) {
+            errorf("%s: %s", filepath, strerror(err));
+            exit(EXIT_FAILURE);
+        }
+
+        err = shell_eval(&resource);
+        if(err && shell.exit_on_error)
+            exit(EXIT_FAILURE);
+
+        resource_free(&resource);
+    }
+
+    if(repl && (err = shell_repl()))
+        return EXIT_FAILURE;
+
+    return EXIT_SUCCESS;
 }
+
