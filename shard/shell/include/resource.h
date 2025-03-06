@@ -28,5 +28,7 @@ void resource_free(struct shell_resource* resource);
 
 int resource_open(const char* filepath, struct shard_source* dest, const char* restrict mode);
 
+void resource_rewind(struct shell_resource* resource);
+
 #endif /* _SHARD_SHELL_RESOURCE_H */
 

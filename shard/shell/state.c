@@ -56,6 +56,9 @@ void shell_state_init(struct shell_state* state, struct shell_resource* resource
         .realpath = realpath,
         .dirname = dirname,
         .access = access,
+        .R_ok = R_OK,
+        .W_ok = W_OK,
+        .X_ok = X_OK,
         .open = _open,
         .home_dir = getenv("HOME"),
     };

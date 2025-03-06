@@ -51,6 +51,11 @@ __attribute__((format(printf, 1, 2))) void errorf(const char *fmt, ...) {
     va_end(ap);
 }
 
+void shell_load_defaults(void) {
+    shell.prompt = "$ ";
+    shell.history_size = DEFAULT_HISTORY_SIZE;
+}
+
 void shell_cleanup(void) {
 
 }
@@ -101,7 +106,12 @@ int main(int argc, char** argv) {
             exit(EXIT_FAILURE);
         }
 
-        err = shell_eval(&resource);
+        struct shell_state state;
+        shell_state_init(&state);
+
+        err = shell_eval(&state, &resource);
+
+        shell_state_free(&state);
 
         resource_free(&resource);
 
@@ -118,9 +128,14 @@ int main(int argc, char** argv) {
             exit(EXIT_FAILURE);
         }
 
-        err = shell_eval(&resource);
+        struct shell_state state;
+        shell_state_init(&state);
+
+        err = shell_eval(&state, &resource);
         if(err && shell.exit_on_error)
             exit(EXIT_FAILURE);
+
+        shell_state_free(&state);
 
         resource_free(&resource);
     }

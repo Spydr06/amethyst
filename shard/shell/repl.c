@@ -1,117 +1,125 @@
 #include "resource.h"
 #include "shell.h"
+#include "eval.h"
 
+#include <ctype.h>
+#include <errno.h>
 #include <memory.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-struct repl { 
-    char** history;
-    size_t history_size;
-    size_t history_next_entry;
+// BSD libedit
+#include <histedit.h>
 
-    struct shard_string current;
-    size_t read_offset;
-};
+#define DEFAULT_LINEBUFFER_SIZE 1024
 
-static int repl_getc(struct shell_resource* resource) {
-    struct repl* repl = resource->userp;
-
-    char c = repl->current.items[repl->read_offset];
-    if(c) {
-        repl->read_offset++;
-        return c;
-    }
-    
-    return EOF;
+static char* repl_prompt(EditLine* el) {
+    (void) el;
+    return shell.prompt;
 }
 
-static int repl_ungetc(struct shell_resource* resource, int c) {
-    struct repl* repl = resource->userp;
-
-    if(repl->read_offset == 0) 
-        return EOF;
-
-    repl->read_offset--;
-    if(repl->current.items[repl->read_offset] != c)
-        return EOF;
-
-    return c;
+static char* multiline_prompt(EditLine* el) {
+    (void) el;
+    return "> ";
 }
 
-void repl_resource(struct repl* repl, struct shell_resource* resource) {
-    memset(resource, 0, sizeof(struct shell_resource));
+static void trim_input(char** input) {
+    while(isspace(**input)) (*input)++;
+    size_t len = strlen(*input);
+    if(len == 0)
+        return;
 
-    resource->userp = repl;
-    resource->getc = repl_getc;
-    resource->ungetc = repl_ungetc;
+    size_t last = len - 1;
+    while(isspace((*input)[last])) (*input)[last--] = '\0';
 }
 
-void repl_init(struct repl *repl) {
-    memset(repl, 0, sizeof(struct repl));
+/*
+static unsigned char tab_completion(EditLine *el, int ch) {
 
-    repl->history = calloc(shell.history_size, sizeof(const char*));
-    repl->history_size = shell.history_size;
 }
-
-void repl_free(struct repl* repl) {
-    for(size_t i = 0; i < repl->history_size; i++) {
-        if(repl->history[i])
-            free(repl->history[i]);
-    }
-
-    free(repl->history);
-}
-
-bool repl_should_close(struct repl* repl) {
-    return false;
-}
-
-int repl_readline(struct repl* repl, FILE* stream) {
-    repl->current.count = 0; 
-
-    for(;;) {
-        char c = fgetc(stream);
-    }
-}
-
-void repl_push_history(struct repl* repl, const char* str) {
-    if(repl->history[repl->history_next_entry])
-        free(repl->history[repl->history_next_entry]);
-
-    repl->history[repl->history_next_entry] = strdup(str);
-    repl->history_next_entry = (repl->history_next_entry + 1) % repl->history_size;
-}
+*/
 
 int shell_repl(void) {
-    struct repl repl;
-    struct shell_resource resource;
-    struct shell_state state;
+    EditLine* el = el_init(shell.progname, stdin, stdout, stderr);
+    if(!el)
+        return errno;
 
-    repl_init(&repl);
-    repl_resource(&repl, &resource);
-    shell_state_init(&state, &resource);
+    History* hist = history_init();
+    if(!hist) {
+        el_end(el);
+        return errno;
+    }
+
+    HistEvent hist_ev;
+    history(hist, &hist_ev, H_SETSIZE, shell.history_size);
+
+    el_set(el, EL_PROMPT, repl_prompt);
+    el_set(el, EL_HIST, history, hist);
+    el_set(el, EL_SAFEREAD, 1);
+
+    /*
+    el_set(el, EL_ADDFN, "tab_completion", "Tab completion", tab_completion);
+    el_set(el, EL_BIND, "\t", "tab_completion");
+    */
 
     int err = 0;
+    int count;
+    const char* line;
 
-    while(!repl_should_close(&repl)) {
-        printf("$ ");
-        fflush(stdout);
+    bool multiline = false;
+    int line_buffer_size = DEFAULT_LINEBUFFER_SIZE;
+    int line_buffer_count;
+    char* line_buffer = malloc(line_buffer_size + 1);
 
-        err = repl_readline(&repl, stdin);
+    struct shell_resource resource;
+    resource_from_string(line_buffer, 0, &resource);
+
+    struct shell_state state;
+    shell_state_init(&state);
+
+    while(!shell.repl_should_close && (line = el_gets(el, &count)) != NULL) {
+        resource_rewind(&resource);
+
+        if(!multiline)
+            line_buffer_count = 0; 
+
+        if(count > line_buffer_size) {
+            line_buffer_size = count;
+            line_buffer = realloc(line_buffer, line_buffer_size + 1);
+        }
+
+        memcpy(line_buffer + line_buffer_count, line, count + 1);
+        line_buffer_count += strlen(line);
+
+        if(line_buffer_count > 1 && line_buffer[line_buffer_count - 2] == '\\') {
+            line_buffer[line_buffer_count -= 2] = '\0';
+            multiline = true;
+            el_set(el, EL_PROMPT, multiline_prompt);
+            continue;
+        }
+
+        multiline = false;
+        el_set(el, EL_PROMPT, repl_prompt);
+
+        err = shell_eval(&state, &resource);
         if(err && shell.exit_on_error)
             break;
-
-        printf("> %s\n", repl.current.items);
-
-        repl_push_history(&repl, repl.current.items);
+        
+        trim_input(&line_buffer);
+        if((line_buffer_count = strlen(line_buffer)))
+           history(hist, &hist_ev, H_ENTER, line_buffer);
     }
     
     shell_state_free(&state);
     resource_free(&resource);
-    repl_free(&repl);
+    
+    free(line_buffer);
 
+    history_end(hist);
+    el_end(el);
+    
     return err;
 }
-
 

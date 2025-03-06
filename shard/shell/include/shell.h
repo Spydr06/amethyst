@@ -18,9 +18,12 @@
 struct shell {
     const char* progname;
 
+    char* prompt;
+
     uint32_t history_size;
-    bool exit_on_error  : 1;
-    bool verbose_output : 1;
+    bool exit_on_error      : 1;
+    bool verbose_output     : 1;
+    bool repl_should_close  : 1;
 };
 
 extern struct shell shell;
@@ -31,13 +34,13 @@ int shell_repl(void);
 __attribute__((format(printf, 1, 2))) void errorf(const char *fmt, ...);
 
 struct shell_state {
-    struct shell_resource* resource;
     struct shard_context shard_context;
+    struct shell_parser* parser;
 
     bool errored;
 };
 
-void shell_state_init(struct shell_state* state, struct shell_resource* resource);
+void shell_state_init(struct shell_state* state);
 
 void shell_state_free(struct shell_state* state);
 
