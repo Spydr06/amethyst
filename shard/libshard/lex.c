@@ -507,7 +507,9 @@ repeat:
                 KEYWORD_TOK(token, src, LE);
             else if(!isspace(c)) {
                 src->ungetc(c, src);
-                return lex_string(ctx, src, token, is_gt_sign, true);
+                int err = lex_string(ctx, src, token, is_gt_sign, false);
+                token->type = SHARD_TOK_PATH;
+                return err;
             }
             else {
                 src->ungetc(c, src);

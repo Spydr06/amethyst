@@ -27,6 +27,9 @@ void shard_subsystem_init(void) {
         .realpath = NULL,
         .dirname = NULL,
         .access = NULL,
+        .R_ok = 0,
+        .W_ok = 0,
+        .X_ok = 0,
         .open = NULL,
         .home_dir = NULL
     };

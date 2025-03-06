@@ -1,4 +1,4 @@
-with import ../geode.shard; {
+with import <geode.shard>; {
     amethyst-kernel = lib.mkPackage rec {
         name = "amethyst-kernel";
         version = "0.0.1";

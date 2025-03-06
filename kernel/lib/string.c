@@ -203,6 +203,17 @@ char* strcpy(char* dest, const char* src) {
     return dest;
 }
 
+char* strncat(char* restrict d, const char* restrict s, size_t n) {
+    char* orig_d = d;
+    d += strlen(d);
+    while(n && *s) {
+        n--;
+        *d++ = *s++;
+    }
+    *d++ = '\0';
+    return orig_d;
+}
+
 char* mempcpy(void *restrict dst, const void *restrict src, size_t n) {
     return (char *)memcpy(dst, src, n) + n;
 }

@@ -26,6 +26,8 @@ char* strcpy(char* dest, const char* src);
 char* strncpy(char* dst, const char* restrict src, size_t dsize);
 char* stpncpy(char *restrict dst, const char *restrict src, size_t dsize);
 
+char* strncat(char* restrict d, const char* restrict s, size_t n);
+
 int strncmp(const char* _l, const char* _r, size_t n);
 int strcmp(const char* _l, const char* _r);
 int strcasecmp(const char* _l, const char *_r);

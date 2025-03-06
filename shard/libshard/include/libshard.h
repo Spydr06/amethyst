@@ -221,6 +221,8 @@ struct shard_context {
     char* (*dirname)(char* path);
     int (*access)(const char* path, int mode);
 
+    int R_ok, W_ok, X_ok;
+
     int (*open)(const char* path, struct shard_source* dest, const char* restrict mode);
 
     const char* current_system;

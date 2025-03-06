@@ -1,4 +1,4 @@
-with import ../geode.shard; {
+with import <geode.shard>; {
     getopt = rec {
         name = "getopt";
         version = "4.4"; # BSD 4.4 compliant

@@ -1,1 +1,1 @@
-let x = ../../README.md; in x
+let x = <geode.shard>; in x

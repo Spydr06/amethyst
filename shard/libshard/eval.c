@@ -1,6 +1,7 @@
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
 
+#include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <setjmp.h>
@@ -147,11 +148,25 @@ static inline struct shard_value eval_path(volatile struct shard_evaluator* e, s
             shard_gc_string_append(e->gc, &path, expr->string + 2);
             break;
         default:
-            // include paths...
-            shard_gc_string_append(e->gc, &path, expr->string);
-            break;
+            if(!e->ctx->access)
+                shard_eval_throw(e, expr->loc, "include paths are disabled");
+
+            for(size_t i = 0; i < e->ctx->include_dirs.count; i++) {
+                strncpy(tmpbuf, e->ctx->include_dirs.items[i], PATH_MAX);
+                strncat(tmpbuf, "/", PATH_MAX);
+                strncat(tmpbuf, expr->string, PATH_MAX);
+
+                if(e->ctx->access(tmpbuf, e->ctx->R_ok))
+                    continue;
+                
+                shard_gc_string_append(e->gc, &path, tmpbuf);
+                goto finish;
+            }
+
+            shard_eval_throw(e, expr->loc, "%s: no such file found in include directories", expr->string);
     }
 
+finish:
     shard_gc_string_push(e->gc, &path, '\0');
 
     return PATH_VAL(path.items, path.count);

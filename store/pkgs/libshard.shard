@@ -1,4 +1,4 @@
-with import ../geode.shard; rec {
+with import <geode.shard>; rec {
     libshard = rec {
         name = "libshard";
         version = "0.0.1";
