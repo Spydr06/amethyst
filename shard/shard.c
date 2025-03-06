@@ -1,3 +1,4 @@
+#include "libshard.h"
 #if __STDC_VERSION__ >= 199901L
 #define _XOPEN_SOURCE 600
 #else
@@ -131,6 +132,12 @@ static void print_error(struct shard_error* error) {
     free(line_str);
 }
 
+static void emit_errors(struct shard_context* ctx) {
+    struct shard_error* errors = shard_get_errors(ctx);
+    for(int i = 0; i < shard_get_num_errors(ctx); i++)
+        print_error(&errors[i]);
+}
+
 static int eval_file(struct shard_context* ctx, const char* progname, const char* input_file, bool echo_result) { 
     struct shard_open_source* source = shard_open(ctx, input_file);
     if(!source) {
@@ -139,19 +146,21 @@ static int eval_file(struct shard_context* ctx, const char* progname, const char
     }
     
     int num_errors = shard_eval(ctx, source);
-    struct shard_error* errors = shard_get_errors(ctx);
-    for(int i = 0; i < num_errors; i++)
-        print_error(&errors[i]);
 
     if(!num_errors && echo_result) {
         struct shard_string str = {0};
-        shard_value_to_string(ctx, &str, &source->result, 1);
-        shard_string_push(ctx, &str, '\0');
+        num_errors = shard_value_to_string(ctx, &str, &source->result, 1);
 
-        puts(str.items);
+        if(!num_errors) {
+            shard_string_push(ctx, &str, '\0');
+            puts(str.items);
+        }
 
         shard_string_free(ctx, &str);
     }
+
+    if(num_errors)
+        emit_errors(ctx);
 
     return num_errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
@@ -164,6 +173,9 @@ int main(int argc, char** argv) {
         .realpath = realpath,
         .dirname = dirname,
         .access = access,
+        .R_ok = R_OK,
+        .W_ok = W_OK,
+        .X_ok = X_OK,
         .open = _open,
         .home_dir = getenv("HOME"),
     };

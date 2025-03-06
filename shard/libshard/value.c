@@ -63,8 +63,11 @@ int shard_value_to_string(struct shard_context* ctx, struct shard_string* str, c
             if(max_depth > 0) {
                 struct shard_list* item = val->list.head;
                 while(item) {
-                    if(!item->value->evaluated)
-                        assert(shard_eval_lazy(ctx, item->value) == 0);
+                    if(!item->value->evaluated) {
+                        int err = shard_eval_lazy(ctx, item->value);
+                        if(err)
+                            return err;
+                    }
                     shard_value_to_string(ctx, str, &item->value->eval, max_depth--);
                     dynarr_append(ctx, str, ' ');
                     item = item->next;

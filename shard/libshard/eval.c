@@ -1,6 +1,7 @@
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
 
+#include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <setjmp.h>
@@ -9,6 +10,9 @@
 #ifndef PATH_MAX
     #define PATH_MAX 4096
 #endif
+
+#define MATCH_FAIL NULL
+#define MATCH_OK ((void*) 1)
 
 static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_expr* expr);
 
@@ -100,7 +104,7 @@ static inline struct shard_value eval_path(volatile struct shard_evaluator* e, s
 
     struct shard_string path = {0};
     // TODO: buffer resolved paths
-    switch(*expr->string) {
+    switch(expr->string[0]) {
         case '/':
             shard_gc_string_append(e->gc, &path, expr->string);
             break;
@@ -112,16 +116,26 @@ static inline struct shard_value eval_path(volatile struct shard_evaluator* e, s
             strcpy(current_path, expr->loc.src->origin);
             e->ctx->dirname(current_path);
 
+            char* rhs_path = expr->string;
+
+            if(rhs_path[1] == '/')
+                rhs_path += 2;
+
+            while(strncmp(rhs_path, "../", 3) == 0) {
+                e->ctx->dirname(current_path);
+                rhs_path += 3;
+            }
+
             if(!e->ctx->realpath(current_path, tmpbuf))
                 shard_eval_throw(e, expr->loc, "could not resolve relative path");
 
             e->ctx->free(current_path);
-            
+
             shard_gc_string_append(e->gc, &path, tmpbuf);
-            if(path.items[path.count - 1] != '/')
+            if(path.items[path.count - 1] != '/' && rhs_path[0] != '/')
                 shard_gc_string_push(e->gc, &path, '/');
-            
-            shard_gc_string_append(e->gc, &path, expr->string + 2);
+
+            shard_gc_string_append(e->gc, &path, rhs_path);
         } break;
         case '~':
             if(!e->ctx->home_dir)
@@ -134,13 +148,25 @@ static inline struct shard_value eval_path(volatile struct shard_evaluator* e, s
             shard_gc_string_append(e->gc, &path, expr->string + 2);
             break;
         default:
-            // include paths...
-            shard_gc_string_append(e->gc, &path, expr->string);
-            break;
+            if(!e->ctx->access)
+                shard_eval_throw(e, expr->loc, "include paths are disabled");
+
+            for(size_t i = 0; i < e->ctx->include_dirs.count; i++) {
+                strncpy(tmpbuf, e->ctx->include_dirs.items[i], PATH_MAX);
+                strncat(tmpbuf, "/", PATH_MAX);
+                strncat(tmpbuf, expr->string, PATH_MAX);
+
+                if(e->ctx->access(tmpbuf, e->ctx->R_ok))
+                    continue;
+                
+                shard_gc_string_append(e->gc, &path, tmpbuf);
+                goto finish;
+            }
+
+            shard_eval_throw(e, expr->loc, "%s: no such file found in include directories", expr->string);
     }
 
-    shard_gc_string_push(e->gc, &path, '\0');
-
+finish:
     return PATH_VAL(path.items, path.count);
 }
 
@@ -196,55 +222,65 @@ static inline struct shard_value eval_eq(volatile struct shard_evaluator* e, str
     return BOOL_VAL(shard_values_equal(&values[0], &values[1]) ^ negate);
 }
 
-#define CMP_OP(e, expr, op) do {            \
+#define CMP_OP(e, lhs, op, rhs, loc) do {   \
         bool left_err = true;               \
-        struct shard_value values[] = {     \
-            eval((e), (expr)->binop.lhs),   \
-            eval((e), (expr)->binop.rhs)    \
-        };                                  \
                                             \
-        switch(values[0].type) {            \
+        switch(lhs.type) {                  \
             case SHARD_VAL_INT:             \
-                switch(values[1].type) {    \
+                switch(rhs.type) {          \
                     case SHARD_VAL_INT:     \
-                        return BOOL_VAL(values[0].integer op values[1].integer);   \
+                        return BOOL_VAL(lhs.integer op rhs.integer);   \
                     case SHARD_VAL_FLOAT:   \
-                        return BOOL_VAL(values[0].integer op (int64_t) values[1].floating); \
+                        return BOOL_VAL(lhs.integer op (int64_t) rhs.floating); \
                     default:                \
                         left_err = false;   \
-                        goto error;         \
                 }                           \
+                break;                      \
             case SHARD_VAL_FLOAT:           \
-                switch(values[1].type) {    \
+                switch(rhs.type) {          \
                     case SHARD_VAL_INT:     \
-                        return BOOL_VAL(values[0].floating op (double) values[1].integer);   \
+                        return BOOL_VAL(lhs.floating op (double) rhs.integer);   \
                     case SHARD_VAL_FLOAT:   \
-                        return BOOL_VAL(values[0].floating op values[1].floating); \
+                        return BOOL_VAL(lhs.floating op rhs.floating); \
                     default:                \
                         left_err = false;   \
-                        goto error;         \
+                        break;              \
                 }                           \
             default:                        \
-                goto error;                 \
         }                                   \
-    error:                                  \
-        shard_eval_throw(e, expr->loc, "`" #op "`: %s operand is not of a numeric type", left_err ? "left" : "right");\
+        shard_eval_throw(e, loc, "`" #op "`: %s operand is not of a numeric type", left_err ? "left" : "right");\
     } while(0)
 
 static inline struct shard_value eval_le(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    CMP_OP(e, expr, <=);
+    struct shard_value values[] = {
+        eval(e, expr->binop.lhs),
+        eval(e, expr->binop.rhs)
+    };
+    CMP_OP(e, values[0], <=, values[1], expr->loc);
 }
 
 static inline struct shard_value eval_lt(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    CMP_OP(e, expr, <);
+    struct shard_value values[] = {
+        eval(e, expr->binop.lhs),
+        eval(e, expr->binop.rhs)
+    };
+    CMP_OP(e, values[0], <, values[1], expr->loc);
 }
 
 static inline struct shard_value eval_ge(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    CMP_OP(e, expr, >=);
+    struct shard_value values[] = {
+        eval(e, expr->binop.lhs),
+        eval(e, expr->binop.rhs)
+    };
+    CMP_OP(e, values[0], >=, values[1], expr->loc);
 }
 
 static inline struct shard_value eval_gt(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    CMP_OP(e, expr, >);
+    struct shard_value values[] = {
+        eval(e, expr->binop.lhs),
+        eval(e, expr->binop.rhs)
+    };
+    CMP_OP(e, values[0], >, values[1], expr->loc);
 }
 
 static inline struct shard_value eval_addition(volatile struct shard_evaluator* e, struct shard_expr* expr) {
@@ -569,16 +605,17 @@ static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struc
                     shard_value_type_to_string(e->ctx, value.type)
                 );
             else
-                return NULL;
+                return MATCH_FAIL;
         }
     }
 
-    struct shard_set* set;
+    struct shard_set* set = MATCH_OK;
     switch(pattern->type) {
         case SHARD_PAT_IDENT:
-            set = shard_set_init(e->ctx, 1);
-            if(strcmp(pattern->ident, "_"))
+            if(strcmp(pattern->ident, "_")) {
+                set = shard_set_init(e->ctx, 1);
                 shard_set_put(set, pattern->ident, lazy_value);
+            }
             break;
         case SHARD_PAT_SET:
             set = shard_set_init(e->ctx, pattern->attrs.count + (size_t) !!pattern->ident);
@@ -595,7 +632,7 @@ static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struc
                     else if(error_loc)
                         shard_eval_throw(e, *error_loc, "set does not contain expected attribute `%s`", pattern->attrs.items[i].ident);
                     else
-                        return NULL;
+                        return MATCH_FAIL;
                 }
 
                 shard_set_put(set, pattern->attrs.items[i].ident, val);
@@ -605,14 +642,39 @@ static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struc
                 if(error_loc)
                     shard_eval_throw(e, *error_loc, "set does not match expected attributes");
                 else
-                    return NULL;
+                    return MATCH_FAIL;
             }
 
             if(pattern->ident && strcmp(pattern->ident, "_"))
                 shard_set_put(set, pattern->ident, shard_unlazy(e->ctx, SET_VAL(set)));
             break;
+        case SHARD_PAT_CONSTANT:
+            struct shard_value lhs = eval_lazy(e, lazy_value);
+            struct shard_value rhs = eval(e, pattern->constant);
+
+            set = shard_values_equal(&lhs, &rhs) ? MATCH_OK : MATCH_FAIL;
+
+            if(error_loc && set == MATCH_FAIL)
+                shard_eval_throw(e, *error_loc, "argument is not equal to pattern constant");
+            break;
         default:
             shard_eval_throw(e, pattern->loc, "unimplemented pattern type `%d`", pattern->type);
+    }
+
+    if(pattern->condition) {
+        if(set != MATCH_OK)
+            scope_push(e, set);
+
+        struct shard_value cond = eval(e, pattern->condition);
+        
+        if(set != MATCH_OK)
+            scope_pop(e);
+
+        if(!is_truthy(cond))
+            set = MATCH_FAIL;
+
+        if(error_loc && set == MATCH_FAIL)
+            shard_eval_throw(e, *error_loc, "argument does not match pattern condition");
     }
 
     return set;
@@ -630,9 +692,12 @@ static inline struct shard_value eval_case_of(volatile struct shard_evaluator* e
         if(!branch_scope)
             continue;
 
-        scope_push(e, branch_scope);
+        if(branch_scope != MATCH_OK)
+            scope_push(e, branch_scope);
         struct shard_value res = eval(e, branch);
-        scope_pop(e);
+
+        if(branch_scope != MATCH_OK)
+            scope_pop(e);
         return res;
     }
 
@@ -684,9 +749,12 @@ static inline struct shard_value eval_call_function(volatile struct shard_evalua
     struct shard_scope* prev_scope = e->scope;
     e->scope = func.function.scope;
 
-    scope_push(e, set);
+    if(set != MATCH_OK)
+        scope_push(e, set);
     struct shard_value value = eval(e, func.function.body);
-    scope_pop(e);
+
+    if(set != MATCH_OK)
+        scope_pop(e);
 
     e->scope = prev_scope;
 

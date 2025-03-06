@@ -1,7 +1,3 @@
-let foo = x: (case x of
-    _ :: float | int -> "numeric";
-    { n, ... } -> foo n;
-    v -> "other: " + (builtins.typeOf v));
-in
-    foo { n = 69; }
+with builtins;
+join "\n" $ map toString [ <geode.shard> ../../README.md ./shard.c ]
 

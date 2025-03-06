@@ -80,6 +80,7 @@ static const unsigned token_widths[] = {
     2,
     2,
     2,
+    2,
     1,
     2,
     3,
@@ -137,7 +138,7 @@ static inline bool is_ident_char(char c) {
 }
 
 static int is_path_terminator(int c) {
-    return isspace(c) || c == ';' || c == ',';
+    return isspace(c) || c == ';' || c == ',' || c == ')' || c == ']' || c == '}';
 }
 
 static int lex_ident(struct shard_context* ctx, struct shard_source* src, struct shard_token* token) {
@@ -462,6 +463,12 @@ repeat:
             int c2 = -2;
             if((c = src->getc(src)) == '.' && (c2 = src->getc(src)) == '.')
                 KEYWORD_TOK(token, src, ELLIPSE);
+            else if(c == '.' && c2 == '/') {
+                src->ungetc('/', src);
+                src->ungetc('.', src);
+                src->ungetc('.', src);
+                return lex_string(ctx, src, token, is_path_terminator, true);
+            }
             else if(c == '/') {
                 if(c2 != -2)
                     src->ungetc(c2, src);
@@ -500,7 +507,9 @@ repeat:
                 KEYWORD_TOK(token, src, LE);
             else if(!isspace(c)) {
                 src->ungetc(c, src);
-                return lex_string(ctx, src, token, is_gt_sign, true);
+                int err = lex_string(ctx, src, token, is_gt_sign, false);
+                token->type = SHARD_TOK_PATH;
+                return err;
             }
             else {
                 src->ungetc(c, src);
@@ -516,6 +525,8 @@ repeat:
         case '=':
             if((c = src->getc(src)) == '=')
                 KEYWORD_TOK(token, src, EQ);
+            else if(c == '>')
+                KEYWORD_TOK(token, src, ARROW);
             else {
                 src->ungetc(c, src);
                 KEYWORD_TOK(token, src, ASSIGN);

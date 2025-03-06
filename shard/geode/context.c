@@ -155,6 +155,9 @@ int geode_context_init(struct geode_context* ctx, const char* prog_name, geode_e
         .realpath = realpath,
         .dirname = dirname,
         .access = access,
+        .R_ok = R_OK,
+        .W_ok = W_OK,
+        .X_ok = X_OK,
         .open = geode_open_shard_file,
         .home_dir = nullptr,
         .userp = ctx
@@ -163,6 +166,8 @@ int geode_context_init(struct geode_context* ctx, const char* prog_name, geode_e
     int err = shard_init(&ctx->shard_ctx);
     if(err)
         geode_throw(ctx, LIBSHARD_INIT, .err_no=err);
+
+    shard_include_dir(&ctx->shard_ctx, ctx->store_path);
 
     ctx->shard_initialized = true;
 
@@ -277,6 +282,16 @@ void geode_context_set_config_file(struct geode_context* ctx, char* config_file)
 }
 
 void geode_context_set_store_path(struct geode_context* ctx, char* store_path) {
+    for(size_t i = 0; i < ctx->shard_ctx.include_dirs.count; i++) {
+        const char* include_path = ctx->shard_ctx.include_dirs.items[i];
+        if(strcmp(include_path, ctx->store_path) == 0) {
+            ctx->shard_ctx.include_dirs.items[i] = store_path;
+            ctx->store_path = store_path;
+            return;
+        }
+    }
+
+    shard_include_dir(&ctx->shard_ctx, store_path);
     ctx->store_path = store_path;
 }
 

@@ -1,0 +1,14 @@
+let match_test = x: (case x of
+    v if v == 69     => "nice";
+    _ :: float | int => "numeric";
+    { n, ... }       => match_test n;
+    v                => "other: " + (builtins.typeOf v));
+in
+    assert (match_test 69) == "nice";
+    assert (match_test 123) == "numeric";
+    assert (match_test 3.14) == "numeric";
+    assert (match_test { n = 69; }) == "nice";
+    assert (match_test { m = 0; }) == "other: set";
+    assert (match_test [1 2 3]) == "other: list";
+
+    true

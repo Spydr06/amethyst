@@ -221,6 +221,8 @@ struct shard_context {
     char* (*dirname)(char* path);
     int (*access)(const char* path, int mode);
 
+    int R_ok, W_ok, X_ok;
+
     int (*open)(const char* path, struct shard_source* dest, const char* restrict mode);
 
     const char* current_system;
@@ -331,6 +333,7 @@ enum shard_token_type {
     SHARD_TOK_LOGAND, // &&
     SHARD_TOK_LOGOR, // ||
     SHARD_TOK_LOGIMPL, // ->
+    SHARD_TOK_ARROW, // =>
     SHARD_TOK_DOLLAR, // $
     SHARD_TOK_INTERPOLATION, // ${
 
@@ -510,6 +513,7 @@ const char* shard_value_type_to_string(struct shard_context* ctx, enum shard_val
 enum shard_pattern_type {
     SHARD_PAT_IDENT,
     SHARD_PAT_SET,
+    SHARD_PAT_CONSTANT
 };
 
 struct shard_pattern {
@@ -521,6 +525,9 @@ struct shard_pattern {
 
     struct shard_binding_list attrs; 
     shard_ident_t ident;
+
+    struct shard_expr* constant;
+    struct shard_expr* condition;
 };
 
 SHARD_DECL int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr);

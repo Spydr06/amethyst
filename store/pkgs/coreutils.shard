@@ -1,4 +1,4 @@
-with import ./../geode.shard; {
+with import <geode.shard>; {
     coreutils = rec {
         name = "coreutils";
         version = "0.0.1";

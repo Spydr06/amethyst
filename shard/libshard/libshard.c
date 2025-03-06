@@ -3,6 +3,8 @@
 #include <libshard.h>
 
 static void shard_free_pattern(struct shard_context* ctx, struct shard_pattern* pattern) {
+    shard_free_expr(ctx, pattern->constant);
+    shard_free_expr(ctx, pattern->condition);
     for(size_t i = 0; i < pattern->attrs.count; i++) {
         struct shard_binding attr = pattern->attrs.items[i];
         if(attr.value)
@@ -16,9 +18,6 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
         return;
 
     switch(expr->type) {
-        case SHARD_EXPR_STRING:
-            ctx->free(expr->string);
-            break;
         case SHARD_EXPR_WITH:
         case SHARD_EXPR_ASSERT:
         case SHARD_EXPR_ADD:
@@ -79,6 +78,15 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
                 shard_free_expr(ctx, expr->let.bindings.items[i].value);
             dynarr_free(ctx, &expr->let.bindings);
             shard_free_expr(ctx, expr->let.expr);
+            break;
+        case SHARD_EXPR_CASE_OF:
+            for(size_t i = 0; i < expr->case_of.branches.count; i++)
+                shard_free_expr(ctx, &expr->case_of.branches.items[i]);
+            dynarr_free(ctx, &expr->case_of.branches);
+            
+            for(size_t i = 0; i < expr->case_of.patterns.count; i++)
+                shard_free_pattern(ctx, &expr->case_of.patterns.items[i]);
+            dynarr_free(ctx, &expr->case_of.patterns);
             break;
         default:
             break;
