@@ -1,4 +1,4 @@
-with import ./../geode.shard; {
+with import ../geode.shard; {
     libc = rec {
         name = "libc";
         version = "0.0.1";

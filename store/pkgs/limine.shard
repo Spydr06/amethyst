@@ -1,4 +1,4 @@
-with import ./../geode.shard; {
+with import ../geode.shard; {
     limine = lib.mkPackage rec {
         name = "limine";
         

@@ -463,6 +463,12 @@ repeat:
             int c2 = -2;
             if((c = src->getc(src)) == '.' && (c2 = src->getc(src)) == '.')
                 KEYWORD_TOK(token, src, ELLIPSE);
+            else if(c == '.' && c2 == '/') {
+                src->ungetc('/', src);
+                src->ungetc('.', src);
+                src->ungetc('.', src);
+                return lex_string(ctx, src, token, is_path_terminator, true);
+            }
             else if(c == '/') {
                 if(c2 != -2)
                     src->ungetc(c2, src);

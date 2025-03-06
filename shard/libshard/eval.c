@@ -103,7 +103,7 @@ static inline struct shard_value eval_path(volatile struct shard_evaluator* e, s
 
     struct shard_string path = {0};
     // TODO: buffer resolved paths
-    switch(*expr->string) {
+    switch(expr->string[0]) {
         case '/':
             shard_gc_string_append(e->gc, &path, expr->string);
             break;
@@ -115,16 +115,26 @@ static inline struct shard_value eval_path(volatile struct shard_evaluator* e, s
             strcpy(current_path, expr->loc.src->origin);
             e->ctx->dirname(current_path);
 
+            char* rhs_path = expr->string;
+
+            if(rhs_path[1] == '/')
+                rhs_path += 2;
+
+            while(strncmp(rhs_path, "../", 3) == 0) {
+                e->ctx->dirname(current_path);
+                rhs_path += 3;
+            }
+
             if(!e->ctx->realpath(current_path, tmpbuf))
                 shard_eval_throw(e, expr->loc, "could not resolve relative path");
 
             e->ctx->free(current_path);
-            
+
             shard_gc_string_append(e->gc, &path, tmpbuf);
-            if(path.items[path.count - 1] != '/')
+            if(path.items[path.count - 1] != '/' && rhs_path[0] != '/')
                 shard_gc_string_push(e->gc, &path, '/');
-            
-            shard_gc_string_append(e->gc, &path, expr->string + 2);
+
+            shard_gc_string_append(e->gc, &path, rhs_path);
         } break;
         case '~':
             if(!e->ctx->home_dir)
