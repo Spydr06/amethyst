@@ -106,6 +106,7 @@ static int consume(struct parser* p, enum shard_token_type token_type) {
 }
 
 static int parse_expr(struct parser* p, struct shard_expr* expr, enum precedence prec);
+static int parse_prefix_expr(struct parser* p, struct shard_expr* expr);
 
 static int parse_escape_code(struct parser* p, const char* ptr, char* c) {
     switch(*ptr) {
@@ -158,34 +159,36 @@ static int parse_escape_code(struct parser* p, const char* ptr, char* c) {
 }
 
 static int parse_string_lit(struct parser* p, struct shard_expr* expr, enum shard_expr_type type) {
-    struct shard_string str = {0};
 
     int err = 0;
+    char* str = shard_arena_malloc(p->ctx, p->ctx->ast, (strlen(p->token.value.string) + 1) * sizeof(char));
+    size_t off = 0;
+
     for(const char* ptr = p->token.value.string; *ptr; ptr++) {
         switch(*ptr) {
             case '\\': {
                 char c = 0;
                 err = parse_escape_code(p, ++ptr, &c);
                 if(err) {
-                    dynarr_append(p->ctx, &str, '\\');
-                    dynarr_append(p->ctx, &str, *ptr);
+                    str[off++] = '\\';
+                    str[off++] = *ptr;
                 }
                 else
-                    dynarr_append(p->ctx, &str, c);
+                    str[off++] = c;
             } break;
             case '$':
                 break;
             default:
-                dynarr_append(p->ctx, &str, *ptr);
+                str[off++] = *ptr;
         }
     }
 
-    dynarr_append(p->ctx, &str, '\0');
+    str[off++] = '\0';
 
     *expr = (struct shard_expr) {
         .type = type,
         .loc = p->token.location,
-        .string = str.items
+        .string = str
     };
 
     return advance(p);
@@ -402,6 +405,36 @@ static int parse_postfix_pattern(struct parser* p, struct shard_pattern* pattern
     return 0;
 }
 
+static int parse_const_pattern(struct parser* p, struct shard_pattern* pattern) {
+    memset(pattern, 0, sizeof(struct shard_pattern));
+
+    pattern->type = SHARD_PAT_CONSTANT;
+    pattern->constant = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+    pattern->loc = p->token.location;
+
+    switch(p->token.type) {
+        case SHARD_TOK_INT:
+            pattern->type_constraint = SHARD_VAL_INT;
+            break;
+        case SHARD_TOK_FLOAT:
+            pattern->type_constraint = SHARD_VAL_FLOAT;
+            break;
+        case SHARD_TOK_STRING:
+            pattern->type_constraint = SHARD_VAL_STRING;
+            break;
+        case SHARD_TOK_PATH:
+            pattern->type_constraint = SHARD_VAL_PATH;
+            break;
+        case SHARD_TOK_LBRACKET:
+            pattern->type_constraint = SHARD_VAL_LIST;
+            break;
+        default:
+            assert(!"unreachable");
+    }
+
+    return parse_prefix_expr(p, pattern->constant);
+}
+
 static int parse_pattern(struct parser* p, struct shard_pattern* pattern) {
     pattern->condition = NULL;
     switch(p->token.type) {
@@ -416,6 +449,12 @@ static int parse_pattern(struct parser* p, struct shard_pattern* pattern) {
             return any_err(errs, LEN(errs));
         case SHARD_TOK_LBRACE:
             return parse_set_pattern(p, pattern, NULL, false, NULL);
+        case SHARD_TOK_INT:
+        case SHARD_TOK_FLOAT:
+        case SHARD_TOK_STRING:
+        case SHARD_TOK_PATH:
+        case SHARD_TOK_LBRACKET:
+            return parse_const_pattern(p, pattern);
         default:
             static char buf[1024];
             shard_dump_token(buf, sizeof(buf), &p->token);

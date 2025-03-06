@@ -1,5 +1,5 @@
 let foo = x: (case x of
-    v if v == 69     => "nice";
+    69               => "nice";
     _ :: float | int => "numeric";
     { n, ... }       => foo n;
     v                => "other: " + (builtins.typeOf v));

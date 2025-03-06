@@ -511,6 +511,7 @@ const char* shard_value_type_to_string(struct shard_context* ctx, enum shard_val
 enum shard_pattern_type {
     SHARD_PAT_IDENT,
     SHARD_PAT_SET,
+    SHARD_PAT_CONSTANT
 };
 
 struct shard_pattern {
@@ -523,6 +524,7 @@ struct shard_pattern {
     struct shard_binding_list attrs; 
     shard_ident_t ident;
 
+    struct shard_expr* constant;
     struct shard_expr* condition;
 };
 

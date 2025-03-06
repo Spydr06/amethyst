@@ -625,6 +625,15 @@ static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struc
             if(pattern->ident && strcmp(pattern->ident, "_"))
                 shard_set_put(set, pattern->ident, shard_unlazy(e->ctx, SET_VAL(set)));
             break;
+        case SHARD_PAT_CONSTANT:
+            struct shard_value lhs = eval_lazy(e, lazy_value);
+            struct shard_value rhs = eval(e, pattern->constant);
+
+            set = shard_values_equal(&lhs, &rhs) ? MATCH_OK : MATCH_FAIL;
+
+            if(error_loc && set == MATCH_FAIL)
+                shard_eval_throw(e, *error_loc, "argument is not equal to pattern constant");
+            break;
         default:
             shard_eval_throw(e, pattern->loc, "unimplemented pattern type `%d`", pattern->type);
     }
@@ -640,6 +649,9 @@ static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struc
 
         if(!is_truthy(cond))
             set = MATCH_FAIL;
+
+        if(error_loc && set == MATCH_FAIL)
+            shard_eval_throw(e, *error_loc, "argument does not match pattern condition");
     }
 
     return set;
