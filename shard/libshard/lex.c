@@ -138,7 +138,7 @@ static inline bool is_ident_char(char c) {
 }
 
 static int is_path_terminator(int c) {
-    return isspace(c) || c == ';' || c == ',';
+    return isspace(c) || c == ';' || c == ',' || c == ')' || c == ']' || c == '}';
 }
 
 static int lex_ident(struct shard_context* ctx, struct shard_source* src, struct shard_token* token) {

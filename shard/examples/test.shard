@@ -1,1 +1,3 @@
-let x = <geode.shard>; in x
+with builtins;
+join "\n" $ map toString [ <geode.shard> ../../README.md ./shard.c ]
+

@@ -167,8 +167,6 @@ static inline struct shard_value eval_path(volatile struct shard_evaluator* e, s
     }
 
 finish:
-    shard_gc_string_push(e->gc, &path, '\0');
-
     return PATH_VAL(path.items, path.count);
 }
 
