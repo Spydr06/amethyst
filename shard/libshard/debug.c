@@ -42,6 +42,8 @@ static const char* token_type_strings[_SHARD_TOK_LEN] = {
     E(LOGAND) = "&&",
     E(LOGOR) = "||",
     E(LOGIMPL) = "->",
+    E(ARROW) = "=>",
+    E(PIPE) = "|",
     E(REC) = "rec",
     E(OR) = "or",
     E(IF) = "if",

@@ -378,40 +378,32 @@ static int parse_postfix_pattern(struct parser* p, struct shard_pattern* pattern
                 advance(p),
                 parse_type(p, &pattern->type_constraint)
             };
-            return any_err(err2, LEN(err2));
+            if(any_err(err2, LEN(err2)))
+                return any_err(err2, LEN(err2));
+            break;
         case SHARD_TOK_AT:
-            return parse_set_pattern(p, pattern, ident, false, NULL);
+            int err = parse_set_pattern(p, pattern, ident, false, NULL);
+            if(err)
+                return err;
+            break;
         default:
-            return 0;
-    }
-}
-
-static int parse_cmp_pattern(struct parser* p, struct shard_pattern* pattern) {
-#define PAT_CASE(cmp, typ) case SHARD_TOK_##cmp: pattern->type = SHARD_PAT_CMP_##cmp; pattern->type_constraint = SHARD_VAL_##typ; break
-
-    pattern->loc = p->token.location;
-
-    switch(p->token.type) {
-        PAT_CASE(EQ, ANY);
-        PAT_CASE(NE, ANY);
-        PAT_CASE(LT, NUMERIC);
-        PAT_CASE(LE, NUMERIC);
-        PAT_CASE(GT, NUMERIC);
-        PAT_CASE(GE, NUMERIC);
-        default:
-            assert(!"unreachable");
     }
 
-    int err[] = {
-        advance(p),
-        parse_expr(p, &pattern->cmp_to, PREC_LOWEST)
-    };
+    if(p->token.type == SHARD_TOK_IF) {
+        pattern->condition = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_expr));
+        int err2[] = {
+            advance(p),
+            parse_expr(p, pattern->condition, PREC_LOWEST)
+        };
 
-    return any_err(err, LEN(err));
-#undef PAT_CASE
+        return any_err(err2, LEN(err2));
+    }
+
+    return 0;
 }
 
 static int parse_pattern(struct parser* p, struct shard_pattern* pattern) {
+    pattern->condition = NULL;
     switch(p->token.type) {
         case SHARD_TOK_IDENT:
             struct shard_location ident_loc = p->token.location;
@@ -424,13 +416,6 @@ static int parse_pattern(struct parser* p, struct shard_pattern* pattern) {
             return any_err(errs, LEN(errs));
         case SHARD_TOK_LBRACE:
             return parse_set_pattern(p, pattern, NULL, false, NULL);
-        case SHARD_TOK_EQ:
-        case SHARD_TOK_NE:
-        case SHARD_TOK_LT:
-        case SHARD_TOK_LE:
-        case SHARD_TOK_GT:
-        case SHARD_TOK_GE:
-            return parse_cmp_pattern(p, pattern);
         default:
             static char buf[1024];
             shard_dump_token(buf, sizeof(buf), &p->token);

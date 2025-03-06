@@ -569,28 +569,6 @@ static inline struct shard_value eval_ternary(volatile struct shard_evaluator* e
     return is_truthy(eval(e, expr->ternary.cond)) ? eval(e, expr->ternary.if_branch) : eval(e, expr->ternary.else_branch);
 }
 
-static inline struct shard_value match_cmp_pattern(volatile struct shard_evaluator* e, struct shard_pattern* pattern, struct shard_lazy_value* lazy_lhs) {
-    struct shard_value lhs = eval_lazy(e, lazy_lhs);
-    struct shard_value rhs = eval(e, &pattern->cmp_to);
-
-    switch(pattern->type) {
-        case SHARD_PAT_CMP_EQ:
-            return BOOL_VAL(shard_values_equal(&lhs, &rhs));
-        case SHARD_PAT_CMP_NE:
-            return BOOL_VAL(!shard_values_equal(&lhs, &rhs));
-        case SHARD_PAT_CMP_LE:
-            CMP_OP(e, lhs, <=, rhs, pattern->loc);
-        case SHARD_PAT_CMP_LT:
-            CMP_OP(e, lhs, <, rhs, pattern->loc);
-        case SHARD_PAT_CMP_GE:
-            CMP_OP(e, lhs, >=, rhs, pattern->loc);
-        case SHARD_PAT_CMP_GT:
-            CMP_OP(e, lhs, >, rhs, pattern->loc);
-        default:
-            assert(!"unreachable");
-    }
-}
-
 static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struct shard_pattern* pattern, struct shard_lazy_value* lazy_value, struct shard_location* error_loc) {
     struct shard_value value = {0};
     if(pattern->type_constraint != SHARD_VAL_ANY) {
@@ -608,12 +586,13 @@ static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struc
         }
     }
 
-    struct shard_set* set;
+    struct shard_set* set = MATCH_OK;
     switch(pattern->type) {
         case SHARD_PAT_IDENT:
-            set = shard_set_init(e->ctx, 1);
-            if(strcmp(pattern->ident, "_"))
+            if(strcmp(pattern->ident, "_")) {
+                set = shard_set_init(e->ctx, 1);
                 shard_set_put(set, pattern->ident, lazy_value);
+            }
             break;
         case SHARD_PAT_SET:
             set = shard_set_init(e->ctx, pattern->attrs.count + (size_t) !!pattern->ident);
@@ -647,13 +626,20 @@ static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struc
                 shard_set_put(set, pattern->ident, shard_unlazy(e->ctx, SET_VAL(set)));
             break;
         default:
-            if(!(pattern->type & SHARD_PAT_CMP_ANY))
-                shard_eval_throw(e, pattern->loc, "unimplemented pattern type `%d`", pattern->type);
+            shard_eval_throw(e, pattern->loc, "unimplemented pattern type `%d`", pattern->type);
+    }
 
-            struct shard_value match = match_cmp_pattern(e, pattern, lazy_value);
-            assert(match.type == SHARD_VAL_BOOL);
+    if(pattern->condition) {
+        if(set != MATCH_OK)
+            scope_push(e, set);
 
-            return match.boolean ? MATCH_OK : MATCH_FAIL;
+        struct shard_value cond = eval(e, pattern->condition);
+        
+        if(set != MATCH_OK)
+            scope_pop(e);
+
+        if(!is_truthy(cond))
+            set = MATCH_FAIL;
     }
 
     return set;

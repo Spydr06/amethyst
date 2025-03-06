@@ -1,5 +1,5 @@
 let match_test = x: (case x of
-    == 69            => "nice";
+    v if v == 69     => "nice";
     _ :: float | int => "numeric";
     { n, ... }       => match_test n;
     v                => "other: " + (builtins.typeOf v));
