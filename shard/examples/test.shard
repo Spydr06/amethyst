@@ -1,3 +1,5 @@
-with builtins;
-join "\n" $ map toString [ <geode.shard> ../../README.md ./shard.c ]
+let f = x: x + 2;
+    g = x: x * 3;
+in
+    [ ((f >> g) 10) ((f << g) 10) ]
 
