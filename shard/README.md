@@ -10,7 +10,7 @@ Shard is a...
 - lazy
 - dynamically typed
 
-language majorly inspired by Nix and NixOS and is implemented as a strict superset of `nix`. It therefore shares most core principles with the well-established nix package manager and linux distribution.
+language majorly inspired by Nix and NixOS. It is however not intended to copy `nix`. Shard shares many core principles but adds other language features upon them and is implemented as a minimal and easy to embed standalone library.
 
 ## TODO:
 
@@ -22,15 +22,17 @@ language majorly inspired by Nix and NixOS and is implemented as a strict supers
 
 ## Building
 
-There are no dependencies other that `libc` to the pure implementation of shard.
+There are no dependencies other that `libc` to the pure implementation of shard. Optionally, you may use the `gcboehm` library for a more performant garbage collector.
 
 To build the interpreter, just run `make` in this directory:
 
 ```sh
-$ make
+$ make bin
 ```
 
 If successful, the interpreter binary will be placed in `build/shard`. It can be invoked using `./build/shard <file.shard>`
+
+There are other make targets available that build the respective programs in the shard ecosystem: `all`, `geode`, `shell`, ...
 
 ## Examples
 
@@ -38,7 +40,14 @@ There are a few example programs in the `examples/` directory
 
 ## Editor Support
 
-TODO
+* Vim: Include `shard.vim` in your vim configuration using the following code:
+
+```vim
+autocmd BufRead,BufNewFile *.shard set filetype=shard
+autocmd Syntax shard runtime! shard.vim
+```
+
+* Other: TODO!
 
 ## Language Overview
 
@@ -76,6 +85,7 @@ TODO
 | `expr - expr`         | Subtraction   |
 | `expr * expr`         | Multiplication |
 | `expr / expr`         | Division |
+| `func1 >> func2`, `func1 << func2` | Function composition |
 | `func expr`           | Function call |
 | *Control Structures*  |               |
 | `if bool then "yes" else "no"` | Conditional/Ternary expression |
