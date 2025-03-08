@@ -61,6 +61,8 @@ static const unsigned token_widths[] = {
     2,
     1,
     2,
+    2,
+    2,
     1,
     2,
     1,
@@ -497,6 +499,8 @@ repeat:
         case '>':
             if((c = src->getc(src)) == '=')
                 KEYWORD_TOK(token, src, GE);
+            else if(c == '>')
+                KEYWORD_TOK(token, src, RCOMPOSE);
             else {
                 src->ungetc(c, src);
                 KEYWORD_TOK(token, src, GT);
@@ -505,6 +509,8 @@ repeat:
         case '<':
             if((c = src->getc(src)) == '=')
                 KEYWORD_TOK(token, src, LE);
+            else if(c == '<')
+                KEYWORD_TOK(token, src, LCOMPOSE);
             else if(!isspace(c)) {
                 src->ungetc(c, src);
                 int err = lex_string(ctx, src, token, is_gt_sign, false);

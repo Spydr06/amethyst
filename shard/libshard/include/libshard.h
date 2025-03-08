@@ -314,6 +314,8 @@ enum shard_token_type {
     SHARD_TOK_GE, // >=
     SHARD_TOK_LT, // <
     SHARD_TOK_LE, // <=
+    SHARD_TOK_LCOMPOSE, // <<
+    SHARD_TOK_RCOMPOSE, // >>
     SHARD_TOK_COLON, // :
     SHARD_TOK_DOUBLE_COLON, // ::
     SHARD_TOK_SEMICOLON, // ;
@@ -408,6 +410,8 @@ enum shard_expr_type {
     SHARD_EXPR_LOGOR,
     SHARD_EXPR_LOGAND,
     SHARD_EXPR_LOGIMPL,
+    SHARD_EXPR_LCOMPOSE,
+    SHARD_EXPR_RCOMPOSE,
 
     SHARD_EXPR_CALL,
     SHARD_EXPR_WITH,

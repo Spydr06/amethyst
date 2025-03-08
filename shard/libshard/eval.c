@@ -835,6 +835,37 @@ static struct shard_value eval_call_functor_set(volatile struct shard_evaluator*
     return eval_call_value(e, eval_call_value(e, eval_lazy(e, functor), shard_unlazy(e->ctx, set), loc), arg, loc);
 }
 
+static struct shard_value composition(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value f = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value g = shard_builtin_eval_arg(e, builtin, args, 1);
+    struct shard_lazy_value* x = args[2];
+
+    struct shard_value gx = eval_call_value(e, g, x, e->error_scope->loc);
+    return eval_call_value(e, f, shard_unlazy(e->ctx, gx), e->error_scope->loc);
+}
+
+static struct shard_builtin composition_builtin = {
+    .arg_types = (enum shard_value_type[]){SHARD_VAL_CALLABLE, SHARD_VAL_CALLABLE, SHARD_VAL_ANY},
+    .arity = 3,
+    .full_ident = "__compose__",
+    .callback = composition
+};
+
+static struct shard_value eval_composition(volatile struct shard_evaluator* e, struct shard_expr* expr, bool inverted) {
+    struct shard_value val;
+
+    val.type = SHARD_VAL_BUILTIN;
+    val.builtin.builtin = &composition_builtin;
+    val.builtin.num_queued_args = 2;
+    val.builtin.queued_args = shard_gc_malloc(e->gc, sizeof(struct shard_lazy_value*) * 3);
+
+    val.builtin.queued_args[0] = shard_lazy(e->ctx, inverted ? expr->binop.rhs : expr->binop.lhs, e->scope);
+    val.builtin.queued_args[1] = shard_lazy(e->ctx, inverted ? expr->binop.lhs : expr->binop.rhs, e->scope);
+    val.builtin.queued_args[2] = NULL;
+
+    return val;
+}
+
 static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_expr* expr) {
     switch(expr->type) {
         case SHARD_EXPR_INT:
@@ -905,6 +936,10 @@ static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_
             return eval_call(e, expr);
         case SHARD_EXPR_BUILTIN:
             return expr->builtin.callback(e);
+        case SHARD_EXPR_LCOMPOSE:
+            return eval_composition(e, expr, false);
+        case SHARD_EXPR_RCOMPOSE:
+            return eval_composition(e, expr, true);
         default:
             shard_eval_throw(e, expr->loc, "unimplemented expression `%d`.", expr->type);
     }
