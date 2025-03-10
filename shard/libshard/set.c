@@ -4,7 +4,7 @@
 #include <errno.h>
 
 struct shard_set* shard_set_init(struct shard_context* ctx, size_t capacity) {
-    struct shard_set* set = shard_gc_malloc(&ctx->gc, sizeof(struct shard_set) + sizeof(set->entries[0]) * capacity);
+    struct shard_set* set = shard_gc_malloc(ctx->gc, sizeof(struct shard_set) + sizeof(set->entries[0]) * capacity);
     if(!set) {
         errno = ENOMEM;
         return NULL;

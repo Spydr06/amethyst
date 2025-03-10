@@ -193,15 +193,15 @@ const char* shard_value_type_to_string(struct shard_context* ctx, enum shard_val
             continue;
 
         if(!first)
-            shard_gc_string_push(&ctx->gc, &s, '|');
+            shard_gc_string_push(ctx->gc, &s, '|');
 
         const char* prim = shard_primitive_value_type_to_string(test);
-        shard_gc_string_append(&ctx->gc, &s, prim);
+        shard_gc_string_append(ctx->gc, &s, prim);
 
         first = false;
     }
 
-    shard_gc_string_push(&ctx->gc, &s, '\0');
+    shard_gc_string_push(ctx->gc, &s, '\0');
     return s.items;
 }
 
