@@ -1,3 +1,4 @@
+#include "strings.h"
 #include <string.h>
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
@@ -76,6 +77,28 @@ static struct shard_value builtin_elem(volatile struct shard_evaluator* e, struc
     }
 
     return BOOL_VAL(false);
+}
+
+static struct shard_value builtin_elemAt(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value list = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value index = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    struct shard_list* head = list.list.head;
+
+    if(index.integer < 0)
+        return NULL_VAL();
+
+    int64_t i = 0;
+
+    while(head) {
+        if(i == index.integer) 
+            return shard_eval_lazy2(e, head->value);
+
+        i++;
+        head = head->next;
+    }
+
+    return NULL_VAL();
 }
 
 static struct shard_value builtin_evaluated(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
@@ -681,6 +704,7 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.concatLists", builtin_concatLists, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.div", builtin_div, SHARD_VAL_NUMERIC, SHARD_VAL_NUMERIC),
     SHARD_BUILTIN("builtins.elem", builtin_elem, SHARD_VAL_ANY, SHARD_VAL_LIST),
+    SHARD_BUILTIN("builtins.elemAt", builtin_elemAt, SHARD_VAL_LIST, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.evalutated", builtin_evaluated, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.floor", builtin_floor, SHARD_VAL_FLOAT),
     SHARD_BUILTIN("builtins.foldl", builtin_foldl, SHARD_VAL_CALLABLE, SHARD_VAL_ANY, SHARD_VAL_LIST),
