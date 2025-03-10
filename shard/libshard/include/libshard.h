@@ -135,50 +135,20 @@ enum shard_gc_backend {
 
 extern const enum shard_gc_backend _shard_gc_backend;
 
-struct shard_gc {
-    struct shard_context* ctx;
-    struct shard_alloc_map* allocs;
-    void* stack_bottom;
-    size_t min_size;
-    bool paused;
-};
+struct shard_gc;
 
-#ifdef SHARD_USE_GCBOEHM
+SHARD_DECL struct shard_gc* shard_gc_begin(struct shard_context* ctx, void* stack_base);
+SHARD_DECL void shard_gc_end(struct shard_gc* gc);
 
-#define SHARD_GC_BACKEND SHARD_GC_BOEHM
-
-SHARD_DECL void shard_gc_begin(volatile struct shard_gc* gc, struct shard_context* ctx, void* stack_base);
-SHARD_DECL void shard_gc_end(volatile struct shard_gc* gc);
+SHARD_DECL void shard_gc_pause(volatile struct shard_gc* gc);
+SHARD_DECL void shard_gc_resume(volatile struct shard_gc* gc);
+SHARD_DECL void shard_gc_run(volatile struct shard_gc* gc);
+SHARD_DECL void* shard_gc_make_static(volatile struct shard_gc* gc, void* ptr);
 
 SHARD_DECL void* shard_gc_malloc(volatile struct shard_gc* gc, size_t size);
 SHARD_DECL void* shard_gc_calloc(volatile struct shard_gc* gc, size_t nmemb, size_t size);
 SHARD_DECL void* shard_gc_realloc(volatile struct shard_gc* gc, void* ptr, size_t size);
 SHARD_DECL void shard_gc_free(volatile struct shard_gc* gc, void* ptr);
-
-#else
-
-#define SHARD_GC_BACKEND SHARD_GC_BUILTIN
-
-#define shard_gc_begin(gc, ctx, stack_base) (shard_gc_begin_ext((gc), (ctx), (stack_base), 1024, 1024, 0.2, 0.8, 0.7))
-
-SHARD_DECL void shard_gc_begin_ext(volatile struct shard_gc* gc, struct shard_context* ctx, void* stack_bottom, size_t init_cap, size_t min_cap, double downsize_load_factor, double upsize_load_factor, double sweep_factor);
-SHARD_DECL size_t shard_gc_end(volatile struct shard_gc* gc);
-
-SHARD_DECL void shard_gc_pause(volatile struct shard_gc* gc);
-SHARD_DECL void shard_gc_resume(volatile struct shard_gc* gc);
-
-SHARD_DECL size_t shard_gc_run(volatile struct shard_gc* gc);
-SHARD_DECL void* shard_gc_make_static(volatile struct shard_gc* gc, void* ptr);
-
-#define shard_gc_malloc(gc, size) (shard_gc_malloc_ext((gc), (size), NULL))
-#define shard_gc_calloc(gc, nmemb, size) (shard_gc_malloc_ext((gc), (nmemb), (size), NULL))
-
-SHARD_DECL void* shard_gc_malloc_ext(volatile struct shard_gc* gc, size_t size, void (*dtor)(void*));
-SHARD_DECL void* shard_gc_calloc_ext(volatile struct shard_gc* gc, size_t nmemb, size_t size, void (*dtor)(void*));
-SHARD_DECL void* shard_gc_realloc(volatile struct shard_gc* gc, void* ptr, size_t size);
-SHARD_DECL void shard_gc_free(volatile struct shard_gc* gc, void* ptr);
-
-#endif /* SHARD_USE_GCBOEHM */
 
 struct shard_error {
     struct shard_location loc;
@@ -240,7 +210,7 @@ struct shard_context {
 
     struct shard_string_list string_literals;
 
-    struct shard_gc gc;
+    struct shard_gc* gc;
 
     bool builtin_initialized;
     struct shard_scope builtin_scope;

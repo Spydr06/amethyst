@@ -1,6 +1,10 @@
 let 
     f = x: x * 2;
     listA = [ 123 ./foo.shard "abc" (f { x = y; }) ];
+
+    range = lo: hi: assert (hi - lo) > 0;
+        builtins.genList (i: lo + i) $ hi - lo;
+    xs = range 10 40;
 in
     assert builtins.isList listA;
     assert (builtins.typeOf listA) == "list";
@@ -10,4 +14,8 @@ in
     assert builtins.any builtins.isInt listA;
     assert !builtins.all builtins.isInt listA;
     
+    assert builtins.elem 23 xs;
+    assert !builtins.elem 42 xs;
+    assert (builtins.elemAt xs 20) == 30;
+
     true

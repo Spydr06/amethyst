@@ -134,7 +134,7 @@ static void print_error(struct shard_error* error) {
 
 static void emit_errors(struct shard_context* ctx) {
     struct shard_error* errors = shard_get_errors(ctx);
-    for(int i = 0; i < shard_get_num_errors(ctx); i++)
+    for(size_t i = 0; i < shard_get_num_errors(ctx); i++)
         print_error(&errors[i]);
 }
 

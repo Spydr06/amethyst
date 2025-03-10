@@ -1,4 +1,4 @@
 let fibonacci = n: if n < 2 
         then n 
         else (fibonacci (n - 1)) + (fibonacci (n - 2));
-in fibonacci 20
+in fibonacci 30

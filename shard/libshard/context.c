@@ -12,7 +12,7 @@ int shard_init_ext(struct shard_context* ctx, void* stack_base) {
     shard_hashmap_init(ctx, &ctx->idents, 128);
     shard_hashmap_init(ctx, &ctx->open_sources, 16);
 
-    shard_gc_begin(&ctx->gc, ctx, stack_base);
+    ctx->gc = shard_gc_begin(ctx, stack_base);
 
     return 0;
 }
@@ -36,7 +36,7 @@ void shard_deinit(struct shard_context* ctx) {
     }
 
     shard_hashmap_free(ctx, &ctx->open_sources);
-    shard_gc_end(&ctx->gc);
+    shard_gc_end(ctx->gc);
 
     shard_arena_free(ctx, ctx->ast);
 

@@ -20,7 +20,7 @@ static void evaluator_init(volatile struct shard_evaluator* eval, struct shard_c
     memset((void*) eval, 0, sizeof(struct shard_evaluator));
     eval->ctx = ctx;
     eval->exception = exception;
-    eval->gc = &ctx->gc;
+    eval->gc = ctx->gc;
 }
 
 static void evaluator_free(volatile struct shard_evaluator* eval) {
@@ -757,18 +757,6 @@ static inline struct shard_value eval_call_function(volatile struct shard_evalua
         scope_pop(e);
 
     e->scope = prev_scope;
-
-/*    switch(func.function.arg->type) {
-        case SHARD_PAT_IDENT:
-            *arg_value = set->entries[0].value;
-            break;
-        case SHARD_PAT_SET:
-            for(size_t i = 0; i < set->capacity; i++) {
-                if(set->entries[i].key && set->entries[i].key != func.function.arg->ident)
-                    shard_set_put(arg.set, set->entries[i].key, set->entries[i].value);
-            }
-            break;
-    }*/
 
     return value;
 }

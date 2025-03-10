@@ -10,6 +10,14 @@ const enum shard_gc_backend _shard_gc_backend = SHARD_GC_BUILTIN;
 #include <errno.h>
 #include <setjmp.h>
 
+struct shard_gc {
+    struct shard_context* ctx;
+    struct shard_alloc_map* allocs;
+    void* stack_bottom;
+    size_t min_size;
+    bool paused;
+};
+
 // TODO: check if allocations succeed!
 
 // The garbage collector is largely inspired by https://github.com/mkirchner/gc
@@ -311,6 +319,12 @@ void shard_gc_begin_ext(
     DBG_PRINTF("created new garbage collector (cap=%ld, size=%ld)\n", gc->allocs->capacity, gc->allocs->size);
 }
 
+struct shard_gc* shard_gc_begin(struct shard_context* ctx, void* stack_bottom) {
+    struct shard_gc* gc = ctx->malloc(sizeof(struct shard_gc));
+    shard_gc_begin_ext(gc, ctx, stack_bottom, 1024, 1024, 0.2, 0.8, 0.7);
+    return gc;
+}
+
 void shard_gc_pause(volatile struct shard_gc* gc) {
     gc->paused = true;
 }
@@ -325,6 +339,14 @@ void* shard_gc_malloc_ext(volatile struct shard_gc* gc, size_t size, void (*dtor
 
 void* shard_gc_calloc_ext(volatile struct shard_gc* gc, size_t nmemb, size_t size, void (*dtor)(void*)) {
     return allocate(gc, nmemb, size, dtor);
+}
+
+void* shard_gc_malloc(volatile struct shard_gc* gc, size_t size) {
+    return allocate(gc, 1, size, NULL);
+}
+
+void* shard_gc_calloc(volatile struct shard_gc* gc, size_t nmemb, size_t size) {
+    return allocate(gc, nmemb, size, NULL);
 }
 
 void* shard_gc_realloc(volatile struct shard_gc* gc, void* p, size_t size) {
@@ -475,18 +497,18 @@ static void unroot(volatile struct shard_gc* gc) {
     }
 }
 
-size_t shard_gc_end(volatile struct shard_gc *gc) {
+void shard_gc_end(struct shard_gc *gc) {
     unroot(gc);
-    size_t collected = sweep(gc);
+    sweep(gc);
     gc_allocation_map_delete(gc->ctx, gc->allocs);
-    return collected;
+    gc->ctx->free(gc);
 }
 
-size_t shard_gc_run(volatile struct shard_gc* gc)
+void shard_gc_run(volatile struct shard_gc* gc)
 {
     DBG_PRINTF("initiating GC run (gc@%p)\n", (void*) gc);
     mark(gc);
-    return sweep(gc);
+    sweep(gc);
 }
 
 #endif /* SHARD_USE_GCBOEHM */
