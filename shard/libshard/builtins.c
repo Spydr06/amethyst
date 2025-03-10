@@ -1,4 +1,3 @@
-#include "strings.h"
 #include <string.h>
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
