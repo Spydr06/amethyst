@@ -38,12 +38,6 @@ static int _ungetc(int ch, struct shard_source* src) {
     return ch;
 }
 
-static int _tell(struct shard_source* src) {
-    struct shard_string_reader* reader = src->userp;
-
-    return reader->offset;
-}
-
 static int _close(struct shard_source* src) {
     struct shard_string_reader* reader = src->userp;
     shard_string_reader_free(reader);
@@ -59,9 +53,7 @@ int shard_string_source(struct shard_context* ctx, struct shard_source* dest, co
         .origin = origin,
         .getc = _getc,
         .ungetc = _ungetc,
-        .tell = _tell,
         .close = _close,
-        .line = 1
     };
 
     return 0;

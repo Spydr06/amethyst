@@ -240,10 +240,7 @@ struct shard_source {
 
     int (*getc)(struct shard_source* self);
     int (*ungetc)(int c, struct shard_source* self);
-    int (*tell)(struct shard_source* self);
     int (*close)(struct shard_source* self);
-
-    unsigned line;
 };
 
 SHARD_DECL int shard_eval(struct shard_context* ctx, struct shard_open_source* source);
@@ -338,7 +335,12 @@ struct shard_token {
     } value;
 };
 
-SHARD_DECL int shard_lex(struct shard_context* ctx, struct shard_source* src, struct shard_token* token);
+struct shard_lexer;
+
+SHARD_DECL struct shard_lexer* shard_lex_init(struct shard_context* ctx, struct shard_source* src);
+SHARD_DECL void shard_lex_free(struct shard_lexer* l);
+
+SHARD_DECL int shard_lex(struct shard_lexer* l, struct shard_token* token);
 
 shard_dynarr(shard_attr_path, shard_ident_t);
 

@@ -60,9 +60,9 @@ static int _open(const char* path, struct shard_source* dest, const char* restri
         .origin = path,
         .getc = _getc,
         .ungetc = _ungetc,
-        .tell = _tell,
+//        .tell = _tell,
         .close = _close,
-        .line = 1
+//        .line = 1
     };
 
     return 0;

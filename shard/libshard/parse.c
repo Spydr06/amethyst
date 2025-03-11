@@ -29,7 +29,7 @@ enum precedence {
 
 struct parser {
     struct shard_context* ctx;
-    struct shard_source* src;
+    struct shard_lexer* l;
     struct shard_token token;
 };
 
@@ -50,7 +50,7 @@ static struct {
 };
 
 static int advance(struct parser* p) {
-    int err = shard_lex(p->ctx, p->src, &p->token);
+    int err = shard_lex(p->l, &p->token);
     if(err) {
         dynarr_append(p->ctx, &p->ctx->errors, ((struct shard_error){
             .err = p->token.value.string,
@@ -1057,14 +1057,16 @@ static int parse_expr(struct parser* p, struct shard_expr* expr, enum precedence
 int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr) {
     struct parser p = {
         .ctx = ctx,
-        .src = src,
-        .token = {0}
+        .token = {0},
+        .l = shard_lex_init(ctx, src)
     };
 
     int err[] = {
         advance(&p),
         parse_expr(&p, expr, PREC_LOWEST)
     };
+
+    shard_lex_free(p.l);
 
     return any_err(err, LEN(err));
 }
