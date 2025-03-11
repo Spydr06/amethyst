@@ -38,10 +38,24 @@
 #define KEYWORD_TOK(tok, l, kind) BASIC_TOK(tok, l, SHARD_TOK_##kind)
 #define EOF_TOK(tok, l) KEYWORD_TOK(tok, l, EOF);
 
+struct interpolation_data {
+    bool multiline;
+    bool is_path;
+    int brace_depth;
+    int (*is_end_quote)(int);
+};
+
+shard_dynarr(interpolation_stack, struct interpolation_data);
+
 struct shard_lexer {
     struct shard_context* ctx;
     struct shard_source* src;
     struct shard_location current_loc;
+
+    struct interpolation_stack interpolation_stack;
+    bool handle_interpolation;
+
+    int brace_depth;
 };
 
 static char tmpbuf[PATH_MAX + 1];
@@ -140,11 +154,15 @@ struct shard_lexer* shard_lex_init(struct shard_context* ctx, struct shard_sourc
     l->ctx = ctx;
     l->src = src;
     l->current_loc = default_loc(src);
+    l->brace_depth = 0;
+    l->interpolation_stack = (struct interpolation_stack){0};
+    l->handle_interpolation = false;
 
     return l;
 }
 
 void shard_lex_free(struct shard_lexer* l) {
+    dynarr_free(l->ctx, &l->interpolation_stack);
     l->ctx->free(l);
 }
 
@@ -298,6 +316,26 @@ static int is_gt_sign(int c) {
     return c == '>';
 }
 
+static inline struct interpolation_data* interpolation_top(struct shard_lexer* l) {
+    return l->interpolation_stack.count > 0 ? &l->interpolation_stack.items[l->interpolation_stack.count - 1] : NULL;
+}
+
+static inline bool closes_interpolation(struct shard_lexer* l) {
+    struct interpolation_data* top = interpolation_top(l);
+    return top && top->brace_depth == l->brace_depth;
+}
+
+static void push_interpolation(struct shard_lexer* l, bool multiline, int (*is_end_quote)(int), bool is_path) {
+    struct interpolation_data data = {
+        .brace_depth = l->brace_depth,
+        .is_end_quote = is_end_quote,
+        .multiline = multiline,
+        .is_path = is_path
+    };
+
+    dynarr_append(l->ctx, &l->interpolation_stack, data);
+}
+
 static int lex_string(struct shard_lexer* l, struct shard_token* token, int (*is_end_quote)(int), bool is_path) {
     unsigned start = l_offset(l) - 1;
     
@@ -313,6 +351,20 @@ static int lex_string(struct shard_lexer* l, struct shard_token* token, int (*is
         case '\\':
             escaped = true;
             break;
+        case '$':
+            if(escaped)
+                continue;
+
+            bool interpolate_begin = (c = l_getc(l)) == '{';
+            l_ungetc(c, l);
+
+            if(interpolate_begin) {
+                l_ungetc('$', l);
+                str.count--;
+                push_interpolation(l, false, is_end_quote, is_path);
+                goto break_for;
+            }
+            break;
         case '\n':
             ERR_TOK(token, l, "unterminated string literal before newline");
             break;
@@ -322,9 +374,11 @@ static int lex_string(struct shard_lexer* l, struct shard_token* token, int (*is
             return EINVAL;
         }
     }
+
     if(is_path)
         l_ungetc(c, l);
 
+break_for:
     dynarr_append(l->ctx, &str, '\0');
 
     dynarr_append(l->ctx, &l->ctx->string_literals, str.items);
@@ -370,6 +424,17 @@ static int lex_multiline_string(struct shard_lexer* l, struct shard_token* token
                 escaped[0] = true;
                 dynarr_append(l->ctx, &str, '\\');
                 break;
+            case '{':
+                if(escaped[2] || c[1] != '$')
+                    continue;;
+                
+                l_ungetc('{', l);
+                l_ungetc('$', l);
+
+                str.count -= 2;
+
+                push_interpolation(l, true, NULL, false);
+                goto break_loop;
             case EOF:
                 dynarr_free(l->ctx, &str);
                 ERR_TOK(token, l, "unterminated multiline string literal, expect `''`");
@@ -396,7 +461,23 @@ break_loop:
     return 0;
 }
 
+static int pop_interpolation(struct shard_lexer* l, struct shard_token* token) {
+    assert(interpolation_top(l) != NULL);
+
+    struct interpolation_data top = *interpolation_top(l);
+    l->interpolation_stack.count--; // pop interpolation data
+    l->handle_interpolation = false;
+
+    if(top.multiline)
+        return lex_multiline_string(l, token);
+    else
+        return lex_string(l, token, top.is_end_quote, top.is_path);
+}
+
 int shard_lex(struct shard_lexer* l, struct shard_token* token) {
+    if(l->handle_interpolation)
+        return pop_interpolation(l, token);
+
     int c;
 
 repeat:
@@ -423,9 +504,13 @@ repeat:
             KEYWORD_TOK(token, l, RBRACKET);
             break;
         case '{':
+            l->brace_depth++;
             KEYWORD_TOK(token, l, LBRACE);
             break;
         case '}':
+            l->brace_depth--;
+            if(closes_interpolation(l))
+                l->handle_interpolation = true;
             KEYWORD_TOK(token, l, RBRACE);
             break;
         case '+':
@@ -571,7 +656,14 @@ repeat:
             KEYWORD_TOK(token, l, AT);
             break;
         case '$':
-            KEYWORD_TOK(token, l, DOLLAR);
+            if((c = l_getc(l)) == '{') {
+                l->brace_depth++;
+                KEYWORD_TOK(token, l, INTERPOLATION);
+            }
+            else {
+                l_ungetc(c, l);
+                KEYWORD_TOK(token, l, DOLLAR);
+            }
             break;
         case '=':
             if((c = l_getc(l)) == '=')

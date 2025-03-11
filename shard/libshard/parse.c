@@ -59,6 +59,8 @@ static int advance(struct parser* p) {
         }));
     }
 
+    // printf("%d | %s\n", p->token.type, shard_token_type_to_str(p->token.type));
+
     return err;
 }
 
@@ -89,21 +91,25 @@ static inline int any_err(int* errors, size_t len) {
     return 0;
 }
 
+static inline int unexpected_token_error(struct parser* p, enum shard_token_type got, enum shard_token_type expect) {
+    if(got == SHARD_TOK_ERR)
+        return EINVAL;
+
+    return errorf(
+        p,
+        "unexpected token `%s`, expect token `%s`",
+        shard_token_type_to_str(got),
+        shard_token_type_to_str(expect)
+    );
+}
+
 static int consume(struct parser* p, enum shard_token_type token_type) {
     enum shard_token_type current_type = p->token.type;
     if(current_type == token_type)
         return advance(p);
 
-    if(current_type == SHARD_TOK_ERR)
-        return EINVAL;
-
     advance(p);
-    return errorf(
-        p,
-        "unexpected token `%s`, expect token `%s`",
-        shard_token_type_to_str(current_type),
-        shard_token_type_to_str(token_type)
-    );
+    return unexpected_token_error(p, current_type, token_type);
 }
 
 static int parse_expr(struct parser* p, struct shard_expr* expr, enum precedence prec);
@@ -153,17 +159,24 @@ static int parse_escape_code(struct parser* p, const char* ptr, char* c) {
         case '\r':
             *c = '\r';
             break;
+        case '$':
+            *c = '$';
+            break;
         default:
             return errorf(p, "invalid escape code: `\\%c`", *ptr ? *ptr : '0');
     }
     return 0;
 }
 
-static int parse_string_lit(struct parser* p, struct shard_expr* expr, enum shard_expr_type type) {
+static int escaped_string(struct parser* p, enum shard_token_type type, char** dst) {
+    if(p->token.type != type)
+        return unexpected_token_error(p, p->token.type, type);
 
-    int err = 0;
     char* str = shard_arena_malloc(p->ctx, p->ctx->ast, (strlen(p->token.value.string) + 1) * sizeof(char));
-    size_t off = 0;
+    *dst = str;
+    
+    int err = 0;
+    unsigned off = 0;
 
     for(const char* ptr = p->token.value.string; *ptr; ptr++) {
         switch(*ptr) {
@@ -177,22 +190,77 @@ static int parse_string_lit(struct parser* p, struct shard_expr* expr, enum shar
                 else
                     str[off++] = c;
             } break;
-            case '$':
-                break;
             default:
                 str[off++] = *ptr;
         }
     }
 
     str[off++] = '\0';
+    return err;
+}
 
-    *expr = (struct shard_expr) {
-        .type = type,
-        .loc = p->token.location,
-        .string = str
+static int parse_string_lit(struct parser* p, struct shard_expr* expr, enum shard_expr_type type) {
+    struct shard_location loc = p->token.location;
+    char* str;
+
+    enum shard_token_type token_type;
+    enum shard_expr_type interp_type;
+    switch(type) {
+        case SHARD_EXPR_STRING:
+            token_type = SHARD_TOK_STRING;
+            interp_type = SHARD_EXPR_INTERPOLATED_STRING;
+            break;
+        case SHARD_EXPR_PATH:
+            token_type = SHARD_TOK_PATH;
+            interp_type = SHARD_EXPR_INTERPOLATED_PATH;
+            break;
+        default:
+            assert(!"unreachable");
+    }
+
+    int errs[] = {
+        escaped_string(p, token_type, &str),
+        advance(p)
     };
 
-    return advance(p);
+    int err;
+    if((err = any_err(errs, LEN(errs))))
+        return err;
+
+    if(p->token.type != SHARD_TOK_INTERPOLATION) {
+        *expr = (struct shard_expr) {
+            .type = type,
+            .loc = loc,
+            .string = str
+        };
+        return 0;
+    }
+
+    memset(expr, 0, sizeof(struct shard_expr));
+
+    expr->type = interp_type;
+    expr->loc = loc;
+
+    dynarr_append(p->ctx, &expr->interpolated.strings, str);
+
+    while(p->token.type == SHARD_TOK_INTERPOLATION && !err) {
+        struct shard_expr part_expr;
+        int errs[] = {
+            advance(p),
+            parse_expr(p, &part_expr, PREC_LOWEST),
+            consume(p, SHARD_TOK_RBRACE),
+            escaped_string(p, token_type, &str),
+            advance(p),
+        };
+
+        if((err = any_err(errs, LEN(errs))))
+            return err;
+
+        dynarr_append(p->ctx, &expr->interpolated.exprs, part_expr);
+        dynarr_append(p->ctx, &expr->interpolated.strings, str);
+    }
+
+    return err;
 }
 
 static int parse_with(struct parser* p, struct shard_expr* expr) {

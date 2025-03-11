@@ -99,6 +99,55 @@ struct shard_value shard_eval_lazy2(volatile struct shard_evaluator* e, struct s
     return eval_lazy(e, value);
 }
 
+extern struct shard_builtin shard_builtin_toString;
+
+static inline struct shard_string interpolate(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    struct shard_string str = {0};
+
+    assert(expr->interpolated.strings.count > 0);
+
+    shard_gc_string_appendn(e->gc, &str, expr->interpolated.strings.items[0], strlen(expr->interpolated.strings.items[0]));
+
+    struct shard_error_scope error_scope = {
+        .prev = e->error_scope,
+        .loc = expr->loc
+    };
+    e->error_scope = &error_scope;
+
+    for(size_t i = 0; i < expr->interpolated.exprs.count; i++) {        
+        struct shard_expr* part_expr = &expr->interpolated.exprs.items[i];
+        const char* part_str = expr->interpolated.strings.items[i + 1];
+
+        e->error_scope->loc = part_expr->loc; 
+
+        struct shard_lazy_value* to_string_args[] = {
+            shard_lazy(e->ctx, part_expr, e->scope)
+        };
+
+        struct shard_value part_val = shard_builtin_toString.callback(e, &shard_builtin_toString, to_string_args);
+        assert(part_val.type == SHARD_VAL_STRING);
+
+        shard_gc_string_appendn(e->gc, &str, part_val.string, part_val.strlen);
+        shard_gc_string_appendn(e->gc, &str, part_str, strlen(part_str));
+    }
+
+    shard_gc_string_push(e->gc, &str, '\0');
+
+    e->error_scope = e->error_scope->prev;
+
+    return str;
+}
+
+static inline struct shard_value eval_interpolated_string(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    struct shard_string str = interpolate(e, expr);
+    return STRING_VAL(str.items, str.count - 1);
+}
+
+static inline struct shard_value eval_interpolated_path(volatile struct shard_evaluator* e, struct shard_expr* expr) {
+    struct shard_string str = interpolate(e, expr);
+    return PATH_VAL(str.items, str.count - 1);
+}
+
 static inline struct shard_value eval_path(volatile struct shard_evaluator* e, struct shard_expr* expr) {
     static char tmpbuf[PATH_MAX + 1];
 
@@ -862,8 +911,12 @@ static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_
             return FLOAT_VAL(expr->floating);
         case SHARD_EXPR_STRING:
             return STRING_VAL(expr->string, strlen(expr->string));
+        case SHARD_EXPR_INTERPOLATED_STRING:
+            return eval_interpolated_string(e, expr);
         case SHARD_EXPR_PATH:
             return eval_path(e, expr);
+        case SHARD_EXPR_INTERPOLATED_PATH:
+            return eval_interpolated_path(e, expr);
         case SHARD_EXPR_LIST:
             return eval_list(e, expr);
         case SHARD_EXPR_SET:

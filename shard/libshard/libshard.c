@@ -88,6 +88,13 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
                 shard_free_pattern(ctx, &expr->case_of.patterns.items[i]);
             dynarr_free(ctx, &expr->case_of.patterns);
             break;
+        case SHARD_EXPR_INTERPOLATED_STRING:
+        case SHARD_EXPR_INTERPOLATED_PATH:
+            for(size_t i = 0; i < expr->interpolated.exprs.count; i++)
+                shard_free_expr(ctx, &expr->interpolated.exprs.items[i]);
+            dynarr_free(ctx, &expr->interpolated.exprs);
+            dynarr_free(ctx, &expr->interpolated.strings);
+            break;
         default:
             break;
     }

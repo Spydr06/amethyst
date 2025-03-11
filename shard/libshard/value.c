@@ -141,7 +141,7 @@ bool shard_values_equal(struct shard_value* lhs, struct shard_value* rhs) {
             return strcmp(lhs->string, rhs->string) == 0;
         case SHARD_VAL_FUNCTION:
             return memcmp(&lhs->function, &rhs->function, sizeof(lhs->function)) == 0;
-        case SHARD_VAL_BUILTIN:
+     case SHARD_VAL_BUILTIN:
             return lhs->builtin.builtin == rhs->builtin.builtin;
         case SHARD_VAL_SET:
         case SHARD_VAL_LIST:

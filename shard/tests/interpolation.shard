@@ -1,0 +1,19 @@
+let 
+    tuple = a: b: {
+        inherit a b;
+        __toString = self: "(${self.a}, ${self.b})";
+    };
+
+    x = 69;
+    y = ./interpolation-${x}.shard;
+    z = tuple 1 2;
+    w = tuple 3 4;
+in
+    assert "${x}" == "69";
+    assert "abc-${x}-def" == "abc-69-def";
+    assert (builtins.toString y) == "./interpolation-69.shard";
+    assert (builtins.toString z) == "(1, 2)";
+    assert "${z}-${w}" == "(1, 2)-(3, 4)";
+
+    true
+

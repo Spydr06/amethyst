@@ -360,6 +360,9 @@ enum shard_expr_type {
     SHARD_EXPR_STRING,
     SHARD_EXPR_PATH,
 
+    SHARD_EXPR_INTERPOLATED_STRING,
+    SHARD_EXPR_INTERPOLATED_PATH,
+
     SHARD_EXPR_NOT,
     SHARD_EXPR_NEGATE,
     SHARD_EXPR_TERNARY,
@@ -463,6 +466,11 @@ struct shard_expr {
         struct {
             struct shard_value (*callback)(volatile struct shard_evaluator*);
         } builtin;
+
+        struct {
+            struct shard_string_list strings;
+            struct shard_expr_list exprs;
+        } interpolated;
     };
 };
 

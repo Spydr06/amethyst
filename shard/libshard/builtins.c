@@ -686,6 +686,8 @@ static struct shard_value builtin_when(volatile struct shard_evaluator* e, struc
 
 #define IMPORT_BUILTIN 0
 
+struct shard_builtin shard_builtin_toString = SHARD_BUILTIN("builtins.toString", builtin_toString, SHARD_VAL_ANY);
+
 static struct shard_builtin builtins[] = {
     [IMPORT_BUILTIN] = SHARD_BUILTIN("builtins.import", builtin_import, SHARD_VAL_TEXTUAL),
 
@@ -729,10 +731,10 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.sub", builtin_sub, SHARD_VAL_NUMERIC, SHARD_VAL_NUMERIC),
     SHARD_BUILTIN("builtins.tail", builtin_tail, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.toPath", builtin_toPath, SHARD_VAL_STRING),
-    SHARD_BUILTIN("builtins.toString", builtin_toString, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.tryEval", builtin_tryEval, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.typeOf", builtin_typeOf, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.when", builtin_when, SHARD_VAL_BOOL, SHARD_VAL_ANY),
+    SHARD_BUILTIN("builtins.toString", builtin_toString, SHARD_VAL_ANY),
 
     SHARD_BUILTIN_CONST("builtins.currentTime", builtin_currentTime),
     SHARD_BUILTIN_CONST("builtins.shardPath", builtin_shardPath),
