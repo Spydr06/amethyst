@@ -3,18 +3,23 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <memory.h>
 
 #include <libshard.h>
 
-struct shell_resource {
-    void* userp;
-
-    uint32_t line, column;
+struct shell_location {
+    uint32_t line;
+    uint32_t column;
     size_t offset;
+    struct shell_resource* resource;
+};
 
-    void (*dtor)(void* userp);
-    int (*getc)(struct shell_resource*);
-    int (*ungetc)(struct shell_resource*, int);
+struct shell_resource {
+    const char* resource;
+    struct shell_location current_loc;
+
+    void* userp;
+    void (*dtor)(struct shell_resource* self);
 };
 
 enum shell_resource_string_flags {
@@ -27,8 +32,6 @@ int resource_from_string(const char* string, enum shell_resource_string_flags fl
 void resource_free(struct shell_resource* resource);
 
 int resource_open(const char* filepath, struct shard_source* dest, const char* restrict mode);
-
-void resource_rewind(struct shell_resource* resource);
 
 #endif /* _SHARD_SHELL_RESOURCE_H */
 

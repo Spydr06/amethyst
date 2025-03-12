@@ -19,10 +19,6 @@ static int _ungetc(int c, struct shard_source* src) {
     return ungetc(c, src->userp);
 }
 
-static int _tell(struct shard_source* src) {
-    return ftell(src->userp);
-}
-
 static int _close(struct shard_source* src) {
     return fclose(src->userp);
 }
@@ -37,18 +33,16 @@ static int _open(const char* path, struct shard_source* dest, const char* restri
         .origin = path,
         .getc = _getc,
         .ungetc = _ungetc,
-        .tell = _tell,
         .close = _close,
-        .line = 1
+        .line_offset = 1,
     };
 
     return 0;
 }
 
-void shell_state_init(struct shell_state* state, struct shell_resource* resource) {
+void shell_state_init(struct shell_state* state) {
     memset(state, 0, sizeof(struct shell_state));
 
-    state->resource = resource;
     state->shard_context = (struct shard_context){
         .malloc = malloc,
         .free = free,

@@ -80,8 +80,6 @@ int shell_repl(void) {
     shell_state_init(&state);
 
     while(!shell.repl_should_close && (line = el_gets(el, &count)) != NULL) {
-        resource_rewind(&resource);
-
         if(!multiline)
             line_buffer_count = 0; 
 

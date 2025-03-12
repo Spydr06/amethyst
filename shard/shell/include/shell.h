@@ -17,6 +17,9 @@
 
 struct shell {
     const char* progname;
+    
+    char* progname_copy;
+    const char* name;
 
     char* prompt;
 
@@ -28,7 +31,7 @@ struct shell {
 
 extern struct shell shell;
 
-void shell_load_defaults(void);
+void shell_load_defaults(int argc, char** argv);
 
 int shell_repl(void);
 __attribute__((format(printf, 1, 2))) void errorf(const char *fmt, ...);

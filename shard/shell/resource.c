@@ -6,16 +6,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void fclose_wrapper(void* fp) {
-    assert(fclose((FILE*) fp) == 0);
-}
+void file_dtor(struct shell_resource* resource) {
+    free((char*) resource->resource);
 
-static int fgetc_wrapper(struct shell_resource* resource) {
-    return fgetc(resource->userp);
-}
-
-static int ungetc_wrapper(struct shell_resource* resource, int c) {
-    return ungetc(c, resource->userp);
+    if(resource->userp)
+        fclose(resource->userp);
 }
 
 int resource_from_file(const char* filepath, const char* restrict mode, struct shell_resource* resource) {
@@ -25,38 +20,42 @@ int resource_from_file(const char* filepath, const char* restrict mode, struct s
     if(!fp)
         return errno;
     
-    resource->userp = (void*) fp;
-    resource->dtor = fclose_wrapper;
-    resource->getc = fgetc_wrapper;
-    resource->ungetc = ungetc_wrapper;
-    return 0;
-}
+    if(fseek(fp, 0, SEEK_END) < 0)
+        goto error;
 
-static int string_getc(struct shell_resource* resource) {
-    const char* str = resource->userp;
-    if(str[resource->offset])
-        return str[resource->offset++];
-    return EOF;
-}
-
-static int string_ungetc(struct shell_resource* resource, int c) {
-    if(resource->offset == 0)
-        return EOF;
+    long file_size = ftell(fp);
+    if(file_size < 0)
+        goto error;
     
-    char* str = resource->userp;
-    return str[resource->offset--] = c;
+    if(fseek(fp, 0, SEEK_SET) < 0)
+        goto error;
+
+    char* buffer = malloc(file_size + 1);
+    size_t read = fread(buffer, sizeof(char), file_size, fp);
+    buffer[read] = '\0';
+
+    resource->resource = buffer;
+    resource->dtor = file_dtor;
+
+    return 0;
+
+error:
+    int err = errno;
+    fclose(fp);
+    return err;
+}
+
+static void string_dtor(struct shell_resource* resource) {
+    free((char*) resource->resource);
 }
 
 int resource_from_string(const char* string, enum shell_resource_string_flags flags, struct shell_resource* resource) {
     memset(resource, 0, sizeof(struct shell_resource));
 
     if(flags & RESOURCE_STRING_AUTOFREE)
-        resource->dtor = free;
+        resource->dtor = string_dtor;
 
-    resource->userp = (void*) string;
-
-    resource->getc = string_getc;
-    resource->ungetc = string_ungetc;
+    resource->resource = string;
 
     return 0;
 }
@@ -66,8 +65,3 @@ void resource_free(struct shell_resource* resource) {
         resource->dtor(resource->userp);
 }
 
-void resource_rewind(struct shell_resource* resource) {
-    resource->line   = 0;
-    resource->column = 0;
-    resource->offset = 0;
-}

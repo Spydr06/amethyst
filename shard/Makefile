@@ -89,7 +89,7 @@ $(BUILD_DIR):
 
 $(SHARD_BIN): $(LDLFLAGS) $(BUILD_DIR)/shard.o $(BUILD_DIR)/repl.o $(LIBSHARD_OBJ)
 	@echo "  LD    $@"
-	@$(CC) $(LDFLAGS) -o $@ $^
+	@$(CC) $(LDFLAGS) -o $@ $^ -ledit
 
 $(LIBSHARD): $(LIBSHARD_OBJ)
 	@echo "  AR    $@"	

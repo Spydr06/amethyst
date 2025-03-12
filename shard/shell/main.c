@@ -1,6 +1,8 @@
 #define _AMETHYST_SOURCE
 
+#include <assert.h>
 #include <getopt.h>
+#include <libgen.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,7 +30,7 @@ static noreturn void help(void) {
 }
 
 static noreturn void version(void) {
-    printf("shard-sh, version " SHARD_SHELL_VERSION " (using libshard version %s)\n", SHARD_VERSION);
+    printf("%s, version " SHARD_SHELL_VERSION " (using libshard version %s)\n", shell.name, SHARD_VERSION);
     printf("Copyright (C) 2025 Spydr06\n");
     printf("License: MIT\n\n");
     printf("This is free software; see the source for copying conditions;\n");
@@ -51,18 +53,23 @@ __attribute__((format(printf, 1, 2))) void errorf(const char *fmt, ...) {
     va_end(ap);
 }
 
-void shell_load_defaults(void) {
+void shell_load_defaults(int argc, char** argv) {
+    assert(argc > 0);
+    shell.progname = argv[0];
+
+    shell.progname_copy = strdup(shell.progname);
+    shell.name = basename(shell.progname_copy);
+
     shell.prompt = "$ ";
     shell.history_size = DEFAULT_HISTORY_SIZE;
 }
 
 void shell_cleanup(void) {
-
+    free(shell.progname_copy);
 }
 
 int main(int argc, char** argv) {
-    shell_load_defaults();
-    shell.progname = argv[0];
+    shell_load_defaults(argc, argv);
     atexit(shell_cleanup); // defer cleanup
 
     char* eval_str = NULL;
