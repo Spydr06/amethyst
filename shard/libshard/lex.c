@@ -142,7 +142,7 @@ static const struct {
 static inline struct shard_location default_loc(struct shard_source* src) {
     return (struct shard_location){
         .src = src,
-        .line = 1,
+        .line = src->line_offset,
         .offset = 0,
         .width = 0
     };

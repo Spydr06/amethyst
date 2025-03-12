@@ -42,10 +42,6 @@ static int _ungetc(int c, struct shard_source* src) {
     return ungetc(c, src->userp);
 }
 
-static int _tell(struct shard_source* src) {
-    return ftell(src->userp);
-}
-
 static int _close(struct shard_source* src) {
     return fclose(src->userp);
 }
@@ -60,9 +56,8 @@ static int _open(const char* path, struct shard_source* dest, const char* restri
         .origin = path,
         .getc = _getc,
         .ungetc = _ungetc,
-//        .tell = _tell,
         .close = _close,
-//        .line = 1
+        .line_offset = 1,
     };
 
     return 0;
@@ -75,7 +70,7 @@ static void print_basic_error(struct shard_error* error) {
     );
 }
 
-static void print_error(struct shard_error* error) {
+void print_file_error(struct shard_error* error) {
     if(error->loc.src->getc != _getc) {
         print_basic_error(error);
         return;
@@ -102,7 +97,7 @@ static void print_error(struct shard_error* error) {
     fseek(fd, line_start, SEEK_SET);
 
     char* line_str = calloc(line_end - line_start + 1, sizeof(char));
-    fread(line_str, line_end - line_start, sizeof(char), fd);
+    (void) !! fread(line_str, line_end - line_start, sizeof(char), fd);
 
     size_t column = error->loc.offset - line_start;
 
@@ -135,7 +130,9 @@ static void print_error(struct shard_error* error) {
 static void emit_errors(struct shard_context* ctx) {
     struct shard_error* errors = shard_get_errors(ctx);
     for(size_t i = 0; i < shard_get_num_errors(ctx); i++)
-        print_error(&errors[i]);
+        print_file_error(&errors[i]);
+
+    shard_remove_errors(ctx);
 }
 
 static int eval_file(struct shard_context* ctx, const char* progname, const char* input_file, bool echo_result) { 
@@ -213,11 +210,6 @@ int main(int argc, char** argv) {
         }
     }
 
-    if(optind >= argc) {
-        fprintf(stderr, "%s: no input files provided.\n", argv[0]);
-        exit(EXIT_FAILURE);
-    }
-
     shard_set_current_system(&ctx, current_system);
 
     char* path = getenv("SHARD_PATH");
@@ -225,13 +217,13 @@ int main(int argc, char** argv) {
         shard_include_dir(&ctx, path);
 
     int ret = 0;
+    if(optind >= argc) {
+        ret = shard_repl(argv[0], &ctx, echo_result);
+    }
+
     for(; optind < argc; optind++) {
         const char* input_file = argv[optind];
-        if(strcmp(input_file, "repl") == 0)
-            ret = shard_repl(&ctx, echo_result);
-        else
-            ret = eval_file(&ctx, argv[0], input_file, echo_result);
-
+        ret = eval_file(&ctx, argv[0], input_file, echo_result);
         if(ret)
             break;
     }

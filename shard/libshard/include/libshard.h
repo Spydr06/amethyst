@@ -241,6 +241,8 @@ struct shard_source {
     int (*getc)(struct shard_source* self);
     int (*ungetc)(int c, struct shard_source* self);
     int (*close)(struct shard_source* self);
+
+    unsigned line_offset;
 };
 
 SHARD_DECL int shard_eval(struct shard_context* ctx, struct shard_open_source* source);

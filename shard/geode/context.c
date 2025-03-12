@@ -56,6 +56,7 @@ int geode_open_shard_file(const char* path, struct shard_source* dest, const cha
         .getc = _getc,
         .ungetc = _ungetc,
         .close = _close,
+        .line_offset = 1,
     };
 
     return 0;

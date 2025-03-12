@@ -42,6 +42,10 @@
 
 #define PLATFORM_STRING PLATFORM_OS "-" PLATFORM_ARCH
 
-int shard_repl(struct shard_context* ctx, bool echo_result);
+#define REPL_ORIGIN "repl"
+
+void print_file_error(struct shard_error* error);
+
+int shard_repl(const char* progname, struct shard_context* ctx, bool echo_result);
 
 #endif /* _SHARD_H  */
