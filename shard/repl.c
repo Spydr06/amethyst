@@ -1,7 +1,7 @@
-#include "libshard.h"
 #define _XOPEN_SOURCE 700
 #include "shard.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <stdarg.h>
@@ -12,7 +12,11 @@
 #include <histedit.h>
 
 #define _LIBSHARD_INTERNAL
+#define _AMETHYST_STRNLEN_DEFINED
+#include <libshard.h>
 #include <libshard-internal.h>
+
+#include "shard_libc_driver.h"
 
 #define REPL_HISTORY_SIZE 1024
 #define DEFAULT_LINEBUFFER_SIZE 1024
@@ -211,7 +215,7 @@ static void emit_errors(struct repl* repl) {
         if(err->loc.src->origin == repl->source.origin)
             print_repl_error(repl, err);
         else
-            print_file_error(err);
+            print_shard_error(stderr, err);
     }
 
     shard_remove_errors(repl->ctx);

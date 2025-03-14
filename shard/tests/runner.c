@@ -1,9 +1,3 @@
-#if __STDC_VERSION__ >= 199901L
-#define _XOPEN_SOURCE 600
-#else
-#define _XOPEN_SOURCE 500
-#endif /* __STDC_VERSION__ */
-
 #include <setjmp.h>
 #include <errno.h>
 #include <stdio.h>
@@ -20,6 +14,7 @@ extern const char* strsignal(int);
 #include <signal.h>
 
 #include <libshard.h>
+#include "../shard_libc_driver.h"
 
 #define C_RED "\033[31m"
 #define C_GREEN "\033[32m"
@@ -68,56 +63,7 @@ static void _signal_handler(int signo) {
     exit(127);
 }
 
-static int _read_all(struct shard_source* self, struct shard_string* dest) {
-    FILE* fd = self->userp;
-
-    if(fseek(fd, 0, SEEK_END))
-        return errno;
-
-    ssize_t filesz = ftell(fd);
-    if(filesz < 0)
-        return errno;
-
-    if(fseek(fd, 0, SEEK_SET))
-        return errno;
-
-    dest->capacity = filesz + 1;
-    dest->items = malloc((filesz + 1) * sizeof(char));
-    dest->count = fread(dest->items, sizeof(char), filesz, fd); 
-    dest->items[dest->count++] = '\0';
-
-    return 0;
-}
-
-static void _buffer_dtor(struct shard_string* buffer) {
-    if(buffer->items)
-        free(buffer->items);
-    memset(buffer, 0, sizeof(struct shard_string));
-}
-
-static int _close(struct shard_source* src) {
-    return fclose(src->userp);
-}
-
-
-static int _open(const char* path, struct shard_source* dest, const char* restrict mode) {
-    FILE* fd = fopen(path, mode);
-    if(!fd)
-        return errno;
-
-    *dest = (struct shard_source){
-        .userp = fd,
-        .origin = path,
-        .close = _close,
-        .line_offset = 1,
-        .read_all = _read_all,
-        .buffer_dtor = _buffer_dtor,
-    };
-
-    return 0;
-}
-
-double select_unit(double us, const char** unit) {
+static double select_unit(double us, const char** unit) {
     if(us >= 1'000'000.0) {
         *unit = "s";
         return us / 1'000'000.0;
@@ -129,10 +75,6 @@ double select_unit(double us, const char** unit) {
     
     *unit = "µs";
     return us;
-}
-
-void print_error(const struct shard_error* err) {
-    printf("\r " C_RED C_BLD "error:" C_NOBLD " %s:%u: %s\n", err->loc.src->origin, err->loc.line + 1, err->err);
 }
 
 enum test_status run(const char* filename, struct shard_context* ctx, enum test_flags flags) {
@@ -159,7 +101,7 @@ enum test_status run(const char* filename, struct shard_context* ctx, enum test_
         status = num_errors ? FAILED : PASSED;
         struct shard_error* errors = shard_get_errors(ctx);
         for(int i = 0; i < num_errors; i++)
-            print_error(&errors[i]);
+            print_shard_error(stderr, &errors[i]);
     }
     else {
         status = FAILED;
@@ -290,19 +232,8 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    struct shard_context ctx = {
-        .malloc = malloc,
-        .realloc = realloc,
-        .free = free,
-        .realpath = realpath,
-        .dirname = dirname,
-        .access = access,
-        .R_ok = R_OK,
-        .W_ok = W_OK,
-        .X_ok = X_OK,
-        .open = _open,
-        .home_dir = getenv("HOME"),
-    };
+    struct shard_context ctx;
+    shard_context_default(&ctx);
 
     if((err = shard_init(&ctx))) {
         fprintf(stderr, "%s: error initializing libshard: %s\n", argv[0], strerror(err));

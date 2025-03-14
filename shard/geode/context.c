@@ -1,24 +1,14 @@
-#if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
-#else
-    #define _XOPEN_SOURCE 500
-#endif /* __STDC_VERSION__ */
-
 #include <geode.h>
 #include <context.h>
 #include <config.h>
 #include <builtins.h>
 
 #include <libshard.h>
+#include "../shard_libc_driver.h"
 
-#include <assert.h>
 #include <errno.h>
-#include <libgen.h>
 #include <memory.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 
 #ifdef __x86_64__
 #define HOST_ARCH GEODE_ARCH_X86_64
@@ -33,117 +23,12 @@ static const char* arch_strings[] = {
 
 static_assert(__len(arch_strings) == __GEODE_ARCH_NUM);
 
-static int _close(struct shard_source* src) {
-    return fclose(src->userp);
-}
-
-static int _read_all(struct shard_source* self, struct shard_string* dest) {
-    FILE* fd = self->userp;
-
-    if(fseek(fd, 0, SEEK_END))
-        return errno;
-
-    ssize_t filesz = ftell(fd);
-    if(filesz < 0)
-        return errno;
-
-    if(fseek(fd, 0, SEEK_SET))
-        return errno;
-
-    dest->capacity = filesz + 1;
-    dest->items = malloc((filesz + 1) * sizeof(char));
-    dest->count = fread(dest->items, sizeof(char), filesz, fd); 
-    dest->items[dest->count++] = '\0';
-
-    return 0;
-}
-
-static void _buffer_dtor(struct shard_string* buffer) {
-    if(buffer->items)
-        free(buffer->items);
-    memset(buffer, 0, sizeof(struct shard_string));
-}
-
-
 int geode_open_shard_file(const char* path, struct shard_source* dest, const char* restrict mode) {
-    FILE* fd = fopen(path, mode);
-    if(!fd)
-        return errno;
-
-    *dest = (struct shard_source) {
-        .userp = (void*) fd,
-        .origin = path,
-        .read_all = _read_all,
-        .buffer_dtor = _buffer_dtor,
-        .close = _close,
-        .line_offset = 1,
-    };
-
-    return 0;
-}
-
-static void print_basic_error(struct shard_error* error) {
-    fprintf(stderr, 
-        C_BLD C_RED "error: " C_RST C_BLD " %s:%u:" C_NOBLD " %s\n" C_RST,
-        error->loc.src->origin, error->loc.line, EITHER(error->err, strerror(error->_errno))
-    );
+    return shard_open_callback(path, dest, mode);
 }
 
 void geode_print_shard_error(struct shard_error* error) {
-/*    if(error->loc.src->getc != _getc) {
-        print_basic_error(error);
-        return;
-    }*/
-
-    FILE* fd = error->loc.src->userp;
-    assert(fd);
-
-    size_t fd_pos = ftell(fd), line_start = error->loc.offset;
-
-    while(line_start > 0) {
-        fseek(fd, --line_start - 1, SEEK_SET);
-        if(fgetc(fd) == '\n')
-            break;
-    }
-
-    size_t line_end = error->loc.offset + error->loc.width - 1;
-    fseek(fd, line_end, SEEK_SET);
-
-    char c;
-    while(((c = fgetc(fd)) != '\n') && c != EOF)
-        line_end++;
-
-    fseek(fd, line_start, SEEK_SET);
-
-    char* line_str = calloc(line_end - line_start + 1, sizeof(char));
-    (void) fread(line_str, line_end - line_start, sizeof(char), fd);
-
-    size_t column = error->loc.offset - line_start;
-
-    fprintf(stderr, 
-        C_BLD C_RED "error:" C_RST C_RST " %s\n " C_BLD C_BLUE "       at " C_PURPLE "%s:%u:%zu:\n" C_RST,
-        EITHER(error->err, strerror(error->_errno)),
-        error->loc.src->origin, error->loc.line, column
-    );
-
-    fprintf(stderr,
-        C_BLD C_BLACK " %4d " C_NOBLD "| " C_RST,
-        error->loc.line
-    );
-
-    fwrite(line_str, sizeof(char), column, stderr);
-    fprintf(stderr, C_RED C_RST);
-    fwrite(line_str + column, sizeof(char), error->loc.width, stderr);
-    fprintf(stderr, C_RST "%s\n", line_str + column + error->loc.width);
-
-    fprintf(stderr, C_BLACK "      |" C_RST " %*s" C_RED, (int) column, "");
-
-    for(size_t i = 0; i < MAX(error->loc.width, 1); i++)
-        fputc('^', stderr);
-    fprintf(stderr, C_RST "\n");
-
-    fseek(fd, fd_pos, SEEK_SET);
-    free(line_str);
+    print_shard_error(stderr, error);
 }
 
 int geode_context_init(struct geode_context* ctx, const char* prog_name, geode_error_handler_t error_handler) {
@@ -163,20 +48,9 @@ int geode_context_init(struct geode_context* ctx, const char* prog_name, geode_e
 
     ctx->nproc = 1;
 
-    ctx->shard_ctx = (struct shard_context){
-        .malloc = malloc,
-        .realloc = realloc,
-        .free = free,
-        .realpath = realpath,
-        .dirname = dirname,
-        .access = access,
-        .R_ok = R_OK,
-        .W_ok = W_OK,
-        .X_ok = X_OK,
-        .open = geode_open_shard_file,
-        .home_dir = nullptr,
-        .userp = ctx
-    };
+    shard_context_default(&ctx->shard_ctx);
+    ctx->shard_ctx.home_dir = nullptr;
+    ctx->shard_ctx.userp = ctx;
 
     int err = shard_init(&ctx->shard_ctx);
     if(err)

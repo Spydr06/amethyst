@@ -45,6 +45,9 @@ SHELL_OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SHELL_SOURCES))
 SHELL_CLFAGS := -I$(SHELL_DIR)/include -g
 SHELL_LDFLAGS := -ledit
 
+LIBC_DRIVER := $(BUILD_DIR)/shard_libc_driver.o
+LIBC_DRIVER_SOURCE := shard_libc_driver.c
+
 AR ?= ar
 RANLIB ?= ranlib
 
@@ -87,7 +90,7 @@ $(BUILD_DIR):
 	@echo "  MKDIR $(BUILD_DIR)"
 	@mkdir -p $(BUILD_DIR)
 
-$(SHARD_BIN): $(LDLFLAGS) $(BUILD_DIR)/shard.o $(BUILD_DIR)/repl.o $(LIBSHARD_OBJ)
+$(SHARD_BIN): $(LDLFLAGS) $(BUILD_DIR)/shard.o $(BUILD_DIR)/repl.o $(LIBSHARD_OBJ) $(LIBC_DRIVER)
 	@echo "  LD    $@"
 	@$(CC) $(LDFLAGS) -o $@ $^ -ledit
 
@@ -97,11 +100,11 @@ $(LIBSHARD): $(LIBSHARD_OBJ)
 	@echo " RANLIB	$@"
 	@$(RANLIB) $@
 
-$(GEODE_BIN): $(GEODE_OBJECTS) $(LIBSHARD_OBJ)
+$(GEODE_BIN): $(GEODE_OBJECTS) $(LIBSHARD_OBJ) $(LIBC_DRIVER)
 	@echo "  CCLD  $@"
 	@$(CC) $(LDFLAGS) $(GEODE_LDFLAGS) -o $@ $^
 
-$(SHELL_BIN): $(SHELL_OBJECTS) $(LIBSHARD_OBJ)
+$(SHELL_BIN): $(SHELL_OBJECTS) $(LIBSHARD_OBJ) $(LIBC_DRIVER)
 	@echo "  CCLD  $@"
 	@$(CC) $(CFLAGS) $(SHELL_LDFLAGS) -o $@ $^ $(LDFLAGS)
 
@@ -163,7 +166,7 @@ test: $(TEST_RUNNER_BIN)
 .PHONY: test-runner
 test-runner: $(TEST_RUNNER_BIN)
 
-$(TEST_RUNNER_BIN): $(TEST_RUNNER_SOURCE) $(LIBSHARD_OBJ)
+$(TEST_RUNNER_BIN): $(TEST_RUNNER_SOURCE) $(LIBSHARD_OBJ) $(LIBC_DRIVER)
 	@mkdir -p $(dir $@)
 	@echo "  CC    $< -> $@"
 	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^	

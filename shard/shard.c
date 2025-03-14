@@ -1,23 +1,12 @@
-#include "libshard.h"
-#if __STDC_VERSION__ >= 199901L
-#define _XOPEN_SOURCE 600
-#else
-#define _XOPEN_SOURCE 500
-#endif /* __STDC_VERSION__ */
-
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <errno.h>
-#include <assert.h>
+#include <string.h>
 
-#include <unistd.h>
 #include <getopt.h>
-#include <libgen.h>
+#include <libshard.h>
 
-#include <sys/stat.h>
-#include <sys/mman.h>
-
+#include "shard_libc_driver.h"
 #include "shard.h"
 
 static const struct option cmdline_options[] = {
@@ -37,116 +26,10 @@ _Noreturn static void help(const char* progname)
     exit(EXIT_SUCCESS);
 }
 
-static int _close(struct shard_source* src) {
-    return fclose(src->userp);
-}
-
-static int _read_all(struct shard_source* self, struct shard_string* dest) {
-    FILE* fd = self->userp;
-
-    if(fseek(fd, 0, SEEK_END))
-        return errno;
-
-    ssize_t filesz = ftell(fd);
-    if(filesz < 0)
-        return errno;
-
-    if(fseek(fd, 0, SEEK_SET))
-        return errno;
-
-    dest->capacity = filesz + 1;
-    dest->items = malloc((filesz + 1) * sizeof(char));
-    dest->count = fread(dest->items, sizeof(char), filesz, fd); 
-    dest->items[dest->count++] = '\0';
-
-    return 0;
-}
-
-static void _buffer_dtor(struct shard_string* buffer) {
-    if(buffer->items)
-        free(buffer->items);
-    memset(buffer, 0, sizeof(struct shard_string));
-}
-
-static int _open(const char* path, struct shard_source* dest, const char* restrict mode) {
-    FILE* fd = fopen(path, mode);
-    if(!fd)
-        return errno;
-
-    *dest = (struct shard_source){
-        .userp = fd,
-        .origin = path,
-        .close = _close,
-        .read_all = _read_all,
-        .buffer_dtor = _buffer_dtor,
-        .line_offset = 1,
-    };
-
-    return 0;
-}
-
-static void print_basic_error(struct shard_error* error) {
-    fprintf(stderr, 
-        C_BLD C_RED "error: " C_RST C_BLD " %s:%u:" C_NOBLD " %s\n" C_RST,
-        error->loc.src->origin, error->loc.line, EITHER(error->err, strerror(error->_errno))
-    );
-}
-
-void print_file_error(struct shard_error* error) {
-    /*if(error->loc.src->getc != _getc) {
-        print_basic_error(error);
-        return;
-    }*/
-
-    FILE* fd = error->loc.src->userp;
-    assert(fd);
-
-    size_t fd_pos = ftell(fd);
-    size_t line_start = error->loc.offset - error->loc.column;
-    size_t line_end = error->loc.offset + error->loc.width - 1;
-    fseek(fd, line_end, SEEK_SET);
-
-    char c;
-    while(((c = fgetc(fd)) != '\n') && c != EOF)
-        line_end++;
-
-    fseek(fd, line_start, SEEK_SET);
-
-    char* line_str = calloc(line_end - line_start + 1, sizeof(char));
-    (void) !! fread(line_str, line_end - line_start, sizeof(char), fd);
-
-    size_t column = error->loc.column;
-
-    fprintf(stderr, 
-        C_BLD C_RED "error:" C_RST C_RST " %s\n " C_BLD C_BLUE "       at " C_PURPLE "%s:%u:%zu:\n" C_RST,
-        EITHER(error->err, strerror(error->_errno)),
-        error->loc.src->origin, error->loc.line, column
-    );
-
-    fprintf(stderr,
-        C_BLD C_BLACK " %4d " C_NOBLD "| " C_RST,
-        error->loc.line
-    );
-
-    fwrite(line_str, sizeof(char), column, stderr);
-    fprintf(stderr, C_RED C_RST);
-    fwrite(line_str + column, sizeof(char), error->loc.width, stderr);
-    fprintf(stderr, C_RST "%s\n", line_str + column + error->loc.width);
-
-    fprintf(stderr, C_BLACK "      |" C_RST " %*s" C_RED, (int) column, "");
-
-    for(size_t i = 0; i < MAX(error->loc.width, 1); i++)
-        fputc('^', stderr);
-    fprintf(stderr, C_RST "\n");
-
-    fseek(fd, fd_pos, SEEK_SET);
-    free(line_str);
-}
-
 static void emit_errors(struct shard_context* ctx) {
     struct shard_error* errors = shard_get_errors(ctx);
     for(size_t i = 0; i < shard_get_num_errors(ctx); i++)
-        print_file_error(&errors[i]);
+        print_shard_error(stderr, &errors[i]);
 
     shard_remove_errors(ctx);
 }
@@ -179,20 +62,9 @@ static int eval_file(struct shard_context* ctx, const char* progname, const char
 }
 
 int main(int argc, char** argv) {
-    struct shard_context ctx = {
-        .malloc = malloc,
-        .realloc = realloc,
-        .free = free,
-        .realpath = realpath,
-        .dirname = dirname,
-        .access = access,
-        .R_ok = R_OK,
-        .W_ok = W_OK,
-        .X_ok = X_OK,
-        .open = _open,
-        .home_dir = getenv("HOME"),
-    };
-    
+    struct shard_context ctx;
+    shard_context_default(&ctx);
+
     int err = shard_init(&ctx);
     if(err) {
         fprintf(stderr, "%s: error initializing libshard: %s\n", argv[0], strerror(err));
