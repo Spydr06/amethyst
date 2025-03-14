@@ -33,17 +33,37 @@ static const char* arch_strings[] = {
 
 static_assert(__len(arch_strings) == __GEODE_ARCH_NUM);
 
-static int _getc(struct shard_source* src) {
-    return fgetc(src->userp);
-}
-
-static int _ungetc(int c, struct shard_source* src) {
-    return ungetc(c, src->userp);
-}
-
 static int _close(struct shard_source* src) {
     return fclose(src->userp);
 }
+
+static int _read_all(struct shard_source* self, struct shard_string* dest) {
+    FILE* fd = self->userp;
+
+    if(fseek(fd, 0, SEEK_END))
+        return errno;
+
+    ssize_t filesz = ftell(fd);
+    if(filesz < 0)
+        return errno;
+
+    if(fseek(fd, 0, SEEK_SET))
+        return errno;
+
+    dest->capacity = filesz + 1;
+    dest->items = malloc((filesz + 1) * sizeof(char));
+    dest->count = fread(dest->items, sizeof(char), filesz, fd); 
+    dest->items[dest->count++] = '\0';
+
+    return 0;
+}
+
+static void _buffer_dtor(struct shard_string* buffer) {
+    if(buffer->items)
+        free(buffer->items);
+    memset(buffer, 0, sizeof(struct shard_string));
+}
+
 
 int geode_open_shard_file(const char* path, struct shard_source* dest, const char* restrict mode) {
     FILE* fd = fopen(path, mode);
@@ -53,8 +73,8 @@ int geode_open_shard_file(const char* path, struct shard_source* dest, const cha
     *dest = (struct shard_source) {
         .userp = (void*) fd,
         .origin = path,
-        .getc = _getc,
-        .ungetc = _ungetc,
+        .read_all = _read_all,
+        .buffer_dtor = _buffer_dtor,
         .close = _close,
         .line_offset = 1,
     };
@@ -70,10 +90,10 @@ static void print_basic_error(struct shard_error* error) {
 }
 
 void geode_print_shard_error(struct shard_error* error) {
-    if(error->loc.src->getc != _getc) {
+/*    if(error->loc.src->getc != _getc) {
         print_basic_error(error);
         return;
-    }
+    }*/
 
     FILE* fd = error->loc.src->userp;
     assert(fd);

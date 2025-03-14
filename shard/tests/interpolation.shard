@@ -8,6 +8,10 @@ let
     y = ./interpolation-${x}.shard;
     z = tuple 1 2;
     w = tuple 3 4;
+
+    multiline = ''
+    numbers: ${[1 2 3]}
+    '';
 in
     assert "${x}" == "69";
     assert "abc-${x}-def" == "abc-69-def";

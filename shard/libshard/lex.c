@@ -50,6 +50,8 @@ shard_dynarr(interpolation_stack, struct interpolation_data);
 struct shard_lexer {
     struct shard_context* ctx;
     struct shard_source* src;
+
+    struct shard_string buffer;
     struct shard_location current_loc;
 
     struct interpolation_stack interpolation_stack;
@@ -144,7 +146,8 @@ static inline struct shard_location default_loc(struct shard_source* src) {
         .src = src,
         .line = src->line_offset,
         .offset = 0,
-        .width = 0
+        .width = 0,
+        .column = 1,
     };
 }
 
@@ -157,31 +160,51 @@ struct shard_lexer* shard_lex_init(struct shard_context* ctx, struct shard_sourc
     l->brace_depth = 0;
     l->interpolation_stack = (struct interpolation_stack){0};
     l->handle_interpolation = false;
+    l->buffer = (struct shard_string){0};
+
+    int err = src->read_all(src, &l->buffer);
+    assert(err == 0);
 
     return l;
 }
 
 void shard_lex_free(struct shard_lexer* l) {
+    if(l->src->buffer_dtor)
+        l->src->buffer_dtor(&l->buffer);
+
     dynarr_free(l->ctx, &l->interpolation_stack);
     l->ctx->free(l);
 }
 
-static inline int l_getc(struct shard_lexer* l) {
-    l->current_loc.offset++;
-    int c = l->src->getc(l->src);
-    if(c == '\n')
-        l->current_loc.line++;
-    return c;
+static char peek_char(struct shard_lexer* l) {
+    char c = l->buffer.items[l->current_loc.offset];
+    return c ? c : EOF;
 }
 
-static inline int l_ungetc(int c, struct shard_lexer* l) {
-    assert(l->current_loc.offset != 0);
-    l->current_loc.offset--;
-    if(c == '\n') {
-        assert(l->current_loc.line != 0);
-        l->current_loc.line--;
+static char peek_char_n(struct shard_lexer* l, unsigned off) {
+    if(l->current_loc.offset + off >= l->buffer.count)
+        return EOF;
+
+    char c = l->buffer.items[l->current_loc.offset + off];
+    return c ? c : EOF;
+}
+
+static char next_char(struct shard_lexer* l) {
+    char c = l->buffer.items[l->current_loc.offset];
+    
+    switch(c) {
+        case '\n':
+            l->current_loc.line++;
+            l->current_loc.column = 0;
+            break;
+        case '\0':
+        case EOF:
+            return EOF;
     }
-    return l->src->ungetc(c, l->src);
+
+    l->current_loc.offset++;
+    l->current_loc.column++;
+    return c;
 }
 
 static inline int l_offset(struct shard_lexer* l) {
@@ -219,19 +242,20 @@ static int lex_ident(struct shard_lexer* l, struct shard_token* token) {
     unsigned start = l_offset(l);
 
     int c, i = 0;
-    while(is_ident_char(c = l_getc(l))) {
+    while(is_ident_char(c = peek_char(l))) {
         if(i >= (int) LEN(tmpbuf)) {
             ERR_TOK(token, l, "identifier too long");
             return ENAMETOOLONG;
         }
 
         tmpbuf[i++] = (char) c;
+
+        next_char(l);
     }
 
     unsigned end = l_offset(l);
     
     tmpbuf[i] = '\0';
-    l_ungetc(c, l);
 
     enum shard_token_type type = get_keyword(tmpbuf);
     if(type == SHARD_TOK_IDENT) {
@@ -260,7 +284,7 @@ static int lex_number(struct shard_lexer* l, struct shard_token* token) {
 
     bool floating = false;
     int c, i = 0;
-    while(isdigit(c = l_getc(l)) || c == '\'' || c == '.') {
+    while(isdigit(c = peek_char(l)) || c == '\'' || c == '.') {
         if(i >= (int) LEN(tmpbuf)) {
             ERR_TOK(token, l, "floating literal too long");
             return ENAMETOOLONG;
@@ -284,10 +308,11 @@ static int lex_number(struct shard_lexer* l, struct shard_token* token) {
                 else 
                     integer = integer * 10 + (c - '0');
         }
+
+        next_char(l);
     }
 
     tmpbuf[i] = '\0';
-    l_ungetc(c, l);
     
     unsigned end = l_offset(l);
 
@@ -343,7 +368,7 @@ static int lex_string(struct shard_lexer* l, struct shard_token* token, int (*is
 
     bool escaped = false;
     int c;
-    while(!is_end_quote(c = l_getc(l)) || escaped) {
+    while(!is_end_quote(c = peek_char(l)) || escaped) {
         dynarr_append(l->ctx, &str, c);
 
         escaped = false;
@@ -355,11 +380,8 @@ static int lex_string(struct shard_lexer* l, struct shard_token* token, int (*is
             if(escaped)
                 continue;
 
-            bool interpolate_begin = (c = l_getc(l)) == '{';
-            l_ungetc(c, l);
-
+            bool interpolate_begin = peek_char_n(l, 1) == '{';
             if(interpolate_begin) {
-                l_ungetc('$', l);
                 str.count--;
                 push_interpolation(l, false, is_end_quote, is_path);
                 goto break_for;
@@ -373,10 +395,12 @@ static int lex_string(struct shard_lexer* l, struct shard_token* token, int (*is
             ERR_TOK(token, l, "unterminated string literal");
             return EINVAL;
         }
+
+        next_char(l);
     }
 
-    if(is_path)
-        l_ungetc(c, l);
+    if(!is_path)
+        next_char(l);
 
 break_for:
     dynarr_append(l->ctx, &str, '\0');
@@ -397,25 +421,25 @@ break_for:
 
 static int lex_multiline_string(struct shard_lexer* l, struct shard_token* token) {
     unsigned start = l_offset(l) - 1;
+    unsigned start_line = l_line(l);
 
     struct shard_string str = {0};
 
-    bool escaped[3] = {0};
-    int c[2] = {0, 0};
+    bool escaped[3] = {false, false, false};
     for(;;) {
-        c[1] = c[0];
-        c[0] = l_getc(l);
-
         escaped[2] = escaped[1];
         escaped[1] = escaped[0];
         escaped[0] = false;
         
-        switch(c[0]) {
+        switch(peek_char(l)) {
             case '\'':
                 if(escaped[1] || escaped[2])
                     dynarr_append(l->ctx, &str, '\'');
-                else if(c[1] == '\'')
+                else if(peek_char_n(l, 1) == '\'') {
+                    next_char(l);
+                    next_char(l);
                     goto break_loop;
+                }
                 break;
             case '\n':
                 dynarr_append(l->ctx, &str, '\n');
@@ -424,15 +448,10 @@ static int lex_multiline_string(struct shard_lexer* l, struct shard_token* token
                 escaped[0] = true;
                 dynarr_append(l->ctx, &str, '\\');
                 break;
-            case '{':
-                if(escaped[2] || c[1] != '$')
-                    continue;;
+            case '$':
+                if(escaped[2] || peek_char_n(l, 1) != '{')
+                    continue;
                 
-                l_ungetc('{', l);
-                l_ungetc('$', l);
-
-                str.count -= 2;
-
                 push_interpolation(l, true, NULL, false);
                 goto break_loop;
             case EOF:
@@ -440,8 +459,10 @@ static int lex_multiline_string(struct shard_lexer* l, struct shard_token* token
                 ERR_TOK(token, l, "unterminated multiline string literal, expect `''`");
                 return EINVAL;
             default:
-                dynarr_append(l->ctx, &str, c[0]);
+                dynarr_append(l->ctx, &str, peek_char(l));
         }
+
+        next_char(l);
     }
 
 break_loop:
@@ -452,7 +473,7 @@ break_loop:
     unsigned end = l_offset(l);
     struct shard_location loc = {
         .src = l->src,
-        .line = l_line(l),
+        .line = start_line,
         .offset = start - 1,
         .width = end - start + 1
     };
@@ -474,223 +495,246 @@ static int pop_interpolation(struct shard_lexer* l, struct shard_token* token) {
         return lex_string(l, token, top.is_end_quote, top.is_path);
 }
 
+static void skip_whitesapce(struct shard_lexer* l) {
+    while(isspace(peek_char(l)))
+        next_char(l);
+}
+
 int shard_lex(struct shard_lexer* l, struct shard_token* token) {
     if(l->handle_interpolation)
         return pop_interpolation(l, token);
 
-    int c;
-
 repeat:
+    skip_whitesapce(l);
 
-    while(isspace(c = l_getc(l)));
-
-    switch(c) {
+    switch(peek_char(l)) {
         case EOF:
             EOF_TOK(token, l);
             break;
         case '#':
-            while((c = l_getc(l)) != '\n' && c != EOF);
+            char c;
+            while((c = next_char(l)) != '\n' && c != EOF);
             goto repeat;
         case '(':
+            next_char(l);
             KEYWORD_TOK(token, l, LPAREN);
             break;
         case ')':
+            next_char(l);
             KEYWORD_TOK(token, l, RPAREN);
             break;
         case '[':
+            next_char(l);
             KEYWORD_TOK(token, l, LBRACKET);
             break;
         case ']':
+            next_char(l);
             KEYWORD_TOK(token, l, RBRACKET);
             break;
         case '{':
+            next_char(l);
             l->brace_depth++;
             KEYWORD_TOK(token, l, LBRACE);
             break;
         case '}':
+            next_char(l);
             l->brace_depth--;
             if(closes_interpolation(l))
                 l->handle_interpolation = true;
             KEYWORD_TOK(token, l, RBRACE);
             break;
         case '+':
-            if((c = l_getc(l)) == '+')
+            next_char(l);
+            if(peek_char(l) == '+') {
+                next_char(l);
                 KEYWORD_TOK(token, l, CONCAT);
-            else {
-                l_ungetc(c, l);
-                KEYWORD_TOK(token, l, ADD);
             }
+            else
+                KEYWORD_TOK(token, l, ADD);
             break;
         case '-':
-            if((c = l_getc(l)) == '>')
+            next_char(l);
+            if(peek_char(l) == '>') {
+                next_char(l);
                 KEYWORD_TOK(token, l, LOGIMPL);
-            else {
-                l_ungetc(c, l);
-                KEYWORD_TOK(token, l, SUB);
             }
+            else
+                KEYWORD_TOK(token, l, SUB);
             break;
         case '*':
+            next_char(l);
             KEYWORD_TOK(token, l, MUL);
             break;
         case '/':
-            if((c = l_getc(l)) == '/')
+            if(peek_char_n(l, 1) == '/') {
+                next_char(l);
+                next_char(l);
                 KEYWORD_TOK(token, l, MERGE);
-            else if(c == '*') {
+            }
+            else if(peek_char_n(l, 1) == '*') {
                 for(;;) {
-                    while((c = l_getc(l)) != '*') {
+                    while((c = next_char(l)) != '*') {
                         if(c == EOF) {
                             ERR_TOK(token, l, "unterminated multiline comment, expect `*/`");
                             return EOVERFLOW;
                         }
                     }
-                    if((c = l_getc(l)) == '/')
+                    if((c = next_char(l)) == '/')
                         goto repeat;
                 }
             }
-            else if(!isspace(c)) {
-                l_ungetc(c, l);
-                l_ungetc('/', l);
+            else if(!isspace(peek_char_n(l, 1))) {
                 return lex_string(l, token, is_path_terminator, true);
             }
             else {
-                l_ungetc(c, l);
+                next_char(l);
                 KEYWORD_TOK(token, l, DIV);
             }
             break;
         case '~':
-            l_ungetc(c, l);
             return lex_string(l, token, is_path_terminator, true);
         case ':':
-            if((c = l_getc(l)) == ':')
+            next_char(l);
+            if(peek_char(l) == ':') {
+                next_char(l);
                 KEYWORD_TOK(token, l, DOUBLE_COLON);
-            else {
-                l_ungetc(c, l);
-                KEYWORD_TOK(token, l, COLON);
             }
+            else
+                KEYWORD_TOK(token, l, COLON);
             break;
         case ';':
+            next_char(l);
             KEYWORD_TOK(token, l, SEMICOLON);
             break;
         case '&':
-            if((c = l_getc(l)) == '&')
+            next_char(l);
+            if(peek_char(l) == '&') {
+                next_char(l);
                 KEYWORD_TOK(token, l, LOGAND);
+            }
             else {
-                l_ungetc(c, l);
                 ERR_TOK(token, l, "unknown token `&`, did you mean `&&`?");
                 return EINVAL;
             }
             break;
         case '|':
-            if((c = l_getc(l)) == '|')
+            next_char(l);
+            if(peek_char(l) == '|') {
+                next_char(l);
                 KEYWORD_TOK(token, l, LOGOR);
-            else {
-                l_ungetc(c, l);
-                KEYWORD_TOK(token, l, PIPE);
             }
+            else
+                KEYWORD_TOK(token, l, PIPE);
             break;
         case ',':
+            next_char(l);
             KEYWORD_TOK(token, l, COMMA);
             break;
         case '.': {
-            int c2 = -2;
-            if((c = l_getc(l)) == '.' && (c2 = l_getc(l)) == '.')
+            if(peek_char_n(l, 1) == '.' && peek_char_n(l, 2) == '.') {
+                next_char(l);
+                next_char(l);
+                next_char(l);
                 KEYWORD_TOK(token, l, ELLIPSE);
-            else if(c == '.' && c2 == '/') {
-                l_ungetc('/', l);
-                l_ungetc('.', l);
-                l_ungetc('.', l);
+            }
+            else if(peek_char_n(l, 1) == '.' && peek_char_n(l, 2) == '/') {
                 return lex_string(l, token, is_path_terminator, true);
             }
-            else if(c == '/') {
-                if(c2 != -2)
-                    l_ungetc(c2, l);
-                l_ungetc('/', l);
-                l_ungetc('.', l);
+            else if(peek_char_n(l, 1) == '/') {
                 return lex_string(l, token, is_path_terminator, true);
             }
             else {
-                if(c2 != -2)
-                    l_ungetc(c2, l);
-                l_ungetc(c, l);
+                next_char(l);
                 KEYWORD_TOK(token, l, PERIOD);
             }
         } break;
         case '?':
+            next_char(l);
             KEYWORD_TOK(token, l, QUESTIONMARK);
             break;
         case '!':
-            if((c = l_getc(l)) == '=')
+            next_char(l);
+            if(peek_char(l) == '=') {
+                next_char(l);
                 KEYWORD_TOK(token, l, NE);
-            else {
-                l_ungetc(c, l);
-                KEYWORD_TOK(token, l, EXCLAMATIONMARK);
             }
+            else
+                KEYWORD_TOK(token, l, EXCLAMATIONMARK);
             break;
         case '>':
-            if((c = l_getc(l)) == '=')
+            next_char(l);
+            if(peek_char(l) == '=') {
+                next_char(l);
                 KEYWORD_TOK(token, l, GE);
-            else if(c == '>')
-                KEYWORD_TOK(token, l, RCOMPOSE);
-            else {
-                l_ungetc(c, l);
-                KEYWORD_TOK(token, l, GT);
             }
+            else if(peek_char(l) == '>') {
+                next_char(l);
+                KEYWORD_TOK(token, l, RCOMPOSE);
+            }
+            else
+                KEYWORD_TOK(token, l, GT);
             break;
         case '<':
-            if((c = l_getc(l)) == '=')
+            next_char(l);
+            if(peek_char(l) == '=') {
+                next_char(l);
                 KEYWORD_TOK(token, l, LE);
-            else if(c == '<')
+            }
+            else if(peek_char(l) == '<') {
+                next_char(l);
                 KEYWORD_TOK(token, l, LCOMPOSE);
-            else if(!isspace(c)) {
-                l_ungetc(c, l);
+            }
+            else if(!isspace(peek_char(l))) {
                 int err = lex_string(l, token, is_gt_sign, false);
                 token->type = SHARD_TOK_PATH;
                 return err;
             }
-            else {
-                l_ungetc(c, l);
+            else
                 KEYWORD_TOK(token, l, LT);
-            }
             break;
         case '@':
+            next_char(l);
             KEYWORD_TOK(token, l, AT);
             break;
         case '$':
-            if((c = l_getc(l)) == '{') {
+            next_char(l);
+            if(peek_char(l) == '{') {
+                next_char(l);
                 l->brace_depth++;
                 KEYWORD_TOK(token, l, INTERPOLATION);
             }
-            else {
-                l_ungetc(c, l);
+            else
                 KEYWORD_TOK(token, l, DOLLAR);
-            }
             break;
         case '=':
-            if((c = l_getc(l)) == '=')
+            next_char(l);
+            if(peek_char(l) == '=') {
+                next_char(l);
                 KEYWORD_TOK(token, l, EQ);
-            else if(c == '>')
-                KEYWORD_TOK(token, l, ARROW);
-            else {
-                l_ungetc(c, l);
-                KEYWORD_TOK(token, l, ASSIGN);
             }
+            else if(peek_char(l) == '>') {
+                next_char(l);
+                KEYWORD_TOK(token, l, ARROW);
+            }
+            else
+                KEYWORD_TOK(token, l, ASSIGN);
             break;
         case '\'':
-            if((c = l_getc(l)) == '\'')
+            next_char(l);
+            if(next_char(l) == '\'')
                 return lex_multiline_string(l, token);
             else {
                 ERR_TOK(token, l, "unexpected character, expect second `'` for multiline string");
                 return EINVAL;
             }
         case '\"':
+            next_char(l);
             return lex_string(l, token, is_double_quote, false);
         default:
-            if(isdigit(c)) {
-                l_ungetc(c, l);
+            if(isdigit(peek_char(l))) {
                 return lex_number(l, token);
             }
-            else if(is_ident_char(c)) {
-                l_ungetc(c, l);
+            else if(is_ident_char(peek_char(l))) {
                 return lex_ident(l, token);
             }
             else

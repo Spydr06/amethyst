@@ -97,7 +97,7 @@ struct shard_value;
 typedef const char* shard_ident_t;
 
 struct shard_location {
-    unsigned line, width, offset;
+    unsigned line, column, width, offset;
     struct shard_source* src;
 };
 
@@ -233,14 +233,14 @@ SHARD_DECL void shard_deinit(struct shard_context* ctx);
 
 SHARD_DECL shard_ident_t shard_get_ident(struct shard_context* ctx, const char* ident);
 
-// TODO: add other sources like memory buffers
 struct shard_source {
     void* userp;
     const char* origin;
 
-    int (*getc)(struct shard_source* self);
-    int (*ungetc)(int c, struct shard_source* self);
+    int (*read_all)(struct shard_source* self, struct shard_string* dest);
     int (*close)(struct shard_source* self);
+
+    void (*buffer_dtor)(struct shard_string* str);
 
     unsigned line_offset;
 };

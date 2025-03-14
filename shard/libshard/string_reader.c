@@ -19,23 +19,12 @@ void shard_string_reader_free(struct shard_string_reader* reader) {
         reader->dtor((void*) reader->buf);
 }
 
-static int _getc(struct shard_source* src) {
-    struct shard_string_reader* reader = src->userp;
-    
-    if(reader->offset >= reader->buf_size)
-        return EOF;
-
-    return reader->buf[reader->offset++];
-}
-
-static int _ungetc(int ch, struct shard_source* src) {
-    struct shard_string_reader* reader = src->userp;
-
-    if(reader->offset == 0 || reader->offset > reader->buf_size)
-        return EOF;
-
-    reader->offset--;
-    return ch;
+static int read_all(struct shard_source* self, struct shard_string* dest) {
+    struct shard_string_reader* reader = self->userp;
+    dest->items = (char*) reader->buf;
+    dest->count = reader->buf_size;
+    dest->capacity = reader->buf_size;
+    return 0;
 }
 
 static int _close(struct shard_source* src) {
@@ -51,9 +40,10 @@ int shard_string_source(struct shard_context* ctx, struct shard_source* dest, co
     *dest = (struct shard_source) {
         .userp = reader,
         .origin = origin,
-        .getc = _getc,
-        .ungetc = _ungetc,
         .close = _close,
+        .line_offset = 1,
+        .read_all = read_all,
+        .buffer_dtor = NULL
     };
 
     return 0;

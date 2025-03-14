@@ -15,6 +15,9 @@
 #include <getopt.h>
 #include <libgen.h>
 
+#include <sys/stat.h>
+#include <sys/mman.h>
+
 #include "shard.h"
 
 static const struct option cmdline_options[] = {
@@ -34,16 +37,35 @@ _Noreturn static void help(const char* progname)
     exit(EXIT_SUCCESS);
 }
 
-static int _getc(struct shard_source* src) {
-    return fgetc(src->userp);
-}
-
-static int _ungetc(int c, struct shard_source* src) {
-    return ungetc(c, src->userp);
-}
-
 static int _close(struct shard_source* src) {
     return fclose(src->userp);
+}
+
+static int _read_all(struct shard_source* self, struct shard_string* dest) {
+    FILE* fd = self->userp;
+
+    if(fseek(fd, 0, SEEK_END))
+        return errno;
+
+    ssize_t filesz = ftell(fd);
+    if(filesz < 0)
+        return errno;
+
+    if(fseek(fd, 0, SEEK_SET))
+        return errno;
+
+    dest->capacity = filesz + 1;
+    dest->items = malloc((filesz + 1) * sizeof(char));
+    dest->count = fread(dest->items, sizeof(char), filesz, fd); 
+    dest->items[dest->count++] = '\0';
+
+    return 0;
+}
+
+static void _buffer_dtor(struct shard_string* buffer) {
+    if(buffer->items)
+        free(buffer->items);
+    memset(buffer, 0, sizeof(struct shard_string));
 }
 
 static int _open(const char* path, struct shard_source* dest, const char* restrict mode) {
@@ -54,9 +76,9 @@ static int _open(const char* path, struct shard_source* dest, const char* restri
     *dest = (struct shard_source){
         .userp = fd,
         .origin = path,
-        .getc = _getc,
-        .ungetc = _ungetc,
         .close = _close,
+        .read_all = _read_all,
+        .buffer_dtor = _buffer_dtor,
         .line_offset = 1,
     };
 
@@ -71,22 +93,16 @@ static void print_basic_error(struct shard_error* error) {
 }
 
 void print_file_error(struct shard_error* error) {
-    if(error->loc.src->getc != _getc) {
+    /*if(error->loc.src->getc != _getc) {
         print_basic_error(error);
         return;
-    }
+    }*/
 
     FILE* fd = error->loc.src->userp;
     assert(fd);
 
-    size_t fd_pos = ftell(fd), line_start = error->loc.offset;
-
-    while(line_start > 0) {
-        fseek(fd, --line_start - 1, SEEK_SET);
-        if(fgetc(fd) == '\n')
-            break;
-    }
-
+    size_t fd_pos = ftell(fd);
+    size_t line_start = error->loc.offset - error->loc.column;
     size_t line_end = error->loc.offset + error->loc.width - 1;
     fseek(fd, line_end, SEEK_SET);
 
@@ -99,7 +115,7 @@ void print_file_error(struct shard_error* error) {
     char* line_str = calloc(line_end - line_start + 1, sizeof(char));
     (void) !! fread(line_str, line_end - line_start, sizeof(char), fd);
 
-    size_t column = error->loc.offset - line_start;
+    size_t column = error->loc.column;
 
     fprintf(stderr, 
         C_BLD C_RED "error:" C_RST C_RST " %s\n " C_BLD C_BLUE "       at " C_PURPLE "%s:%u:%zu:\n" C_RST,

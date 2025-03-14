@@ -8,6 +8,8 @@
 #define LEN(arr) (sizeof((arr)) / sizeof((arr)[0]))
 
 #define C_RED "\033[31m"
+#define C_GREEN "\033[32m"
+#define C_YELLOW "\033[93m"
 #define C_BLACK "\033[90m"
 #define C_BLUE "\033[34m"
 #define C_PURPLE "\033[35m"

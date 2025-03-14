@@ -68,14 +68,32 @@ static void _signal_handler(int signo) {
     exit(127);
 }
 
-static int _getc(struct shard_source* src) {
-    return fgetc(src->userp);
+static int _read_all(struct shard_source* self, struct shard_string* dest) {
+    FILE* fd = self->userp;
+
+    if(fseek(fd, 0, SEEK_END))
+        return errno;
+
+    ssize_t filesz = ftell(fd);
+    if(filesz < 0)
+        return errno;
+
+    if(fseek(fd, 0, SEEK_SET))
+        return errno;
+
+    dest->capacity = filesz + 1;
+    dest->items = malloc((filesz + 1) * sizeof(char));
+    dest->count = fread(dest->items, sizeof(char), filesz, fd); 
+    dest->items[dest->count++] = '\0';
+
+    return 0;
 }
 
-static int _ungetc(int c, struct shard_source* src) {
-    return ungetc(c, src->userp);
+static void _buffer_dtor(struct shard_string* buffer) {
+    if(buffer->items)
+        free(buffer->items);
+    memset(buffer, 0, sizeof(struct shard_string));
 }
-
 
 static int _close(struct shard_source* src) {
     return fclose(src->userp);
@@ -90,9 +108,10 @@ static int _open(const char* path, struct shard_source* dest, const char* restri
     *dest = (struct shard_source){
         .userp = fd,
         .origin = path,
-        .getc = _getc,
-        .ungetc = _ungetc,
         .close = _close,
+        .line_offset = 1,
+        .read_all = _read_all,
+        .buffer_dtor = _buffer_dtor,
     };
 
     return 0;

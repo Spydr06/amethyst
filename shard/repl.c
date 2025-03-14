@@ -43,6 +43,7 @@ static struct {
     // dummy commands (for :help)
     { "<expr>", NULL, NULL,        "Evaluate and print expression" },
     { "<x> := <expr>", NULL, NULL, "Bind expression to variable" },
+    { "", NULL, NULL, "" },
 
     // commands
     { ":l", ":list", handle_list, "List the current inputs"},
@@ -54,30 +55,16 @@ static int repl_close_source(struct shard_source*) {
     return 0;
 }
 
-static int repl_getc(struct shard_source* source) {
-    struct repl* repl = source->userp;
+static int repl_read_all(struct shard_source* self, struct shard_string* dest) {
+    struct repl* repl = self->userp;
     
     assert(repl->lines.count > repl->current_line);
 
     char* line = repl->lines.items[repl->current_line];
-    char c = line[repl->line_offset];
-    if(c) {
-        repl->line_offset++;
-        return (int) c;
-    }
+    dest->items = line;
+    dest->capacity = dest->count = strlen(line) + 1;
 
-    return EOF;
-}
-
-static int repl_ungetc(int c, struct shard_source* source) {
-    struct repl* repl = source->userp;
-
-    assert(repl->lines.count > repl->current_line);
-    assert(repl->line_offset > 0);
-
-    if(c != EOF)
-        repl->line_offset--;
-    return c;
+    return 0;
 }
 
 static void repl_init(struct repl* repl, struct shard_context* ctx, bool echo_result) {
@@ -91,8 +78,7 @@ static void repl_init(struct repl* repl, struct shard_context* ctx, bool echo_re
         .line_offset = 1,
         .origin = REPL_ORIGIN,
         .close = repl_close_source,
-        .getc = repl_getc,
-        .ungetc = repl_ungetc,
+        .read_all = repl_read_all,
     };
 }
 
@@ -161,6 +147,9 @@ static int handle_help(struct repl*, char*) {
 
         printf("%.*s%s\n", (int) LEN(buf), buf, commands[i].description);
     }
+
+    printf("\n");
+
     return EXIT_SUCCESS;
 }
 
@@ -205,6 +194,14 @@ static void print_repl_error(struct repl* repl, struct shard_error* error) {
 
     if(line[strlen(line) - 1] != '\n')
         fprintf(stderr, "\n");
+
+    int column = error->loc.offset;
+
+    fprintf(stderr, C_BLACK "      | " C_RST "%*s" C_RED, column, "");
+
+    for(size_t i = 0; i < MAX(error->loc.width, 1); i++)
+        fputc('^', stderr);
+    fprintf(stderr, C_RST "\n");
 }
 
 static void emit_errors(struct repl* repl) {
@@ -321,7 +318,7 @@ cleanup:
 
 static char* repl_prompt(EditLine* el) {
     (void) el;
-    return "shard> ";
+    return C_YELLOW "shard> " C_RST;
 }
 
 static char* multiline_prompt(EditLine* el) {
@@ -329,7 +326,20 @@ static char* multiline_prompt(EditLine* el) {
     return "> ";
 }
 
+static void print_version(void) {
+    printf("Shard " SHARD_VERSION " (" __DATE__ ", " __TIME__ ")\n");
+    printf("Type `:help` or `:?` for more information. Use `:q` to quit.\n");
+}
+
+static char* empty_propt(EditLine* el) {
+    (void) el;
+    return "";
+}
+
 int shard_repl(const char* progname, struct shard_context* ctx, bool echo_result) {
+    if(echo_result)
+        print_version();
+
     struct repl repl;
     repl_init(&repl, ctx, echo_result);
 
@@ -347,7 +357,7 @@ int shard_repl(const char* progname, struct shard_context* ctx, bool echo_result
     HistEvent hist_ev;
     history(hist, &hist_ev, H_SETSIZE, REPL_HISTORY_SIZE);
 
-    el_set(el, EL_PROMPT, repl_prompt);
+    el_set(el, EL_PROMPT, empty_propt);
     el_set(el, EL_HIST, history, hist);
     el_set(el, EL_SAFEREAD, 1);
 
