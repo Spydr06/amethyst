@@ -64,5 +64,10 @@ void shard_gc_free(volatile struct shard_gc* gc, void* ptr) {
     GC_FREE(ptr);
 }
 
+char* shard_gc_strdup(volatile struct shard_gc* gc, const char* str, size_t size) {
+    assert(gc == GCBOEHM_MAGIC_NUMBER);
+    return GC_STRNDUP(str, size);
+}
+
 #endif /* SHARD_USE_GCBOEHM */
 

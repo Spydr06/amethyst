@@ -1,34 +1,61 @@
 #include "eval.h"
+#include "libshard.h"
 #include "parse.h"
-#include "stmt.h"
+#include "shell.h"
+
+#include "../shard_libc_driver.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 
-int eval_next(struct shell_state* state) {
-    assert(state->parser);
-
-    struct shell_stmt stmt; 
-    int err = shell_parse_next(state->parser, &stmt);
+int eval_next(struct shell_parser* p, enum shell_eval_flags flags) {
+    struct shard_expr* expr = shard_gc_malloc(shell.shard.gc, sizeof(struct shard_expr));
+    int err = shell_parse_next(p, expr);
     if(err)
         return err;
 
-    // TODO: evaluate & save in state on success
-    printf("stmt");
+    struct shard_lazy_value* lazy = shard_lazy(&shell.shard, expr, &shell.shard.builtin_scope);
+
+    err = shard_eval_lazy(&shell.shard, lazy);
+    if(err)
+        goto runtime_error;
+
+    if(flags & SH_EVAL_ECHO_RESULTS) {
+        struct shard_string result = {0};
+        err = shard_value_to_string(&shell.shard, &result, &lazy->eval, 1);
+        if(err)
+            goto runtime_error;
+
+        fwrite(result.items, sizeof(char), result.count, stdout);
+        fputc('\n', stdout);
+
+        shard_string_free(&shell.shard, &result);
+    }
+
     return 0;
+
+runtime_error:
+    size_t num_errors = shard_get_num_errors(&shell.shard);
+    struct shard_error* errors = shard_get_errors(&shell.shard);
+    for(size_t i = 0; i < num_errors; i++) {
+        print_shard_error(stderr, &errors[i]);
+    }
+
+    return EINVAL;
 }
 
 
-int shell_eval(struct shell_state* state, struct shell_resource* resource) {
+int shell_eval(struct shard_source* source, enum shell_eval_flags flags) {
     struct shell_parser p;
-    state->parser = &p;
-    shell_parser_init(state->parser, resource, state->shard_context.gc);
+    shell_parser_init(&p, source);
 
-    int err;
-    while(!(err = eval_next(state)));
+    int err = 0;
+    while(!err) {
+        err = eval_next(&p, flags);
+    }
 
-    shell_parser_free(state->parser);
-    state->parser = NULL;
+    shell_parser_free(&p);
 
     return err == EOF ? 0 : err;
 }

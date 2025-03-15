@@ -1,5 +1,6 @@
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
+#include <libshard-internal.h>
 
 #ifndef SHARD_USE_GCBOEHM
 
@@ -509,6 +510,13 @@ void shard_gc_run(volatile struct shard_gc* gc)
     DBG_PRINTF("initiating GC run (gc@%p)\n", (void*) gc);
     mark(gc);
     sweep(gc);
+}
+
+char* shard_gc_strdup(volatile struct shard_gc* gc, const char* str, size_t size) {
+    char* dup = shard_gc_malloc(gc, size + 1);
+    memcpy(dup, str, size);
+    dup[size] = '\0';
+    return dup;
 }
 
 #endif /* SHARD_USE_GCBOEHM */

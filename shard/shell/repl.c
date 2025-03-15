@@ -1,7 +1,7 @@
-#include "resource.h"
 #include "shell.h"
 #include "eval.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <memory.h>
@@ -13,7 +13,43 @@
 // BSD libedit
 #include <histedit.h>
 
-#define DEFAULT_LINEBUFFER_SIZE 1024
+struct repl {
+    uintmax_t current_line_no;
+    struct shard_string current_line;    
+
+    struct shard_source source;
+};
+
+static int repl_read_all(struct shard_source* self, struct shard_string* dest) {
+    struct repl* repl = (struct repl*) self->userp;
+    memcpy(dest, &repl->current_line, sizeof(struct shard_string));
+    return 0;
+}
+
+static int repl_close(struct shard_source*) {
+    return 0;
+}
+
+static void repl_buffer_dtor(struct shard_string*) {}
+
+static void repl_init(struct repl* repl) {
+    memset(repl, 0, sizeof(struct repl));
+
+    repl->current_line_no = 1;
+
+    repl->source = (struct shard_source) {
+        .line_offset = repl->current_line_no,
+        .buffer_dtor = repl_buffer_dtor,
+        .close = repl_close,
+        .origin = "<repl>",
+        .read_all = repl_read_all,
+        .userp = repl
+    };
+}
+
+static void repl_free(struct repl* repl) {
+    shard_string_free(&shell.shard, &repl->current_line);
+}
 
 static char* repl_prompt(EditLine* el) {
     (void) el;
@@ -66,33 +102,23 @@ int shell_repl(void) {
 
     int err = 0;
     int count;
+
+    struct repl repl;
+    repl_init(&repl);
+
     const char* line;
-
     bool multiline = false;
-    int line_buffer_size = DEFAULT_LINEBUFFER_SIZE;
-    int line_buffer_count;
-    char* line_buffer = malloc(line_buffer_size + 1);
-
-    struct shell_resource resource;
-    resource_from_string(line_buffer, 0, &resource);
-
-    struct shell_state state;
-    shell_state_init(&state);
 
     while(!shell.repl_should_close && (line = el_gets(el, &count)) != NULL) {
-        if(!multiline)
-            line_buffer_count = 0; 
-
-        if(count > line_buffer_size) {
-            line_buffer_size = count;
-            line_buffer = realloc(line_buffer, line_buffer_size + 1);
+        if(!multiline) {
+            repl.source.line_offset = ++repl.current_line_no;
+            repl.current_line.count = 0;
         }
 
-        memcpy(line_buffer + line_buffer_count, line, count + 1);
-        line_buffer_count += strlen(line);
+        shard_string_appendn(&shell.shard, &repl.current_line, line, count);
 
-        if(line_buffer_count > 1 && line_buffer[line_buffer_count - 2] == '\\') {
-            line_buffer[line_buffer_count -= 2] = '\0';
+        if(repl.current_line.count > 0 && repl.current_line.items[repl.current_line.count - 1] == '\\') {
+            repl.current_line.items[--repl.current_line.count] = '\0';
             multiline = true;
             el_set(el, EL_PROMPT, multiline_prompt);
             continue;
@@ -101,19 +127,17 @@ int shell_repl(void) {
         multiline = false;
         el_set(el, EL_PROMPT, repl_prompt);
 
-        err = shell_eval(&state, &resource);
+        err = shell_eval(&repl.source, SH_EVAL_ECHO_RESULTS);
         if(err && shell.exit_on_error)
             break;
         
-        trim_input(&line_buffer);
-        if((line_buffer_count = strlen(line_buffer)))
-           history(hist, &hist_ev, H_ENTER, line_buffer);
+        char* save_line = repl.current_line.items;
+        trim_input(&save_line);
+        if(strlen(save_line) > 0)
+            history(hist, &hist_ev, H_ENTER, save_line);
     }
     
-    shell_state_free(&state);
-    resource_free(&resource);
-    
-    free(line_buffer);
+    repl_free(&repl);
 
     history_end(hist);
     el_end(el);

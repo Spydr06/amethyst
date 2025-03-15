@@ -177,12 +177,15 @@ void shard_lex_free(struct shard_lexer* l) {
 }
 
 static char peek_char(struct shard_lexer* l) {
+    if(l->current_loc.offset + 1 >= l->buffer.count)
+        return EOF;
+
     char c = l->buffer.items[l->current_loc.offset];
     return c ? c : EOF;
 }
 
 static char peek_char_n(struct shard_lexer* l, unsigned off) {
-    if(l->current_loc.offset + off >= l->buffer.count)
+    if(l->current_loc.offset + 1 + off >= l->buffer.count)
         return EOF;
 
     char c = l->buffer.items[l->current_loc.offset + off];
@@ -190,6 +193,9 @@ static char peek_char_n(struct shard_lexer* l, unsigned off) {
 }
 
 static char next_char(struct shard_lexer* l) {
+    if(l->current_loc.offset + 1 >= l->buffer.count)
+        return EOF;
+
     char c = l->buffer.items[l->current_loc.offset];
     
     switch(c) {

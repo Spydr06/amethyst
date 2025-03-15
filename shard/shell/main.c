@@ -8,12 +8,15 @@
 #include <stdlib.h>
 #include <stdnoreturn.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <libshard.h>
+#include <libshard-util.h>
+
+#include "../shard_libc_driver.h"
 
 #include "eval.h"
 #include "shell.h"
-#include "resource.h"
 
 __attribute__((section(".data")))
 struct shell shell;
@@ -62,9 +65,23 @@ void shell_load_defaults(int argc, char** argv) {
 
     shell.prompt = "$ ";
     shell.history_size = DEFAULT_HISTORY_SIZE;
+
+    shard_context_default(&shell.shard); 
+
+    int err = shard_init(&shell.shard);
+    if(err) {
+        errorf("error initializing libshard: %s", strerror(err));
+        exit(EXIT_FAILURE);
+    }
+
+    if((err = shell_load_builtins())) {
+        errorf("failed defining shell builtins");
+        exit(EXIT_FAILURE);
+    }
 }
 
 void shell_cleanup(void) {
+    shard_deinit(&shell.shard);
     free(shell.progname_copy);
 }
 
@@ -107,20 +124,14 @@ int main(int argc, char** argv) {
             exit(EXIT_FAILURE);
         }
 
-        struct shell_resource resource;
-        if((err = resource_from_string(eval_str, false, &resource))) {
+        struct shard_source source;
+        int err = shard_string_source(&shell.shard, &source, "<inline string>", eval_str, strlen(eval_str) + 1, 0);
+        if(err) {
             errorf("%s", strerror(err));
             exit(EXIT_FAILURE);
         }
 
-        struct shell_state state;
-        shell_state_init(&state);
-
-        err = shell_eval(&state, &resource);
-
-        shell_state_free(&state);
-
-        resource_free(&resource);
+        err = shell_eval(&source, 0);
 
         exit(err ? EXIT_FAILURE : EXIT_SUCCESS);
     }
@@ -129,22 +140,16 @@ int main(int argc, char** argv) {
         repl = false;
         char* filepath = argv[optind];
 
-        struct shell_resource resource;
-        if((err = resource_from_file(filepath, "r", &resource))) {
+        struct shard_source source;
+        int err = shard_open_callback(filepath, &source, "r");
+        if(err) {
             errorf("%s: %s", filepath, strerror(err));
             exit(EXIT_FAILURE);
         }
 
-        struct shell_state state;
-        shell_state_init(&state);
-
-        err = shell_eval(&state, &resource);
+        err = shell_eval(&source, 0);
         if(err && shell.exit_on_error)
             exit(EXIT_FAILURE);
-
-        shell_state_free(&state);
-
-        resource_free(&resource);
     }
 
     if(repl && (err = shell_repl()))

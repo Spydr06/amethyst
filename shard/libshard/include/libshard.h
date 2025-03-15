@@ -150,6 +150,8 @@ SHARD_DECL void* shard_gc_calloc(volatile struct shard_gc* gc, size_t nmemb, siz
 SHARD_DECL void* shard_gc_realloc(volatile struct shard_gc* gc, void* ptr, size_t size);
 SHARD_DECL void shard_gc_free(volatile struct shard_gc* gc, void* ptr);
 
+SHARD_DECL char* shard_gc_strdup(volatile struct shard_gc* gc, const char* str, size_t size);
+
 struct shard_error {
     struct shard_location loc;
     char* err;
@@ -466,7 +468,7 @@ struct shard_expr {
         } let;
 
         struct {
-            struct shard_value (*callback)(volatile struct shard_evaluator*);
+            struct shard_builtin* builtin;
         } builtin;
 
         struct {

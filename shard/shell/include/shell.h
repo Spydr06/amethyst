@@ -3,8 +3,6 @@
 
 #include <libshard.h>
 
-#include "resource.h"
-
 #ifndef SHARD_SHELL_VERSION
     #define SHARD_SHELL_VERSION "unknown"
 #endif
@@ -27,6 +25,8 @@ struct shell {
     bool exit_on_error      : 1;
     bool verbose_output     : 1;
     bool repl_should_close  : 1;
+
+    struct shard_context shard;
 };
 
 extern struct shell shell;
@@ -36,16 +36,17 @@ void shell_load_defaults(int argc, char** argv);
 int shell_repl(void);
 __attribute__((format(printf, 1, 2))) void errorf(const char *fmt, ...);
 
-struct shell_state {
-    struct shard_context shard_context;
-    struct shell_parser* parser;
+int shell_load_builtins(void);
 
-    bool errored;
+enum shell_process_flags {
+    SH_PROC_WAIT = 0x01,
 };
 
-void shell_state_init(struct shell_state* state);
+int shell_process(size_t argc, char** argv, enum shell_process_flags flags);
 
-void shell_state_free(struct shell_state* state);
+// Shell Builtins
+
+extern struct shard_builtin shell_builtin_callProgram;
 
 #endif /* _SHARD_SHELL_H */
 

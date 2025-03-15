@@ -976,7 +976,7 @@ static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_
         case SHARD_EXPR_CALL:
             return eval_call(e, expr);
         case SHARD_EXPR_BUILTIN:
-            return expr->builtin.callback(e);
+            return BUILTIN_VAL(expr->builtin.builtin);
         case SHARD_EXPR_LCOMPOSE:
             return eval_composition(e, expr, false);
         case SHARD_EXPR_RCOMPOSE:
