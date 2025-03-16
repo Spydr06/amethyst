@@ -3,8 +3,6 @@
 #include "parse.h"
 #include "shell.h"
 
-#include "../shard_libc_driver.h"
-
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
@@ -36,11 +34,7 @@ int eval_next(struct shell_parser* p, enum shell_eval_flags flags) {
     return 0;
 
 runtime_error:
-    size_t num_errors = shard_get_num_errors(&shell.shard);
-    struct shard_error* errors = shard_get_errors(&shell.shard);
-    for(size_t i = 0; i < num_errors; i++) {
-        print_shard_error(stderr, &errors[i]);
-    }
+    print_shard_errors();
 
     return EINVAL;
 }

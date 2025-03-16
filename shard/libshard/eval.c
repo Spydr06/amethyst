@@ -846,7 +846,7 @@ static inline struct shard_value eval_call_value(volatile struct shard_evaluator
              ret_value = eval_call_builtin(e, value, arg);
              break;
         default:
-            shard_eval_throw(e, loc, "attempt to call something which is not a function");
+            shard_eval_throw(e, loc, "attempt to call value of type `%s`, expect `function` or `set`", shard_value_type_to_string(e->ctx, value.type));
     }
 
     e->error_scope = e->error_scope->prev;

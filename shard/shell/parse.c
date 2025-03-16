@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <memory.h>
 
@@ -15,13 +16,19 @@
 enum precedence {
     PREC_LOWEST,
 
+    PREC_SEQUENCE,
     PREC_LOGAND,
     PREC_LOGOR,
+    
+    PREC_ASYNC,
+
     PREC_CALL,
     PREC_UNARY,
 
     PREC_HIGHEST
 };
+
+static int parse_expr(struct shell_parser* p, struct shard_expr* expr, enum precedence prec);
 
 static void __attribute__((format(printf, 3, 4)))
 parse_errorf(struct shell_parser* p, struct shard_location loc, const char* fmt, ...) {
@@ -62,6 +69,14 @@ static void advance(struct shell_parser* p) {
 
 static enum precedence get_precedence(enum shell_token_type type) {
     switch(type) {
+        case SH_TOK_SEMICOLON:
+            return PREC_SEQUENCE;
+        case SH_TOK_AMPERSAND:
+            return PREC_ASYNC;
+        case SH_TOK_AND:
+            return PREC_LOGAND;
+        case SH_TOK_OR:
+            return PREC_LOGOR;
         case SH_TOK_EOF:
             return PREC_LOWEST;
         default:
@@ -69,10 +84,45 @@ static enum precedence get_precedence(enum shell_token_type type) {
     }
 }
 
+static int parse_var(struct shell_parser* p, struct shard_expr* expr) {
+    char* ident = strndup(p->token.value.items, p->token.value.count);
+    char* attr = strtok(ident, ".");
+
+    expr->type = SHARD_EXPR_IDENT;
+    expr->loc = p->token.loc;
+    expr->ident = shard_get_ident(&shell.shard, attr);
+    
+    if(!(attr = strtok(NULL, "."))) {
+        advance(p);
+        free(ident);
+        return 0;
+    }
+
+    struct shard_expr* set = shard_gc_malloc(shell.shard.gc, sizeof(struct shard_expr));
+    memcpy(set, expr, sizeof(struct shard_expr));
+
+    expr->type = SHARD_EXPR_ATTR_SEL;
+    expr->attr_sel.set = set;
+    expr->attr_sel.default_value = NULL;
+    
+    shard_attr_path_gc_init(shell.shard.gc, &expr->attr_sel.path);
+
+    do {
+        shard_attr_path_gc_append(shell.shard.gc, &expr->attr_sel.path, shard_get_ident(&shell.shard, attr));
+    } while((attr = strtok(NULL, ".")));
+
+    advance(p);
+
+    free(ident);
+    return 0;
+}
+
 static int parse_prefix_expr(struct shell_parser* p, struct shard_expr* expr) {
     expr->loc = p->token.loc;
 
     switch(p->token.type) {
+        case SH_TOK_VAR:
+            return parse_var(p, expr);
         case SH_TOK_TEXT:
             expr->type = SHARD_EXPR_STRING;
             expr->string = shard_gc_strdup(shell.shard.gc, p->token.value.items, p->token.value.count);
@@ -85,11 +135,52 @@ static int parse_prefix_expr(struct shell_parser* p, struct shard_expr* expr) {
     }
 }
 
+static int parse_wrapped_binop(struct shell_parser* p, struct shard_expr* expr, struct shard_expr* left, struct shard_builtin* wrapper_builtin) {
+    struct shard_location loc = p->token.loc;
+    enum precedence prec = get_precedence(p->token.type);
+    advance(p);
+
+    struct shard_expr* lhs = shard_gc_malloc(shell.shard.gc, sizeof(struct shard_expr));
+    memcpy(lhs, left, sizeof(struct shard_expr));
+
+    struct shard_expr* wrapper = shard_gc_malloc(shell.shard.gc, sizeof(struct shard_expr));
+    wrapper->type = SHARD_EXPR_BUILTIN;
+    wrapper->loc = loc;
+    wrapper->builtin.builtin = wrapper_builtin;
+
+    struct shard_expr* inner_call = shard_gc_malloc(shell.shard.gc, sizeof(struct shard_expr));
+    inner_call->type = SHARD_EXPR_CALL;
+    inner_call->loc = loc;
+    inner_call->binop.lhs = wrapper;
+    inner_call->binop.rhs = lhs;
+
+    struct shard_expr* rhs = shard_gc_malloc(shell.shard.gc, sizeof(struct shard_expr));
+    int err = parse_expr(p, rhs, prec);
+    if(err)
+        return err;
+
+    expr->type = SHARD_EXPR_CALL;
+    expr->loc = loc;
+    expr->binop.lhs = inner_call;
+    expr->binop.rhs = rhs;
+    return 0;
+}
+
 static int parse_infix_expr(struct shell_parser* p, struct shard_expr* expr, struct shard_expr* left) {
     switch(p->token.type) {
+        case SH_TOK_AMPERSAND:
+            assert(!"unimplemented");
+            break;
+        case SH_TOK_SEMICOLON:
+            return parse_wrapped_binop(p, expr, left, &shard_builtin_seq);
+        case SH_TOK_AND:
+            return parse_wrapped_binop(p, expr, left, &shell_builtin_and);
+        case SH_TOK_OR:
+            return parse_wrapped_binop(p, expr, left, &shell_builtin_or);
         default:
             assert(!"unimplemented");
     }    
+    return 0;
 }
 
 static int parse_call(struct shell_parser* p, struct shard_expr* expr) {

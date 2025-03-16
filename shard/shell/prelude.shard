@@ -1,0 +1,13 @@
+/*
+    Shard-shell prelude file.
+    This file defines all builtin shell commands and handles loading the configuration
+*/
+{
+    exit = args :: list: with builtins; 
+        (case length args of
+            0 => shell.exit 0;
+            1 => shell.exit $ parseInt $ head args;
+            _ => shell.printError "exit: too many arguments"
+        );
+}
+

@@ -405,6 +405,10 @@ enum shard_expr_type {
 };
 
 SHARD_DECL void shard_attr_path_init(struct shard_context* ctx, struct shard_attr_path* path);
+SHARD_DECL void shard_attr_path_gc_init(struct shard_gc* gc, struct shard_attr_path* path);
+
+SHARD_DECL void shard_attr_path_append(struct shard_context* ctx, struct shard_attr_path* path, shard_ident_t ident);
+SHARD_DECL void shard_attr_path_gc_append(struct shard_gc* gc, struct shard_attr_path* path, shard_ident_t ident);
 
 struct shard_expr {
     enum shard_expr_type type;

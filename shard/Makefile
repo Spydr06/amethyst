@@ -39,8 +39,8 @@ GEODE_LDFLAGS := $(shell pkg-config --libs $(GEODE_LIBS))
 
 SHELL_BIN := $(BUILD_DIR)/shard-sh
 
-SHELL_SOURCES := $(shell find $(SHELL_DIR) -name '*.c')
-SHELL_OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SHELL_SOURCES))
+SHELL_SOURCES := $(shell find $(SHELL_DIR) -name '*.c' -or -name '*.S')
+SHELL_OBJECTS := $(patsubst %.S, $(BUILD_DIR)/%.o, $(patsubst %.c, $(BUILD_DIR)/%.o, $(SHELL_SOURCES)))
 
 SHELL_CLFAGS := -I$(SHELL_DIR)/include -g
 SHELL_LDFLAGS := -ledit
@@ -106,7 +106,7 @@ $(GEODE_BIN): $(GEODE_OBJECTS) $(LIBSHARD_OBJ) $(LIBC_DRIVER)
 
 $(SHELL_BIN): $(SHELL_OBJECTS) $(LIBSHARD_OBJ) $(LIBC_DRIVER)
 	@echo "  CCLD  $@"
-	@$(CC) $(CFLAGS) $(SHELL_LDFLAGS) -o $@ $^ $(LDFLAGS)
+	@$(CC) $(CFLAGS) $(SHELL_LDFLAGS) -Wl,-z,noexecstack -o $@ $^ $(LDFLAGS)
 
 .PHONY: libshard_obj
 libshard_obj: $(LIBSHARD_OBJ)
@@ -122,6 +122,11 @@ $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR) $(GCBOEHM_LIB)
 		$(if $(filter $(GEODE_DIR)/%,$<),$(GEODE_CFLAGS)) \
 		$(if $(filter $(SHELL_DIR)/%,$<),$(SHELL_CLFAGS)) \
 		-MMD -MP -MF "$(@:%.o=%.d)" -c $^ -o $@
+
+$(BUILD_DIR)/%.o: %.S | $(BUILD_DIR)
+	@echo "  AS    $^"
+	@mkdir -p $(dir $@)
+	@$(AS) $(ASFLAGS) $^ -o $@
 
 .PHONY: gcboehm
 gcboehm: $(GCBOEHM_LIB)

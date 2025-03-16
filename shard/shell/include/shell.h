@@ -13,6 +13,8 @@
 
 #define DEFAULT_HISTORY_SIZE 100
 
+#define DEFAULT_PRELUDE_FILE "/etc/shell/prelude.shard"
+
 struct shell {
     const char* progname;
     
@@ -27,16 +29,23 @@ struct shell {
     bool repl_should_close  : 1;
 
     struct shard_context shard;
+
+    struct shard_set* commands;
 };
+
+typedef int (*shell_command_t)(int argc, char** argv);
 
 extern struct shell shell;
 
 void shell_load_defaults(int argc, char** argv);
-
-int shell_repl(void);
-__attribute__((format(printf, 1, 2))) void errorf(const char *fmt, ...);
-
 int shell_load_builtins(void);
+int shell_prelude(void);
+int shell_repl(void);
+
+__attribute__((format(printf, 1, 2))) void errorf(const char *fmt, ...);
+int print_shard_errors(void);
+
+int shell_call_command(volatile struct shard_evaluator* e, const char* cmdname, struct shard_list* args, struct shard_value* return_val, struct shard_location loc);
 
 enum shell_process_flags {
     SH_PROC_WAIT = 0x01,
@@ -46,7 +55,10 @@ int shell_process(size_t argc, char** argv, enum shell_process_flags flags);
 
 // Shell Builtins
 
+extern struct shard_builtin shard_builtin_seq;
 extern struct shard_builtin shell_builtin_callProgram;
+extern struct shard_builtin shell_builtin_and;
+extern struct shard_builtin shell_builtin_or;
 
 #endif /* _SHARD_SHELL_H */
 

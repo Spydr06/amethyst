@@ -100,9 +100,23 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
     }
 }
 
+void shard_attr_path_gc_init(struct shard_gc* gc, struct shard_attr_path* path) {
+    path->items = shard_gc_malloc(gc, sizeof(shard_ident_t));
+    path->count = 0;
+    path->capacity = 1;
+}
+
 void shard_attr_path_init(struct shard_context* ctx, struct shard_attr_path* path) {
     path->items = ctx->malloc(sizeof(shard_ident_t));
     path->count = 0;
     path->capacity = 1;
+}
+
+void shard_attr_path_append(struct shard_context* ctx, struct shard_attr_path* path, shard_ident_t ident) {
+    dynarr_append(ctx, path, ident);
+}
+
+void shard_attr_path_gc_append(struct shard_gc* gc, struct shard_attr_path* path, shard_ident_t ident) {
+    dynarr_gc_append(gc, path, ident);
 }
 

@@ -504,6 +504,13 @@ static struct shard_value builtin_toPath(volatile struct shard_evaluator* e, str
     return PATH_VAL(str.string, str.strlen);
 }
 
+static struct shard_value builtin_parseInt(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value arg = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    long long int_val = strtoll(arg.string, NULL, 10);
+    return INT_VAL((int64_t) int_val);
+}
+
 static struct shard_value builtin_toString(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value arg = shard_builtin_eval_arg(e, builtin, args, 0);
     switch(arg.type) {
@@ -550,7 +557,7 @@ static struct shard_value builtin_toString(volatile struct shard_evaluator* e, s
             return returned;
         } break;
         default:
-            shard_eval_throw(e, e->error_scope->loc, "`builtins.toString` cannot convert this value to string");
+            shard_eval_throw(e, e->error_scope->loc, "`builtins.toString` cannot convert value of type `%s` to string", shard_value_type_to_string(e->ctx, arg.type));
     }
 }
 
@@ -687,6 +694,7 @@ static struct shard_value builtin_when(volatile struct shard_evaluator* e, struc
 #define IMPORT_BUILTIN 0
 
 struct shard_builtin shard_builtin_toString = SHARD_BUILTIN("builtins.toString", builtin_toString, SHARD_VAL_ANY);
+struct shard_builtin shard_builtin_seq = SHARD_BUILTIN("builtins.seq", builtin_seq, SHARD_VAL_ANY, SHARD_VAL_ANY);
 
 static struct shard_builtin builtins[] = {
     [IMPORT_BUILTIN] = SHARD_BUILTIN("builtins.import", builtin_import, SHARD_VAL_TEXTUAL),
@@ -731,6 +739,7 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.sub", builtin_sub, SHARD_VAL_NUMERIC, SHARD_VAL_NUMERIC),
     SHARD_BUILTIN("builtins.tail", builtin_tail, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.toPath", builtin_toPath, SHARD_VAL_STRING),
+    SHARD_BUILTIN("builtins.parseInt", builtin_parseInt, SHARD_VAL_STRING),
     SHARD_BUILTIN("builtins.tryEval", builtin_tryEval, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.typeOf", builtin_typeOf, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.when", builtin_when, SHARD_VAL_BOOL, SHARD_VAL_ANY),

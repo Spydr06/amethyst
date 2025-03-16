@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <stdint.h>
 
+#include <assert.h>
 #include <errno.h>
 
 //
@@ -256,6 +257,21 @@ char* strtok(char* restrict str, const char* restrict delim) {
     (void) delim;
     unimplemented();
     return NULL;
+}
+
+long long strtoll(const char* restrict nptr, char** restrict endptr, int base) {
+    assert(base == 10); // TODO: implement other base
+    
+    long long value = 0;
+
+    while(isdigit(*nptr)) {
+        value = value * base + (*nptr - '0');
+        nptr++;
+    }
+
+    *endptr = (char*) nptr;
+
+    return value;
 }
 
 char* strerror(int errnum) {

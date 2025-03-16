@@ -38,5 +38,7 @@ char* strerror(int errnum);
 
 char* strcat(char* restrict dst, const char* restrict src);
 
+long long strtoll(const char* restrict nptr, char** restrict endptr, int base);
+
 #endif /* _AMETHYST_LIBC_STRING_H */
 

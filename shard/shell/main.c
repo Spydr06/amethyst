@@ -45,7 +45,7 @@ static noreturn void version(void) {
 void verrorf(const char *fmt, va_list ap) {
     fprintf(stdout, "%s: ", shell.progname);
     vfprintf(stdout, fmt, ap);
-    fprintf(stdout, fmt, '\n');
+    fprintf(stdout, "\n");
     fflush(stdout);
 }
 
@@ -54,6 +54,16 @@ __attribute__((format(printf, 1, 2))) void errorf(const char *fmt, ...) {
     va_start(ap, fmt);
     verrorf(fmt, ap);
     va_end(ap);
+}
+
+int print_shard_errors(void) {
+    size_t num_errors = shard_get_num_errors(&shell.shard);
+    struct shard_error* errors = shard_get_errors(&shell.shard);
+    for(size_t i = 0; i < num_errors; i++) {
+        print_shard_error(stderr, &errors[i]);
+    }
+    shard_remove_errors(&shell.shard);
+    return (int) num_errors;
 }
 
 void shell_load_defaults(int argc, char** argv) {
@@ -75,7 +85,12 @@ void shell_load_defaults(int argc, char** argv) {
     }
 
     if((err = shell_load_builtins())) {
-        errorf("failed defining shell builtins");
+        errorf("failed defining shell builtins: %s", strerror(err));
+        exit(EXIT_FAILURE);
+    }
+
+    if((err = shell_prelude())) {
+        errorf("failed loading `prelude.shard`");
         exit(EXIT_FAILURE);
     }
 }

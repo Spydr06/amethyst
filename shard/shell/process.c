@@ -32,7 +32,7 @@ int shell_process(size_t argc, char** argv, enum shell_process_flags flags) {
         if(WIFEXITED(pid_status)) {
             int exit_code = WEXITSTATUS(pid_status);
             if(exit_code == 255) {
-                errorf("command not found");
+                errorf("%s: command not found", argv[0]);
             }
             return exit_code;
         }
