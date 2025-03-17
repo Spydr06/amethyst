@@ -2,34 +2,51 @@
 
 #include <libshard.h>
 
+#define __USE_XOPEN2K
+
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
+#define NULL_VAL() ((struct shard_value) { .type = SHARD_VAL_NULL })
 #define INT_VAL(i) ((struct shard_value) { .type = SHARD_VAL_INT, .integer = (int64_t)(i) })
 
-static struct shard_value builtin_callProgram(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
-static struct shard_value builtin_exit(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
-static struct shard_value builtin_printError(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
-static struct shard_value builtin_and(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
-static struct shard_value builtin_or(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+#define STRING_VAL(s, l) ((struct shard_value) { .type = SHARD_VAL_STRING, .string = (s), .strlen = (l) })
+#define CSTRING_VAL(s) STRING_VAL(s, strlen((s)))
+
+#define SHELL_BUILTIN(name, cname, ...)                                                                                                                 \
+        static struct shard_value builtin_##cname(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);   \
+        struct shard_builtin shell_builtin_##cname = SHARD_BUILTIN(name, builtin_##cname, __VA_ARGS__)
 
 extern struct shard_builtin shard_builtin_toString;
 
-struct shard_builtin shell_builtin_callProgram = SHARD_BUILTIN("shell.callProgram", builtin_callProgram, SHARD_VAL_LIST);
-struct shard_builtin shell_builtin_exit = SHARD_BUILTIN("shell.exit", builtin_exit, SHARD_VAL_INT);
-struct shard_builtin shell_builtin_printError = SHARD_BUILTIN("shell.printError", builtin_printError, SHARD_VAL_STRING);
-
-struct shard_builtin shell_builtin_and = SHARD_BUILTIN("shell.and", builtin_and, SHARD_VAL_INT, SHARD_VAL_INT);
-struct shard_builtin shell_builtin_or = SHARD_BUILTIN("shell.or", builtin_or, SHARD_VAL_INT, SHARD_VAL_INT);
+SHELL_BUILTIN("shell.callProgram", callProgram, SHARD_VAL_LIST);
+SHELL_BUILTIN("shell.changeDir", changeDir, SHARD_VAL_STRING | SHARD_VAL_PATH);
+SHELL_BUILTIN("shell.exit", exit, SHARD_VAL_INT);
+SHELL_BUILTIN("shell.printError", printError, SHARD_VAL_STRING);
+SHELL_BUILTIN("shell.printLn", printLn, SHARD_VAL_STRING);
+SHELL_BUILTIN("shell.getAlias", getAlias, SHARD_VAL_STRING);
+SHELL_BUILTIN("shell.setAlias", setAlias, SHARD_VAL_STRING, SHARD_VAL_STRING);
+SHELL_BUILTIN("shell.getEnv", getEnv, SHARD_VAL_STRING);
+SHELL_BUILTIN("shell.setEnv", setEnv, SHARD_VAL_STRING, SHARD_VAL_STRING);
+SHELL_BUILTIN("shell.and", and, SHARD_VAL_INT, SHARD_VAL_INT);
+SHELL_BUILTIN("shell.or", or, SHARD_VAL_INT, SHARD_VAL_INT);
 
 struct shard_builtin* shell_builtins[] = {
     &shell_builtin_callProgram,
+    &shell_builtin_changeDir,
     &shell_builtin_exit,
     &shell_builtin_printError,
+    &shell_builtin_printLn,
     &shell_builtin_and,
     &shell_builtin_or,
+    &shell_builtin_getAlias,
+    &shell_builtin_setAlias,
+    &shell_builtin_getEnv,
+    &shell_builtin_setEnv
 };
 
 int shell_load_builtins(void) {
@@ -53,7 +70,7 @@ static struct shard_value builtin_callProgram(volatile struct shard_evaluator* e
     assert(head != NULL);
 
     struct shard_value head_val = shard_eval_lazy2(e, head->value);
-    if(head_val.type == SHARD_VAL_STRING) {
+    if(head_val.type & SHARD_VAL_TEXTUAL) {
         struct shard_value return_val;
         int err = shell_call_command(e, head_val.string, head->next, &return_val, e->error_scope->loc);
         if(!err) {
@@ -81,6 +98,16 @@ static struct shard_value builtin_callProgram(volatile struct shard_evaluator* e
     return INT_VAL(shell_process(argc, argv, SH_PROC_WAIT));
 }
 
+static struct shard_value builtin_changeDir(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value arg = shard_builtin_eval_arg(e, builtin, args, 0);
+    const char* dir = arg.type == SHARD_VAL_STRING ? arg.string : arg.path;
+
+    int err = chdir(dir);
+    if(err < 0)
+        return INT_VAL(errno);
+    return INT_VAL(0);
+}
+
 static struct shard_value builtin_exit(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value exit_code = shard_builtin_eval_arg(e, builtin, args, 0);
     exit(exit_code.integer);
@@ -88,8 +115,19 @@ static struct shard_value builtin_exit(volatile struct shard_evaluator* e, struc
 
 static struct shard_value builtin_printError(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value message = shard_builtin_eval_arg(e, builtin, args, 0);
-    errorf("%s", message.string);
+    struct shard_location loc = e->error_scope->loc;
+
+    errorf("%s (%s:%u:%u)", message.string, loc.src->origin, loc.line, loc.column);
+    
     return INT_VAL(EXIT_FAILURE);
+}
+
+static struct shard_value builtin_printLn(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value message = shard_builtin_eval_arg(e, builtin, args, 0);
+    
+    printf("%s\n", message.string);
+
+    return INT_VAL(0);
 }
 
 static struct shard_value builtin_and(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
@@ -108,5 +146,43 @@ static struct shard_value builtin_or(volatile struct shard_evaluator* e, struct 
 
     struct shard_value rhs = shard_builtin_eval_arg(e, builtin, args, 1);
     return INT_VAL(rhs.integer ? 1 : 0);
+}
+
+static struct shard_value builtin_getAlias(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value name = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    void* value = shard_hashmap_get(&shell.aliases, name.string);
+    if(value)
+        return CSTRING_VAL(value);
+    else
+        return NULL_VAL();
+}
+
+static struct shard_value builtin_setAlias(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value name = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value value = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    shard_gc_make_static(shell.shard.gc, (void*) value.string);
+    int err = shard_hashmap_put(&shell.shard, &shell.aliases, name.string, (char*) value.string);
+    return INT_VAL(err);
+}
+
+static struct shard_value builtin_getEnv(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value name = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    char* value = getenv(name.string);
+    if(!value)
+        return NULL_VAL();
+    return CSTRING_VAL(value);
+}
+
+static struct shard_value builtin_setEnv(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value name = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value value = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    int err = setenv(name.string, value.string, 1);
+    if(err < 0)
+        return INT_VAL(errno);
+    return INT_VAL(0);
 }
 

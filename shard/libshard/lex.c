@@ -14,7 +14,8 @@
         .src = (l)->current_loc.src,                    \
         .line = (l)->current_loc.line,                  \
         .width = (w),                                   \
-        .offset = (l)->current_loc.offset - (w)         \
+        .offset = (l)->current_loc.offset - (w),        \
+        .column = (l)->current_loc.column               \
     })
 
 #define BASIC_TOK(tok, l, type) (                 \

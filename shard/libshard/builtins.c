@@ -2,10 +2,11 @@
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
 
+#include <ctype.h>
+#include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <stdio.h>
-#include <errno.h>
 
 struct shard_builtin_const {
     const char* full_name;
@@ -98,6 +99,11 @@ static struct shard_value builtin_elemAt(volatile struct shard_evaluator* e, str
     }
 
     return NULL_VAL();
+}
+
+static struct shard_value builtin_errnoString(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args)  {
+    struct shard_value err = shard_builtin_eval_arg(e, builtin, args, 0);
+    return CSTRING_VAL(strerror((int) err.integer));
 }
 
 static struct shard_value builtin_evaluated(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
@@ -198,6 +204,36 @@ static struct shard_value builtin_split(volatile struct shard_evaluator* e, stru
         prev = next;
         sect = strtok(NULL, delim.string);
     }
+
+    return LIST_VAL(head);
+}
+
+static struct shard_value builtin_splitFirst(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value delim = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value string = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    char* string_copy = shard_gc_malloc(e->gc, (string.strlen + 1) * sizeof(char));
+    memcpy(string_copy, string.string, (string.strlen + 1) * sizeof(char));
+
+    char* split = strstr(string.string, delim.string);
+
+
+    struct shard_list *head = shard_gc_malloc(e->gc, sizeof(struct shard_list));
+    if(!split) {
+        head->next = NULL;
+        head->value = args[1];
+        return LIST_VAL(head);
+    }
+
+    struct shard_list* tail = shard_gc_malloc(e->gc, sizeof(struct shard_list));
+    tail->next = NULL;
+    head->next = tail;
+
+    const char* first = shard_gc_strdup(e->gc, string.string, split - string.string);
+    const char* second = shard_gc_strdup(e->gc, split + delim.strlen, string.strlen - (split - string.string) - delim.strlen);
+
+    head->value = shard_unlazy(e->ctx, STRING_VAL(first, strlen(first)));
+    tail->value = shard_unlazy(e->ctx, STRING_VAL(second, strlen(second)));
 
     return LIST_VAL(head);
 }
@@ -385,6 +421,18 @@ static struct shard_value builtin_genList(volatile struct shard_evaluator* e, st
     return LIST_VAL(head);
 }
 
+static struct shard_value builtin_getAttr(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value attr_name = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value set = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    struct shard_lazy_value* attr_lazy;
+    int err = shard_set_get(set.set, shard_get_ident(e->ctx, attr_name.string), &attr_lazy);
+    if(err)
+        return NULL_VAL();
+
+    return shard_eval_lazy2(e, attr_lazy);
+}
+
 static struct shard_value builtin_concatLists(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value lists = shard_builtin_eval_arg(e, builtin, args, 0);
 
@@ -504,6 +552,34 @@ static struct shard_value builtin_toPath(volatile struct shard_evaluator* e, str
     return PATH_VAL(str.string, str.strlen);
 }
 
+static struct shard_value builtin_trim(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value arg = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    const char* str = arg.string;
+
+    size_t size = arg.strlen;
+    if(size == 0)
+        return STRING_VAL(arg.string, 0);
+
+    for(int64_t i = size - 1; i >= 0; i--) {
+        if(isspace(str[i]))
+            size--;
+        else
+            break;
+    }
+
+    for(size_t i = 0; i < size; i++) {
+        if(isspace(*str)) {
+            str++;
+            size--;
+        }
+        else
+            break;
+    }
+
+    return CSTRING_VAL(shard_gc_strdup(e->gc, str, size));
+}
+
 static struct shard_value builtin_parseInt(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value arg = shard_builtin_eval_arg(e, builtin, args, 0);
 
@@ -576,6 +652,28 @@ static struct shard_value builtin_tryEval(volatile struct shard_evaluator* e, st
     struct shard_set* set = shard_set_init(e->ctx, 2);
     shard_set_put(set, shard_get_ident(e->ctx, "success"), shard_unlazy(e->ctx, success));
     shard_set_put(set, shard_get_ident(e->ctx, "value"), shard_unlazy(e->ctx, value));
+
+    return SET_VAL(set);
+}
+
+static struct shard_value builtin_tryGetLocation(volatile struct shard_evaluator* e, struct shard_builtin*, struct shard_lazy_value** args)  {
+    struct shard_lazy_value* arg = args[0];
+
+    struct shard_location loc;
+    if(!arg->evaluated) {
+        loc = arg->lazy->loc;
+        shard_eval_lazy2(e, arg);
+    }
+    else if(arg->eval.type != SHARD_VAL_FUNCTION)
+        return NULL_VAL();
+
+    if(arg->eval.type == SHARD_VAL_FUNCTION)
+        loc = arg->eval.function.body->loc;
+
+    struct shard_set* set = shard_set_init(e->ctx, 3);
+    shard_set_put(set, shard_get_ident(e->ctx, "file"), shard_unlazy(e->ctx, STRING_VAL(loc.src->origin, strlen(loc.src->origin))));
+    shard_set_put(set, shard_get_ident(e->ctx, "line"), shard_unlazy(e->ctx, INT_VAL(loc.line)));
+    shard_set_put(set, shard_get_ident(e->ctx, "column"), shard_unlazy(e->ctx, INT_VAL(loc.column)));
 
     return SET_VAL(set);
 }
@@ -714,10 +812,12 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.div", builtin_div, SHARD_VAL_NUMERIC, SHARD_VAL_NUMERIC),
     SHARD_BUILTIN("builtins.elem", builtin_elem, SHARD_VAL_ANY, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.elemAt", builtin_elemAt, SHARD_VAL_LIST, SHARD_VAL_INT),
+    SHARD_BUILTIN("builtins.errnoString", builtin_errnoString, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.evalutated", builtin_evaluated, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.floor", builtin_floor, SHARD_VAL_FLOAT),
     SHARD_BUILTIN("builtins.foldl", builtin_foldl, SHARD_VAL_CALLABLE, SHARD_VAL_ANY, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.genList", builtin_genList, SHARD_VAL_CALLABLE, SHARD_VAL_INT),
+    SHARD_BUILTIN("builtins.getAttr", builtin_getAttr, SHARD_VAL_STRING, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.head", builtin_head, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.isAttrs", builtin_isAttrs, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.isBool", builtin_isBool, SHARD_VAL_ANY),
@@ -736,11 +836,14 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.seq", builtin_seq, SHARD_VAL_ANY, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.seqList", builtin_seqList, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.split", builtin_split, SHARD_VAL_STRING, SHARD_VAL_STRING),
+    SHARD_BUILTIN("builtins.splitFirst", builtin_splitFirst, SHARD_VAL_STRING, SHARD_VAL_STRING),
     SHARD_BUILTIN("builtins.sub", builtin_sub, SHARD_VAL_NUMERIC, SHARD_VAL_NUMERIC),
     SHARD_BUILTIN("builtins.tail", builtin_tail, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.toPath", builtin_toPath, SHARD_VAL_STRING),
+    SHARD_BUILTIN("builtins.trim", builtin_trim, SHARD_VAL_STRING),
     SHARD_BUILTIN("builtins.parseInt", builtin_parseInt, SHARD_VAL_STRING),
     SHARD_BUILTIN("builtins.tryEval", builtin_tryEval, SHARD_VAL_ANY),
+    SHARD_BUILTIN("builtins.tryGetLocation", builtin_tryGetLocation, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.typeOf", builtin_typeOf, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.when", builtin_when, SHARD_VAL_BOOL, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.toString", builtin_toString, SHARD_VAL_ANY),

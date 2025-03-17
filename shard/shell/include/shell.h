@@ -2,6 +2,7 @@
 #define _SHARD_SHELL_H
 
 #include <libshard.h>
+#include <histedit.h>
 
 #ifndef SHARD_SHELL_VERSION
     #define SHARD_SHELL_VERSION "unknown"
@@ -14,6 +15,16 @@
 #define DEFAULT_HISTORY_SIZE 100
 
 #define DEFAULT_PRELUDE_FILE "/etc/shell/prelude.shard"
+
+struct shell_repl {
+    EditLine* el;
+    History* history;
+
+    uintmax_t current_line_no;
+    struct shard_string current_line;    
+
+    struct shard_source source;
+};
 
 struct shell {
     const char* progname;
@@ -30,7 +41,11 @@ struct shell {
 
     struct shard_context shard;
 
+    struct shell_repl repl;
     struct shard_set* commands;
+
+    struct shard_hashmap aliases;
+    struct shard_string_list dir_stack; // pushd, popd
 };
 
 typedef int (*shell_command_t)(int argc, char** argv);
@@ -40,7 +55,11 @@ extern struct shell shell;
 void shell_load_defaults(int argc, char** argv);
 int shell_load_builtins(void);
 int shell_prelude(void);
+
 int shell_repl(void);
+
+int shell_pushd(const char* path);
+int shell_popd(void);
 
 __attribute__((format(printf, 1, 2))) void errorf(const char *fmt, ...);
 int print_shard_errors(void);

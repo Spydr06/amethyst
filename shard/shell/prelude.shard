@@ -2,12 +2,73 @@
     Shard-shell prelude file.
     This file defines all builtin shell commands and handles loading the configuration
 */
-{
-    exit = args :: list: with builtins; 
-        (case length args of
+
+let 
+    locationToString = { file, line, column }: file + ":" + (builtins.toString line) + ":" + (builtins.toString column);
+
+    commands = with builtins; {
+        alias = args :: list: let
+            handleArg = arg: (case splitFirst "=" arg of
+                a if (length a) == 1 => let 
+                        value = shell.getAlias $ trim $ head a; 
+                    in if value == null
+                        then shell.printError $ "alias: " + (head a) + ": no such alias"
+                        else shell.printLn $ "alias " + (head a) + "=\'" + value + "\'";
+                a if (length a) == 2 => let 
+                        name = trim $ head a;
+                        value = trim $ head $ tail a;
+                    in shell.setAlias name value
+            );
+        in if all (i: i == 0) (map handleArg args) then 0 else 1;
+
+        # bg
+
+        cd = args :: list: let
+            changeDir = dir: (case shell.changeDir dir of
+                0 => 0;
+                err => shell.printError $ "cd: " + dir + ": " + (errnoString err)
+            );
+        in (case length args of
+            0 => changeDir $ shell.getEnv "HOME";
+            1 => changeDir $ head args;
+            _ => shell.printError "cd: too many arguments"
+        );
+
+        # disown
+
+        exit = args :: list: (case length args of
             0 => shell.exit 0;
             1 => shell.exit $ parseInt $ head args;
             _ => shell.printError "exit: too many arguments"
         );
-}
+
+        # export
+
+        # fc
+        # fg
+
+        # help
+
+        # history
+
+        # pushd
+        # popd
+
+        # read
+
+        # test
+
+        type = args :: list: let 
+            getType = arg: 
+            let 
+                attr = getAttr arg commands; 
+                alias = shell.getAlias arg;
+        in if alias != null 
+            then arg + ": aliased to \'" + alias + "\'"
+            else if attr != null 
+            then arg + ": shell builtin (" + (locationToString $ tryGetLocation attr) + ")"
+            else arg + ": external program.";
+            in seq (map (shell.printLn << getType) args) 0;
+    };
+in commands
 

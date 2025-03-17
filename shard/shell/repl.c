@@ -13,15 +13,8 @@
 // BSD libedit
 #include <histedit.h>
 
-struct repl {
-    uintmax_t current_line_no;
-    struct shard_string current_line;    
-
-    struct shard_source source;
-};
-
 static int repl_read_all(struct shard_source* self, struct shard_string* dest) {
-    struct repl* repl = (struct repl*) self->userp;
+    struct shell_repl* repl = (struct shell_repl*) self->userp;
     memcpy(dest, &repl->current_line, sizeof(struct shard_string));
     return 0;
 }
@@ -32,10 +25,12 @@ static int repl_close(struct shard_source*) {
 
 static void repl_buffer_dtor(struct shard_string*) {}
 
-static void repl_init(struct repl* repl) {
-    memset(repl, 0, sizeof(struct repl));
+static void repl_init(struct shell_repl* repl, EditLine* el, History* history) {
+    memset(repl, 0, sizeof(struct shell_repl));
 
     repl->current_line_no = 1;
+    repl->el = el;
+    repl->history = history;
 
     repl->source = (struct shard_source) {
         .line_offset = repl->current_line_no,
@@ -47,8 +42,10 @@ static void repl_init(struct repl* repl) {
     };
 }
 
-static void repl_free(struct repl* repl) {
-    shard_string_free(&shell.shard, &repl->current_line);
+static void repl_free(void) {
+    history_end(shell.repl.history);
+    el_end(shell.repl.el);
+    shard_string_free(&shell.shard, &shell.repl.current_line);
 }
 
 static char* repl_prompt(EditLine* el) {
@@ -103,22 +100,22 @@ int shell_repl(void) {
     int err = 0;
     int count;
 
-    struct repl repl;
-    repl_init(&repl);
+    repl_init(&shell.repl, el, hist);
+    atexit(repl_free);
 
     const char* line;
     bool multiline = false;
 
     while(!shell.repl_should_close && (line = el_gets(el, &count)) != NULL) {
         if(!multiline) {
-            repl.source.line_offset = ++repl.current_line_no;
-            repl.current_line.count = 0;
+            shell.repl.source.line_offset = ++shell.repl.current_line_no;
+            shell.repl.current_line.count = 0;
         }
 
-        shard_string_appendn(&shell.shard, &repl.current_line, line, count);
+        shard_string_appendn(&shell.shard, &shell.repl.current_line, line, count);
 
-        if(repl.current_line.count > 0 && repl.current_line.items[repl.current_line.count - 1] == '\\') {
-            repl.current_line.items[--repl.current_line.count] = '\0';
+        if(shell.repl.current_line.count > 0 && shell.repl.current_line.items[shell.repl.current_line.count - 1] == '\\') {
+            shell.repl.current_line.items[--shell.repl.current_line.count] = '\0';
             multiline = true;
             el_set(el, EL_PROMPT, multiline_prompt);
             continue;
@@ -127,20 +124,15 @@ int shell_repl(void) {
         multiline = false;
         el_set(el, EL_PROMPT, repl_prompt);
 
-        err = shell_eval(&repl.source, SH_EVAL_ECHO_RESULTS);
+        err = shell_eval(&shell.repl.source, SH_EVAL_ECHO_RESULTS);
         if(err && shell.exit_on_error)
             break;
         
-        char* save_line = repl.current_line.items;
+        char* save_line = shell.repl.current_line.items;
         trim_input(&save_line);
         if(strlen(save_line) > 0)
             history(hist, &hist_ev, H_ENTER, save_line);
     }
-    
-    repl_free(&repl);
-
-    history_end(hist);
-    el_end(el);
     
     return err;
 }

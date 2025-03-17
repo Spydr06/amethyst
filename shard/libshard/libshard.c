@@ -36,6 +36,8 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
         case SHARD_EXPR_LOGOR:
         case SHARD_EXPR_LOGIMPL:
         case SHARD_EXPR_CALL:
+        case SHARD_EXPR_LCOMPOSE:
+        case SHARD_EXPR_RCOMPOSE:
             shard_free_expr(ctx, expr->binop.lhs);
             shard_free_expr(ctx, expr->binop.rhs);
             break;
@@ -80,6 +82,8 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
             shard_free_expr(ctx, expr->let.expr);
             break;
         case SHARD_EXPR_CASE_OF:
+            shard_free_expr(ctx, expr->case_of.cond);
+
             for(size_t i = 0; i < expr->case_of.branches.count; i++)
                 shard_free_expr(ctx, &expr->case_of.branches.items[i]);
             dynarr_free(ctx, &expr->case_of.branches);
@@ -105,6 +109,7 @@ void shard_attr_path_gc_init(struct shard_gc* gc, struct shard_attr_path* path) 
     path->count = 0;
     path->capacity = 1;
 }
+
 
 void shard_attr_path_init(struct shard_context* ctx, struct shard_attr_path* path) {
     path->items = ctx->malloc(sizeof(shard_ident_t));

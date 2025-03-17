@@ -84,6 +84,8 @@ void shell_load_defaults(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
+    shard_hashmap_init(&shell.shard, &shell.aliases, 8);
+
     if((err = shell_load_builtins())) {
         errorf("failed defining shell builtins: %s", strerror(err));
         exit(EXIT_FAILURE);
@@ -96,6 +98,8 @@ void shell_load_defaults(int argc, char** argv) {
 }
 
 void shell_cleanup(void) {
+    shard_hashmap_free(&shell.shard, &shell.aliases);
+
     shard_deinit(&shell.shard);
     free(shell.progname_copy);
 }

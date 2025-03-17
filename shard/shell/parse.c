@@ -67,6 +67,26 @@ static void advance(struct shell_parser* p) {
     // printf("%d\n", p->token.type);
 }
 
+static int consume(struct shell_parser* p, enum shell_token_type type) {
+    if(p->token.type != type) {
+        struct shard_string token_str = {0};
+        shell_token_to_string(&shell.shard, &p->token, &token_str);
+        unexpected_token_error(p, token_str.items);
+        shard_string_free(&shell.shard, &token_str);
+        return EINVAL;
+    }
+
+    advance(p);
+    return 0;
+}
+
+static bool is_keyword(struct shell_parser* p, const char* keyword) {
+    if(p->token.type != SH_TOK_TEXT)
+        return false;
+
+    return strcmp(p->token.value.items, keyword) == 0;
+}
+
 static enum precedence get_precedence(enum shell_token_type type) {
     switch(type) {
         case SH_TOK_SEMICOLON:
@@ -117,6 +137,24 @@ static int parse_var(struct shell_parser* p, struct shard_expr* expr) {
     return 0;
 }
 
+static int parse_with(struct shell_parser* p, struct shard_expr* expr) {
+    advance(p);
+
+    expr->type = SHARD_EXPR_WITH;
+    expr->binop.lhs = shard_gc_malloc(shell.shard.gc, sizeof(struct shard_expr));
+    expr->binop.rhs = shard_gc_malloc(shell.shard.gc, sizeof(struct shard_expr));
+
+    int err = parse_expr(p, expr->binop.lhs, PREC_SEQUENCE);
+    if(err)
+        return err;
+
+    err = consume(p, SH_TOK_SEMICOLON);
+    if(err)
+        return err;
+
+    return parse_expr(p, expr->binop.rhs, PREC_LOWEST);
+}
+
 static int parse_prefix_expr(struct shell_parser* p, struct shard_expr* expr) {
     expr->loc = p->token.loc;
 
@@ -124,8 +162,13 @@ static int parse_prefix_expr(struct shell_parser* p, struct shard_expr* expr) {
         case SH_TOK_VAR:
             return parse_var(p, expr);
         case SH_TOK_TEXT:
-            expr->type = SHARD_EXPR_STRING;
-            expr->string = shard_gc_strdup(shell.shard.gc, p->token.value.items, p->token.value.count);
+            if(is_keyword(p, "with"))
+                return parse_with(p, expr);
+
+            const char* text = p->token.value.items;
+            size_t text_size = p->token.value.count;
+            expr->type = text[0] == '~' ? SHARD_EXPR_PATH : SHARD_EXPR_STRING;
+            expr->string = shard_gc_strdup(shell.shard.gc, text, text_size);
             advance(p);
             return 0;
 

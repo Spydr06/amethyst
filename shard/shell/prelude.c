@@ -45,6 +45,7 @@ int shell_prelude(void) {
 
     open_source->auto_close = true;
     open_source->auto_free = true;
+    shard_register_open(&shell.shard, "prelude.shard", false, open_source);
 
     int num_err = shard_eval(&shell.shard, open_source);
     print_shard_errors();

@@ -36,7 +36,6 @@ void shard_deinit(struct shard_context* ctx) {
     }
 
     shard_hashmap_free(ctx, &ctx->open_sources);
-    shard_gc_end(ctx->gc);
 
     shard_arena_free(ctx, ctx->ast);
 
@@ -53,6 +52,8 @@ void shard_deinit(struct shard_context* ctx) {
 
     shard_arena_free(ctx, ctx->ident_arena);
     shard_hashmap_free(ctx, &ctx->idents);
+
+    shard_gc_end(ctx->gc);
 }
 
 void shard_include_dir(struct shard_context* ctx, char* path) {
