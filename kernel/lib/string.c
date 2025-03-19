@@ -12,61 +12,6 @@
 // Implementations paritally taken from musl libc
 //
 
-void* memset(void* s, int c, size_t n) {
-    uint8_t* p = s;
-    while(n--)
-        *p++ = (uint8_t) c;
-    return s;
-}
-
-void* memcpy(void* dst, const void* src, size_t n) {
-    uint8_t* cdst = dst;
-    const uint8_t* csrc = src;
-
-    for(size_t i = 0; i < n; i++) {
-        cdst[i] = csrc[i];
-    }
-
-    return dst;
-}
-
-void *memmove(void *dest, const void *src, size_t n)
-{
-	char *d = dest;
-	const char *s = src;
-
-	if (d==s) return d;
-	if ((uintptr_t)s-(uintptr_t)d-n <= -2*n) return memcpy(d, s, n);
-
-	if (d<s) {
-		if ((uintptr_t)s % sizeof(size_t) == (uintptr_t)d % sizeof(size_t)) {
-			while ((uintptr_t)d % sizeof(size_t)) {
-				if (!n--) return dest;
-				*d++ = *s++;
-			}
-			for (; n>=sizeof(size_t); n-=sizeof(size_t), d+=sizeof(size_t), s+=sizeof(size_t)) *(size_t *)d = *(size_t *)s;
-		}
-		for (; n; n--) *d++ = *s++;
-	} else {
-		if ((uintptr_t)s % sizeof(size_t) == (uintptr_t)d % sizeof(size_t)) {
-			while ((uintptr_t)(d+n) % sizeof(size_t)) {
-				if (!n--) return dest;
-				d[n] = s[n];
-			}
-			while (n>=sizeof(size_t)) n-=sizeof(size_t), *(size_t *)(d+n) = *(size_t *)(s+n);
-		}
-		while (n) n--, d[n] = s[n];
-	}
-
-	return dest;
-}
-
-int memcmp(const void* vl, const void* vr, size_t n) {
-    const unsigned char *l = vl, *r = vr;
-	for (; n && *l == *r; n--, l++, r++);
-	return n ? *l - *r : 0;
-}
-
 char* reverse(char* str, size_t len) {
     char tmp;
     for(size_t i = 0; i < len / 2; i++) {
@@ -252,11 +197,77 @@ char* strcat(char* restrict dest, const char* restrict src) {
     return dest;
 }
 
-char* strtok(char* restrict str, const char* restrict delim) {
-    (void) str;
-    (void) delim;
-    unimplemented();
+char* strstr(const char* haystack, const char* needle) {
+    for(size_t i = 0; haystack[i]; i++) {
+        bool found = true;
+        for(size_t j = 0; needle[j]; j++) {
+            if(!needle[j] || haystack[i + j] == needle[j])
+                continue;
+
+            found = false;
+            break;
+        }
+
+        if(found)
+            return (char*) (haystack + i);
+    }
+
     return NULL;
+}
+
+char* strchrnul(const char* s, int c) {
+    c = (uint8_t) c;
+    if(!c)
+        return (char*) s + strlen(s);
+
+    for(; *s && *(uint8_t*) s != c; s++);
+    return (char*) s;
+}
+
+char* strchr(const char* s, int c) {
+    char* r = strchrnul(s, c);
+    return *(uint8_t*) r == (uint8_t) c ? r : 0;
+}
+
+char* strrchr(const char* s, int c) {
+    return memrchr(s, c, strlen(s) + 1);
+}
+
+size_t strspn(const char* s, const char* accept) {
+    size_t n = 0;
+    for(;; n++)
+        if(!s[n] || !strchr(accept, s[n]))
+            return n;
+}
+
+size_t strcspn(const char* s, const char* reject) {
+    size_t n = 0;
+    for(;; n++)
+        if(!s[n] || strchr(reject, s[n]))
+            return n;
+}
+
+char* strtok_r(char* restrict s, const char* restrict delim, char** restrict saveptr) {
+    if(!s && !(s = *saveptr))
+        return NULL;
+
+    s += strspn(s, delim);
+    if(!*s)
+        return *saveptr = 0;
+
+    *saveptr = s + strcspn(s, delim);
+    if(**saveptr)
+        *(*saveptr)++ = '\0';
+    else
+        *saveptr = NULL;
+
+    return s;
+}
+
+
+char* strtok(char* restrict str, const char* restrict delim) {
+    static char* saveptr;
+    return strtok_r(str, delim, &saveptr);
 }
 
 long long strtoll(const char* restrict nptr, char** restrict endptr, int base) {

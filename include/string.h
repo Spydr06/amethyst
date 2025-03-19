@@ -3,13 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-
-void* memset(void* s, int c, size_t n);
-void* memcpy(void* dst, const void* src, size_t n);
-char* mempcpy(void *restrict dst, const void *restrict src, size_t n);
-void* memmove(void* dest, const void *src, size_t n);
-
-int memcmp(const void* vl, const void* vr, size_t n);
+#include <memory.h>
 
 char* reverse(char* str, size_t len);
 char* utoa(uint64_t num, char* str, int base);
@@ -32,6 +26,14 @@ int strncmp(const char* _l, const char* _r, size_t n);
 int strcmp(const char* _l, const char* _r);
 int strcasecmp(const char* _l, const char *_r);
 
+size_t strspn(const char* s, const char* accept);
+size_t strcspn(const char* s, const char* reject);
+
+char* strchr(const char* s, int c);
+char* strrchr(const char* s, int c);
+char* strstr(const char* haystack, const char* needle);
+
+char* strtok_r(char* restrict s, const char* restrict delim, char** restrict saveptr);
 char* strtok(char* restrict str, const char* restrict delim);
 
 char* strerror(int errnum);
