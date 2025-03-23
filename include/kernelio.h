@@ -56,5 +56,8 @@ char* kgets(char* s, unsigned size);
 void dump_stack(void);
 void dump_registers(struct cpu_context* ctx);
 
+void kernelio_lock(void);
+void kernelio_unlock(void);
+
 #endif /* _AMETHYST_KERNELIO_H */
 

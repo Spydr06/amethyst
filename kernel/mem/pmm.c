@@ -43,7 +43,7 @@ void pmm_init(struct mmap* mmap) {
     if(!mm)
         panic("Out of Memory (pmm bitmap[%zu])", physical.byte_cnt);
     
-    klog(INFO, "Using %zu bytes for pmm bitmap.", physical.byte_cnt);
+    klog(INFO, "Using %zu bytes (%Zu) for pmm bitmap.", physical.byte_cnt, physical.byte_cnt);
 
     void* bitmap_start_phys = (void*) mm->base;
     physical.bitmap = MAKE_HHDM(bitmap_start_phys);

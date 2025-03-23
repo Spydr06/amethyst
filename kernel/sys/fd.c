@@ -126,3 +126,29 @@ void fd_free(struct file* file) {
     slab_free(file_cache, file);
 }
 
+int fd_clone(struct proc* dest) {
+    struct proc* proc = current_thread()->proc;
+    int err = 0;
+    mutex_acquire(&proc->fd_mutex, false);
+
+    dest->fd_count = proc->fd_count;
+    dest->fd_first = proc->fd_first;
+    dest->fd = kmalloc(proc->fd_count * sizeof(struct fd));
+    if(!dest->fd) {
+        err = ENOMEM;
+        goto cleanup;
+    }
+
+    for(size_t i = 0; i < dest->fd_count; i++) {
+        if(!proc->fd[i].file)
+            continue;
+
+        dest->fd[i] = proc->fd[i];
+        fd_hold(dest->fd[i].file);
+    }
+
+cleanup:
+    mutex_release(&proc->fd_mutex);
+    return err;
+}
+

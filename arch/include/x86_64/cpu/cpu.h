@@ -13,6 +13,7 @@
 #define CPU_SP(ctx) ((ctx)->rsp)
 #define CPU_IP(ctx) ((ctx)->rip)
 #define CPU_RET(ctx) ((ctx)->rax)
+#define CPU_ERRNO(ctx) ((ctx)->_errno)
 
 #define CPU_CONTEXT_INTSTATUS(ctx) ((bool) ((ctx)->rflags & 0x200))
 

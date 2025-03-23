@@ -56,17 +56,33 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    draw_logo_to_fb(fb, 4);
+    draw_logo_to_fb(fb, 6);
 
     close(fb);
 
     int err = execv(shell_bin, (char* const[]){shell_bin, NULL});
-    if(err < 0)
-        err = errno;
 
     fprintf(stderr, "%s: error executing %s: %s\n", argv[0], shell_bin, strerror(errno));
 
+    int pid = fork();
+    if(pid == 0) {
+        printf("fork you!\n");
+        exit(1);
+    }
+
+    printf("forked pid %d\n", pid);
+
+    char buffer[100];
+    while(1) {
+        printf("echo> ");
+        fflush(stdout);
+        fgets(buffer, sizeof(buffer), stdin);
+        puts(buffer);
+    }
+
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         umount_target(mount_targets + i);
+
+    fflush(stderr);
 }
 

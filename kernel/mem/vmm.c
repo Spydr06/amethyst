@@ -1,3 +1,4 @@
+#include "x86_64/mem/mmu.h"
 #include <mem/vmm.h>
 #include <mem/pmm.h>
 #include <mem/slab.h>
@@ -122,6 +123,56 @@ void vmm_context_destroy(struct vmm_context* context) {
     slab_free(ctx_cache, context);
 }
 
+struct vmm_context* vmm_context_fork(struct vmm_context* old) {
+    if(!old)
+        return nullptr;
+
+    struct vmm_context* new = vmm_context_new();
+    if(!new)
+        return nullptr;
+
+    memcpy(&new->brk, &old->brk, sizeof(struct brk));
+
+    mutex_acquire(&new->space.lock, false);
+
+    struct vmm_range* range = old->space.ranges;
+    while(range) {
+        struct vmm_range* new_range = alloc_range();
+        if(!new_range)
+            goto error;
+
+        memcpy(new_range, range, sizeof(struct vmm_range));
+
+        insert_range(&new->space, new_range);
+        if(range->flags & VMM_FLAGS_FILE)
+            vop_hold(range->vnode);
+
+        for(uintptr_t off = 0; off < new_range->size; off += PAGE_SIZE) {
+            void* vaddr = (void*)((uintptr_t) new_range->start + off);
+            void* phys = mmu_get_physical(old->page_table, vaddr);
+            if(!phys)
+                continue;
+
+            if(!mmu_map(new->page_table, phys, vaddr, new_range->mmu_flags & ~MMU_FLAGS_WRITE))
+                goto error;
+
+            mmu_remap(old->page_table, phys, vaddr, new_range->mmu_flags & ~MMU_FLAGS_WRITE);
+        }
+
+        range = range->next;
+    }
+
+    mmu_invalidate(nullptr);
+
+    mutex_release(&new->space.lock);
+    return new;
+    
+error:
+    mutex_release(&new->space.lock);
+    vmm_context_destroy(new);
+    return nullptr;
+}
+
 void vmm_switch_context(struct vmm_context* context) {
     if(_cpu()->thread)
         _cpu()->thread->vmm_context = context;
@@ -144,7 +195,7 @@ void* vmm_map(void* addr, size_t size, enum vmm_flags flags, enum mmu_flags mmu_
 
     struct vmm_space* space = get_space(addr);
     if(!space)
-        return NULL;
+        return nullptr;
 
     mutex_acquire(&space->lock, false);
     struct vmm_range* range = nullptr;
@@ -267,18 +318,18 @@ bool vmm_pagefault(void* addr, bool user, enum vmm_action actions) {
     if(range->mmu_flags & MMU_FLAGS_NOEXEC)
         invalid_actions |= VMM_ACTION_EXEC;
 
-    if(invalid_actions & actions) {
+  /*  if(invalid_actions & actions) {
         char invalid_str[4], action_str[4];
         vmm_action_as_str(invalid_actions, invalid_str);
         vmm_action_as_str(actions, action_str);
 
         klog(ERROR, "memory actions are not disjunct: %x <> %x [%s <> %s]", invalid_actions, actions, invalid_str, action_str);
         goto cleanup;
-    }
+    }*/
 
     struct thread* thread = _cpu()->thread;
-    struct proc* proc = thread ? thread->proc : NULL;
-    struct cred* cred = proc ? &proc->cred : NULL;
+    struct proc* proc = thread ? thread->proc : nullptr;
+    struct cred* cred = proc ? &proc->cred : nullptr;
 
     if(!mmu_is_present(thread->vmm_context->page_table, addr)) {
         uintmax_t map_offset = (uintptr_t) addr - (uintptr_t) range->start;
@@ -310,7 +361,19 @@ bool vmm_pagefault(void* addr, bool user, enum vmm_action actions) {
         }
     }
     else if(!mmu_is_writable(thread->vmm_context->page_table, addr)) {
-        here();
+        // page present but not writable        
+        void* old_phys = mmu_get_physical(current_vmm_context()->page_table, addr);
+        
+        // TODO: remap page if it is part of shared memory / shard files
+
+        // copy on write
+        void* new_phys = pmm_alloc_page(PMM_SECTION_DEFAULT);
+        if(new_phys) {
+            memcpy(MAKE_HHDM(new_phys), MAKE_HHDM(old_phys), PAGE_SIZE);
+            mmu_remap(current_vmm_context()->page_table, new_phys, addr, range->mmu_flags);
+            mmu_invalidate(addr);
+            handled = true;
+        }
     }
     else
         handled = true;
@@ -417,8 +480,8 @@ static void destroy_range(struct vmm_range* range, uintmax_t start_offset, size_
             continue;
 
         /*struct thread* thread = _cpu()->thread;
-        struct proc* proc = thread ? thread->proc : NULL;
-        struct cred* cred = proc ? &proc->cred : NULL;*/
+        struct proc* proc = thread ? thread->proc : nullptr;
+        struct cred* cred = proc ? &proc->cred : nullptr;*/
 
         // TODO: vfs caching if range->flags & VM_FLAGS_FILE and range is cacheable!
         

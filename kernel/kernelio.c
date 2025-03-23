@@ -18,6 +18,14 @@ static size_t stdin_buffer_size = 0;
 
 static spinlock_t io_lock = 0;
 
+void kernelio_lock(void) {
+    spinlock_acquire(&io_lock);
+}
+
+void kernelio_unlock(void) {
+    spinlock_release(&io_lock);
+}
+
 static inline void puts(const char* str) {
     while(*str)
         kernelio_writer(*str++);
@@ -245,7 +253,7 @@ void __panic(const char* file, int line, const char* func, struct cpu_context* c
     if(last_was_inline)
         kernelio_writer('\n');
 
-    printk("\e[91mPANIC [%s:%d in %s()] ", file, line, func); 
+    printk("\e[91mPANIC (cpu %d) [%s:%d in %s()] ", _cpu()->id, file, line, func); 
 
     va_list ap;
     va_start(ap, error);

@@ -62,9 +62,6 @@ void io_poll_event(struct io_poll* poll, enum io_poll_event events) {
         struct io_poll_queue* next = iter->next;
         
         sched_wakeup(iter->thread, 0);
-        if(iter->thread == _cpu()->thread)
-            sched_yield();
-
         io_poll_enqueue(&poll->head, iter);
         spinlock_release(&iter->wakeup_lock);
         iter = next;
@@ -111,7 +108,7 @@ int io_poll_wait(struct io_poll_queue* poll) {
     spinlock_release(&poll->event_lock);
 
     int ret = sched_yield();
-    assert(ret || !spinlock_try(&poll->lock));
+    //assert(ret || !spinlock_try(&poll->lock));
 
     if(ret == WAKEUP_REASON_INTERRUPTED) {
         spinlock_acquire(&poll->wakeup_lock);

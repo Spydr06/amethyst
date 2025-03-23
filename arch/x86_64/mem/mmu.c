@@ -186,7 +186,13 @@ static void pfisr(struct cpu_context* status) {
         char perms[4];
         vmm_action_as_str(action, perms);
         
-        panic_r(status, "Page Fault at %p (\"%s\", %s)", (void*) status->cr2, perms, in_userspace ? "user" : "kernel");
+        panic_r(status, "Page Fault at %p (\"%s\", %s, cpu %d / tid %d / pid %d)", 
+                (void*) status->cr2, 
+                perms, 
+                in_userspace ? "user" : "kernel",
+                _cpu()->id,
+                current_thread() ? current_thread()->tid : -1,
+                current_proc() ? current_proc()->pid : -1);
     }
 }
 

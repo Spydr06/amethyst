@@ -37,6 +37,26 @@ static void tty_putchar(int c) {
     tty->write_to_device(tty, &ch, 1);
 }
 
+static bool is_fn_key(enum keycode keycode) {
+    switch(keycode) {
+        case KEYCODE_F1:
+        case KEYCODE_F2:
+        case KEYCODE_F3:
+        case KEYCODE_F4:
+        case KEYCODE_F5:
+        case KEYCODE_F6:
+        case KEYCODE_F7:
+        case KEYCODE_F8:
+        case KEYCODE_F9:
+        case KEYCODE_F10:
+        case KEYCODE_F11:
+        case KEYCODE_F12:
+            return true;
+        default:
+            return false;
+    }
+}
+
 static __noreturn void tty_thread_callback(void) {
     for(;;) {
         struct keyboard_event event;
@@ -83,6 +103,9 @@ static __noreturn void tty_thread_callback(void) {
                 tmp = "\e[D";
                 break;
             default:
+                if(event.flags & KEYBOARD_EVENT_LALT && event.flags & (KEYBOARD_EVENT_LCTRL | KEYBOARD_EVENT_RCTRL) && is_fn_key(event.keycode)) {
+                    klog(WARN, "switch tty");
+                }
                 continue;
         }
 
@@ -93,7 +116,7 @@ static __noreturn void tty_thread_callback(void) {
 }
 
 void create_ttys(void) {
-    vga_console_disable_writer_propagation();
+//    vga_console_disable_writer_propagation();
     for(size_t i = 0; i < NUM_VGA_TTYS; i++) {
         vga_ttys[i] = tty_create(vga_tty_names[i], vga_console_ttywrite, nullptr, nullptr);
         assert(vga_ttys[i]);

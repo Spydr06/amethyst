@@ -46,8 +46,11 @@ struct fd {
     int flags;
 };
 
+struct proc;
+
 struct file* fd_allocate(void);
 void fd_free(struct file* file);
+int fd_clone(struct proc* dest);
 
 struct file* fd_get(size_t fd);
 int fd_new(int flags, struct file** file, int* fd);

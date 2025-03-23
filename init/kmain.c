@@ -35,9 +35,9 @@ static void color_test(void) {
     for(int i = 100; i <= 107; i++) {
         printk("\e[%im  \e[0m ", i);
     }
-    printk("\n");
+    /*printk("\n");
 
-    /*for(int i = 0; i < 256; i++) {
+    for(int i = 0; i < 256; i++) {
         printk("\e[48;5;%hhum  \e[0m", i);
         
         if(i == 15 || (i > 15 && i < 232 && (i - 16) % 36 == 35) || i == 231)
@@ -71,6 +71,9 @@ void kmain(size_t cmdline_size, const char* cmdline)
 
     pci_init(); 
 
+    greet();
+    color_test();
+
     // const char* root = cmdline_get("root"); // root device
     const char* rootfs = cmdline_get("rootfs"); // root filesystem
     if(!rootfs)
@@ -81,11 +84,6 @@ void kmain(size_t cmdline_size, const char* cmdline)
     assert(vfs_mount(nullptr, vfs_root, "/", rootfs, nullptr) == 0);
 
     initrd_unpack();
-
-    greet();
-    color_test();
-
-    klog(INFO, "\e[4mHello, World\e[24m %.02f", 3.14); 
 
     shard_subsystem_init();
 

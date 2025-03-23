@@ -8,6 +8,7 @@
 
 static struct scache* thread_cache;
 
+
 void thread_init(void) {
     thread_cache = slab_newcache(sizeof(struct thread), 0, nullptr, nullptr);
     assert(thread_cache);
@@ -32,6 +33,7 @@ struct thread* thread_create(void* ip, size_t kernel_stack_size, int priority, s
     thread->vmm_context = proc ? nullptr : &vmm_kernel_context;
     thread->proc = proc;
     thread->priority = priority;
+
     if(proc) {
         PROC_HOLD(proc);
         thread->tid = proc_new_pid();

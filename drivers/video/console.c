@@ -1,3 +1,4 @@
+#include "sys/spinlock.h"
 #include <drivers/video/console.h>
 #include <drivers/video/vga.h>
 
@@ -55,6 +56,9 @@ void vga_console_init(uint8_t options) {
     if(!vga.address)
         panic("Called vga_console_init() without intitializing the vga driver prior.");
 
+    spinlock_init(vga_console.write_lock);
+    spinlock_acquire(&vga_console.write_lock);
+
     vga_console.psf_font = _binary_fonts_default_psf_start;
     if((vga_console.psf_version = psf_get_version(vga_console.psf_font)) == PSF_INVALID)
         panic("Could not read builtin psf font at %p", vga_console.psf_font);
@@ -87,6 +91,8 @@ void vga_console_init(uint8_t options) {
     memset(vga_console.grid, 0, vga_console.grid_size * sizeof(struct vga_console_char));
 
     vga_clear(vga_console.bg);
+
+    spinlock_release(&vga_console.write_lock);
 
     vga_console_register();
 }
@@ -424,10 +430,12 @@ void vga_console_disable_writer_propagation(void) {
 }
 
 void vga_console_putchar(int c) {
+    spinlock_acquire(&vga_console.write_lock);
+
     if(vga_console.writer_before)
         vga_console.writer_before(c);
     if(vga_console.esc_status && parse_escape_sequence(c))
-        return;
+        goto cleanup;
 
     switch(c) {
         case '\n':
@@ -467,7 +475,7 @@ void vga_console_putchar(int c) {
             break;
         case '\e':
             vga_console.esc_status = VGA_ESC_SEQ_BEGIN_PARSE;
-            return;
+            goto cleanup;
         default:
             vga_console_put_next(&(struct vga_console_char) {
                 .ch = c,
@@ -489,6 +497,9 @@ void vga_console_putchar(int c) {
         memset(&_GRID(0, vga_console.rows - 1), 0, vga_console.cols * sizeof(struct vga_console_char));
         vga_console_flush_scroll();
     }
+
+cleanup:
+    spinlock_release(&vga_console.write_lock);
 }
 
 size_t vga_console_ttywrite(void* internal __unused, const char* str, size_t count) {

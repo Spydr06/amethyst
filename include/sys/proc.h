@@ -43,12 +43,19 @@ struct proc {
 
     semaphore_t wait_sem;
     spinlock_t exiting;
+
+    struct proc *parent, *sibling, *child;
 };
 
 static inline struct proc* current_proc(void) {
     if(_cpu()->thread)
         return _cpu()->thread->proc;
     return nullptr;
+}
+
+static inline pid_t current_pid(void) {
+    struct proc* p = current_proc();
+    return p ? p->pid : -1;
 }
 
 static inline mode_t umask(mode_t mode) {

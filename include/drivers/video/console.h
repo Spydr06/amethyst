@@ -40,6 +40,8 @@ struct vga_console_char {
 } __attribute__((packed));
 
 struct vga_console {
+    spinlock_t write_lock;
+
     uint8_t* psf_font;
     enum PSF_version psf_version;
 

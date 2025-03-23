@@ -27,7 +27,7 @@
 #define SCHEDULER_STACK_SIZE (PAGE_SIZE * 16)
 
 // main timer quantum
-#define QUANTUM_US 100'000
+#define QUANTUM_US 10'000
 
 #define RUN_QUEUE_COUNT ((int) sizeof(run_queue_bitmap) * 8)
 
@@ -48,6 +48,7 @@ static uint64_t run_queue_bitmap;
 
 static struct run_queue run_queue[RUN_QUEUE_COUNT];
 
+static __noreturn void preempt_callback(void);
 
 void sched_pin(cpuid_t pin) {
     bool interrupt_status = interrupt_set(false);
@@ -86,7 +87,7 @@ static struct thread* queue_get_thread(struct run_queue* queue) {
     if(thread->next)
         thread->next->prev = thread->prev;
     else
-        run_queue->last = thread->prev;
+        queue->last = thread->prev;
 
     return thread;
 }
@@ -109,25 +110,31 @@ static struct thread* dequeue_next_thread(int min_priority) {
         thread->flags &= ~THREAD_FLAGS_QUEUED;
 
     interrupt_set(int_state);
+
+    // if(thread)
+    //    klog(WARN, "[cpu %d] Dequeueing tid %d [pid %d]\n", _cpu()->id, thread->tid, thread->proc ? thread->proc->pid : -1);
+
     return thread;
 }
 
 static void enqueue_thread(struct thread* thread) {
+    // klog(WARN, "[cpu %d] Enqueueing tid %d [pid %d]\n", _cpu()->id, thread->tid, thread->proc ? thread->proc->pid : -1);
     if(thread == _cpu()->idle_thread)
         return;
-    assert(!(thread->flags & THREAD_FLAGS_RUNNING));
 
+    assert(!(thread->flags & THREAD_FLAGS_RUNNING));
     thread->flags |= THREAD_FLAGS_QUEUED;
 
     run_queue_bitmap |= ((uint64_t) 1 << thread->priority);
 
     thread->prev = run_queue[thread->priority].last;
-    if(thread->prev == thread)
+    /*if(thread->prev == thread)
         thread->prev = nullptr;
-    else if(thread->prev)
+    else*/ 
+    if(thread->prev)
         thread->prev->next = thread;
-    
-    if(!thread->prev || !run_queue[thread->priority].head)
+    //if(!thread->prev || !run_queue[thread->priority].head)
+    else 
         run_queue[thread->priority].head = thread;
 
     thread->next = nullptr;
@@ -142,9 +149,9 @@ static __noreturn void switch_thread(struct thread* thread) {
     
     if(!current || thread->vmm_context != current->vmm_context)
         vmm_switch_context(thread->vmm_context);
-
-    if(current && current->tid != thread->tid)
-        klog(DEBUG, "cpu %u: switching from [tid %d] to [tid %u]", _cpu()->id, current ? current->tid : -1, thread->tid);
+ 
+    // if(current && current->tid != thread->tid)
+    //     klog(DEBUG, "cpu %u: switching from [tid %d / pid %d] to [tid %d / pid %d]", _cpu()->id, current ? current->tid : -1, current && current->proc ? current->proc->pid : -1, thread->tid, thread->proc ? thread->proc->pid : -1);    
 
     _cpu()->interrupt_status = CPU_CONTEXT_INTSTATUS(&thread->context);
     thread->cpu = _cpu();
@@ -199,12 +206,16 @@ __noreturn void sched_stop_thread(void) {
         _cpu()->thread->flags &= ~THREAD_FLAGS_RUNNING;
 
     struct thread* next = dequeue_next_thread(0x0fffffff);
-    if(!next)
+    if(next) {
+        assert(!(next->flags & THREAD_FLAGS_QUEUED));
+    }
+    else {
+        klog(WARN, "[cpu %d] idle", _cpu()->id);
         next = _cpu()->idle_thread;
+    }
 
     spinlock_release(&run_queue_lock);
 
-    assert(!(next->flags & THREAD_FLAGS_QUEUED));
     switch_thread(next);
 }
 
@@ -291,6 +302,9 @@ void sched_sleep(size_t us) {
 }
 
 bool sched_wakeup(struct thread* thread, enum wakeup_reason reason) {
+    if(!thread)
+        return false;
+
     bool int_state = interrupt_set(false);
 
     spinlock_acquire(&thread->sleep_lock);
@@ -391,6 +405,40 @@ static void _internal_thread_exit(struct cpu_context* __unused, void* __unused) 
     sched_stop_thread();
 }
 
+static void sched_proc_exit(void) {
+    struct proc* proc = current_proc();
+    PROC_HOLD(proc);
+
+    for(size_t fd = 0; fd < proc->fd_count; fd++)
+        fd_close((int) fd);
+
+    assert(proc->parent != nullptr);
+
+    mutex_acquire(&proc->mutex, false);
+    mutex_acquire(&proc->parent->mutex, false);
+
+    vop_release(&proc->root);
+    vop_release(&proc->cwd);
+
+    proc->state = PROC_STATE_ZOMBIE;
+    struct proc* last_child = proc->child;
+
+    while(last_child && last_child->sibling) {
+        last_child->parent = proc->parent;
+        last_child = last_child->sibling;
+    }
+
+    if(last_child) {
+        last_child->sibling = proc->parent->child;
+        proc->parent->child = proc->child;
+    }
+
+    // TODO: signals
+
+    mutex_release(&proc->parent->mutex);
+    mutex_release(&proc->mutex);
+}
+
 static __noreturn void sched_thread_exit(void) {
     struct thread* thread = _cpu()->thread;
     assert(thread);
@@ -408,10 +456,9 @@ static __noreturn void sched_thread_exit(void) {
             if(thread->should_exit)
                 proc->status = -1;
 
-//            sched_proc_exit();
+            sched_proc_exit();
             vmm_context_destroy(old_ctx);
             PROC_RELEASE(proc);
-            here();
         }
     }
 

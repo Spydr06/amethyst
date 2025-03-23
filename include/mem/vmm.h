@@ -95,6 +95,7 @@ void vmm_apinit(void);
 
 struct vmm_context* vmm_context_new(void);
 void vmm_context_destroy(struct vmm_context* context);
+struct vmm_context* vmm_context_fork(struct vmm_context* old_context);
 
 void vmm_switch_context(struct vmm_context* context);
 

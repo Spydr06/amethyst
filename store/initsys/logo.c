@@ -364,8 +364,8 @@ int draw_logo_to_fb(int fb, int scale) {
 
             uint32_t pp = b | g << 8 | r << 16;
 
-            for(size_t sy = y * 6; sy < (y + 1) * 6; sy++) {
-                for(size_t sx = x * 6; sx < (x + 1) * 6; sx++) {
+            for(size_t sy = y * scale; sy < (y + 1) * scale; sy++) {
+                for(size_t sx = x * scale; sx < (x + 1) * scale; sx++) {
                     memcpy(fb_buf + (sy + 16) * fb_fi.line_length + (sx + fb_vi.xres - 128) * fb_vi.bits_per_pixel / 8, &pp, fb_vi.bits_per_pixel / 8);
                 }
             }

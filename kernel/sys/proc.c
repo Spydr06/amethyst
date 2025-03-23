@@ -7,7 +7,7 @@
 static hashtable_t pid_table;
 static mutex_t pid_table_mutex;
 
-static pid_t current_pid = 1;
+static pid_t _current_pid = 1;
 static struct scache* proc_cache;
 
 static inline struct vnode* lock_vnode(struct proc* proc, struct vnode** vnode_ptr) {
@@ -31,7 +31,7 @@ void proc_init(void) {
 }
 
 pid_t proc_new_pid(void) {
-    return __atomic_fetch_add(&current_pid, 1, __ATOMIC_SEQ_CST);
+    return __atomic_fetch_add(&_current_pid, 1, __ATOMIC_SEQ_CST);
 }
 
 struct proc* proc_create(void) {
@@ -44,7 +44,7 @@ struct proc* proc_create(void) {
     mutex_init(&proc->mutex);
     spinlock_init(proc->nodes_lock);
     
-    proc->pid = __atomic_fetch_add(&current_pid, 1, __ATOMIC_SEQ_CST);
+    proc->pid = __atomic_fetch_add(&_current_pid, 1, __ATOMIC_SEQ_CST);
 
     proc->ref_count = 1;
     proc->state = PROC_STATE_NORMAL;
