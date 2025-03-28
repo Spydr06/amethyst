@@ -85,8 +85,8 @@ typedef _Int64 time_t;
 typedef _Int64 clock_t;
 
 struct timespec {
-    time_t s;
-    time_t ns;
+    time_t tv_sec;
+    time_t tv_nsec;
 };
 
 #ifdef __cplusplus

@@ -9,6 +9,8 @@ extern "C" {
 
 time_t time(time_t *tloc);
 
+int nanosleep(const struct timespec *rqtp, struct timespec *rmtp);
+
 #ifdef __cplusplus
 }
 #endif

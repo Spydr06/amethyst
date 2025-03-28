@@ -260,13 +260,13 @@ void __panic(const char* file, int line, const char* func, struct cpu_context* c
     vprintk(error, ap);
     va_end(ap);
 
-    printk("\e[0m\n\n[stack trace]:\n");
-    dump_stack();
-
     if(ctx) {
         printk("\e[0m\n\n[registers]:\n");
         dump_registers(ctx);
     }
+
+    printk("\e[0m\n\n[stack trace]:\n");
+    dump_stack();
 
     spinlock_release(&io_lock);
     hlt();
@@ -294,7 +294,8 @@ static void __klog_impl(enum klog_severity severity, bool newline, const char* f
     if(severity < klog_min_severity) 
         return;
 
-    spinlock_acquire(&io_lock);
+//    bool before = interrupt_set(false);
+//    spinlock_acquire(&io_lock);
 
     if(last_was_inline) {
         kernelio_writer('\n');
@@ -316,7 +317,8 @@ static void __klog_impl(enum klog_severity severity, bool newline, const char* f
     else
         last_was_inline = true;
 
-    spinlock_release(&io_lock);
+//    spinlock_release(&io_lock);
+//    interrupt_set(before);
 }
 
 void __vklog(enum klog_severity severity, const char *file, const char *format, va_list ap) {

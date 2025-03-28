@@ -33,6 +33,8 @@ int execv(const char* pathname, char *const argv[]);
 int execvp(const char *file, char *const argv[]);
 int execvpe(const char *file, char *const argv[], char *const envp[]);
 
+int fork(void);
+
 int open(const char* pathname, int flags, mode_t mode);
 int close(int fd);
 

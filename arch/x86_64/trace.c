@@ -63,7 +63,9 @@ const char* symtab_lookup(uintptr_t address) {
     return nullptr;
 }
 
-void dump_stack(void) {
+
+void __attribute__((no_sanitize("undefined"))) 
+dump_stack(void) {
     struct stackframe* stack;
     stack = (struct stackframe*) __builtin_frame_address(0);
 

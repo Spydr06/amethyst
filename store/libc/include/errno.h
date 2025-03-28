@@ -136,6 +136,11 @@
 #define EHWPOISON       168
 #define EDQUOT          1133
 
+#ifdef __STDC_WANT_LIB_EXT1__
+#define __STDC_LIB_EXT1__
+#define errno_t int
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

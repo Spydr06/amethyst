@@ -89,6 +89,7 @@ struct vmm_file_desc {
 static_assert(sizeof(struct vmm_cache) <= PAGE_SIZE);
 
 extern struct vmm_context vmm_kernel_context;
+extern struct vmm_space vmm_kernel_space;
 
 void vmm_init(struct mmap* mmap);
 void vmm_apinit(void);
@@ -102,7 +103,8 @@ void vmm_switch_context(struct vmm_context* context);
 void* vmm_map(void* addr, size_t size, enum vmm_flags flags, enum mmu_flags mmu_flags, void* private);
 void vmm_unmap(void* addr, size_t size, enum vmm_flags flags);
 
-bool vmm_pagefault(void* addr, bool user, enum vmm_action actions);
+struct vmm_space* vmm_get_space(void* addr);
+struct vmm_range* vmm_get_range(struct vmm_space* space, void* addr);
 
 void vmm_cache_init(void);
 

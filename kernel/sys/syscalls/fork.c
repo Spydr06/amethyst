@@ -20,16 +20,24 @@ __syscall syscallret_t _sys_fork(struct cpu_context* ctx) {
     };
 
     struct proc* proc = current_proc();
-    
+    struct thread* thread = current_thread();
+
     struct proc* new_proc = proc_create();
     if(!new_proc) {
         ret._errno = ENOMEM;
         goto cleanup;
     }
 
-    struct thread* new_thread = thread_create((void*) CPU_IP(ctx), 16 * PAGE_SIZE, current_thread()->priority, new_proc, (void*) CPU_SP(ctx));
+    uintptr_t ip = CPU_IP(ctx);
+    uintptr_t sp = CPU_SP(ctx);
 
-    new_thread->vmm_context = vmm_context_fork(current_thread()->vmm_context);
+    struct thread* new_thread = thread_create((void*) ip, PAGE_SIZE * 16, 1, new_proc, (void*) sp);
+    if(!new_thread) {
+        ret._errno = ENOMEM;
+        goto cleanup;
+    }
+
+    new_thread->vmm_context = vmm_context_fork(thread->vmm_context);
     if(!new_thread->vmm_context) {
         ret._errno = ENOMEM;
         goto cleanup;
@@ -53,14 +61,17 @@ __syscall syscallret_t _sys_fork(struct cpu_context* ctx) {
     new_thread->proc = new_proc;
 
     threadsave(new_thread, ctx);
+    CPU_SP(&new_thread->context) = sp;
+    CPU_IP(&new_thread->context) = ip;
     CPU_RET(&new_thread->context) = 0;
 
     // TODO: signals
     
     ret.ret = new_proc->pid;
+
     sched_queue(new_thread);
 
-    klog(DEBUG, "thread [tid %d] created thread [tid %d]", current_thread()->tid, new_thread->tid);
+    klog(DEBUG, "thread [tid %d] created thread [tid %d]", thread->tid, new_thread->tid);
 
     PROC_RELEASE(new_proc);
 

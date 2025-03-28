@@ -53,6 +53,7 @@ __syscall syscallret_t _sys_umount(struct cpu_context* ctx, const char* u_dir_na
 __syscall syscallret_t _sys_ioctl(struct cpu_context* ctx, int fd, unsigned long request, void* arg);
 
 __syscall syscallret_t _sys_yield(struct cpu_context* ctx);
+__syscall syscallret_t _sys_nanosleep(struct cpu_context* ctx, const struct timespec* rq, struct timespec* rm);
 
 __syscall syscallret_t _sys_fork(struct cpu_context* ctx);
 __syscall syscallret_t _sys_execve(struct cpu_context* ctx, const char *u_filename, const char *const argv[], const char *const u_envp[]);

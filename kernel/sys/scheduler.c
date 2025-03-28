@@ -5,6 +5,7 @@
 #include "sys/syscall.h"
 #include "x86_64/cpu/cpu.h"
 #include "x86_64/cpu/idt.h"
+#include "x86_64/trace.h"
 #include <sys/scheduler.h>
 #include <sys/thread.h>
 #include <sys/proc.h>
@@ -23,6 +24,8 @@
 #include <string.h>
 #include <abi.h>
 #include <errno.h>
+
+//#define _SCHED_DEBUG
 
 #define SCHEDULER_STACK_SIZE (PAGE_SIZE * 16)
 
@@ -63,6 +66,26 @@ static void cpu_idle_thread(void) {
     while(1) {
         hlt_until_int();
         sched_yield();
+    }
+}
+
+static void print_queue(int priority) {
+    if(klog_min_severity > KLOG_DEBUG)
+        return;
+    
+    klog_inl(INFO, " %s %d | ", priority == 0 ? "->" : "  ", priority);
+
+    struct thread* head = run_queue[priority].head;
+
+    while(head) {
+        printk(" [tid %d]", head->tid);
+        head = head->next;
+    }
+}
+
+static void print_relevant_queues(void) {
+    for(int i = 0; i < 4; i++) {
+        print_queue(i);
     }
 }
 
@@ -111,16 +134,27 @@ static struct thread* dequeue_next_thread(int min_priority) {
 
     interrupt_set(int_state);
 
-    // if(thread)
-    //    klog(WARN, "[cpu %d] Dequeueing tid %d [pid %d]\n", _cpu()->id, thread->tid, thread->proc ? thread->proc->pid : -1);
+#ifdef _SCHED_DEBUG
+    if(thread) {
+        klog(DEBUG, "[cpu %d] Dequeueing tid %d [pid %d]", _cpu()->id, thread->tid, thread->proc ? thread->proc->pid : -1);
+        print_relevant_queues();
+    }
+#endif
 
     return thread;
 }
 
 static void enqueue_thread(struct thread* thread) {
-    // klog(WARN, "[cpu %d] Enqueueing tid %d [pid %d]\n", _cpu()->id, thread->tid, thread->proc ? thread->proc->pid : -1);
-    if(thread == _cpu()->idle_thread)
+#ifdef _SCHED_DEBUG
+    klog(DEBUG, "[cpu %d] Enqueueing tid %d [pid %d]", _cpu()->id, thread->tid, thread->proc ? thread->proc->pid : -1);
+#endif
+
+    if(thread == _cpu()->idle_thread) {
+#ifdef _SCHED_DEBUG
+        print_relevant_queues();
+#endif
         return;
+    }
 
     assert(!(thread->flags & THREAD_FLAGS_RUNNING));
     thread->flags |= THREAD_FLAGS_QUEUED;
@@ -128,17 +162,17 @@ static void enqueue_thread(struct thread* thread) {
     run_queue_bitmap |= ((uint64_t) 1 << thread->priority);
 
     thread->prev = run_queue[thread->priority].last;
-    /*if(thread->prev == thread)
-        thread->prev = nullptr;
-    else*/ 
     if(thread->prev)
         thread->prev->next = thread;
-    //if(!thread->prev || !run_queue[thread->priority].head)
     else 
         run_queue[thread->priority].head = thread;
 
     thread->next = nullptr;
     run_queue[thread->priority].last = thread;
+
+#ifdef _SCHED_DEBUG
+    print_relevant_queues();
+#endif
 }
 
 static __noreturn void switch_thread(struct thread* thread) {
@@ -150,8 +184,10 @@ static __noreturn void switch_thread(struct thread* thread) {
     if(!current || thread->vmm_context != current->vmm_context)
         vmm_switch_context(thread->vmm_context);
  
-    // if(current && current->tid != thread->tid)
-    //     klog(DEBUG, "cpu %u: switching from [tid %d / pid %d] to [tid %d / pid %d]", _cpu()->id, current ? current->tid : -1, current && current->proc ? current->proc->pid : -1, thread->tid, thread->proc ? thread->proc->pid : -1);    
+#ifdef _SCHED_DEBUG
+    if(current && current->tid != thread->tid)
+        klog(DEBUG, "cpu %u: switching from [tid %d / pid %d] to [tid %d / pid %d]", _cpu()->id, current ? current->tid : -1, current && current->proc ? current->proc->pid : -1, thread->tid, thread->proc ? thread->proc->pid : -1);    
+#endif
 
     _cpu()->interrupt_status = CPU_CONTEXT_INTSTATUS(&thread->context);
     thread->cpu = _cpu();
@@ -210,7 +246,9 @@ __noreturn void sched_stop_thread(void) {
         assert(!(next->flags & THREAD_FLAGS_QUEUED));
     }
     else {
+#ifdef _SCHED_DEBUG
         klog(WARN, "[cpu %d] idle", _cpu()->id);
+#endif
         next = _cpu()->idle_thread;
     }
 
@@ -250,7 +288,7 @@ static void timeout(struct cpu_context* ctx __unused, dpc_arg_t arg) {
     sched_wakeup((struct thread*) arg, 0);
 }
 
-static void _yield(struct cpu_context* context, void* __unused) {
+static void yield(struct cpu_context* context, void* __unused) {
     struct thread* thread = _cpu()->thread;
 
     spinlock_acquire(&run_queue_lock);
@@ -318,21 +356,23 @@ bool sched_wakeup(struct thread* thread, enum wakeup_reason reason) {
     thread->flags &= ~(THREAD_FLAGS_SLEEP | THREAD_FLAGS_INTERRUPTIBLE);
     thread->wakeup_reason = reason;
 
-    sched_queue(thread);
+    int err = sched_queue(thread);
+    if(err) {
+        assert(!"tried queueing an existing thread");
+    }
+
     spinlock_release(&thread->sleep_lock);
     interrupt_set(int_state);
 
-    return true;
+    return !err;
 }
 
-void sched_queue(struct thread* thread) {
+int sched_queue(struct thread* thread) {
     bool int_state = interrupt_set(false);
     spinlock_acquire(&run_queue_lock);
 
-    if(thread->flags & THREAD_FLAGS_QUEUED || thread->flags & THREAD_FLAGS_RUNNING) {
-        klog(WARN, "tried queueing already present thread [tid: %u]", thread->tid);
-        return;
-    }
+    if(thread->flags & THREAD_FLAGS_QUEUED || thread->flags & THREAD_FLAGS_RUNNING)
+        return EEXIST;
 
     enqueue_thread(thread);
 
@@ -340,6 +380,7 @@ void sched_queue(struct thread* thread) {
     interrupt_set(int_state);
 
     // TODO: yield to higher priority threads
+    return 0;
 }
 
 int sched_yield(void) {
@@ -348,7 +389,7 @@ int sched_yield(void) {
     bool sleeping = _cpu()->thread->flags & THREAD_FLAGS_SLEEP;
     bool old = sleeping ? _cpu()->thread->sleep_interrupt_status : interrupt_set(false);
 
-    _context_save_and_call(_yield, _cpu()->scheduler_stack, nullptr);
+    _context_save_and_call(yield, _cpu()->scheduler_stack, nullptr);
     interrupt_set(old);
 
     return sleeping ? _cpu()->thread->wakeup_reason : 0;
@@ -613,11 +654,12 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
     // TODO: proc
 
     user_thread->vmm_context = vmm_ctx;
-    sched_queue(user_thread);
+    err = sched_queue(user_thread);
+    assert(err == 0 && "tried queueing already existing thread");
 
     vop_release(&exec_node);
 
-    // proc_release(&proc);
+    PROC_RELEASE(proc);
 
     return 0;
 }

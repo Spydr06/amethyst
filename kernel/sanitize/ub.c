@@ -99,7 +99,8 @@ void __ubsan_handle_function_type_mismatch_abort(struct ubsan_function_type_mism
 }
 
 void __ubsan_handle_function_type_mismatch_v1(struct ubsan_function_type_mismatch_data *data, unsigned long ul_function, unsigned long ul_callee_rtti, unsigned long ul_fn_rtti) {
-    ubsan_logf(&data->location, "triggered %s", __func__);
+
+    ubsan_logf(&data->location, "Type mismatch (%s @ %p) rtti callee: %p; fn: %p", data->type->name, (void*) ul_function, (void*) ul_callee_rtti, (void*) ul_fn_rtti);
 }
 
 void __ubsan_handle_function_type_mismatch_v1_abort(struct ubsan_function_type_mismatch_data *data, unsigned long ul_function, unsigned long ul_callee_rtti, unsigned long ul_fn_rtti) {

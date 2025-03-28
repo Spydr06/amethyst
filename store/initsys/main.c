@@ -1,12 +1,13 @@
-#include <unistd.h>
-#include <stdio.h>
+#include <errno.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
-#include <string.h>
-#include <stdlib.h>
 #include <sys/syscall.h>
-#include <errno.h>
+#include <time.h>
+#include <unistd.h>
 
 static char shell_bin[] = "/bin/shard-sh";
 
@@ -67,7 +68,11 @@ int main(int argc, char** argv) {
     int pid = fork();
     if(pid == 0) {
         printf("fork you!\n");
-        exit(1);
+        struct timespec ts = {.tv_nsec = 0, .tv_sec = 1};
+        nanosleep(&ts, NULL);
+        printf("goodbye\n");
+        while(1);
+//        exit(1);
     }
 
     printf("forked pid %d\n", pid);

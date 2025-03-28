@@ -1,4 +1,11 @@
-#include <stdint.h>
+#include <mem/pmm.h>
+#include <mem/vmm.h>
+
+#include <cpu/pagefault.h>
+#include <sys/thread.h>
+#include <sys/proc.h>
+#include <sys/spinlock.h>
+
 #include <x86_64/mem/mmu.h>
 #include <x86_64/cpu/cpu.h>
 #include <x86_64/cpu/idt.h>
@@ -6,19 +13,12 @@
 #include <x86_64/dev/apic.h>
 #include <x86_64/dev/pic.h>
 
-#include <mem/pmm.h>
-#include <mem/vmm.h>
-
-#include <sys/thread.h>
-#include <sys/proc.h>
-#include <sys/spinlock.h>
-
 #include <limine/limine.h>
 
 #include <assert.h>
-#include <errno.h>
-#include <string.h>
 #include <kernelio.h>
+#include <stdint.h>
+#include <string.h>
 
 #define ADDRMASK 0x7ffffffffffff000ul
 #define   PTMASK 0b111111111000000000000ul
@@ -160,42 +160,6 @@ static uint64_t* get_page(page_table_ptr_t top, void* vaddr) {
     return pt + pt_offset;
 }
 
-static void pfisr(struct cpu_context* status) {
-    struct thread* thread = _cpu()->thread;
-
-    interrupt_set(true);
-
-    bool in_userspace = status->cs != 8;
-    enum vmm_action action = violation_to_vmm_action(status->error_code);
-
-    char perms[4];
-    vmm_action_as_str(action, perms);
-
-    // klog(ERROR, "PF @ %p: %s [%d]", (void*) status->cr2, perms, in_userspace);
-
-    if(vmm_pagefault((void*) status->cr2, in_userspace, action))
-        return;
-
-    if(thread && thread->user_memcpy_context) {
-        memcpy(status, thread->user_memcpy_context, sizeof(struct cpu_context));
-        thread->user_memcpy_context = nullptr;
-        CPU_RET(status) = EFAULT;
-    }
-    // TODO: signal user proc
-    else {
-        char perms[4];
-        vmm_action_as_str(action, perms);
-        
-        panic_r(status, "Page Fault at %p (\"%s\", %s, cpu %d / tid %d / pid %d)", 
-                (void*) status->cr2, 
-                perms, 
-                in_userspace ? "user" : "kernel",
-                _cpu()->id,
-                current_thread() ? current_thread()->tid : -1,
-                current_proc() ? current_proc()->pid : -1);
-    }
-}
-
 void mmu_tlbipi(struct cpu_context* status __unused) {
     __asm__ volatile(
         "invlpg (%%rax)"
@@ -206,7 +170,7 @@ void mmu_tlbipi(struct cpu_context* status __unused) {
 
 void mmu_apswitch(void) {
     mmu_switch(FROM_HHDM(template));
-    interrupt_register(0x0e, pfisr, nullptr, IPL_IGNORE);
+    pagefault_init();
     interrupt_register(0xfe, mmu_tlbipi, pic_send_eoi, IPL_IGNORE);
     idt_reload();
 }

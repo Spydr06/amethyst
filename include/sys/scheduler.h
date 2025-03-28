@@ -16,7 +16,7 @@ void sched_sleep(size_t us);
 void sched_prepare_sleep(bool interruptible);
 bool sched_wakeup(struct thread* thread, enum wakeup_reason reason);
 
-void sched_queue(struct thread* thread);
+int sched_queue(struct thread* thread);
 int sched_yield(void);
 
 int scheduler_exec(const char* path, char* argv[], char* envp[]);

@@ -24,3 +24,6 @@ _Noreturn void _exit(int status) {
     _Exit(status);
 }
 
+int fork(void) {
+    return syscall(SYS_fork);
+}
