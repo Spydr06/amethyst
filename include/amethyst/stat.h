@@ -7,6 +7,7 @@ extern "C" {
 
 #ifdef _AMETHYST_KERNEL_SRC
     #include <abi.h>
+    #include <time.h>
 #else
     #include <bits/alltypes.h>
 #endif

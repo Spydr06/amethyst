@@ -1,3 +1,5 @@
+#include "amethyst/dirent.h"
+#include "hashtable.h"
 #include "kernelio.h"
 #include <filesystem/temporary.h>
 #include <filesystem/virtual.h>
@@ -32,6 +34,8 @@ static int tmpfs_mmap(struct vnode *node, void *addr, uintmax_t offset, int flag
 
 static int tmpfs_lookup(struct vnode* parent, const char* name, struct vnode** result, struct cred* cred);
 
+static int tmpfs_getdents(struct vnode* node, struct amethyst_dirent *buffer, size_t count, uintmax_t offset, size_t *readcount);
+
 static struct vfsops vfsops = {
     .mount = tmpfs_mount,
     .unmount = tmpfs_unmount,
@@ -49,6 +53,7 @@ static struct vops vops = {
     .putpage = tmpfs_putpage,
     .lookup = tmpfs_lookup,
     .mmap = tmpfs_mmap,
+    .getdents = tmpfs_getdents,
 };
 
 static struct scache* node_cache;
@@ -327,6 +332,37 @@ static int tmpfs_lookup(struct vnode* parent, const char* name, struct vnode** r
     vop_hold(child);
     vop_unlock(parent);
     *result = child;
+
+    return 0;
+}
+
+static int tmpfs_getdents(struct vnode* vnode, struct amethyst_dirent *buffer, size_t count, uintmax_t offset, size_t *ents_read) {
+    if(vnode->type != V_TYPE_DIR)
+        return ENOTDIR;
+
+    struct tmpfs_node* node = (struct tmpfs_node*) vnode;
+    size_t current = 0;
+    *ents_read = 0;
+
+    HASHTABLE_FOREACH(&node->children, entry) {
+        if(current < offset) {
+            current++;
+            continue;
+        }
+
+        if(*ents_read >= count)
+            break;
+
+        struct tmpfs_node* entry_node = entry->value;
+        struct amethyst_dirent* dent = buffer + *ents_read;
+        dent->d_ino = entry_node->vattr.inode;
+        dent->d_off = offset + *ents_read;
+        dent->d_reclen = sizeof(struct amethyst_dirent);
+        dent->d_type = vfs_posix_type(entry_node->vnode.type);
+        memcpy(dent->d_name, entry->key, MIN(entry->keysize, sizeof(dent->d_name)));
+
+        (*ents_read)++;
+    }
 
     return 0;
 }

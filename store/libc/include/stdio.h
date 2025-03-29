@@ -8,7 +8,7 @@ extern "C" {
 #include <stdarg.h>
 #include <bits/alltypes.h>
 
-#define BUFSIZ 1024
+#define BUFSIZ 8192
 
 #define EOF (-1)
 

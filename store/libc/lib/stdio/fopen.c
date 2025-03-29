@@ -39,8 +39,10 @@ FILE* _fdopen(int fd, const char* mode) {
     }
 
     FILE* f = malloc(sizeof(FILE) + BUFSIZ + MAX_UNGET);
-    if(!f)
-        return 0;
+    if(!f) {
+        errno = ENOMEM;
+        return NULL;
+    }
     
     memset(f, 0, sizeof(FILE));
 

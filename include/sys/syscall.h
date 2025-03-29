@@ -1,7 +1,7 @@
 #ifndef _AMETHYST_CPU_SYSCALLS_H
 #define _AMETHYST_CPU_SYSCALLS_H
 
-#include "x86_64/cpu/cpu.h"
+#include <amethyst/dirent.h>
 #include <amethyst/stat.h>
 #include <amethyst/syscall.h>
 #include <cdefs.h>
@@ -42,7 +42,7 @@ __syscall syscallret_t _sys_stat(struct cpu_context* ctx, const char* path, stru
 __syscall syscallret_t _sys_fstat(struct cpu_context* ctx, int fd, struct stat *statbuf);
 __syscall syscallret_t _sys_mkdir(struct cpu_context* ctx, const char* path, mode_t mode);
 __syscall syscallret_t _sys_getcwd(struct cpu_context* ctx, char* cwd, size_t cwd_size);
-
+__syscall syscallret_t _sys_getdents(struct cpu_context* ctx, int fd, struct amethyst_dirent *dirp, size_t count);
 __syscall syscallret_t _sys_mmap(struct cpu_context* ctx, void* addr, size_t len, enum map_prot prot, enum map_flags flags, int fd, off_t offset);
 __syscall syscallret_t _sys_munmap(struct cpu_context* ctx, void* addr, size_t len);
 __syscall syscallret_t _sys_brk(struct cpu_context* ctx, void* addr);

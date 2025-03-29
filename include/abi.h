@@ -2,7 +2,6 @@
 #define _AMETHYST_ABI_H
 
 #include <stdint.h>
-#include <time.h>
 
 #define KiB (1024ull)
 #define MiB (KiB * 1024ull)
@@ -28,14 +27,6 @@ typedef int64_t blksize_t;
 typedef uint64_t dev_t;
 typedef uint64_t nlink_t;
 typedef uint64_t blkcnt_t;
-
-struct dent {
-    ino_t d_ino;
-    off_t d_off;
-    uint16_t d_reclen;
-    uint8_t d_type;
-    char d_name[1024];
-};
 
 #endif /* _AMETHYST_ABI_H */
 

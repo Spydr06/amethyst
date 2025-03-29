@@ -2,6 +2,7 @@
 #define _UNISTD_H
 
 #include <bits/alltypes.h>
+#include <amethyst/dirent.h>
 
 #ifdef __cplusplus
 extern "C" {

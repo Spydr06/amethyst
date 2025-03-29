@@ -81,6 +81,9 @@ typedef struct _fpos64 {
 struct _IO_FILE;
 typedef struct _IO_FILE FILE;
 
+struct _IO_DIR;
+typedef struct _IO_DIR DIR;
+
 typedef _Int64 time_t;
 typedef _Int64 clock_t;
 

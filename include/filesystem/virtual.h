@@ -2,6 +2,8 @@
 #define _AMETHYST_FILESYSTEM_VIRTUAL_H
 
 #include <abi.h>
+#include <amethyst/dirent.h>
+#include <time.h>
 #include <sys/mutex.h>
 
 #include <stdint.h>
@@ -126,7 +128,7 @@ typedef struct vops {
 	int (*inactive)(struct vnode *node);
 	int (*mmap)(struct vnode *node, void *addr, uintmax_t offset, int flags, struct cred *cred);
 	int (*munmap)(struct vnode *node, void *addr, uintmax_t offset, int flags, struct cred *cred);
-	int (*getdents)(struct vnode *node, struct dent *buffer, size_t count, uintmax_t offset, size_t *readcount);
+	int (*getdents)(struct vnode *node, struct amethyst_dirent *buffer, size_t count, uintmax_t offset, size_t *readcount);
 	int (*isatty)(struct vnode *node);
 	int (*ioctl)(struct vnode *node, unsigned long request, void *arg, int *result, struct cred* cred);
 	int (*maxseek)(struct vnode *node, size_t *max);
@@ -164,6 +166,7 @@ int vfs_setattr(struct vnode* node, struct vattr* attr, int which);
 
 int vfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset, size_t* written, int flags);
 int vfs_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, size_t* read, int flags);
+int vfs_getdents(struct vnode* node, struct amethyst_dirent *buffer, size_t count, uintmax_t offset, size_t *readcount);
 
 int vfs_link(struct vnode* dest_ref, const char* dest_path, struct vnode* link_ref, const char* link_path, enum vtype type, struct vattr* attr);
 
@@ -222,6 +225,10 @@ static inline int vop_getattr(struct vnode *node, struct vattr *attr, struct cre
     return node->ops->getattr(node, attr, cred);
 }
 
+static inline int vop_getdents(struct vnode* node, struct amethyst_dirent *buffer, size_t count, uintmax_t offset, size_t *readcount) {
+    return node->ops->getdents(node, buffer, count, offset, readcount);
+}
+
 static inline int vop_write(struct vnode *node, void *buffer, size_t size, uintmax_t offset, int flags, size_t *bytes_written, struct cred *cred) {
     return node->ops->write(node, buffer, size, offset, flags, bytes_written, cred);
 }
@@ -272,6 +279,27 @@ static inline int vop_putpage(struct vnode* node, uintmax_t offset, struct page*
  
 static inline int vfs_get_root(struct vfs* vfs, struct vnode** r) {
     return vfs->ops->root(vfs, r);
+}
+
+static inline int vfs_posix_type(enum vtype type) {
+    switch(type)  {
+        case V_TYPE_REGULAR:
+            return DT_REG;
+        case V_TYPE_DIR:
+            return DT_DIR;
+        case V_TYPE_CHDEV:
+            return DT_CHR;
+        case V_TYPE_BLKDEV:
+            return DT_BLK;
+        case V_TYPE_FIFO:
+            return DT_FIFO;
+        case V_TYPE_LINK:
+            return DT_LNK;
+        case V_TYPE_SOCKET:
+            return DT_SOCK;
+        default:
+            return DT_UNKNOWN;
+    }
 }
 
 #endif /* _AMETHYST_FILESYSTEM_VIRTUAL_H */

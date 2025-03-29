@@ -11,6 +11,7 @@
 #define SYS_fstat       5
 #define SYS_mkdir       6
 #define SYS_getcwd      7
+#define SYS_getdents    8
 #define SYS_mmap        9
 #define SYS_munmap      11
 #define SYS_brk         12

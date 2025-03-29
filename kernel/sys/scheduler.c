@@ -83,7 +83,7 @@ static void print_queue(int priority) {
     }
 }
 
-static void print_relevant_queues(void) {
+static __attribute__((used)) void print_relevant_queues(void) {
     for(int i = 0; i < 4; i++) {
         print_queue(i);
     }

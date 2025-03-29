@@ -455,6 +455,10 @@ leave:
     return err;
 }
 
+int vfs_getdents(struct vnode* node, struct amethyst_dirent *buffer, size_t count, uintmax_t offset, size_t *readcount) {
+    return vop_getdents(node, buffer, count, offset, readcount);
+}
+
 int vfs_mount(struct vnode* backing, struct vnode* path_ref, const char* path, const char* fs_name, void* data) {
     struct vfsops* ops;
     int err = hashtable_get(&fs_table, (void**) &ops, fs_name, strlen(fs_name));

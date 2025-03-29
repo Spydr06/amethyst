@@ -72,6 +72,9 @@ static void inactive(int minor) {
 } 
 
 static int read(int minor, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_read) {
+    (void) offset;
+    (void) flags;
+
     struct tty* tty = tty_get(minor);
     if(!tty)
         return ENODEV;
