@@ -42,6 +42,7 @@ const struct syscall_entry _syscall_table[] = {
     _SYS_E(fork,     ""            ),
     _SYS_E(execve,   "%p, %p, %p"  ),
     _SYS_E(exit,     "%ld"         ),
+    _SYS_E(uname,    "%p"          ),
     _SYS_E(knldebug, "%ld, %p, %ld")
 };
 

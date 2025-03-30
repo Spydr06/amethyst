@@ -27,3 +27,8 @@ _Noreturn void _exit(int status) {
 int fork(void) {
     return syscall(SYS_fork);
 }
+
+int uname(struct utsname *utsname) {
+    return syscall(SYS_uname, utsname);
+}
+

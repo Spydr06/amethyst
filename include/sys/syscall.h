@@ -4,6 +4,8 @@
 #include <amethyst/dirent.h>
 #include <amethyst/stat.h>
 #include <amethyst/syscall.h>
+#include <amethyst/utsname.h>
+
 #include <cdefs.h>
 #include <cpu/cpu.h>
 #include <kernelio.h>
@@ -58,6 +60,9 @@ __syscall syscallret_t _sys_nanosleep(struct cpu_context* ctx, const struct time
 __syscall syscallret_t _sys_fork(struct cpu_context* ctx);
 __syscall syscallret_t _sys_execve(struct cpu_context* ctx, const char *u_filename, const char *const argv[], const char *const u_envp[]);
 __syscall syscallret_t _sys_exit(struct cpu_context* ctx, int exit_code);
+
+__syscall syscallret_t _sys_uname(struct cpu_context* ctx, struct utsname* u_name);
+
 __syscall syscallret_t _sys_knldebug(struct cpu_context* ctx, enum klog_severity severity, const char* user_buffer, size_t buffer_size);
 
 #endif /* _AMETHYST_CPU_SYSCALLS_H */

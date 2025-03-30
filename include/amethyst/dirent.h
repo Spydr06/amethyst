@@ -7,14 +7,14 @@
     #include <bits/alltypes.h>
 #endif
 
-#define DT_REG 1
-#define DT_DIR 2
-#define DT_FIFO 3
-#define DT_SOCK 4
-#define DT_LNK 5
-#define DT_BLK 6
-#define DT_CHR 7
-#define DT_UNKNOWN 0
+#define DT_UNKNOWN  0
+#define DT_FIFO     1
+#define DT_CHR      2
+#define DT_DIR      4
+#define DT_BLK      6
+#define DT_REG      8
+#define DT_LNK      10
+#define DT_SOCK     12
 
 struct amethyst_dirent {
     ino_t d_ino;

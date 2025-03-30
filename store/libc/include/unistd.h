@@ -2,7 +2,9 @@
 #define _UNISTD_H
 
 #include <bits/alltypes.h>
+
 #include <amethyst/dirent.h>
+#include <amethyst/utsname.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,6 +50,8 @@ _Noreturn void _exit(int status);
 long syscall(long number, ...);
 
 char *getcwd(char *buf, size_t size);
+
+int uname(struct utsname *utsname);
 
 #ifdef _AMETHYST_SRC
     #define yield __amethyst_yield

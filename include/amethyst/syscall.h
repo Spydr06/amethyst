@@ -23,6 +23,7 @@
 #define SYS_fork        57
 #define SYS_execve      59
 #define SYS_exit        60
+#define SYS_uname       63
 #define SYS_knldebug    255
 
 #endif /* _AMETHYST_SYSCALL_H */
