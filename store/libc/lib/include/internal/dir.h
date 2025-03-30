@@ -32,9 +32,11 @@ static inline int dentbuf_grow(DIR* d, size_t min) {
         return 0;
 
     if(min >= d->buffer_alloc) {
-        size_t new_alloc = (d->buffer_alloc * 3) / 2;
-        d->buffer_alloc = new_alloc > min ? new_alloc : BUFSIZ;
-
+        if(d->buffer_alloc == 0)
+            d->buffer_alloc = BUFSIZ;
+        while(d->buffer_alloc < min)
+            d->buffer_alloc = (d->buffer_alloc * 3) / 2;
+        
         void* new_buffer = realloc(d->buffer, d->buffer_alloc);
         if(!new_buffer)
             return ENOMEM;

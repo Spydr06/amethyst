@@ -62,37 +62,6 @@ int main(int argc, char** argv) {
 
     close(fb);
 
-    /*int fd = open("/", O_RDONLY | O_DIRECTORY, 0666);
-    if(fd == -1) {
-        fprintf(stderr, "/: open() failed: %m\n");
-        return 1;
-    }
-
-    size_t bufsize = 10000;
-    char* buf = malloc(bufsize);
-    int i = 0;
-    for(;;) {
-        long nread = syscall(SYS_getdents, fd, buf, bufsize);
-        if(nread == -1) {
-            fprintf(stderr, "/: getdents() failed: %m\n");
-            return 1;
-        }
-
-        if(nread == 0)
-            break;
-
-        printf("(%ld dents)\n", nread / sizeof(struct amethyst_dirent));
-
-        for(size_t bpos = 0; bpos < nread; i++) {
-            struct amethyst_dirent* d = (struct amethyst_dirent*) (buf + bpos);
-            printf("%2d) | %s\n", i, d->d_name);
-            bpos += d->d_reclen;
-        }
-    }
-
-    free(buf);
-    close(fd);*/
-
     DIR* dir = opendir("/");
     if(!dir) {
         fprintf(stderr, "/: opendir() failed: %m\n");
@@ -103,7 +72,7 @@ int main(int argc, char** argv) {
 
     int i = 0;
     while((ent = readdir(dir))) {
-        printf("%02d) \"%s\"\n", i++, ent->d_name);
+        printf(" %d) \"%s\"\n", i++, ent->d_name);
     }
 
     closedir(dir);
