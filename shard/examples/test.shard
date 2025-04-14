@@ -1,7 +1,8 @@
 let
     dl = system.dlOpen ./mylib.so;
     
-    greet = system.dlSym dl "greet" $ with system; ffi.cFunc ffi.cVoid [ (ffi.cPointer $ ffi.cPointer ffi.cChar) ffi.cUnsignedInt ];
+    greet = system.dlSym dl "greet" $ with system; 
+        ffi.cFunc ffi.cVoid [ (ffi.cPointer $ ffi.cPointer ffi.cChar) ffi.cUnsignedInt ];
 in
     greet [ "callie" "nephele" "and everyone else" ] 3
 

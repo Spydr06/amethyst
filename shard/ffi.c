@@ -26,12 +26,19 @@
 
 #define ALIGN_TO(x, a) ((x) + ((a) - 1)) & ~((a) - 1);
 
+#ifdef __x86_64__
+    #define GP_MAX 6
+    #define SSE_MAX 8
+#else
+    #error "Unsupported architecture"
+#endif
+
 struct ffi_ccall {
     int gp_used;
     int sse_used;
 
-    intptr_t gp[6];
-    intptr_t sse[8];
+    intptr_t gp[GP_MAX];
+    intptr_t sse[SSE_MAX];
 
     uint8_t* stack_args;
     int stack_capacity;
