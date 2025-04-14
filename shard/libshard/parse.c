@@ -22,6 +22,7 @@ enum precedence {
     PREC_COMPOSITION,
     PREC_NEGATION,
     PREC_CALL,
+    PREC_LIST_LITERAL,
     PREC_ATTRIBUTE_SELECTION,
     
     PREC_HIGHEST
@@ -573,7 +574,7 @@ static int parse_list(struct parser* p, struct shard_expr* expr) {
         if(p->token.type == SHARD_TOK_EOF)
             return errorf(p, "unexpected end of file, expect expression or `]`");
 
-        int err2 = parse_expr(p, &elem, PREC_HIGHEST);
+        int err2 = parse_expr(p, &elem, PREC_LIST_LITERAL);
         if(err2)
             err = err2;
         dynarr_append(p->ctx, &expr->list.elems, elem);

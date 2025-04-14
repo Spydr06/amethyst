@@ -322,7 +322,7 @@ cleanup:
 
 static char* repl_prompt(EditLine* el) {
     (void) el;
-    return C_YELLOW "shard> " C_RST;
+    return "shard> ";
 }
 
 static char* multiline_prompt(EditLine* el) {

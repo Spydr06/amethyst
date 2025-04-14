@@ -114,7 +114,7 @@ int shard_value_to_string(struct shard_context* ctx, struct shard_string* str, c
             dynarr_append(ctx, str, '}');
         } break;
         case SHARD_VAL_BUILTIN:
-            snprintf(buf, LEN(buf), "<builtin %tx>", (ptrdiff_t) val->function.body);
+            snprintf(buf, LEN(buf), "<builtin %p>", val->builtin.builtin->callback);
             dynarr_append_many(ctx, str, buf, strlen(buf));
             break;
     }

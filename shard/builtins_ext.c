@@ -1,0 +1,184 @@
+#include "shard.h"
+
+#define __USE_XOPEN2K
+
+#include <assert.h>
+#include <dlfcn.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <libshard.h>
+
+#define NULL_VAL() ((struct shard_value) { .type = SHARD_VAL_NULL })
+#define INT_VAL(i) ((struct shard_value) { .type = SHARD_VAL_INT, .integer = (int64_t)(i) })
+
+#define STRING_VAL(s, l) ((struct shard_value) { .type = SHARD_VAL_STRING, .string = (s), .strlen = (l) })
+#define CSTRING_VAL(s) STRING_VAL(s, strlen((s)))
+#define SET_VAL(_set) ((struct shard_value) { .type = SHARD_VAL_SET, .set = (_set) })
+
+#define EXT_BUILTIN(name, cname, ...)                                                                                                                   \
+        static struct shard_value builtin_##cname(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);   \
+        struct shard_builtin ext_builtin_##cname = SHARD_BUILTIN(name, builtin_##cname, __VA_ARGS__)
+
+EXT_BUILTIN("system.getEnv", getEnv, SHARD_VAL_STRING);
+EXT_BUILTIN("system.setEnv", setEnv, SHARD_VAL_STRING, SHARD_VAL_STRING);
+EXT_BUILTIN("system.dlOpen", dlOpen, SHARD_VAL_PATH);
+EXT_BUILTIN("system.dlClose", dlClose, SHARD_VAL_SET);
+EXT_BUILTIN("system.dlSym", dlSym, SHARD_VAL_SET, SHARD_VAL_STRING, SHARD_VAL_SET);
+
+static struct shard_builtin* ext_builtins[] = {
+    &ext_builtin_getEnv,
+    &ext_builtin_setEnv,
+    &ext_builtin_dlOpen,
+    &ext_builtin_dlClose,
+    &ext_builtin_dlSym
+};
+
+static struct shard_value gen_arg_list(struct shard_context* ctx, int argc, char** argv) {
+    struct shard_value list;
+    list.type = SHARD_VAL_LIST;
+    list.list.head = NULL;
+
+    struct shard_list** head = &list.list.head;
+
+    for(int i = 0; i < argc; i++) {
+        struct shard_value arg = CSTRING_VAL(argv[i]);
+        
+        *head = shard_gc_malloc(ctx->gc, sizeof(struct shard_list));
+        (*head)->value = shard_unlazy(ctx, arg);
+        (*head)->next = NULL;
+        head = &(*head)->next;
+    }
+
+    return list;
+}
+
+int load_constants(struct shard_context* ctx, int argc, char** argv) {
+    struct {
+        const char* ident;
+        struct shard_value value;
+    } builtin_constants[] = {
+        {"system.getArgs", gen_arg_list(ctx, argc, argv)},
+    };
+
+    for(size_t i = 0; i < __len(builtin_constants); i++) {
+        int err = shard_define_constant(
+            ctx,
+            builtin_constants[i].ident,
+            builtin_constants[i].value
+        );
+
+        if(err)
+            return err;
+    }
+
+    return 0;
+}
+
+int load_ext_builtins(struct shard_context* ctx, int argc, char** argv) {
+    int err = load_constants(ctx, argc, argv);
+    if(err)
+        return err;
+
+    if((err = ffi_load(ctx)))
+        return err;
+
+    for(size_t i = 0; i < sizeof(ext_builtins) / sizeof(void*); i++) {
+        if((err = shard_define_builtin(ctx, ext_builtins[i])))
+            break;
+    }
+
+    return err;
+}
+
+static struct shard_value builtin_getEnv(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value name = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    char* value = getenv(name.string);
+    if(!value)
+        return NULL_VAL();
+    return CSTRING_VAL(value);
+}
+
+static struct shard_value builtin_setEnv(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value name = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value value = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    int err = setenv(name.string, value.string, 1);
+    if(err < 0)
+        return INT_VAL(errno);
+    return INT_VAL(0);
+}
+
+static struct shard_value builtin_dlOpen(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value path = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    void* handle = dlopen(path.path, RTLD_LAZY);
+    
+    struct shard_set* dylib = shard_set_init(e->ctx, 2);
+
+    shard_set_put(dylib, shard_get_ident(e->ctx, "filename"), args[0]);
+    if(handle) {
+        shard_set_put(dylib, shard_get_ident(e->ctx, "handle"), shard_unlazy(e->ctx, INT_VAL((intptr_t) handle)));
+    }
+    else {
+        char* err = dlerror();
+        err = shard_gc_strdup(e->gc, err, strlen(err));
+        shard_set_put(dylib, shard_get_ident(e->ctx, "error"), shard_unlazy(e->ctx, CSTRING_VAL(err)));
+    }
+
+    return SET_VAL(dylib);
+}
+
+static struct shard_value builtin_dlClose(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value dylib = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    int err;
+    struct shard_lazy_value* lazy_handle;
+    
+    if((err = shard_set_get(dylib.set, shard_get_ident(e->ctx, "handle"), &lazy_handle)))
+        return INT_VAL(err);
+
+    struct shard_value handle_val = shard_eval_lazy2(e, lazy_handle);
+    if(handle_val.type != SHARD_VAL_INT)
+        return INT_VAL(EINVAL);
+
+    void* handle = (void*) handle_val.integer;
+    return INT_VAL(dlclose(handle));
+}
+
+static struct shard_value builtin_dlSym(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value dylib_val = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value symbol_val = shard_builtin_eval_arg(e, builtin, args, 1);
+    struct shard_value ffi_type_val = shard_builtin_eval_arg(e, builtin, args, 2);
+
+    int err;
+    struct shard_lazy_value* lazy_handle;
+    if((err = shard_set_get(dylib_val.set, shard_get_ident(e->ctx, "handle"), &lazy_handle)))
+        return CSTRING_VAL("missing dl attr `handle`");
+
+    struct shard_value handle_val = shard_eval_lazy2(e, lazy_handle);
+    if(handle_val.type != SHARD_VAL_INT)
+        return CSTRING_VAL("invalid dl attr `handle`");
+
+    struct shard_lazy_value* lazy_filename;
+    if((err = shard_set_get(dylib_val.set, shard_get_ident(e->ctx, "filename"), &lazy_filename)))
+        return CSTRING_VAL("missing dl attr `filename`");
+
+    struct shard_value filename_val = shard_eval_lazy2(e, lazy_filename);
+    if(filename_val.type != SHARD_VAL_PATH)
+        return CSTRING_VAL("invalid dl attr `filename`");
+
+    void* handle = (void*) handle_val.integer;
+    const char* symbol = symbol_val.string;
+
+    void* sym = dlsym(handle, symbol);
+    if(!sym) {
+        char* err = dlerror();
+        err = shard_gc_strdup(e->gc, err, strlen(err));
+        return CSTRING_VAL(err);
+    }
+
+    return ffi_bind(e, symbol, sym, ffi_type_val.set);
+}

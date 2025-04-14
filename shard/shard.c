@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -11,6 +12,7 @@
 
 static const struct option cmdline_options[] = {
     {"help",   0, NULL, 'h'},
+    {"repl",   0, NULL, 'r'},
     {"silent", 0, NULL, 's'},
     {"system", 1, NULL, 0  },
     {NULL,     0, NULL, 0  }
@@ -22,6 +24,7 @@ _Noreturn static void help(const char* progname)
     printf("Options:\n");
     printf("  -h, --help        Print this help text and exit.\n");
     printf("  -I <include path> Add a directory to the include path list.\n");
+    printf("  -r, --repl        Enter an interactive REPL environment.\n");
     printf("  -s, --silent      Disable printing the resulting value.\n");
     exit(EXIT_SUCCESS);
 }
@@ -70,11 +73,12 @@ int main(int argc, char** argv) {
         fprintf(stderr, "%s: error initializing libshard: %s\n", argv[0], strerror(err));
         exit(EXIT_FAILURE);
     }
-    
+
     const char* current_system = PLATFORM_STRING;
     bool echo_result = true;
+    bool repl = false;
     int ch, long_index;
-    while((ch = getopt_long(argc, argv, "hI:s", cmdline_options, &long_index)) != EOF) {
+    while((ch = getopt_long(argc, argv, "hI:rs", cmdline_options, &long_index)) != EOF) {
         switch(ch) {
         case 0:
             if(strcmp(cmdline_options[long_index].name, "help") == 0)
@@ -91,6 +95,9 @@ int main(int argc, char** argv) {
         case 's':
             echo_result = false;
             break;
+        case 'r':
+            repl = true;
+            break;
         case '?':
         default:
             fprintf(stderr, "Try `%s --help` for more information.\n", argv[0]);
@@ -104,17 +111,16 @@ int main(int argc, char** argv) {
     if(path)
         shard_include_dir(&ctx, path);
 
-    int ret = 0;
-    if(optind >= argc) {
-        ret = shard_repl(argv[0], &ctx, echo_result);
+    const char* input_file = NULL;
+    if(optind >= argc)
+        repl = true;
+    else {
+        input_file = argv[optind];
     }
 
-    for(; optind < argc; optind++) {
-        const char* input_file = argv[optind];
-        ret = eval_file(&ctx, argv[0], input_file, echo_result);
-        if(ret)
-            break;
-    }
+    assert(load_ext_builtins(&ctx, argc - optind, argv + optind) == 0);
+
+    int ret = repl ? shard_repl(argv[0], &ctx, echo_result) : eval_file(&ctx, argv[0], input_file, echo_result);
 
     shard_deinit(&ctx);
     if(ret)

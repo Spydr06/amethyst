@@ -46,8 +46,38 @@
 
 #define REPL_ORIGIN "repl"
 
+#ifndef __len
+    #define __len(arr) (sizeof((arr)) / sizeof(*(arr)))
+#endif
+
+#define _(str) str
+
 void print_file_error(struct shard_error* error);
 
 int shard_repl(const char* progname, struct shard_context* ctx, bool echo_result);
+
+int load_ext_builtins(struct shard_context* ctx, int argc, char** argv);
+
+int ffi_load(struct shard_context* ctx);
+
+struct shard_value ffi_bind(volatile struct shard_evaluator* e, const char* symbol_name, void* symbol_address, struct shard_set* ffi_type);
+
+struct jit_buffer {
+    uint8_t* buffer;
+    size_t capacity;
+    size_t fill;
+};
+
+extern const uint8_t jit_prologue[];
+extern const size_t jit_prologue_size;
+
+extern const uint8_t jit_epilogue[];
+extern const size_t jit_epilogue_size;
+
+int jit_buffer_create(struct jit_buffer* buffer);
+int jit_buffer_delete(struct jit_buffer* buffer);
+
+int jit_append(struct jit_buffer* buffer, const uint8_t* code, size_t size);
+uintptr_t jit_jump(struct jit_buffer* buffer, size_t offset);
 
 #endif /* _SHARD_H  */

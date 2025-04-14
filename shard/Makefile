@@ -24,6 +24,9 @@ LIBSHARD_H := libshard/include/libshard.h
 LIBSHARD_SOURCES := $(shell find $(LIBSHARD_DIR) -name '*.c')
 LIBSHARD_OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(LIBSHARD_SOURCES))
 
+SHARDBIN_SOURCES := $(wildcard *.c)
+SHARDBIN_OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SHARDBIN_SOURCES))
+
 TEST_RUNNER_SOURCE := tests/runner.c
 TEST_RUNNER_BIN := $(BUILD_DIR)/tests/runner
 
@@ -90,7 +93,7 @@ $(BUILD_DIR):
 	@echo "  MKDIR $(BUILD_DIR)"
 	@mkdir -p $(BUILD_DIR)
 
-$(SHARD_BIN): $(LDLFLAGS) $(BUILD_DIR)/shard.o $(BUILD_DIR)/repl.o $(LIBSHARD_OBJ) $(LIBC_DRIVER)
+$(SHARD_BIN): $(LDLFLAGS) $(SHARDBIN_OBJECTS) $(LIBSHARD_OBJ) $(LIBC_DRIVER)
 	@echo "  LD    $@"
 	@$(CC) $(LDFLAGS) -o $@ $^ -ledit
 
