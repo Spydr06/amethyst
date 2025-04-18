@@ -23,7 +23,7 @@
 
 EXT_BUILTIN("system.getEnv", getEnv, SHARD_VAL_STRING);
 EXT_BUILTIN("system.setEnv", setEnv, SHARD_VAL_STRING, SHARD_VAL_STRING);
-EXT_BUILTIN("system.dlOpen", dlOpen, SHARD_VAL_PATH);
+EXT_BUILTIN("system.dlOpen", dlOpen, SHARD_VAL_TEXTUAL);
 EXT_BUILTIN("system.dlClose", dlClose, SHARD_VAL_SET);
 EXT_BUILTIN("system.dlSym", dlSym, SHARD_VAL_SET, SHARD_VAL_STRING, SHARD_VAL_SET);
 
@@ -182,3 +182,4 @@ static struct shard_value builtin_dlSym(volatile struct shard_evaluator* e, stru
 
     return ffi_bind(e, symbol, sym, ffi_type_val.set);
 }
+

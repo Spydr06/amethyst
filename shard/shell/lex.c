@@ -156,26 +156,30 @@ static void lex_text(struct shell_lexer* l, struct shell_token* token) {
 
 void lex_next(struct shell_lexer* l, struct shell_token* token) {
     memset(token, 0, sizeof(struct shard_token));
-repeat:
+repeat_skip_ws:
     skip_whitespace(l); 
 
     current_location(l, &token->loc);
+repeat_switch:
 
     char c;
     switch(c = peek_char(l)) {
+        case '\\':
+            next_char(l);
+            token->escaped = true;
+            goto repeat_switch;
         case '#': {
             while((c = next_char(l)) != EOF && c != '\n');
-            goto repeat;
+            goto repeat_skip_ws;
         }
         case '(':
         case ')':
         case '{':
         case '}':
-        case '[':
-        case ']':
         case ':':
         case ';':
         case '`':
+        case '<':
             next_char(l);
             token->type = (enum shell_token_type) c;
             break;
@@ -184,9 +188,27 @@ repeat:
             if(peek_char(l) == '|') {
                 next_char(l);
                 token->type = SH_TOK_OR;
+                break;
+            }
+            
+            token->type = SH_TOK_PIPE;
+
+            while(is_var_char(peek_char(l)))
+                shard_gc_string_push(shell.shard.gc, &token->value, next_char(l));
+
+            break;
+        case '>':
+            next_char(l);
+            if(peek_char(l) == '>') {
+                next_char(l);
+                token->type = SH_TOK_REDIRECT_APPEND;
             }
             else
-                token->type = SH_TOK_PIPE;
+                token->type = SH_TOK_REDIRECT;
+
+            while(is_var_char(peek_char(l)))
+                shard_gc_string_push(shell.shard.gc, &token->value, next_char(l));
+
             break;
         case '&':
             next_char(l);

@@ -5,7 +5,7 @@
 
 let 
     locationToString = { file, line, column }: file + ":" + (builtins.toString line) + ":" + (builtins.toString column);
-
+    
     commands = with builtins; {
         alias = args :: list: let
             handleArg = arg: (case splitFirst "=" arg of
@@ -51,24 +51,21 @@ let
 
         # history
 
-        # pushd
         # popd
 
         # read
-
-        # test
 
         type = args :: list: let 
             getType = arg: 
             let 
                 attr = getAttr arg commands; 
                 alias = shell.getAlias arg;
-        in if alias != null 
-            then arg + ": aliased to \'" + alias + "\'"
-            else if attr != null 
-            then arg + ": shell builtin (" + (locationToString $ tryGetLocation attr) + ")"
-            else arg + ": external program.";
-            in seq (map (shell.printLn << getType) args) 0;
+            in if alias != null 
+                then arg + ": aliased to \'" + alias + "\'"
+                else if attr != null 
+                    then arg + ": shell builtin (" + (locationToString $ tryGetLocation attr) + ")"
+                    else arg + ": external program.";
+        in seq (map (shell.printLn << getType) args) 0;
     };
 in commands
 

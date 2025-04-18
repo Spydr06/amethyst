@@ -22,8 +22,19 @@
         struct shard_builtin shell_builtin_##cname = SHARD_BUILTIN(name, builtin_##cname, __VA_ARGS__)
 
 extern struct shard_builtin shard_builtin_toString;
+extern struct shard_builtin shell_builtin_createProcess;
+extern struct shard_builtin shell_builtin_redirect;
+extern struct shard_builtin shell_builtin_pipe;
+extern struct shard_builtin shell_builtin_waitProcess;
+extern struct shard_builtin shell_builtin_asyncProcess;
 
-SHELL_BUILTIN("shell.callProgram", callProgram, SHARD_VAL_LIST);
+SHELL_BUILTIN("shell.createProcess", createProcess, SHARD_VAL_LIST);
+SHELL_BUILTIN("shell.waitProcess", waitProcess, SHARD_VAL_INT);
+SHELL_BUILTIN("shell.asyncProcess", asyncProcess, SHARD_VAL_INT);
+
+SHELL_BUILTIN("shell.redirect", redirect, SHARD_VAL_INT, SHARD_VAL_STRING, SHARD_VAL_INT);
+SHELL_BUILTIN("shell.pipe", pipe, SHARD_VAL_INT, SHARD_VAL_INT, SHARD_VAL_INT);
+
 SHELL_BUILTIN("shell.changeDir", changeDir, SHARD_VAL_STRING | SHARD_VAL_PATH);
 SHELL_BUILTIN("shell.exit", exit, SHARD_VAL_INT);
 SHELL_BUILTIN("shell.printError", printError, SHARD_VAL_STRING);
@@ -36,7 +47,12 @@ SHELL_BUILTIN("shell.and", and, SHARD_VAL_INT, SHARD_VAL_INT);
 SHELL_BUILTIN("shell.or", or, SHARD_VAL_INT, SHARD_VAL_INT);
 
 struct shard_builtin* shell_builtins[] = {
-    &shell_builtin_callProgram,
+    &shell_builtin_createProcess,
+    &shell_builtin_waitProcess,
+    &shell_builtin_asyncProcess,
+    &shell_builtin_redirect,
+    &shell_builtin_pipe,
+
     &shell_builtin_changeDir,
     &shell_builtin_exit,
     &shell_builtin_printError,
@@ -62,7 +78,8 @@ int shell_load_builtins(void) {
     return 0;
 }
 
-static struct shard_value builtin_callProgram(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+// FIXME: support process management for builtin processes aswell
+static struct shard_value builtin_createProcess(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value prog_args = shard_builtin_eval_arg(e, builtin, args, 0);
     assert(prog_args.type == SHARD_VAL_LIST);
 
@@ -95,8 +112,45 @@ static struct shard_value builtin_callProgram(volatile struct shard_evaluator* e
         argv[i] = (char*) arg.string;
     }
 
-    return INT_VAL(shell_process(argc, argv, SH_PROC_WAIT));
+    return INT_VAL(shell_create_process(argc, argv));
 }
+
+static struct shard_value builtin_waitProcess(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value pid = shard_builtin_eval_arg(e, builtin, args, 0);
+    return INT_VAL(shell_waitpid(pid.integer));
+}
+
+static struct shard_value builtin_asyncProcess(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value pid = shard_builtin_eval_arg(e, builtin, args, 0);
+    return INT_VAL(shell_resume(pid.integer));
+}
+
+static struct shard_value builtin_redirect(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value streams = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value dest = shard_builtin_eval_arg(e, builtin, args, 1);
+    struct shard_value source = shard_builtin_eval_arg(e, builtin, args, 2);
+
+    int err = shell_pipe(source.integer, dest.integer, streams.integer);
+    if(err)
+        shard_eval_throw(e, e->error_scope->loc, "failed creating pipe: %s", strerror(err));
+
+    return INT_VAL(source.integer);
+}
+
+static struct shard_value builtin_pipe(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value streams = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value dest = shard_builtin_eval_arg(e, builtin, args, 1);
+    struct shard_value source = shard_builtin_eval_arg(e, builtin, args, 2);
+
+    int err = shell_redirect(source.integer, dest.string, streams.integer);
+    if(err)
+        shard_eval_throw(e, e->error_scope->loc, "failed creating redirection: %s", strerror(err));
+
+    return INT_VAL(source.integer);
+}
+
+/*static struct shard_value builtin_callProgram(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+}*/
 
 static struct shard_value builtin_changeDir(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value arg = shard_builtin_eval_arg(e, builtin, args, 0);

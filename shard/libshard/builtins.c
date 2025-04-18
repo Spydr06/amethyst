@@ -789,6 +789,19 @@ static struct shard_value builtin_when(volatile struct shard_evaluator* e, struc
     }
 }
 
+static struct shard_value builtin_while(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value func = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    struct shard_lazy_value* arg = shard_unlazy(e->ctx, NULL_VAL());
+    struct shard_value cond;
+
+    do {
+        cond = shard_eval_call(e, func, arg, e->error_scope->loc);
+    } while(cond.type == SHARD_VAL_BOOL && cond.boolean);
+
+    return NULL_VAL();
+}
+
 #define IMPORT_BUILTIN 0
 
 struct shard_builtin shard_builtin_toString = SHARD_BUILTIN("builtins.toString", builtin_toString, SHARD_VAL_ANY);
@@ -846,6 +859,7 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.tryGetLocation", builtin_tryGetLocation, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.typeOf", builtin_typeOf, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.when", builtin_when, SHARD_VAL_BOOL, SHARD_VAL_ANY),
+    SHARD_BUILTIN("builtins.while", builtin_while, SHARD_VAL_CALLABLE),
     SHARD_BUILTIN("builtins.toString", builtin_toString, SHARD_VAL_ANY),
 
     SHARD_BUILTIN_CONST("builtins.currentTime", builtin_currentTime),

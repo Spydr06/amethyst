@@ -16,6 +16,12 @@
 
 #define DEFAULT_PRELUDE_FILE "/etc/shell/prelude.shard"
 
+enum shell_iostream {
+    SHELL_STDIN  = 0x01,
+    SHELL_STDOUT = 0x02,
+    SHELL_STDERR = 0x04
+};
+
 struct shell_repl {
     EditLine* el;
     History* history;
@@ -46,6 +52,11 @@ struct shell {
 
     struct shard_hashmap aliases;
     struct shard_string_list dir_stack; // pushd, popd
+    
+    pid_t fg_pid;
+
+    bool jmp_on_sigint;
+    jmp_buf sigint_jmp;
 };
 
 typedef int (*shell_command_t)(int argc, char** argv);
@@ -66,16 +77,25 @@ int print_shard_errors(void);
 
 int shell_call_command(volatile struct shard_evaluator* e, const char* cmdname, struct shard_list* args, struct shard_value* return_val, struct shard_location loc);
 
-enum shell_process_flags {
-    SH_PROC_WAIT = 0x01,
-};
+void install_signal_handlers(void);
 
-int shell_process(size_t argc, char** argv, enum shell_process_flags flags);
+int shell_create_process(int argc, char** argv);
+int shell_pipe(int64_t src_pid, int64_t dst_pid, enum shell_iostream ios);
+int shell_redirect(int64_t src_pid, const char* restrict dst_path, enum shell_iostream ios);
+
+int shell_waitpid(int64_t pid);
+int shell_resume(int64_t pid);
+int shell_suspend(int64_t pid);
 
 // Shell Builtins
 
+extern struct shard_builtin shell_builtin_createProcess;
+extern struct shard_builtin shell_builtin_redirect;
+extern struct shard_builtin shell_builtin_pipe;
+extern struct shard_builtin shell_builtin_waitProcess;
+extern struct shard_builtin shell_builtin_asyncProcess;
+
 extern struct shard_builtin shard_builtin_seq;
-extern struct shard_builtin shell_builtin_callProgram;
 extern struct shard_builtin shell_builtin_and;
 extern struct shard_builtin shell_builtin_or;
 

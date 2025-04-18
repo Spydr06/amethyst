@@ -69,6 +69,7 @@ static struct shard_builtin* ffi_builtins[] = {
     &ffi_builtin_cStruct,
     &ffi_builtin_cValue,
     &ffi_builtin_cAssign,
+    &ffi_builtin_cCall,
 };
 
 struct shard_hashmap ffi_type_ops;
@@ -810,8 +811,6 @@ static struct shard_value builtin_cCall(volatile struct shard_evaluator* e, stru
         shard_eval_throw(e, e->error_scope->loc, "`system.ffi.cCall` can only call ffi bindings of type `function`");
 
     struct shard_list* arg_type_list = c_arglist(e, ffi_type);
-    if(!arg_type_list)
-        shard_eval_throw(e, e->error_scope->loc, "could not get argument list from ffi binding passed to `system.ffi.cCall`");
 
     struct shard_set* return_type = c_return(e, ffi_type);
     if(!return_type)

@@ -103,6 +103,8 @@ int shell_repl(void) {
     repl_init(&shell.repl, el, hist);
     atexit(repl_free);
 
+    install_signal_handlers();
+
     const char* line;
     bool multiline = false;
 

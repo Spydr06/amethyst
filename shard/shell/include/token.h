@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <libshard.h>
 
-#define SHELL_SYMBOLS "{}[]()$;:\"'`&|<>"
+#define SHELL_SYMBOLS "{}()$;:\"'`&|<>"
 
 #define SHELL_SYM1_START    10
 #define SHELL_SYM1_END      UINT8_MAX
@@ -20,16 +20,15 @@ enum shell_token_type {
 
     SH_TOK_LBRACE = '{',
     SH_TOK_RBRACE = '}',
-    SH_TOK_LBRACKET = '[',
-    SH_TOK_RBRACKET = ']',
     SH_TOK_LPAREN = '(',
     SH_TOK_RPAREN = ')',
     SH_TOK_DOLLAR = '$',
     SH_TOK_SEMICOLON = ';',
     SH_TOK_BACKTICK = '`',
-    SH_TOK_LT = '<',
-    SH_TOK_GT = '>',
-    
+
+    SH_TOK_REDIRECT = '>',
+    SH_TOK_REDIRECT_APPEND = '>' + ('>' << 8),
+
     SH_TOK_PIPE = '|',
     SH_TOK_AMPERSAND = '&',
 
@@ -41,12 +40,12 @@ struct shell_token {
     enum shell_token_type type;
     struct shard_location loc;
     struct shard_string value;
+    bool escaped;
 };
 
 struct shell_lexer {
     struct shard_source* source;
     struct shard_string buffer;
-
     struct shard_location current_loc;
 };
 
