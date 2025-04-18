@@ -57,10 +57,12 @@ __syscall syscallret_t _sys_ioctl(struct cpu_context* ctx, int fd, unsigned long
 __syscall syscallret_t _sys_yield(struct cpu_context* ctx);
 __syscall syscallret_t _sys_nanosleep(struct cpu_context* ctx, const struct timespec* rq, struct timespec* rm);
 
+__syscall syscallret_t _sys_getpid(struct cpu_context* ctx);
+
 __syscall syscallret_t _sys_fork(struct cpu_context* ctx);
 __syscall syscallret_t _sys_execve(struct cpu_context* ctx, const char *u_filename, const char *const argv[], const char *const u_envp[]);
 __syscall syscallret_t _sys_exit(struct cpu_context* ctx, int exit_code);
-
+__syscall syscallret_t _sys_waitpid(struct cpu_context* ctx, pid_t pid, int *wstatus, int options);
 __syscall syscallret_t _sys_uname(struct cpu_context* ctx, struct utsname* u_name);
 
 __syscall syscallret_t _sys_knldebug(struct cpu_context* ctx, enum klog_severity severity, const char* user_buffer, size_t buffer_size);

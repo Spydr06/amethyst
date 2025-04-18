@@ -39,9 +39,11 @@ const struct syscall_entry _syscall_table[] = {
     _SYS_E(ioctl,    "%d, %d, %p"  ),
     _SYS_E(yield,    ""            ),
     _SYS_E(nanosleep,"%p, %p"      ),
+    _SYS_E(getpid,   ""            ),
     _SYS_E(fork,     ""            ),
     _SYS_E(execve,   "%p, %p, %p"  ),
     _SYS_E(exit,     "%ld"         ),
+    _SYS_E(waitpid,  "%d, %p, %d, %p"),
     _SYS_E(uname,    "%p"          ),
     _SYS_E(knldebug, "%ld, %p, %ld")
 };

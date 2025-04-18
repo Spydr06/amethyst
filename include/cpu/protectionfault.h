@@ -1,0 +1,7 @@
+#ifndef _AMETHYST_CPU_PROTECTIONFAULT_H
+#define _AMETHYST_CPU_PROTECTIONFAULT_H
+
+void protectionfault_init(void);
+
+#endif /* _AMETHYST_CPU_PROTECTIONFAULT_H */
+

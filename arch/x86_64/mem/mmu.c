@@ -2,6 +2,7 @@
 #include <mem/vmm.h>
 
 #include <cpu/pagefault.h>
+#include <cpu/protectionfault.h>
 #include <sys/thread.h>
 #include <sys/proc.h>
 #include <sys/spinlock.h>
@@ -171,6 +172,7 @@ void mmu_tlbipi(struct cpu_context* status __unused) {
 void mmu_apswitch(void) {
     mmu_switch(FROM_HHDM(template));
     pagefault_init();
+    protectionfault_init();
     interrupt_register(0xfe, mmu_tlbipi, pic_send_eoi, IPL_IGNORE);
     idt_reload();
 }
