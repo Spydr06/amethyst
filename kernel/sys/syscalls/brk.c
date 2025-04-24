@@ -15,7 +15,7 @@ __syscall syscallret_t _sys_brk(struct cpu_context* __unused, void* addr) {
         ._errno = 0,
     };
 
-    struct thread* thread = _cpu()->thread;
+    struct thread* thread = current_thread();
     if(!thread->vmm_context->brk.base) {
         ret._errno = ENOMEM;
         return ret;

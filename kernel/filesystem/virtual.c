@@ -83,10 +83,8 @@ void vfs_inactive(struct vnode *node) {
 }
 
 static struct cred* get_cred(void) {
-    if(!_cpu()->thread || !_cpu()->thread->proc)
-        return &kernel_cred;
-    else
-        return &_cpu()->thread->proc->cred;
+    struct proc* proc = current_proc();
+    return proc ? &proc->cred : &kernel_cred;
 }
 
 static int highest_node_in_mp(struct vnode* node, struct vnode** dst) {

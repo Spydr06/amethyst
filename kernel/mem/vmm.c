@@ -113,7 +113,7 @@ void vmm_context_destroy(struct vmm_context* context) {
     if(!context)
         return;
 
-    struct vmm_context* old_ctx = _cpu()->thread->vmm_context;
+    struct vmm_context* old_ctx = current_vmm_context();
     vmm_switch_context(context);
     vmm_unmap(context->space.start, context->space.end - context->space.start, 0);
     vmm_switch_context(old_ctx);
@@ -172,8 +172,9 @@ error:
 }
 
 void vmm_switch_context(struct vmm_context* context) {
-    if(_cpu()->thread)
-        _cpu()->thread->vmm_context = context;
+    struct thread* thread = current_thread();
+    if(thread)
+        thread->vmm_context = context;
     _cpu()->vmm_context = context;
     mmu_switch(context->page_table);
 }
@@ -383,8 +384,8 @@ static void destroy_range(struct vmm_range* range, uintmax_t start_offset, size_
         if(!phys_addr)
             continue;
 
-        /*struct thread* thread = _cpu()->thread;
-        struct proc* proc = thread ? thread->proc : nullptr;
+        /*struct thread* thread = current_thread();
+        struct proc* proc = current_proc();
         struct cred* cred = proc ? &proc->cred : nullptr;*/
 
         // TODO: vfs caching if range->flags & VM_FLAGS_FILE and range is cacheable!
@@ -524,7 +525,7 @@ static void change_mmu_range(struct vmm_range* range __unused, void* base, size_
 
 static __always_inline bool vnode_writable(struct vmm_range* range) {
     vop_lock(range->vnode);
-    int err = vop_access(range->vnode, V_ACCESS_WRITE, &_cpu()->thread->proc->cred);
+    int err = vop_access(range->vnode, V_ACCESS_WRITE, &current_proc()->cred);
     vop_unlock(range->vnode);
     return err == 0;
 }

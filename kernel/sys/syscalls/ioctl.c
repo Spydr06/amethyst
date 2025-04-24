@@ -24,7 +24,7 @@ __syscall syscallret_t _sys_ioctl(struct cpu_context* __unused, int fd, unsigned
     int r = 0;
 
     vop_lock(file->vnode);
-    ret._errno = vop_ioctl(file->vnode, request, arg, &r, &_cpu()->thread->proc->cred);
+    ret._errno = vop_ioctl(file->vnode, request, arg, &r, &current_proc()->cred);
     vop_unlock(file->vnode);
     ret.ret = ret._errno ? -1 : r;
 

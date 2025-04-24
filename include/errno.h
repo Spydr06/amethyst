@@ -142,10 +142,8 @@
 #define errno (*_errno_location())
 
 static inline int* _errno_location(void) {
-    if(_cpu()->thread) {
-        return &_cpu()->thread->_errno;
-    }
-    return &_cpu()->_errno;
+    struct thread* thread = current_thread();
+    return thread ? &thread->_errno : &_cpu()->_errno;
 }
 
 #endif /* _AMETHYST_ERRNO_H */

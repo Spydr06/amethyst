@@ -7,11 +7,6 @@
 #include <mem/vmm.h>
 
 #include <errno.h>
-#include <math.h>
-
-static struct cred* get_cred(void) {
-    return &_cpu()->thread->proc->cred;
-}
 
 __syscall syscallret_t _sys_write(struct cpu_context* __unused, int fd, const void* buffer, size_t size) {
     syscallret_t ret = {
@@ -43,7 +38,7 @@ __syscall syscallret_t _sys_write(struct cpu_context* __unused, int fd, const vo
         struct vattr attr;
 
         vop_lock(file->vnode);
-        ret._errno = vop_getattr(file->vnode, &attr, get_cred());
+        ret._errno = vop_getattr(file->vnode, &attr, &current_proc()->cred);
         vop_release(&file->vnode);
         if(ret._errno)
             goto cleanup;

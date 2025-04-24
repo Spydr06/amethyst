@@ -5,7 +5,6 @@
 #include "sys/syscall.h"
 #include "x86_64/cpu/cpu.h"
 #include "x86_64/cpu/idt.h"
-#include "x86_64/trace.h"
 #include <sys/scheduler.h>
 #include <sys/thread.h>
 #include <sys/proc.h>
@@ -55,7 +54,7 @@ static __noreturn void preempt_callback(void);
 
 void sched_pin(cpuid_t pin) {
     bool interrupt_status = interrupt_set(false);
-    _cpu()->thread->pin = pin;
+    current_thread()->pin = pin;
     interrupt_set(interrupt_status);
 }
 
@@ -178,7 +177,7 @@ static void enqueue_thread(struct thread* thread) {
 static __noreturn void switch_thread(struct thread* thread) {
     interrupt_set(false);
 
-    struct thread* current = _cpu()->thread;
+    struct thread* current = current_thread();
     _cpu()->thread = thread;
     
     if(!current || thread->vmm_context != current->vmm_context)
@@ -217,7 +216,7 @@ static __noreturn void switch_thread(struct thread* thread) {
 static __noreturn void preempt_callback(void) {
     spinlock_acquire(&run_queue_lock);
 
-    struct thread* current = _cpu()->thread;
+    struct thread* current = current_thread();
     struct thread* next = dequeue_next_thread(current->priority);
 
     current->flags &= ~THREAD_FLAGS_PREEMPTED;
@@ -238,8 +237,8 @@ __noreturn void sched_stop_thread(void) {
     interrupt_set(false);
 
     spinlock_acquire(&run_queue_lock);
-    if(_cpu()->thread)
-        _cpu()->thread->flags &= ~THREAD_FLAGS_RUNNING;
+    if(current_thread())
+        current_thread()->flags &= ~THREAD_FLAGS_RUNNING;
 
     struct thread* next = dequeue_next_thread(0x0fffffff);
     if(next) {
@@ -259,7 +258,7 @@ __noreturn void sched_stop_thread(void) {
 
 // cpu timer callback
 static void timer_hook(struct cpu_context* context, dpc_arg_t arg __unused) {
-    struct thread* current = _cpu()->thread;
+    struct thread* current = current_thread();
     interrupt_set(false);
 
     // already preempted
@@ -279,9 +278,11 @@ static void timer_hook(struct cpu_context* context, dpc_arg_t arg __unused) {
 }
 
 void sched_prepare_sleep(bool interruptible) {
-    _cpu()->thread->sleep_interrupt_status = interrupt_set(false);
-    spinlock_acquire(&_cpu()->thread->sleep_lock);
-    _cpu()->thread->flags |= THREAD_FLAGS_SLEEP | (interruptible ? THREAD_FLAGS_INTERRUPTIBLE : 0);
+    struct thread* thread = current_thread();
+
+    thread->sleep_interrupt_status = interrupt_set(false);
+    spinlock_acquire(&thread->sleep_lock);
+    thread->flags |= THREAD_FLAGS_SLEEP | (interruptible ? THREAD_FLAGS_INTERRUPTIBLE : 0);
 }
 
 static void timeout(struct cpu_context* ctx __unused, dpc_arg_t arg) {
@@ -289,7 +290,7 @@ static void timeout(struct cpu_context* ctx __unused, dpc_arg_t arg) {
 }
 
 static void yield(struct cpu_context* context, void* __unused) {
-    struct thread* thread = _cpu()->thread;
+    struct thread* thread = current_thread();
 
     spinlock_acquire(&run_queue_lock);
 
@@ -335,7 +336,7 @@ void sched_sleep(size_t us) {
     struct timer_entry sleep_entry = {0};
     sched_prepare_sleep(false);
 
-    timer_insert(_cpu()->timer, &sleep_entry, timeout, _cpu()->thread, us, false);
+    timer_insert(_cpu()->timer, &sleep_entry, timeout, current_thread(), us, false);
     sched_yield();
 }
 
@@ -386,13 +387,16 @@ int sched_queue(struct thread* thread) {
 int sched_yield(void) {
     assert(_cpu()->ipl == IPL_NORMAL);
     
-    bool sleeping = _cpu()->thread->flags & THREAD_FLAGS_SLEEP;
-    bool old = sleeping ? _cpu()->thread->sleep_interrupt_status : interrupt_set(false);
+    struct thread* thread = current_thread();
+    assert(thread);
+
+    bool sleeping = thread->flags & THREAD_FLAGS_SLEEP;
+    bool old = sleeping ? thread->sleep_interrupt_status : interrupt_set(false);
 
     _context_save_and_call(yield, _cpu()->scheduler_stack, nullptr);
     interrupt_set(old);
 
-    return sleeping ? _cpu()->thread->wakeup_reason : 0;
+    return sleeping ? thread->wakeup_reason : 0;
 }
 
 // main scheduler entry
@@ -409,7 +413,7 @@ void scheduler_init(void) {
     _cpu()->idle_thread = thread_create(cpu_idle_thread, PAGE_SIZE * 4, 3, nullptr, nullptr);
     assert(_cpu()->idle_thread);
     _cpu()->thread = thread_create(nullptr, PAGE_SIZE * 32, 0, nullptr, nullptr);
-    assert(_cpu()->thread);
+    assert(current_thread());
 
     // install scheduling timer
     timer_insert(_cpu()->timer, &_cpu()->sched_timer_entry, timer_hook, nullptr, QUANTUM_US, true);
@@ -435,7 +439,7 @@ void scheduler_apentry(void) {
 }
 
 static void _internal_thread_exit(struct cpu_context* __unused, void* __unused) {
-    struct thread* thread = _cpu()->thread;
+    struct thread* thread = current_thread();
     _cpu()->thread = nullptr;
 
     interrupt_set(false);
@@ -481,7 +485,7 @@ static void sched_proc_exit(void) {
 }
 
 static __noreturn void sched_thread_exit(void) {
-    struct thread* thread = _cpu()->thread;
+    struct thread* thread = current_thread();
     assert(thread);
 
     struct proc* proc = thread->proc;
@@ -513,7 +517,10 @@ void sched_stop_other_threads(void) {
 }
 
 static void userspace_check(struct check_args* __unused) {
-    if(_cpu()->thread->should_exit) {
+    struct thread* thread = current_thread();
+    assert(thread);
+
+    if(thread->should_exit) {
         interrupt_set(true);
         sched_thread_exit();
     }
@@ -533,8 +540,7 @@ static void userspace_check_routine(struct cpu_context* ctx, void* userp) {
 
 // called from `_context_switch()` and `_syscall_entry()`
 extern __syscall void _sched_userspace_check(struct cpu_context* context, bool syscall, uint64_t syscall_errno, uint64_t syscall_ret) {
-    assert(_cpu());
-    if(!_cpu()->thread || !cpu_ctx_is_user(context))
+    if(!current_thread() || !cpu_ctx_is_user(context))
         return;
 
 //    klog(ERROR, "in _sched_userspace_check()");
@@ -549,7 +555,7 @@ extern __syscall void _sched_userspace_check(struct cpu_context* context, bool s
 
     // check if we are on the scheduler/kernel stack
     if((void*) &args < _cpu()->scheduler_stack && (void*) &args >= _cpu()->scheduler_stack - SCHEDULER_STACK_SIZE)
-        _context_save_and_call(userspace_check_routine, _cpu()->thread->kernel_stack_top, &args); // switch to kernel stack first
+        _context_save_and_call(userspace_check_routine, current_thread()->kernel_stack_top, &args); // switch to kernel stack first
     else
         userspace_check(&args);
 
@@ -665,7 +671,9 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
 }
 
 void scheduler_terminate(int status) {
-    struct thread* thread = _cpu()->thread;
+    struct thread* thread = current_thread();
+    assert(thread);
+
     struct proc* proc = thread->proc;
     if(!spinlock_try(&proc->exiting))
         sched_thread_exit();

@@ -82,9 +82,8 @@ static inline tid_t current_tid(void) {
 }
 
 static inline struct vmm_context* current_vmm_context(void) {
-    if(_cpu()->thread)
-        return _cpu()->thread->vmm_context;
-    return nullptr;
+    struct thread* thread = current_thread();
+    return thread ? thread->vmm_context : nullptr;
 }
 
 void thread_init(void);

@@ -1,6 +1,7 @@
 #include <sys/semaphore.h>
 #include <sys/scheduler.h>
 #include <cpu/interrupts.h>
+#include <sys/thread.h>
 #include <cpu/cpu.h>
 
 #include <assert.h>
@@ -38,7 +39,7 @@ static struct thread* next_thread(semaphore_t* sem) {
 }
 
 static void remove_current_thread(semaphore_t* sem) {
-    struct thread* thread = _cpu()->thread;
+    struct thread* thread = current_thread();
     assert(thread);
 
     if((!sem->head && !sem->tail) || !((thread->sleep_next || thread->sleep_prev) || (sem->head == thread && sem->tail == thread)))
@@ -58,7 +59,9 @@ static void remove_current_thread(semaphore_t* sem) {
 }
 
 int semaphore_wait(semaphore_t* sem, bool interruptible) {
-    if(!_cpu()->thread) {
+    struct thread* thread = current_thread();
+
+    if(!thread) {
         while(!semaphore_test(sem))
             pause();
         return 0;
@@ -69,7 +72,7 @@ int semaphore_wait(semaphore_t* sem, bool interruptible) {
     spinlock_acquire(&sem->lock);
 
     if(--sem->i < 0) {
-        insert_thread(sem, _cpu()->thread);
+        insert_thread(sem, thread);
         sched_prepare_sleep(interruptible);
         spinlock_release(&sem->lock);
 

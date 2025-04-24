@@ -51,7 +51,7 @@ static bool handle_pagefault(void* addr, bool user, enum vmm_action actions) {
         goto cleanup;
     }
 
-    struct thread* thread = _cpu()->thread;
+    struct thread* thread = current_thread();
     struct proc* proc = thread ? thread->proc : nullptr;
     struct cred* cred = proc ? &proc->cred : nullptr;
 
@@ -78,7 +78,7 @@ static bool handle_pagefault(void* addr, bool user, enum vmm_action actions) {
             goto cleanup;
         }
 
-        handled = mmu_map(_cpu()->thread->vmm_context->page_table, page_get_physical(page), addr, range->mmu_flags & ~MMU_FLAGS_WRITE);
+        handled = mmu_map(current_vmm_context()->page_table, page_get_physical(page), addr, range->mmu_flags & ~MMU_FLAGS_WRITE);
         if(!handled) {
             klog(ERROR, "could not map file into address space: Out of Memory");
             page_release(page);
@@ -110,7 +110,7 @@ cleanup:
 }
 
 static void pagefault_interrupt(struct cpu_context* status) {
-    struct thread* thread = _cpu()->thread;
+    struct thread* thread = current_thread();
 
     interrupt_set(true);
 

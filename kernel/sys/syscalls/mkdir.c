@@ -33,8 +33,8 @@ __syscall syscallret_t _sys_mkdir(struct cpu_context* __unused, const char* u_pa
 
     struct vattr attr = {
         .mode = umask(mode),
-        .gid = _cpu()->thread->proc->cred.gid,
-        .uid = _cpu()->thread->proc->cred.uid
+        .gid = current_proc()->cred.gid,
+        .uid = current_proc()->cred.uid
     };
 
     ret._errno = vfs_create(dir_ref_node, path, &attr, V_TYPE_DIR, NULL);

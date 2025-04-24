@@ -20,7 +20,7 @@ __syscall syscallret_t stat_vnode(struct vnode *vnode, struct stat *statbuf) {
     struct vattr attr;
     memset(&attr, 0, sizeof(struct vattr));
 
-    ret._errno = vop_getattr(vnode, &attr, &_cpu()->thread->proc->cred);
+    ret._errno = vop_getattr(vnode, &attr, &current_proc()->cred);
     if(ret._errno)
         return ret;
 

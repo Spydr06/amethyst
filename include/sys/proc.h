@@ -48,9 +48,8 @@ struct proc {
 };
 
 static inline struct proc* current_proc(void) {
-    if(_cpu()->thread)
-        return _cpu()->thread->proc;
-    return nullptr;
+    struct thread* thread = current_thread();
+    return thread ? thread->proc : nullptr;
 }
 
 static inline pid_t current_pid(void) {
@@ -59,7 +58,7 @@ static inline pid_t current_pid(void) {
 }
 
 static inline mode_t umask(mode_t mode) {
-    return mode & ~_cpu()->thread->proc->umask;
+    return mode & ~current_proc()->umask;
 }
 
 void proc_init(void);

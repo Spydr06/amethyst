@@ -77,12 +77,14 @@ struct proc* proc_create(void) {
 }
 
 struct vnode* proc_get_root(void) {
-    struct proc* proc = _cpu()->thread->proc;
+    struct proc* proc = current_proc();
+    assert(proc);
     return lock_vnode(proc, &proc->root);
 }
 
 struct vnode* proc_get_cwd(void) {
-    struct proc* proc = _cpu()->thread->proc;
+    struct proc* proc = current_proc();
+    assert(proc);
     return lock_vnode(proc, &proc->root);
 }
 

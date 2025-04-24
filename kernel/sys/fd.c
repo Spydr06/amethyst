@@ -52,7 +52,8 @@ struct file* fd_allocate(void) {
 }
 
 struct file* fd_get(size_t fd) {
-    struct proc* proc = _cpu()->thread->proc;
+    struct proc* proc = current_proc();
+    assert(proc);
 
     mutex_acquire(&proc->fd_mutex, false);
 
@@ -69,7 +70,9 @@ int fd_new(int flags, struct file** filep, int* fdp) {
     if(!file)
         return ENOMEM;
 
-    struct proc* proc = _cpu()->thread->proc;
+    struct proc* proc = current_proc();
+    assert(proc);
+
     mutex_acquire(&proc->fd_mutex, false);
 
     int fd = get_free_fd(proc, proc->fd_first);
@@ -96,7 +99,9 @@ int fd_new(int flags, struct file** filep, int* fdp) {
 }
 
 int fd_close(int fd) {
-    struct proc* proc = _cpu()->thread->proc;
+    struct proc* proc = current_proc();
+    assert(proc);
+
     mutex_acquire(&proc->fd_mutex, false);
 
     struct file* file = fd < (int) proc->fd_count ? proc->fd[fd].file : nullptr;

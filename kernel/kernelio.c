@@ -294,8 +294,7 @@ static void __klog_impl(enum klog_severity severity, bool newline, const char* f
     if(severity < klog_min_severity) 
         return;
 
-//    bool before = interrupt_set(false);
-//    spinlock_acquire(&io_lock);
+    spinlock_acquire(&io_lock);
 
     if(last_was_inline) {
         kernelio_writer('\n');
@@ -317,8 +316,7 @@ static void __klog_impl(enum klog_severity severity, bool newline, const char* f
     else
         last_was_inline = true;
 
-//    spinlock_release(&io_lock);
-//    interrupt_set(before);
+    spinlock_release(&io_lock);
 }
 
 void __vklog(enum klog_severity severity, const char *file, const char *format, va_list ap) {

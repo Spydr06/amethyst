@@ -56,8 +56,8 @@ retry:
         // Create a new file
         struct vattr attr = {
             .mode = umask(mode),
-            .gid = _cpu()->thread->proc->cred.gid,
-            .uid = _cpu()->thread->proc->cred.uid
+            .gid = current_proc()->cred.gid,
+            .uid = current_proc()->cred.uid
         };
 
         ret._errno = vfs_create(ref, path_buf, &attr, V_TYPE_REGULAR, &vnode);
@@ -77,7 +77,7 @@ retry:
 
     struct vattr attr;
     vop_lock(vnode);
-    ret._errno = vop_getattr(vnode, &attr, &_cpu()->thread->proc->cred);
+    ret._errno = vop_getattr(vnode, &attr, &current_proc()->cred);
     vop_unlock(vnode);
     if(ret._errno)
         goto cleanup;
@@ -86,7 +86,7 @@ retry:
         mutex_acquire(&vnode->size_lock, false);
         vop_lock(vnode);
 
-        ret._errno = vop_resize(vnode, 0, &_cpu()->thread->proc->cred);
+        ret._errno = vop_resize(vnode, 0, &current_proc()->cred);
 
         vop_unlock(vnode);
         mutex_release(&vnode->size_lock);

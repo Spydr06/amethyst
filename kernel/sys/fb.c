@@ -1,3 +1,4 @@
+#include "sys/thread.h"
 #include <sys/fb.h>
 
 #include <stddef.h>
@@ -94,7 +95,7 @@ static int fb_mmap(int minor, void* addr, uintmax_t offset, int flags) {
 
     if(flags & V_FFLAGS_SHARED) {
         assert((offset % PAGE_SIZE) == 0);
-        return mmu_map(_cpu()->thread->vmm_context->page_table, FROM_HHDM((void*)((uintptr_t) fb->address + offset)), addr, vnode_to_mmu_flags(flags)) ? 0 : ENOMEM;
+        return mmu_map(current_vmm_context()->page_table, FROM_HHDM((void*)((uintptr_t) fb->address + offset)), addr, vnode_to_mmu_flags(flags)) ? 0 : ENOMEM;
     }
 
     size_t size = offset + PAGE_SIZE < end ? PAGE_SIZE : end - offset;
@@ -104,7 +105,7 @@ static int fb_mmap(int minor, void* addr, uintmax_t offset, int flags) {
 
     memcpy(MAKE_HHDM(paddr), (void*)((uintptr_t) fb->address + offset), size);
 
-    if(!mmu_map(_cpu()->thread->vmm_context->page_table, paddr, addr, vnode_to_mmu_flags(flags))) {
+    if(!mmu_map(current_vmm_context()->page_table, paddr, addr, vnode_to_mmu_flags(flags))) {
         pmm_free_page(paddr);
         return ENOMEM;
     }

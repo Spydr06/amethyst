@@ -33,9 +33,9 @@ extern __syscall syscallret_t _sys_knldebug(struct cpu_context* __unused, enum k
         };
 
     char proc_info[64] = "\e[1;4m[";
-    utoa((uint64_t) _cpu()->thread->tid, proc_info + strlen(proc_info), 10);
+    utoa((uint64_t) current_thread()->tid, proc_info + strlen(proc_info), 10);
     strcat(proc_info, ":");
-    utoa((uint64_t) _cpu()->thread->proc->pid, proc_info + strlen(proc_info), 10);
+    utoa((uint64_t) current_proc()->pid, proc_info + strlen(proc_info), 10);
     strcat(proc_info, "]\e[22;24m");
 
     char fmt[32] = "%";

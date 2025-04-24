@@ -15,12 +15,13 @@ __syscall syscallret_t _sys_getcwd(struct cpu_context* __unused, char* user_cwd,
         ._errno = -1
     };
 
-    if(!_cpu()->thread || !_cpu()->thread->proc || !_cpu()->thread->proc) {
+    struct proc* proc = current_proc();
+    if(!proc) {
         ret._errno = EINVAL;
         return ret;
     }
 
-    struct vnode *cwd_node = _cpu()->thread->proc->cwd;
+    struct vnode *cwd_node = proc->cwd;
     if(!cwd_node) {
         ret._errno = ENOENT;
         return ret;

@@ -279,11 +279,12 @@ void mmu_invalidate(void* vaddr) {
 }
 
 void mmu_tlb_shootdown(void *page __attribute__((unused))) {
-    if(_cpu()->thread == NULL || smp_cpus_awake == 1)
+    struct proc* proc = current_proc();
+    if(!proc || smp_cpus_awake == 1)
         return;
     
     if(page >= KERNELSPACE_START || 
-        (_cpu()->thread->proc->running_thread_count > 1 && page >= USERSPACE_START && page < USERSPACE_END)) {
+        (proc->running_thread_count > 1 && page >= USERSPACE_START && page < USERSPACE_END)) {
         int old_ipl = interrupt_raise_ipl(IPL_DPC);
         spinlock_acquire(&shootdown_lock);
 
