@@ -7,6 +7,12 @@
 #include <sys/thread.h>
 #include <sys/syscall.h>
 
+#define US 1'000'000ul
+
+// main timer quantum
+#define QUANTUM_US 10'000ul
+#define QUANTUM_HZ (US / QUANTUM_US)
+
 void scheduler_init(void);
 void scheduler_apentry(void);
 __noreturn void sched_stop_thread(void);

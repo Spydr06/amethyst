@@ -95,6 +95,7 @@ struct cpu {
     struct cpu* this;
 
     struct timer* timer;
+    uintmax_t loadavg_ticks;
 };
 
 struct cpu_context {

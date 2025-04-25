@@ -5,8 +5,9 @@
 #include <mem/user.h>
 #include <sys/proc.h>
 #include <sys/timekeeper.h>
+#include <sys/loadavg.h>
 
-#include <memory.h>
+#include <assert.h>
 #include <errno.h>
 
 __syscall syscallret_t _sys_sysinfo(struct cpu_context*, struct sysinfo* u_sysinfo) {
@@ -29,8 +30,11 @@ __syscall syscallret_t _sys_sysinfo(struct cpu_context*, struct sysinfo* u_sysin
     sysinfo.freeram = pmm_free_memroy();
 
     sysinfo.procs = proc_count();
+
+    assert(AVENRUN_COUNT >= 3);
+    memcpy(sysinfo.loads, avenrun, 3);
+
     // TODO:
-    // sysinfo.loads
     // sysinfo.sharedram
     // sysinfo.bufferram
     // sysinfo.totalswap

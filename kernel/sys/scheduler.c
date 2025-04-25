@@ -5,6 +5,7 @@
 #include "sys/syscall.h"
 #include "x86_64/cpu/cpu.h"
 #include "x86_64/cpu/idt.h"
+#include <sys/loadavg.h>
 #include <sys/scheduler.h>
 #include <sys/thread.h>
 #include <sys/proc.h>
@@ -27,9 +28,6 @@
 //#define _SCHED_DEBUG
 
 #define SCHEDULER_STACK_SIZE (PAGE_SIZE * 16)
-
-// main timer quantum
-#define QUANTUM_US 10'000
 
 #define RUN_QUEUE_COUNT ((int) sizeof(run_queue_bitmap) * 8)
 
@@ -260,6 +258,8 @@ __noreturn void sched_stop_thread(void) {
 static void timer_hook(struct cpu_context* context, dpc_arg_t arg __unused) {
     struct thread* current = current_thread();
     interrupt_set(false);
+
+    calc_global_load_tick();    
 
     // already preempted
     if(current->flags & THREAD_FLAGS_PREEMPTED)
