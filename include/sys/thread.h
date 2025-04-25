@@ -89,5 +89,7 @@ static inline struct vmm_context* current_vmm_context(void) {
 void thread_init(void);
 struct thread* thread_create(void* ip, size_t kernel_stack_size, int priority, struct proc* proc, void* user_stack);
 
+void thread_delete(struct thread* thread);
+
 #endif /* _AMETHYST_SCHEDULER_THREAD_H */
 

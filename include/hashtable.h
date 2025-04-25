@@ -31,5 +31,7 @@ int hashtable_get(hashtable_t *table, void **value, const void *key, size_t keys
 int hashtable_remove(hashtable_t *table, void *key, size_t keysize);
 int hashtable_destroy(hashtable_t *table);
 
+size_t hashtable_size(hashtable_t* table);
+
 #endif /* _AMETHYST_LIBK_HASHTABLE_H */
 

@@ -8,7 +8,6 @@
 
 static struct scache* thread_cache;
 
-
 void thread_init(void) {
     thread_cache = slab_newcache(sizeof(struct thread), 0, nullptr, nullptr);
     assert(thread_cache);
@@ -48,6 +47,22 @@ struct thread* thread_create(void* ip, size_t kernel_stack_size, int priority, s
     spinlock_init(thread->sleep_lock);
     spinlock_init(thread->signals.lock);
 
+    klog(WARN, "thread [tid %d] is at %p", thread->tid, thread);
+
     return thread;
+}
+
+void thread_delete(struct thread* thread) {
+    if(thread->kernel_stack) {
+        ptrdiff_t kernel_stack_size = thread->kernel_stack_top - thread->kernel_stack;
+        vmm_unmap(thread->kernel_stack, kernel_stack_size, 0);
+    }
+
+    if(thread->proc)
+        PROC_RELEASE(thread->proc);
+
+    klog(WARN, "deleting theread [tid %d] at %p", thread->tid, thread);
+
+    slab_free(thread_cache, thread);
 }
 

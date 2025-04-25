@@ -12,8 +12,20 @@
 
 #include <filesystem/virtual.h>
 
-#define PROC_HOLD(v) (__atomic_add_fetch(&(v)->ref_count, 1, __ATOMIC_SEQ_CST))
-#define PROC_RELEASE(v) (__atomic_sub_fetch(&(v)->ref_count, 1, __ATOMIC_SEQ_CST))
+#define PROC_HOLD(v) do {                                                   \
+        int rc = __atomic_add_fetch(&(v)->ref_count, 1, __ATOMIC_SEQ_CST);  \
+        /* klog(WARN, "[pid %d] +rc %d", (v)->pid, rc); */                  \
+        (void) rc;                                                          \
+    } while(0)
+
+#define PROC_RELEASE(v) do {                                                \
+        int rc = __atomic_sub_fetch(&(v)->ref_count, 1, __ATOMIC_SEQ_CST);  \
+        /* klog(WARN, "[pid %d] -rc %d", (v)->pid, rc); */                  \
+        if(rc == 0) {                                                       \
+            proc_delete((v));                                               \
+            (v) = nullptr;                                                  \
+        }                                                                   \
+    } while(0)
 
 enum proc_state {
     PROC_STATE_NORMAL,
@@ -66,9 +78,12 @@ void proc_init(void);
 pid_t proc_new_pid(void);
 
 struct proc* proc_create(void);
+void proc_delete(struct proc*);
 
 struct vnode* proc_get_root(void);
 struct vnode* proc_get_cwd(void);
+
+size_t proc_count(void);
 
 #endif /* _AMETHYST_SYS_PROC_H */
 

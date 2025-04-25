@@ -116,7 +116,8 @@ void __ubsan_handle_invalid_builtin_abort(struct ubsan_invalid_builtin_data *dat
 }
 
 void __ubsan_handle_load_invalid_value(struct ubsan_invalid_value_data *data, unsigned long ulVal) {
-    ubsan_logf(&data->location, "triggered %s", __func__);
+    struct ubsan_type_descriptor* t = data->type;
+    ubsan_logf(&data->location, "triggered %s: value %lu of type %s", __func__, ulVal, t->name);
 }
 
 void __ubsan_handle_load_invalid_value_abort(struct ubsan_invalid_value_data *data, unsigned long ulVal) {

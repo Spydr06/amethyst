@@ -124,4 +124,12 @@ int hashtable_destroy(hashtable_t *table) {
     return 0;
 }
 
+size_t hashtable_size(hashtable_t* table) {
+    size_t size = 0;
 
+    HASHTABLE_FOREACH(table, ent) {
+        size++;
+    }
+
+    return size;
+}

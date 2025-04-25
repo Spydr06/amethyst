@@ -26,6 +26,7 @@
 #define SYS_exit        60
 #define SYS_waitpid     61
 #define SYS_uname       63
+#define SYS_sysinfo     99
 #define SYS_knldebug    255
 
 #endif /* _AMETHYST_SYSCALL_H */

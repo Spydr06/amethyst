@@ -482,6 +482,8 @@ static void sched_proc_exit(void) {
 
     mutex_release(&proc->parent->mutex);
     mutex_release(&proc->mutex);
+
+    PROC_RELEASE(proc);
 }
 
 static __noreturn void sched_thread_exit(void) {
@@ -683,7 +685,7 @@ void scheduler_terminate(int status) {
 
     if(proc->pid == 1)
         panic("`init` process (pid 1) terminated. This should never happen!");
-    
+
     sched_thread_exit();
 }
 

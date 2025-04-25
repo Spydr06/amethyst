@@ -33,5 +33,8 @@ void* pmm_alloc(size_t size, enum pmm_section_type section);
 
 void pmm_free(void* addr, size_t count);
 
+uintmax_t pmm_total_memory(void);
+uintmax_t pmm_free_memroy(void);
+
 #endif /* _AMETHYST_MEM_PMM_H */
 

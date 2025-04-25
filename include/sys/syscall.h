@@ -4,6 +4,7 @@
 #include <amethyst/dirent.h>
 #include <amethyst/stat.h>
 #include <amethyst/syscall.h>
+#include <amethyst/sysinfo.h>
 #include <amethyst/utsname.h>
 
 #include <cdefs.h>
@@ -64,6 +65,8 @@ __syscall syscallret_t _sys_execve(struct cpu_context* ctx, const char *u_filena
 __syscall syscallret_t _sys_exit(struct cpu_context* ctx, int exit_code);
 __syscall syscallret_t _sys_waitpid(struct cpu_context* ctx, pid_t pid, int *wstatus, int options);
 __syscall syscallret_t _sys_uname(struct cpu_context* ctx, struct utsname* u_name);
+
+__syscall syscallret_t _sys_sysinfo(struct cpu_context* ctx, struct sysinfo* u_sysinfo);
 
 __syscall syscallret_t _sys_knldebug(struct cpu_context* ctx, enum klog_severity severity, const char* user_buffer, size_t buffer_size);
 

@@ -14,6 +14,8 @@
 static struct bitmap physical;
 static spinlock_t pmm_lock;
 
+static struct mmap pmm_mmap;
+
 uintptr_t hhdm_base;
 
 static volatile struct limine_hhdm_request hhdm_request = {
@@ -24,6 +26,8 @@ static volatile struct limine_hhdm_request hhdm_request = {
 void pmm_init(struct mmap* mmap) {
     assert(hhdm_request.response);
     hhdm_base = hhdm_request.response->offset;
+
+    memcpy(&pmm_mmap, mmap, sizeof(struct mmap));
 
     klog(INFO, "total memory: 0x%zx bytes (%Zu)", mmap->total_memory, mmap->total_memory);
 
@@ -67,7 +71,7 @@ void pmm_init(struct mmap* mmap) {
 }
 
 void* pmm_alloc(size_t size, enum pmm_section_type section) {
-    (void) section; // TODO: reimplement differently sized sections (1MiB, 4GiB)
+    assert(section == PMM_SECTION_DEFAULT && "1MiB and 4GiB PMM sections are not yet implemented.");
     if(!size)
         return nullptr;
 
@@ -87,4 +91,11 @@ void pmm_free(void* addr, size_t count) {
     spinlock_release(&pmm_lock);
 }
 
+uintmax_t pmm_total_memory(void) {
+    return (uintmax_t) pmm_mmap.total_memory;
+}
+
+uintmax_t pmm_free_memroy(void) {
+    return 0;
+}
 
