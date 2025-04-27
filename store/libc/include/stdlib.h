@@ -22,6 +22,12 @@ void *calloc(size_t nmemb, size_t size);
 void *realloc(void* ptr, size_t size);
 void free(void *ptr);
 
+long strtol(const char *restrict nptr, char **restrict endptr, int base);
+long long strtoll(const char *restrict nptr, char **restrict endptr, int base);
+
+unsigned long strtoul(const char *restrict nptr, char **restrict endptr, int base);
+unsigned long long strtoull(const char *restrict nptr, char **restrict endptr, int base);
+
 #ifdef _AMETHYST_SOURCE
     int getargc(void);
     char* getargv(int argc);

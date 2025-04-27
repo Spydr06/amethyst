@@ -51,6 +51,8 @@ long syscall(long number, ...);
 
 char *getcwd(char *buf, size_t size);
 
+pid_t getpid(void);
+
 int uname(struct utsname *utsname);
 
 #ifdef _AMETHYST_SRC

@@ -32,3 +32,6 @@ int uname(struct utsname *utsname) {
     return syscall(SYS_uname, utsname);
 }
 
+pid_t getpid(void) {
+    return syscall(SYS_getpid);
+}

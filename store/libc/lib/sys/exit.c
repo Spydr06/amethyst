@@ -22,6 +22,8 @@ static void funcs_on_exit(void) {
 }
 
 _Noreturn void _Exit(int status) {
+    fflush(stdout);
+    fflush(stderr);
     while(1)
         __syscall(SYS_exit, status);
 }
