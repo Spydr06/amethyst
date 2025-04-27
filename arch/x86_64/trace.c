@@ -90,5 +90,5 @@ void dump_registers(struct cpu_context* ctx) {
     printk("    r12 = %lx, r13 = %lx, r14 = %lx, r15 = %lx\n", ctx->r12, ctx->r13, ctx->r14, ctx->r15);
     printk("    gs = %lx, fs = %lx, es = %lx, ds = %lx\n", ctx->gs, ctx->fs, ctx->es, ctx->ds);
     printk("    cs = %lx, rflags = %lx,  ss = %lx\n", ctx->cs, ctx->rflags, ctx->ss);
-    printk("    rip = %lx, rsp = %lx \n    error_code = %lx, cr2 = %lx\n", ctx->rip, ctx->rsp, ctx->error_code, ctx->cr2);
+    printk("    rip = %lx, rsp = %lx, rbp = %lx \n    error_code = %lx, cr2 = %lx\n", ctx->rip, ctx->rsp, ctx->rbp, ctx->error_code, ctx->cr2);
 }

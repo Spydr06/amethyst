@@ -36,5 +36,8 @@ void pmm_free(void* addr, size_t count);
 uintmax_t pmm_total_memory(void);
 uintmax_t pmm_free_memroy(void);
 
+void pmm_hold(void* addr);
+void pmm_release(void* addr);
+
 #endif /* _AMETHYST_MEM_PMM_H */
 

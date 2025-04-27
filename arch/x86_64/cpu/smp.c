@@ -23,11 +23,17 @@
 #include <limine/limine.h>
 
 size_t smp_cpus_awake = 1;
+static struct cpu* smp_cpus;
 
 static volatile struct limine_smp_request smp_request = {
     .id = LIMINE_SMP_REQUEST,
     .revision = 0
 };
+
+struct cpu* smp_get_cpu(unsigned smp_id) {
+    assert(smp_id < smp_cpus_awake);
+    return &smp_cpus[smp_id];
+}
 
 static __noreturn void cpu_wakeup(struct limine_smp_info* smp_info) {
     cpu_set((struct cpu*) smp_info->extra_argument);
@@ -69,9 +75,9 @@ void smp_init(void) {
         : "=b"(bootstrap_id)
     );
 
-    struct cpu* ap_cpus = pmm_alloc(ROUND_UP(sizeof(struct cpu) * cpu_count, PAGE_SIZE) / PAGE_SIZE, PMM_SECTION_DEFAULT);
-    assert(ap_cpus);
-    ap_cpus = MAKE_HHDM(ap_cpus);
+    smp_cpus = pmm_alloc(ROUND_UP(sizeof(struct cpu) * cpu_count, PAGE_SIZE) / PAGE_SIZE, PMM_SECTION_DEFAULT);
+    assert(smp_cpus);
+    smp_cpus = MAKE_HHDM(smp_cpus);
 
     void (*wakeup_fn)(struct limine_smp_info*) = cpu_wakeup;
 
@@ -79,7 +85,7 @@ void smp_init(void) {
         if(lapics[i].lapicid == bootstrap_id)
             continue;
 
-        smp_request.response->cpus[i]->extra_argument = (uint64_t)&ap_cpus[i];
+        smp_request.response->cpus[i]->extra_argument = (uint64_t)&smp_cpus[i];
 
         __atomic_store_n(&smp_request.response->cpus[i]->goto_address, wakeup_fn, __ATOMIC_SEQ_CST);
     }

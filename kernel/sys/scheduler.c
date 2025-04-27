@@ -483,6 +483,8 @@ static void sched_proc_exit(void) {
     mutex_release(&proc->parent->mutex);
     mutex_release(&proc->mutex);
 
+    semaphore_signal(&proc->parent->wait_sem);
+
     PROC_RELEASE(proc);
 }
 

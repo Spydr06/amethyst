@@ -48,7 +48,7 @@ bool mmu_is_present(page_table_ptr_t table, void* vaddr);
 bool mmu_is_writable(page_table_ptr_t table, void* vaddr);
 
 void mmu_tlb_shootdown(void* page);
-void mmu_invalidate(void* vaddr);
+void mmu_invalidate_range(void* vaddr, size_t size);
 
 __noreturn void page_fault_handler(struct cpu_context* status);
 

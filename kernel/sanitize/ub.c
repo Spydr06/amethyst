@@ -67,7 +67,7 @@ void __ubsan_handle_cfi_check_fail_abort(struct ubsan_cfi_check_fail_data *data,
 }
 
 void __ubsan_handle_divrem_overflow(struct ubsan_overflow_data *data, unsigned long ul_lhs, unsigned long ul_rhs) {
-    ubsan_logf(&data->location, "triggered %s", __func__);
+    ubsan_logf(&data->location, "triggered %s; lhs: %lu, rhs: %lu", __func__, ul_lhs, ul_rhs);
 }
 
 void __ubsan_handle_divrem_overflow_abort(struct ubsan_overflow_data *data, unsigned long ul_lhs, unsigned long ul_rhs) {

@@ -1,3 +1,4 @@
+#include "kernelio.h"
 #include <sys/thread.h>
 #include <sys/proc.h>
 
@@ -53,6 +54,7 @@ struct thread* thread_create(void* ip, size_t kernel_stack_size, int priority, s
 }
 
 void thread_delete(struct thread* thread) {
+    unimplemented();
     if(thread->kernel_stack) {
         ptrdiff_t kernel_stack_size = thread->kernel_stack_top - thread->kernel_stack;
         vmm_unmap(thread->kernel_stack, kernel_stack_size, 0);

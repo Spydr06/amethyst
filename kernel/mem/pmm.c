@@ -3,18 +3,48 @@
 #include <mem/mmap.h>
 #include <sys/spinlock.h>
 
-#include <math.h>
-#include <bitmap.h>
-#include <kernelio.h>
-#include <string.h>
 #include <assert.h>
+#include <bitmap.h>
+#include <hashtable.h>
+#include <kernelio.h>
+#include <math.h>
+#include <string.h>
 
 #include <limine/limine.h>
 
 static struct bitmap physical;
 static spinlock_t pmm_lock;
 
+static hashtable_t refcounts;
+static spinlock_t refcount_lock;
+
 static struct mmap pmm_mmap;
+
+static inline void refcount_table_init(void) {
+    assert(hashtable_init(&refcounts, 0x2000 /* arbitrary */) == 0);
+}
+
+static inline size_t get_refcount(void* addr) {
+    assert((uintptr_t) addr % PAGE_SIZE == 0);
+
+    if(!refcounts.capacity)
+        return 0;
+
+    void* rc;
+    int err = hashtable_get(&refcounts, &rc, &addr, sizeof(void*));
+    if(err)
+        return 0;
+    return (size_t) rc;
+}
+
+static inline void set_refcount(void* addr, size_t rc) {
+    if(!refcounts.capacity)
+        refcount_table_init();
+
+    assert((uintptr_t) addr % PAGE_SIZE == 0);
+
+    assert(hashtable_set(&refcounts, (void*) rc, &addr, sizeof(void*), true) == 0);
+}
 
 uintptr_t hhdm_base;
 
@@ -68,6 +98,7 @@ void pmm_init(struct mmap* mmap) {
     bitmap_mark_region(&physical, bitmap_start_phys, physical.byte_cnt, 1);
 
     spinlock_init(pmm_lock);
+    spinlock_init(refcount_lock);
 }
 
 void* pmm_alloc(size_t size, enum pmm_section_type section) {
@@ -87,7 +118,14 @@ void* pmm_alloc(size_t size, enum pmm_section_type section) {
 
 void pmm_free(void* addr, size_t count) {
     spinlock_acquire(&pmm_lock);
-    bitmap_mark_region(&physical, addr, count * BLOCK_SIZE, 0);
+
+    size_t rc = get_refcount(addr);
+
+    if(rc <= 1)
+        bitmap_mark_region(&physical, addr, count * BLOCK_SIZE, 0);
+    else
+        set_refcount(addr, rc - 1);
+
     spinlock_release(&pmm_lock);
 }
 
@@ -99,3 +137,38 @@ uintmax_t pmm_free_memroy(void) {
     return 0;
 }
 
+void pmm_hold(void* addr) {
+    assert((uintptr_t) addr % PAGE_SIZE == 0);
+
+    spinlock_acquire(&refcount_lock);
+ 
+    if(!refcounts.capacity)
+        refcount_table_init();
+
+    size_t rc = 0;
+    int err = hashtable_get(&refcounts, (void**) &rc, &addr, sizeof(void*));
+    if(err) {
+        if(bitmap_get(&physical, (size_t) addr))
+            rc += 1;
+    }
+
+    set_refcount(addr, rc + 1);
+
+    spinlock_release(&refcount_lock);
+}
+
+void pmm_release(void* addr) {
+    spinlock_acquire(&refcount_lock);
+
+    size_t rc = get_refcount(addr);
+    if(rc == 0)
+        pmm_free_page(addr);
+    else if(rc == 1) {
+        hashtable_remove(&refcounts, &addr, sizeof(void*));
+        pmm_free_page(addr);
+    }
+    else
+        set_refcount(addr, rc - 1);
+        
+    spinlock_release(&refcount_lock);
+}

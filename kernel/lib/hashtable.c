@@ -6,6 +6,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <assert.h>
 
 static struct scache* hash_entry_cache = nullptr;
 

@@ -1,4 +1,3 @@
-#include "x86_64/mem/mmu.h"
 #include <mem/vmm.h>
 #include <mem/pmm.h>
 #include <mem/slab.h>
@@ -8,12 +7,13 @@
 #include <sys/proc.h>
 #include <sys/thread.h>
 
-#include <kernelio.h>
 #include <assert.h>
 #include <errno.h>
 #include <math.h>
 #include <cdefs.h>
 #include <string.h>
+#include <hashtable.h>
+#include <kernelio.h>
 
 #define RANGE_TOP(range) ((void*) ((uintptr_t) (range)->start + (range)->size))
 
@@ -31,6 +31,8 @@ extern uint8_t _DATA_START_[];
 extern uint8_t _DATA_END_[];
 
 struct scache* page_meta_cache;
+
+struct hashtable_t* page_meta_table;
 
 static struct vmm_cache* cache_list;
 static struct scache* ctx_cache;
@@ -106,12 +108,16 @@ struct vmm_context* vmm_context_new(void) {
     
     memset(&ctx->brk, 0, sizeof(struct brk));
 
+    klog(WARN, "created VMM context at %p", ctx);
+
     return ctx;
 }
 
 void vmm_context_destroy(struct vmm_context* context) {
     if(!context)
         return;
+
+    klog(WARN, "deleting VMM context at %p", context);
 
     struct vmm_context* old_ctx = current_vmm_context();
     vmm_switch_context(context);
@@ -154,13 +160,15 @@ struct vmm_context* vmm_context_fork(struct vmm_context* old) {
             if(!mmu_map(new->page_table, phys, vaddr, new_range->mmu_flags & ~MMU_FLAGS_WRITE))
                 goto error;
 
+            pmm_hold(phys);
+
             mmu_remap(old->page_table, phys, vaddr, new_range->mmu_flags & ~MMU_FLAGS_WRITE);
         }
 
         range = range->next;
     }
 
-    mmu_invalidate(nullptr);
+    mmu_invalidate_range(nullptr, 0);
 
     mutex_release(&new->space.lock);
     return new;
@@ -245,12 +253,12 @@ void* vmm_map(void* addr, size_t size, enum vmm_flags flags, enum mmu_flags mmu_
                     void* phys = mmu_get_physical(_cpu()->vmm_context->page_table, virt);
 
                     if(phys) {
-//                        pmm_release(phys);
+                        pmm_release(phys);
                         mmu_unmap(_cpu()->vmm_context->page_table, virt);
                     }
                 }
 
-                mmu_invalidate(start);
+                mmu_invalidate_range(start, size);
                 goto cleanup;
             }
 
@@ -286,6 +294,8 @@ void vmm_unmap(void* addr, size_t size, enum vmm_flags flags) {
         return;
 
     mutex_acquire(&space->lock, false);
+    change_map(space, addr, size, false, flags, 0);
+    mmu_invalidate_range(addr, size);
     change_map(space, addr, size, true, flags, 0);
     mutex_release(&space->lock);
 }
@@ -392,7 +402,8 @@ static void destroy_range(struct vmm_range* range, uintmax_t start_offset, size_
         
         mmu_unmap(_cpu()->vmm_context->page_table, virt_addr);
         if((range->flags & VMM_FLAGS_PHYSICAL) == 0)
-            pmm_free_page(phys_addr); // FIXME: works ?
+            pmm_release(phys_addr);
+        //    pmm_free_page(phys_addr); // FIXME: works ?
     }
 
     if((range->flags & VMM_FLAGS_FILE) && range->size == size)

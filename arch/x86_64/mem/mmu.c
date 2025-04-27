@@ -76,6 +76,11 @@ static void* mmu_page = nullptr;
 static int remaining = 0;
 
 static spinlock_t shootdown_lock;
+static void* shootdown_page;
+static size_t shootdown_size;
+static int shootdown_remaining = 0;
+
+static void mmu_invalidate(void* vaddr, size_t size);
 
 static __always_inline void* next(uint64_t entry) {
     return entry ? MAKE_HHDM(entry & ADDRMASK) : nullptr;
@@ -162,10 +167,7 @@ static uint64_t* get_page(page_table_ptr_t top, void* vaddr) {
 }
 
 void mmu_tlbipi(struct cpu_context* status __unused) {
-    __asm__ volatile(
-        "invlpg (%%rax)"
-        :: "a"(mmu_page)
-    );
+    mmu_invalidate(shootdown_page, shootdown_size);
     __atomic_sub_fetch(&remaining, 1, __ATOMIC_SEQ_CST);
 }
 
@@ -270,12 +272,61 @@ void mmu_unmap(page_table_ptr_t table, void* vaddr) {
     if(!entry)
         return;
     *entry = 0;
-    mmu_invalidate(vaddr);
 }
 
-void mmu_invalidate(void* vaddr) {
-    mmu_tlb_shootdown(vaddr);
-    __asm__ volatile("invlpg (%%rax)" :: "a"(vaddr) : "memory");
+static void mmu_invalidate(void* vaddr, size_t size) {
+    if(!vaddr || size >= 128 * PAGE_SIZE)
+        __asm__ volatile (
+            "mov %%cr3, %%rax;\n"
+            "mov %%rax, %%cr3;\n"
+            ::: "rax", "memory"
+        );
+    else 
+        for(uintptr_t i = 0; i < size; i += PAGE_SIZE) {
+            uintptr_t ptr = (uintptr_t) vaddr + i;
+            __asm__ volatile("invlpg (%%rax)" :: "a"(ptr) : "memory");
+        }
+}
+
+void mmu_invalidate_range(void* vaddr, size_t size) {
+    assert(((uintptr_t) vaddr % PAGE_SIZE) == 0);
+    struct thread* thread = current_thread();
+
+    bool shootdown = thread 
+        && smp_cpus_awake > 1 
+        && (vaddr >= KERNELSPACE_START
+            || ((!vaddr || (vaddr >= USERSPACE_START && vaddr < USERSPACE_END))
+                && thread->proc && thread->proc->running_thread_count > 1));
+
+    int old_ipl = 0;
+
+    if(shootdown) {
+        here();
+        old_ipl = interrupt_raise_ipl(IPL_DPC);
+        spinlock_acquire(&shootdown_lock);
+
+        shootdown_page = vaddr;
+        shootdown_size = size;
+        shootdown_remaining = smp_cpus_awake - 1;
+
+        for(unsigned i = 0; i < smp_cpus_awake; i++) {
+            struct cpu* cpu = smp_get_cpu(i);
+            if(cpu == _cpu())
+                continue;
+
+            smp_send_ipi(cpu, &cpu->isr[0xfe], SMP_IPI_TARGET, false);
+        }
+    }
+
+    mmu_invalidate(vaddr, size);
+
+    if(shootdown) {
+        while(__atomic_load_n(&shootdown_remaining, __ATOMIC_SEQ_CST) > 0)
+            pause();
+
+        spinlock_release(&shootdown_lock);
+        interrupt_lower_ipl(old_ipl);
+    }
 }
 
 void mmu_tlb_shootdown(void *page __attribute__((unused))) {

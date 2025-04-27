@@ -18,5 +18,7 @@ void smp_init(void);
 
 void smp_send_ipi(struct cpu* cpu, struct isr* isr, enum smp_ipi_target target, bool nmi);
 
+struct cpu* smp_get_cpu(unsigned smp_id);
+
 #endif /* _AMETHYST_X86_64_CPU_SMP_H */
 

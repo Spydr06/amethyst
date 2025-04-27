@@ -95,7 +95,7 @@ static bool handle_pagefault(void* addr, bool user, enum vmm_action actions) {
         if(new_phys) {
             memcpy(MAKE_HHDM(new_phys), MAKE_HHDM(old_phys), PAGE_SIZE);
             mmu_remap(current_vmm_context()->page_table, new_phys, addr, range->mmu_flags);
-            mmu_invalidate(addr);
+            mmu_invalidate_range(addr, PAGE_SIZE);
             handled = true;
         }
     }
@@ -135,7 +135,8 @@ static void pagefault_interrupt(struct cpu_context* status) {
         char perms[4];
         vmm_action_as_str(action, perms);
         
-        panic_r(status, "Page Fault at %p (\"%s\", %s, cpu %d / tid %d / pid %d)", 
+        panic_r(status, "\n+++ Page Fault at %p accessing %p (\"%s\", %s, cpu %d / tid %d / pid %d)", 
+                (void*) status->rip,
                 (void*) status->cr2, 
                 perms, 
                 in_userspace ? "user" : "kernel",
