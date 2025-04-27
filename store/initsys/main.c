@@ -46,8 +46,14 @@ void umount_target(struct target* target) {
     }
 }
 
+__attribute__((section(".bss"))) char bss_test[8192];
+
 int main(int argc, char** argv) {
     printf("Hello, World <3\n");
+
+    strncpy(bss_test, "BSS TEST!", sizeof(bss_test));
+
+    printf("%s\n", bss_test);
 
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         mount_target(mount_targets + i);
@@ -94,7 +100,7 @@ next:
         printf("goodbye\n");
 
         while(1);
-//        exit(1);
+ //       exit(1);
     }
 
     printf("forked pid %d\n", pid);

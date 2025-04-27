@@ -2,7 +2,7 @@
 
 #include <internal/entry.h>
 
-char** __attribute__((section("data"))) environ = NULL;
+char** environ = NULL;
 
 void __libc_register_environ(char** envp) {
     environ = envp;

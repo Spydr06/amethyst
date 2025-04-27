@@ -20,6 +20,8 @@ static spinlock_t refcount_lock;
 
 static struct mmap pmm_mmap;
 
+void* pmm_zero_page;
+
 static inline void refcount_table_init(void) {
     assert(hashtable_init(&refcounts, 0x2000 /* arbitrary */) == 0);
 }
@@ -99,6 +101,9 @@ void pmm_init(struct mmap* mmap) {
 
     spinlock_init(pmm_lock);
     spinlock_init(refcount_lock);
+
+    pmm_zero_page = pmm_alloc_page(PMM_SECTION_DEFAULT);
+    memset(MAKE_HHDM(pmm_zero_page), 0, PAGE_SIZE);
 }
 
 void* pmm_alloc(size_t size, enum pmm_section_type section) {

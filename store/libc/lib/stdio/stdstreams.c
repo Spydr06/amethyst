@@ -2,9 +2,9 @@
 
 #include <internal/file.h>
 
-static __attribute__((section(".data"))) unsigned char stdin_buf[BUFSIZ + MAX_UNGET];
-static __attribute__((section(".data"))) unsigned char stdout_buf[BUFSIZ + MAX_UNGET];
-static __attribute__((section(".data"))) unsigned char stderr_buf[BUFSIZ + MAX_UNGET];
+static unsigned char stdin_buf[BUFSIZ + MAX_UNGET];
+static unsigned char stdout_buf[BUFSIZ + MAX_UNGET];
+static unsigned char stderr_buf[BUFSIZ + MAX_UNGET];
 
 static FILE stdin_file = {
     .buf = stdin_buf + MAX_UNGET,

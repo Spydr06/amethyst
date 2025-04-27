@@ -99,6 +99,8 @@ int vmm_cache_truncate(struct vnode* vnode __unused, uintmax_t offset __unused) 
 }
 
 int vmm_cache_get_page(struct vnode* vnode, uintptr_t offset, struct page** res) {
+    if(!vnode)
+        return EINVAL;
     assert(vnode->type == V_TYPE_REGULAR || vnode->type == V_TYPE_BLKDEV);
     assert((offset % PAGE_SIZE) == 0);
 

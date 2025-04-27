@@ -57,7 +57,7 @@ static int load(struct vnode* node, Elf64_Phdr* phdr, void** brk) {
     size_t file_size = phdr->p_filesz;
     size_t mem_size = phdr->p_memsz;
 
-    enum mmu_flags mmu_flags = phdr_to_mmu_flags(phdr->p_flags) | MMU_FLAGS_WRITE | MMU_FLAGS_READ;
+    enum mmu_flags mmu_flags = phdr_to_mmu_flags(phdr->p_flags) | MMU_FLAGS_USER | MMU_FLAGS_WRITE;
     uintmax_t first_page_offset = mem_address % PAGE_SIZE;
 
     // unaligned first page
@@ -65,7 +65,7 @@ static int load(struct vnode* node, Elf64_Phdr* phdr, void** brk) {
         size_t first_page_count = MIN(file_size, PAGE_SIZE - first_page_offset);
         void* page = (void*) ROUND_DOWN(mem_address, PAGE_SIZE);
 
-        if(!vmm_map(page, PAGE_SIZE, VMM_FLAGS_EXACT | VMM_FLAGS_ALLOCATE, MMU_FLAGS_USER | mmu_flags, nullptr))
+        if(!vmm_map(page, PAGE_SIZE, VMM_FLAGS_EXACT | VMM_FLAGS_ALLOCATE, mmu_flags, nullptr))
             return ENOMEM;
 
         if((err = read_exact(node, (void*) mem_address, first_page_count, offset)))
@@ -93,7 +93,12 @@ static int load(struct vnode* node, Elf64_Phdr* phdr, void** brk) {
     // map middle of file
     size_t file_page_count = file_size / PAGE_SIZE;
     if(file_page_count) {
-        if(!vmm_map((void*) mem_address, file_page_count, VMM_FLAGS_EXACT | VMM_FLAGS_ALLOCATE | VMM_FLAGS_PAGESIZE, MMU_FLAGS_USER | mmu_flags, nullptr))
+        struct vmm_file_desc desc = {
+            .node = node,
+            .offset = offset
+        };
+
+        if(!vmm_map((void*) mem_address, file_page_count, VMM_FLAGS_EXACT | VMM_FLAGS_FILE | VMM_FLAGS_PAGESIZE, mmu_flags, &desc))
             return ENOMEM;
 
         size_t byte_size = file_page_count * PAGE_SIZE;
@@ -109,7 +114,7 @@ static int load(struct vnode* node, Elf64_Phdr* phdr, void** brk) {
     // map end of file
     size_t last_page_count = file_size % PAGE_SIZE;
     if(last_page_count) {
-        if(!vmm_map((void*) mem_address, PAGE_SIZE, VMM_FLAGS_EXACT | VMM_FLAGS_ALLOCATE, MMU_FLAGS_USER | mmu_flags, nullptr))
+        if(!vmm_map((void*) mem_address, PAGE_SIZE, VMM_FLAGS_EXACT | VMM_FLAGS_ALLOCATE, mmu_flags, nullptr))
             return ENOMEM;
 
         if((err = read_exact(node, (void*) mem_address, last_page_count, offset)))

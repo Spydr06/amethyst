@@ -23,6 +23,7 @@ struct pmm_section {
 };
 
 extern uintptr_t hhdm_base;
+extern void* pmm_zero_page;
 
 #define pmm_alloc_page(section) (pmm_alloc(1, (section)))
 #define pmm_free_page(addr) (pmm_free((addr), 1))

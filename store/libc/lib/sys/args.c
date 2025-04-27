@@ -4,8 +4,8 @@
 #include <assert.h>
 #include <internal/entry.h>
 
-static int __attribute__((section("data"))) saved_argc;
-static char** __attribute__((section("data"))) saved_argv;
+static int saved_argc;
+static char** saved_argv;
 
 void __libc_register_args(int argc, char** argv) {
     saved_argv = argv;

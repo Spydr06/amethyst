@@ -58,30 +58,40 @@ static bool handle_pagefault(void* addr, bool user, enum vmm_action actions) {
     if(!mmu_is_present(thread->vmm_context->page_table, addr)) {
         uintmax_t map_offset = (uintptr_t) addr - (uintptr_t) range->start;
         
-        if(!vfs_is_cacheable(range->vnode)) {
-            // page not present in page tables
-            if(range->flags & VMM_FLAGS_FILE) {
-                vop_lock(range->vnode);
-                assert(vop_mmap(range->vnode, addr, range->offset + map_offset, V_FFLAGS_READ | mmu_to_vnode_flags(range->mmu_flags) | (range->flags & VMM_FLAGS_SHARED ? V_FFLAGS_SHARED : 0), cred) == 0);
-                vop_unlock(range->vnode);
-                handled = true;
-            }
-            
-            goto cleanup;
-        }
-        
-        struct page* page = nullptr;
-        int err = vmm_cache_get_page(range->vnode, range->offset + map_offset, &page);
-        if(err) {
-            handled = false;
-            klog(ERROR, "vmm_cache_get_page() returned %d", err);
-            goto cleanup;
-        }
+        if(range->flags & VMM_FLAGS_FILE) {
+            assert(range->vnode);
+            if(!vfs_is_cacheable(range->vnode)) {
+                // page not present in page tables
+                if(range->flags & VMM_FLAGS_FILE) {
+                    vop_lock(range->vnode);
+                    assert(vop_mmap(range->vnode, addr, range->offset + map_offset, V_FFLAGS_READ | mmu_to_vnode_flags(range->mmu_flags) | (range->flags & VMM_FLAGS_SHARED ? V_FFLAGS_SHARED : 0), cred) == 0);
+                    vop_unlock(range->vnode);
+                    handled = true;
+                }
 
-        handled = mmu_map(current_vmm_context()->page_table, page_get_physical(page), addr, range->mmu_flags & ~MMU_FLAGS_WRITE);
-        if(!handled) {
-            klog(ERROR, "could not map file into address space: Out of Memory");
-            page_release(page);
+                goto cleanup;
+            }
+
+            struct page* page = nullptr;
+            int err = vmm_cache_get_page(range->vnode, range->offset + map_offset, &page);
+            if(err) {
+                handled = false;
+                klog(ERROR, "vmm_cache_get_page() returned %d", err);
+                goto cleanup;
+            }
+
+            handled = mmu_map(current_vmm_context()->page_table, page_get_physical(page), addr, range->mmu_flags & ~MMU_FLAGS_WRITE);
+            if(!handled) {
+                klog(ERROR, "could not map file into address space: Out of Memory");
+                page_release(page);
+            }
+        }
+        else {
+            handled = mmu_map(current_vmm_context()->page_table, pmm_zero_page, addr, range->mmu_flags & ~MMU_FLAGS_WRITE);
+            if(!handled)
+                klog(ERROR, "could not map zero page into address space: Out of Memory");
+            else
+                pmm_hold(pmm_zero_page);
         }
     }
     else if(!mmu_is_writable(thread->vmm_context->page_table, addr)) {

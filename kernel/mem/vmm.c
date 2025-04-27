@@ -485,7 +485,8 @@ static void insert_range(struct vmm_space* space, struct vmm_range* new_range) {
 
 fragmentation_check:
     
-    if(new_range->next && new_range->next->start == new_range_top && new_range->flags == new_range->next->flags && new_range->mmu_flags == new_range->next->mmu_flags) {
+    if(new_range->next && new_range->next->start == new_range_top && new_range->flags == new_range->next->flags && new_range->mmu_flags == new_range->next->mmu_flags
+        && ((new_range->flags & VMM_FLAGS_FILE) == 0 || (new_range->vnode == new_range->next->vnode && new_range->offset + new_range->size == new_range->next->offset))) {
         struct vmm_range* old_range = new_range->next;
         new_range->size += old_range->size;
         new_range->next = old_range->next;
@@ -493,9 +494,12 @@ fragmentation_check:
             old_range->next->prev = new_range;
 
         free_range(old_range);
+        if(new_range->flags & VMM_FLAGS_FILE)
+            vop_release(&new_range->vnode);
     }
 
-    if(new_range->prev && RANGE_TOP(new_range->prev) == new_range->start && new_range->flags == new_range->prev->flags && new_range->mmu_flags == new_range->prev->mmu_flags) {
+    if(new_range->prev && RANGE_TOP(new_range->prev) == new_range->start && new_range->flags == new_range->prev->flags && new_range->mmu_flags == new_range->prev->mmu_flags
+        && ((new_range->flags & VMM_FLAGS_FILE) == 0 || (new_range->vnode == new_range->prev->vnode && new_range->prev->offset + new_range->prev->size == new_range->offset))) {
         struct vmm_range* old_range = new_range->prev;
         old_range->size += new_range->size;
         old_range->next = new_range->next;
@@ -504,6 +508,8 @@ fragmentation_check:
             new_range->next->prev = old_range;
 
         free_range(new_range);
+        if(old_range->flags & VMM_FLAGS_FILE)
+            vop_release(&old_range->vnode);
     }
 
 }
