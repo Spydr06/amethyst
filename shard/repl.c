@@ -1,3 +1,4 @@
+#ifndef _SHARD_NO_REPL
 #define _XOPEN_SOURCE 700
 #include "shard.h"
 
@@ -413,4 +414,6 @@ int shard_repl(const char* progname, struct shard_context* ctx, bool echo_result
 
     return ret;
 }
+
+#endif /* _SHARD_NO_REPL */
 

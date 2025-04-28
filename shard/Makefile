@@ -167,6 +167,9 @@ $(LIBATOMIC_OPS_SRC_DIR): $(LIBATOMIC_OPS_TAR)
 	@echo "  TAR   $^"
 	@tar xf $^ -C $(dir $(LIBATOMIC_OPS_SRC_DIR))
 
+.PHONY: libc-driver
+libc-driver: $(LIBC_DRIVER)
+
 .PHONY: test
 test: $(TEST_RUNNER_BIN)
 	$(realpath $<) -d tests
@@ -186,6 +189,10 @@ install: install-lib
 install-lib: $(LIBSHARD)
 	install -m "644" $(LIBSHARD) $(PREFIX)/lib/$(notdir $(LIBSHARD))
 	install -m "644" $(LIBSHARD_H) $(PREFIX)/include/$(notdir $(LIBSHARD_H))
+
+.PHONY: install-bin
+install-bin: $(SHARD_BIN)
+	install -m "777" $(SHARD_BIN) $(PREFIX)/bin/$(notdir $(SHARD_BIN))
 
 .PHONY: install-shell
 install-shell: $(SHELL_BIN)

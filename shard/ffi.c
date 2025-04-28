@@ -1,3 +1,5 @@
+#ifndef _SHARD_NO_FFI
+
 #include "libshard.h"
 #include "shard.h"
 
@@ -438,7 +440,7 @@ static struct shard_set* c_basetype(volatile struct shard_evaluator* e, struct s
     return base_val.set;
 }
 
-static bool c_bigstruct(volatile struct shard_evaluator* e, struct shard_set* ffi_type) {
+static bool c_isbigstruct(volatile struct shard_evaluator* e, struct shard_set* ffi_type) {
     int size = c_typesz(e, ffi_type);
     int align = c_typeal(e, ffi_type);
     if(size > 16 || align != 8)
@@ -822,7 +824,7 @@ static struct shard_value builtin_cCall(volatile struct shard_evaluator* e, stru
     memset(&ccall, 0, sizeof(struct ffi_ccall));
 
     uint8_t* return_buffer = NULL;
-    if(c_bigstruct(e, return_type)) {
+    if(c_isbigstruct(e, return_type)) {
         return_buffer = alloca(c_typesz(e, return_type));
         ccall.gp[ccall.gp_used++] = (intptr_t) return_buffer;
     }
@@ -883,4 +885,6 @@ static struct shard_value builtin_cAssign(volatile struct shard_evaluator* e, st
     ffi_shard_to_c(e, value, address, ffi_type);
     return value;
 }
+
+#endif
 

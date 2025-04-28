@@ -4,11 +4,16 @@
     environment.packages = with pkgs; [
         (amethyst-kernel {
             kernel.arguments = [ "loglevel=debug" /* "log-syscalls" */ ];
+            kernel.extra-arguments = [ "-h" ];
             sanitize = [ "undefined" ];
         })
         limine
         initsys
         coreutils
+        (shard {
+            ffi.enabled = false;
+            repl.enabled = false;
+        })
         # shard-sh
     ];
 }

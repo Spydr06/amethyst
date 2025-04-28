@@ -6,7 +6,7 @@ OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 
 TARGET := $(BUILD_DIR)/init
 
-LDFLAGS += -static
+LDFLAGS += -static -l:libgetopt.a -lshard
 CFLAGS += -D_AMETHYST_SRC
 
 .PHONY: all
@@ -15,7 +15,7 @@ all: $(TARGET)
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(dir $@)
 	@echo "  CCLD  $@ ($^)"
-	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
 
 $(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)

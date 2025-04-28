@@ -3,7 +3,11 @@
 #define __USE_XOPEN2K
 
 #include <assert.h>
+
+#ifndef _SHARD_NO_FFI
 #include <dlfcn.h>
+#endif
+
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -81,8 +85,10 @@ int load_ext_builtins(struct shard_context* ctx, int argc, char** argv) {
     if(err)
         return err;
 
+#ifndef _SHARD_NO_FFI
     if((err = ffi_load(ctx)))
         return err;
+#endif
 
     for(size_t i = 0; i < sizeof(ext_builtins) / sizeof(void*); i++) {
         if((err = shard_define_builtin(ctx, ext_builtins[i])))
@@ -112,6 +118,7 @@ static struct shard_value builtin_setEnv(volatile struct shard_evaluator* e, str
 }
 
 static struct shard_value builtin_dlOpen(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+#ifndef _SHARD_NO_FFI
     struct shard_value path = shard_builtin_eval_arg(e, builtin, args, 0);
 
     void* handle = dlopen(path.path, RTLD_LAZY);
@@ -129,9 +136,13 @@ static struct shard_value builtin_dlOpen(volatile struct shard_evaluator* e, str
     }
 
     return SET_VAL(dylib);
+#else
+    return NULL_VAL();
+#endif
 }
 
 static struct shard_value builtin_dlClose(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+#ifndef _SHARD_NO_FFI 
     struct shard_value dylib = shard_builtin_eval_arg(e, builtin, args, 0);
 
     int err;
@@ -146,9 +157,13 @@ static struct shard_value builtin_dlClose(volatile struct shard_evaluator* e, st
 
     void* handle = (void*) handle_val.integer;
     return INT_VAL(dlclose(handle));
+#else
+    return NULL_VAL();
+#endif
 }
 
 static struct shard_value builtin_dlSym(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+#ifndef _SHARD_NO_FFI
     struct shard_value dylib_val = shard_builtin_eval_arg(e, builtin, args, 0);
     struct shard_value symbol_val = shard_builtin_eval_arg(e, builtin, args, 1);
     struct shard_value ffi_type_val = shard_builtin_eval_arg(e, builtin, args, 2);
@@ -181,5 +196,8 @@ static struct shard_value builtin_dlSym(volatile struct shard_evaluator* e, stru
     }
 
     return ffi_bind(e, symbol, sym, ffi_type_val.set);
+#else
+    return NULL_VAL();
+#endif
 }
 

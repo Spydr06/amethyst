@@ -16,11 +16,14 @@ with import <geode.shard>; {
 
         config = {
             kernel.arguments = [];
+            kernel.extra-arguments = [];
             boot = {
                 loader.timeout = 5;
             };
             sanitize = [];
         };
+
+        fullArguments = config.kernel.arguments ++ [ "--" ] ++ config.kernel.extra-arguments;
 
         getSanitizers = builtins.join "," config.sanitize;
 
@@ -29,7 +32,7 @@ with import <geode.shard>; {
         ];
 
         limineConfig = template: 
-            let kernelArgs = builtins.join " " config.kernel.arguments;
+            let kernelArgs = builtins.join " " fullArguments;
                 sed = geode.proc.spawnPipe "sed" [
                     "-e" ("s|@VERSION@|" + version + "|g")
                     "-e" ("s|@KERNEL_ELF@|" + kernelElf + "|")

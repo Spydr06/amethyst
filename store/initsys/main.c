@@ -1,3 +1,4 @@
+#define _AMETHYST_SOURCE
 #include <errno.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -9,6 +10,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <getopt.h>
+
+#define DEFAULT_CONFIGURATION_PATH "/bin/configuration.shard"
 
 static char shell_bin[] = "/bin/shard-sh";
 
@@ -46,10 +50,56 @@ void umount_target(struct target* target) {
     }
 }
 
-__attribute__((section(".bss"))) char bss_test[8192];
+static struct option long_options[] = {
+    { "loglevel", required_argument, NULL, 'l' },
+    { "help",     no_argument,       NULL, 'h' },
+    { NULL, 0, NULL, 0 },
+};
+
+static void usage(FILE* outf) {
+    fprintf(outf, "Usage: %s [options] <configuration file>\n"
+                  "       %s [-h | --help]\n", _getprogname(), _getprogname());
+}
+
+static void help(void) {
+    usage(stdout); 
+    
+    printf("Options:\n"
+        "-l, --loglevel <num>   Set the log level to <num>\n"
+        "-h, --help             Display this help text and exit\n"
+    );
+}
 
 int main(int argc, char** argv) {
-    printf("Hello, World <3\n");
+    int c;
+
+    while((c = getopt_long(argc, argv, "l:h", long_options, NULL)) != EOF) {
+        switch(c) {
+            case 'h':
+                help();
+            case '?':
+                break;
+            default:
+                usage(stderr);
+                return EXIT_FAILURE;
+        }
+    }
+
+    if(optind < argc - 1) {
+        fprintf(stderr, "%s: excessive arguments\n", argv[0]);
+        usage(stderr);
+        return EXIT_FAILURE;
+    }
+ 
+    const char* configpath = optind < argc ? argv[optind] : DEFAULT_CONFIGURATION_PATH;
+
+    pid_t pid = getpid();
+    if(pid != 1) {
+        fprintf(stderr, "%s: not running as pid 1", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+/*    printf("Hello, World <3\n");
 
     strncpy(bss_test, "BSS TEST!", sizeof(bss_test));
 
@@ -116,6 +166,6 @@ next:
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         umount_target(mount_targets + i);
 
-    fflush(stderr);
+    fflush(stderr);*/
 }
 

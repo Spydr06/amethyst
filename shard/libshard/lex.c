@@ -686,6 +686,8 @@ repeat:
             if(peek_char(l) == '=') {
                 next_char(l);
                 KEYWORD_TOK(token, l, LE);
+
+
             }
             else if(peek_char(l) == '<') {
                 next_char(l);

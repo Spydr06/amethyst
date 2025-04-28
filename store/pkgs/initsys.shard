@@ -9,10 +9,14 @@ with import <geode.shard>; {
 
         buildDependencies = with pkgs; [
             libc
+            getopt
+            libshard
         ];
 
         runtimeDependencies = with pkgs; [
             libc
+            getopt
+            libshard
         ];
 
         build = util.shell.make ["-C" sourceDir 

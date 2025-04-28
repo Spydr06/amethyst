@@ -1,5 +1,5 @@
 with import <geode.shard>; rec {
-    libshard = rec {
+    libshard = lib.mkPackage rec {
         name = "libshard";
         version = "0.0.1";
 
@@ -19,7 +19,7 @@ with import <geode.shard>; rec {
         ];
     };
 
-    shard-sh = rec {
+    shard-sh = lib.mkPackage rec {
         name = "shard-sh";
         version = "0.0.1";
 
@@ -42,7 +42,38 @@ with import <geode.shard>; rec {
         ];
     };
 
-    shard-full = rec {
+    shard = lib.mkPackage rec {
+        name = "shard";
+        version = "0.0.1";
+
+        config = {
+            ffi.enabled = true;
+            repl.enabled = true;
+        };
+
+        sourceDir = libshard.sourceDir;
+        makeTarget = "bin";
+        installTarget = "install-bin";
+
+        dependencies = with pkgs; [ libshard ];
+
+        build = let
+                prefix = builtins.toString util.paths.prefix;
+            in util.shell.make ["-C" sourceDir makeTarget
+            ("CFLAGS=-specs=${builtins.toString util.paths.gcc_specs}" 
+                + (if config.ffi.enabled then "" else " -D_SHARD_NO_FFI")
+                + (if config.repl.enabled then "" else " -D_SHARD_NO_REPL")
+            )
+            ("LDFLAGS=-lgetopt")
+            ("PREFIX=" + prefix)
+        ];
+
+        install = util.shell.make ["-C" sourceDir installTarget
+            ("PREFIX=" + $ builtins.toString util.paths.prefix)
+        ];
+    };
+
+    shard-full = lib.mkPackage rec {
         name = "shard-full";
         version = "0.0.1";
         meta = true;
