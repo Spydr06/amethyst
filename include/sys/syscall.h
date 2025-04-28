@@ -55,6 +55,8 @@ __syscall syscallret_t _sys_umount(struct cpu_context* ctx, const char* u_dir_na
 
 __syscall syscallret_t _sys_ioctl(struct cpu_context* ctx, int fd, unsigned long request, void* arg);
 
+__syscall syscallret_t _sys_access(struct cpu_context* ctx, const char* filename, mode_t mode);
+
 __syscall syscallret_t _sys_yield(struct cpu_context* ctx);
 __syscall syscallret_t _sys_nanosleep(struct cpu_context* ctx, const struct timespec* rq, struct timespec* rm);
 

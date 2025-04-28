@@ -22,7 +22,14 @@ extern "C" {
 #define O_DIRECTORY 0100000
 #define O_CLOEXEC   02000000
 
+#define	R_OK 4
+#define	W_OK 2
+#define	X_OK 1
+#define	F_OK 0
+
 extern char **environ;
+
+int access(const char *path, int amode);
 
 int brk(void* addr);
 void* sbrk(intptr_t increment);

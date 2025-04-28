@@ -37,6 +37,7 @@ const struct syscall_entry _syscall_table[] = {
     _SYS_E(mount,    "%p, %p, %p, %lx, %p"),
     _SYS_E(umount,   "%p"          ),
     _SYS_E(ioctl,    "%d, %d, %p"  ),
+    _SYS_E(access,   "%p, %x"      ),
     _SYS_E(yield,    ""            ),
     _SYS_E(nanosleep,"%p, %p"      ),
     _SYS_E(getpid,   ""            ),

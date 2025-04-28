@@ -13,6 +13,13 @@
 
 #define TO_DEV(major, minor) ((((major) & 0xfff) << 8) + ((minor) & 0xff))
 
+enum access_mode {
+    R_OK = 4,
+    W_OK = 2,
+    X_OK = 1,
+    F_OK = 0
+};
+
 typedef int32_t pid_t;
 typedef int32_t tid_t;
 typedef int32_t gid_t;

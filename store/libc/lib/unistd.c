@@ -4,6 +4,10 @@
 #include <sys/syscall.h>
 #include <internal/syscall.h>
 
+int access(const char *path, int amode) {
+    return syscall(SYS_access, path, amode);
+}
+
 int open(const char *pathname, int flags, mode_t mode) {
     return syscall(SYS_open, pathname, flags, mode);
 }

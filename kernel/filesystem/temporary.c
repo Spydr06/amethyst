@@ -19,6 +19,8 @@ static int tmpfs_mount(struct vfs** vfs, struct vnode* mount_point, struct vnode
 static int tmpfs_unmount(struct vfs* vfs);
 static int tmpfs_root(struct vfs* vfs, struct vnode** node);
 
+static int tmpfs_access(struct vnode* node, mode_t mode, struct cred* cred);
+
 static int tmpfs_create(struct vnode* parent, const char* name, struct vattr* attr, int type, struct vnode** result, struct cred* cred);
 
 static int tmpfs_open(struct vnode** nodep, int flags, struct cred* cred);
@@ -43,6 +45,7 @@ static struct vfsops vfsops = {
 };
 
 static struct vops vops = {
+    .access = tmpfs_access,
     .create = tmpfs_create,
     .open = tmpfs_open,
     .close = tmpfs_close,
@@ -206,6 +209,13 @@ static int tmpfs_create(struct vnode* parent, const char* name, struct vattr* at
     vop_hold(node);
 
     return err;
+}
+
+static int tmpfs_access(struct vnode* node, mode_t mode, struct cred* cred) {
+    (void) node;
+    (void) cred;
+    klog(WARN, "access() not yet implemented | mode: %x", mode);
+    return 0;
 }
 
 static int tmpfs_open(struct vnode** nodep, int flags __unused, struct cred* cred __unused) {
