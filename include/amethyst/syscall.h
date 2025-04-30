@@ -10,7 +10,7 @@
 #define SYS_stat        4
 #define SYS_fstat       5
 #define SYS_mkdir       6
-#define SYS_getcwd      7
+#define SYS_lseek       7
 #define SYS_getdents    8
 #define SYS_mmap        9
 #define SYS_munmap      11
@@ -27,6 +27,7 @@
 #define SYS_exit        60
 #define SYS_waitpid     61
 #define SYS_uname       63
+#define SYS_getcwd      79
 #define SYS_sysinfo     99
 #define SYS_knldebug    255
 

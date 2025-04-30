@@ -44,6 +44,7 @@ FILE *_fdopen(int fd, const char* mode);
 size_t __file_read(FILE *f, unsigned char *buf, size_t len);
 size_t __file_write(FILE *f, const unsigned char *buf, size_t len);
 off_t __file_seek(FILE *f, off_t off, int action);
+off_t __file_tell(FILE *f);
 int __file_close(FILE *f);
 
 static inline int towrite(FILE *f) {

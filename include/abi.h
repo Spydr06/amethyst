@@ -13,6 +13,13 @@
 
 #define TO_DEV(major, minor) ((((major) & 0xfff) << 8) + ((minor) & 0xff))
 
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
+
+#define OFF_MAX INT64_MAX
+#define OFF_MIN INT64_MIN
+
 enum access_mode {
     R_OK = 4,
     W_OK = 2,

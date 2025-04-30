@@ -50,6 +50,9 @@ int feof(FILE *stream);
 int ferror(FILE *stream);
 void clearerr(FILE *stream);
 
+int fseek(FILE *stream, long offset, int whence);
+long ftell(FILE *stream);
+
 int printf(const char *restrict format, ...);
 int vprintf(const char *restrict format, va_list ap);
 

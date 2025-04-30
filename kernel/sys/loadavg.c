@@ -21,11 +21,13 @@ void calc_global_load(void) {
 
     __atomic_store_n(&calc_load_tasks, 0, __ATOMIC_SEQ_CST);
 
+#ifdef _LOADAVG_DEBUG
     klog(DEBUG, "active: %zu; load average: %zu.%03zu -- %zu.%03zu -- %zu.%03zu", active, 
             FIX_WHOLE(avenrun[0]), FIX_FRACT(avenrun[0]),
             FIX_WHOLE(avenrun[1]), FIX_FRACT(avenrun[1]),
             FIX_WHOLE(avenrun[2]), FIX_FRACT(avenrun[2])
         );
+#endif
 }
 
 void calc_global_load_tick(void) {

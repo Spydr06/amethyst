@@ -265,6 +265,10 @@ static inline int vop_ioctl(struct vnode* node, unsigned long request, void* arg
     return node->ops->ioctl(node, request, arg, result, cred);
 }
 
+static inline int vop_maxseek(struct vnode* node, size_t* max_offset) {
+    return node->ops->maxseek(node, max_offset);
+}
+
 static inline int vop_resize(struct vnode *node, size_t newsize, struct cred *cred) {
     return node->ops->resize(node, newsize, cred);
 }

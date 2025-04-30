@@ -44,8 +44,8 @@ __syscall syscallret_t _sys_close(struct cpu_context* ctx, int fd);
 __syscall syscallret_t _sys_stat(struct cpu_context* ctx, const char* path, struct stat *statbuf);
 __syscall syscallret_t _sys_fstat(struct cpu_context* ctx, int fd, struct stat *statbuf);
 __syscall syscallret_t _sys_mkdir(struct cpu_context* ctx, const char* path, mode_t mode);
-__syscall syscallret_t _sys_getcwd(struct cpu_context* ctx, char* cwd, size_t cwd_size);
 __syscall syscallret_t _sys_getdents(struct cpu_context* ctx, int fd, struct amethyst_dirent *dirp, size_t count);
+__syscall syscallret_t _sys_lseek(struct cpu_context* ctx, int fd, off_t offset, unsigned origin);
 __syscall syscallret_t _sys_mmap(struct cpu_context* ctx, void* addr, size_t len, enum map_prot prot, enum map_flags flags, int fd, off_t offset);
 __syscall syscallret_t _sys_munmap(struct cpu_context* ctx, void* addr, size_t len);
 __syscall syscallret_t _sys_brk(struct cpu_context* ctx, void* addr);
@@ -69,6 +69,8 @@ __syscall syscallret_t _sys_waitpid(struct cpu_context* ctx, pid_t pid, int *wst
 __syscall syscallret_t _sys_uname(struct cpu_context* ctx, struct utsname* u_name);
 
 __syscall syscallret_t _sys_sysinfo(struct cpu_context* ctx, struct sysinfo* u_sysinfo);
+
+__syscall syscallret_t _sys_getcwd(struct cpu_context* ctx, char* cwd, size_t cwd_size);
 
 __syscall syscallret_t _sys_knldebug(struct cpu_context* ctx, enum klog_severity severity, const char* user_buffer, size_t buffer_size);
 
