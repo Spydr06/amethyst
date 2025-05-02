@@ -63,6 +63,11 @@ static struct shard_value builtin_div(volatile struct shard_evaluator* e, struct
     );
 }
 
+static struct shard_value builtin_not(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    return BOOL_VAL(!shard_builtin_eval_arg(e, builtin, args, 0).boolean);
+}
+
+
 static struct shard_value builtin_elem(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value want = shard_builtin_eval_arg(e, builtin, args, 0);
     struct shard_value list = shard_builtin_eval_arg(e, builtin, args, 1);
@@ -150,6 +155,52 @@ static struct shard_value builtin_any(volatile struct shard_evaluator* e, struct
     }
 
     return BOOL_VAL(any_result);
+}
+
+static struct shard_value builtin_find(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value pred = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value list = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    bool any_result = false;
+    struct shard_list* cur = list.list.head;
+    while(!any_result && cur) {
+        struct shard_value result = shard_eval_call(e, pred, cur->value, e->error_scope->loc);
+        if(result.type == SHARD_VAL_BOOL && result.boolean)
+            return shard_eval_lazy2(e, cur->value);
+
+        cur = cur->next;
+    }
+
+    return NULL_VAL();
+}
+
+static struct shard_value builtin_filter(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value pred = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value list = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    struct shard_list* cur = list.list.head, *result, *result_head = NULL, *result_cur = NULL;
+    while(cur) {
+        struct shard_value filter_result = shard_eval_call(e, pred, cur->value, e->error_scope->loc);
+        if(filter_result.type != SHARD_VAL_BOOL || !filter_result.boolean)
+            goto next;
+
+        result = shard_gc_malloc(e->gc, sizeof(struct shard_list));
+        result->next = NULL;
+        result->value = cur->value;
+
+        if(!result_head)
+            result_head = result;
+        
+        if(result_cur)
+            result_cur->next = result;
+
+        result_cur = result;
+
+    next:
+        cur = cur->next;
+    }
+
+    return LIST_VAL(result_head);
 }
 
 static struct shard_value builtin_map(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
@@ -829,6 +880,8 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.evalutated", builtin_evaluated, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.floor", builtin_floor, SHARD_VAL_FLOAT),
     SHARD_BUILTIN("builtins.foldl", builtin_foldl, SHARD_VAL_CALLABLE, SHARD_VAL_ANY, SHARD_VAL_LIST),
+    SHARD_BUILTIN("builtins.find",  builtin_find, SHARD_VAL_CALLABLE, SHARD_VAL_LIST),
+    SHARD_BUILTIN("builtins.filter", builtin_filter, SHARD_VAL_CALLABLE, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.genList", builtin_genList, SHARD_VAL_CALLABLE, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.getAttr", builtin_getAttr, SHARD_VAL_STRING, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.head", builtin_head, SHARD_VAL_LIST),
@@ -846,6 +899,7 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.map", builtin_map, SHARD_VAL_CALLABLE, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.mergeTree", builtin_mergeTree, SHARD_VAL_SET, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.mul", builtin_mul, SHARD_VAL_NUMERIC, SHARD_VAL_NUMERIC),
+    SHARD_BUILTIN("builtins.not", builtin_not, SHARD_VAL_BOOL),
     SHARD_BUILTIN("builtins.seq", builtin_seq, SHARD_VAL_ANY, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.seqList", builtin_seqList, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.split", builtin_split, SHARD_VAL_STRING, SHARD_VAL_STRING),

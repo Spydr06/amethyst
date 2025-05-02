@@ -686,7 +686,11 @@ static int parse_set(struct parser* p, struct shard_expr* expr, bool recursive) 
 
         shard_ident_t key = p->token.value.string;
 
-        if(consume(p, SHARD_TOK_IDENT))
+        if(p->token.type == SHARD_TOK_STRING) {
+            key = shard_get_ident(p->ctx, key);
+            advance(p);
+        }
+        else if(consume(p, SHARD_TOK_IDENT))
             err = EINVAL;
         
         if(first_iter && (p->token.type == SHARD_TOK_COMMA || p->token.type == SHARD_TOK_QUESTIONMARK)) {

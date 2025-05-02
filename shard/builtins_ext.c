@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include <libshard.h>
 
@@ -30,13 +31,17 @@ EXT_BUILTIN("system.setEnv", setEnv, SHARD_VAL_STRING, SHARD_VAL_STRING);
 EXT_BUILTIN("system.dlOpen", dlOpen, SHARD_VAL_TEXTUAL);
 EXT_BUILTIN("system.dlClose", dlClose, SHARD_VAL_SET);
 EXT_BUILTIN("system.dlSym", dlSym, SHARD_VAL_SET, SHARD_VAL_STRING, SHARD_VAL_SET);
+EXT_BUILTIN("system.exit", exit, SHARD_VAL_INT);
+EXT_BUILTIN("system.printLn", printLn, SHARD_VAL_STRING);
 
 static struct shard_builtin* ext_builtins[] = {
     &ext_builtin_getEnv,
     &ext_builtin_setEnv,
     &ext_builtin_dlOpen,
     &ext_builtin_dlClose,
-    &ext_builtin_dlSym
+    &ext_builtin_dlSym,
+    &ext_builtin_exit,
+    &ext_builtin_printLn,
 };
 
 static struct shard_value gen_arg_list(struct shard_context* ctx, int argc, char** argv) {
@@ -64,6 +69,8 @@ int load_constants(struct shard_context* ctx, int argc, char** argv) {
         struct shard_value value;
     } builtin_constants[] = {
         {"system.getArgs", gen_arg_list(ctx, argc, argv)},
+        {"system.exitSuccess", INT_VAL(EXIT_SUCCESS)},
+        {"system.exitFailure", INT_VAL(EXIT_FAILURE)},
     };
 
     for(size_t i = 0; i < __len(builtin_constants); i++) {
@@ -201,3 +208,15 @@ static struct shard_value builtin_dlSym(volatile struct shard_evaluator* e, stru
 #endif
 }
 
+static struct shard_value builtin_exit(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value exit_code = shard_builtin_eval_arg(e, builtin, args, 0);
+    exit(exit_code.integer);
+}
+
+static struct shard_value builtin_printLn(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value message = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    int err = fwrite(message.string, sizeof(char), message.strlen, stdout);
+    fflush(stdout);
+    return INT_VAL(err);
+}
