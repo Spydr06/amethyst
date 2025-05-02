@@ -1,0 +1,21 @@
+rec {
+    modules = {
+        geode = {
+            name = "geode";
+            version = "0.0.1";
+
+            path = ./geode;
+
+            import = import ./geode/module.shard;
+        };
+    };
+
+    getModule = moduleName :: string: builtins.getAttr moduleName modules;
+    hasModule = moduleName :: string: getModule moduleName == null;
+
+    loadModule = moduleName :: string: 
+        (case getModule moduleName of
+            m if m == null => builtins.abort "`${moduleName}`: No such module found.";
+            m => m.import or $ builtins.abort "`${moduleName}`: No import candiate.");
+}
+

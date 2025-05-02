@@ -1,0 +1,111 @@
+#!/usr/bin/env -S shard -Imodules --
+
+with rec {
+    geode   = (import <modules>).loadModule "geode";
+
+    exitWith = f: builtins.seq f >> system.exit;
+    failWith = f: exitWith f system.exitFailure;
+
+    usage = progname: error: system.printLn
+        "${progname}: ${error}\nUsage: ${progname} [subcommand] [options...]\n       ${progname} --help\n";
+
+    options = {
+        "--help" = {
+            desc = "Display this help text and exit.";
+            expectArgument = false;
+            call = progname: exitWith (help progname) system.exitSuccess;
+        };
+
+        "--prefix" = {
+            desc = "Set the system prefix.";
+            default = "/";
+            expectArgument = true;
+            call = progname: arg: { prefix = builtins.toPath arg; };
+        };
+
+        "--store" = {
+            desc = "Set the store directory.";
+            default = "/shard/store";
+            expectArgument = true;
+            call = progname: arg: { store = builtins.toPath arg; };
+        };
+        
+        "--moduledir" = {
+            desc = "Set the module directory.";
+            default = "/shard/modules";
+            expectArgument = true;
+            call = progname: arg: { moduledir = builtins.toPath arg; };
+        };
+
+        "--pkgdir" = {
+            desc = "Set the package directory.";
+            default = "/shard/pkgs";
+            expectArgument = true;
+            call = progname: arg: { pkgdir = builtins.toPath arg; };
+        };
+
+        "bootstrap" = {
+            desc = "Bootstrap a new ametyst installation to prefix.";
+            subcommand = true;
+            call = progname: arg: { subcommand = "bootstrap"; };
+        };
+    };
+    
+    defaultOptions = progname: builtins.foldl
+        (defaults: optName: let option = builtins.getAttr optName options; in
+            case option of
+                { default, call, ... } => defaults // call progname default;
+                _ => defaults) 
+        { 
+            inherit progname; 
+            subcommand = null;
+        } 
+        $ builtins.attrNames options;
+
+    optionToString = name: option: "  " 
+        + name
+        + (if option.expectArgument or false then " <option>" else "         ")
+        + "\t\t${option.desc}"
+        + (if option ? default then " \t[${option.default}]" else "");
+    
+    optionList = with builtins; list: foldl (str: name: 
+            let option = getAttr name options; 
+            in str + optionToString name option + "\n"
+        ) 
+        "" list;
+
+    help = progname: let
+        isSubcommand = name: (builtins.getAttr name options).subcommand or false;
+        optionString = optionList $ builtins.filter (builtins.not << isSubcommand) $ builtins.attrNames options;
+        subcommandString = optionList $ builtins.filter isSubcommand $ builtins.attrNames options;
+    in builtins.seq 
+        (usage progname "Geode - Declarative Package Manager for Amethyst")
+        (system.printLn "\nSubcommands:\n${subcommandString}\nOptions:\n${optionString}");
+
+    parseArgs = progname: args: let
+        splitHead = builtins.splitFirst "=" $ builtins.head args;
+        head = builtins.head splitHead;
+
+        remaining = if builtins.length splitHead == 1 
+            then builtins.tail args
+            else builtins.tail splitHead ++ builtins.tail args;
+    in if builtins.head args == null
+        then defaultOptions progname
+        else (case builtins.getAttr head options of
+            o if o == null => failWith $ usage progname "Unknown argument -- '${head}'";
+            option => if option.expectArgument or false
+                then if builtins.head remaining == null
+                    then failWith $ usage progname "Missing argument for option '${head}'"
+                    else (parseArgs progname $ builtins.tail remaining) // (option.call progname $ builtins.head remaining)
+                else option.call progname // parseArgs remaining
+        );
+
+    main = args :: list: let
+        progname = builtins.head args;
+        args_ = builtins.tail args;
+    in
+        geode.main $ parseArgs progname args_; 
+};
+
+system.exit $ main system.getArgs
+
