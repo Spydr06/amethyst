@@ -1,0 +1,11 @@
+#ifndef _GEODE_DEFAULTS_H
+#define _GEODE_DEFAULTS_H
+
+#define DEFAULT_PREFIX "/"
+#define DEFAULT_SHARD_PATH DEFAULT_PREFIX "shard"
+#define DEFAULT_CONFIG_PATH DEFAULT_SHARD_PATH "/configuration.shard"
+#define DEFAULT_STORE_PATH DEFAULT_SHARD_PATH  "/store"
+#define DEFAULT_PKGS_PATH DEFAULT_SHARD_PATH   "/pkgs"
+
+#endif /* _GEODE_DEFAULTS_H */
+

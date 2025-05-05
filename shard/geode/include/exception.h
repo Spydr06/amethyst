@@ -1,0 +1,73 @@
+#ifndef _GEODE_EXCEPTION_H
+#define _GEODE_EXCEPTION_H
+
+#include "libshard.h"
+#include <assert.h>
+#include <setjmp.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdnoreturn.h>
+
+struct geode_context;
+
+enum geode_exception_type : uint32_t {
+    GEODE_EX_SUBCOMMAND = 0b00000001,
+    GEODE_EX_SHARD      = 0b00000010
+};
+
+#define GEODE_ANY_EXCEPTION UINT32_MAX
+
+#define GEODE_LOCALEXCEPT(ctx) __attribute__((cleanup(geode_pop_exception_handler, (ctx))))
+
+struct geode_exception {
+    enum geode_exception_type type;
+    char *description;
+
+    union {
+        struct {
+            int count;
+            struct shard_error *errors;
+        } shard;
+    } payload;
+};
+
+typedef struct geode_exception exception_t;
+
+struct geode_exception_handler {
+    struct geode_exception_handler *outer;
+    enum geode_exception_type catches; 
+    volatile exception_t *thrown;
+    jmp_buf jmp;
+};
+
+const char *exception_type_to_string(enum geode_exception_type type);
+
+__attribute__((format(printf, 3, 4)))
+noreturn void geode_throwf(struct geode_context *context, enum geode_exception_type type, const char *format, ...);
+noreturn void geode_vthrowf(struct geode_context *context, enum geode_exception_type type, const char *format, va_list ap);
+
+exception_t *geode_shard_ex(struct geode_context *context);
+exception_t *geode_shard_ex2(struct geode_context *context, int num_errors, struct shard_error *errors);
+
+noreturn void geode_throw(struct geode_context *context, exception_t *exception);
+
+struct geode_exception_handler *__geode_catch(struct geode_context *context, enum geode_exception_type catches);
+
+#define geode_catch(context, catches) ({ \
+        struct geode_exception_handler *handler = __geode_catch((context), (catches));  \
+        int catch = setjmp(handler->jmp);                                               \
+        volatile exception_t *e = NULL;                                                 \
+        if(catch) {                                                                     \
+            e = handler->thrown;                                                        \
+            assert(e != NULL);                                                          \
+            handler->thrown = NULL;                                                     \
+        }                                                                               \
+        e;                                                                              \
+    })
+
+void geode_push_exception_handler(struct geode_context *context, struct geode_exception_handler *handler);
+void geode_pop_exception_handler(struct geode_context *context);
+
+#endif /* _GEODE_EXCEPTION_H */
+

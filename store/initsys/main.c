@@ -99,11 +99,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-/*    printf("Hello, World <3\n");
-
-    strncpy(bss_test, "BSS TEST!", sizeof(bss_test));
-
-    printf("%s\n", bss_test);
+    printf("Hello, World <3\n");
 
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         mount_target(mount_targets + i);
@@ -138,7 +134,7 @@ next:
 
     fprintf(stderr, "%s: error executing %s: %s\n", argv[0], shell_bin, strerror(errno));
 
-    int pid = fork();
+    pid = fork();
     if(pid == 0) {
         struct timespec ts = {.tv_nsec = 10000000, .tv_sec = 0};
         nanosleep(&ts, NULL);
@@ -149,8 +145,8 @@ next:
         nanosleep(&ts, NULL);
         printf("goodbye\n");
 
-        while(1);
- //       exit(1);
+ //       while(1);
+        exit(1);
     }
 
     printf("forked pid %d\n", pid);
@@ -165,7 +161,5 @@ next:
 
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         umount_target(mount_targets + i);
-
-    fflush(stderr);*/
 }
 

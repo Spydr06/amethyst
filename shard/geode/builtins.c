@@ -1,8 +1,5 @@
-#define _POSIX_C_SOURCE 200809L
-
-#include <geode.h>
-#include <context.h>
-#include <config.h>
+#include "geode.h"
+#include "log.h"
 
 #include <libshard.h>
 
@@ -12,6 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <stdio.h>
 
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -57,15 +55,15 @@ static void load_constants(struct geode_context* ctx) {
         const char* ident;
         struct shard_value value;
     } builtin_constants[] = {
-        {"geode.prefix", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->prefix, .pathlen=strlen(ctx->prefix)}},
-        {"geode.store", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->store_path, .pathlen=strlen(ctx->store_path)}},
+        {"geode.prefix", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->prefix_path.string, .pathlen=strlen(ctx->prefix_path.string)}},
+        {"geode.store", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->store_path.string, .pathlen=strlen(ctx->store_path.string)}},
         {"geode.architecture", (struct shard_value){.type=SHARD_VAL_STRING, .string="x86_64", .strlen=6}}, // TODO: make properly
-        {"geode.proc.nJobs", (struct shard_value){.type=SHARD_VAL_INT, .integer=ctx->nproc}},
+        {"geode.proc.nJobs", (struct shard_value){.type=SHARD_VAL_INT, .integer=ctx->jobcnt}},
     };
 
     for(size_t i = 0; i < __len(builtin_constants); i++) {
         int err = shard_define_constant(
-            &ctx->shard_ctx,
+            &ctx->shard,
             builtin_constants[i].ident,
             builtin_constants[i].value
         );
@@ -79,7 +77,7 @@ void geode_load_builtins(struct geode_context* ctx) {
 
     for(size_t i = 0; i < __len(geode_builtin_functions); i++) {
         int err = shard_define_builtin(
-            &ctx->shard_ctx, 
+            &ctx->shard, 
             &geode_builtin_functions[i]
         );
 
@@ -94,10 +92,10 @@ static struct shard_value builtin_debug_dump(volatile struct shard_evaluator* e,
     struct shard_string str = {0};
     int err = shard_value_to_string(e->ctx, &str, &arg, 10);
     if(err != 0)
-        geode_throw(geode_ctx, SHARD, .shard=TUPLE(.num=err, .errs=shard_get_errors(e->ctx)));
+        geode_throw(geode_ctx, geode_shard_ex(e->ctx->userp));
     shard_string_push(e->ctx, &str, '\0');
 
-    infof(geode_ctx, "`geode.debug.dump`: %s\n", str.items);
+    geode_infof(geode_ctx, "`geode.debug.dump`: %s\n", str.items);
 
     shard_string_free(e->ctx, &str);
 
@@ -189,15 +187,15 @@ static struct shard_value builtin_error_throw(volatile struct shard_evaluator* e
 
     struct geode_context* ctx = e->ctx->userp;
 
-    struct shard_error* err = geode_malloc(ctx, sizeof(struct shard_error));
+    struct shard_error* err = l_malloc(&ctx->l_global, sizeof(struct shard_error));
     *err = (struct shard_error){
-        .err = geode_strdup(ctx, msg.string),
+        .err = l_strdup(&ctx->l_global, msg.string),
         .loc = e->error_scope->loc,
         .heap = false,
         ._errno = 0
     };
 
-    geode_throw(ctx, SHARD, .shard=TUPLE(.num=1,.errs=err));
+    geode_throw(ctx, geode_shard_ex2(ctx, 1, err));
 }
 
 static struct shard_value builtin_proc_spawn(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
@@ -229,7 +227,7 @@ static struct shard_value builtin_proc_spawn(volatile struct shard_evaluator* e,
 
     struct geode_context* ctx = e->ctx->userp;
     if(ctx->flags.verbose) {
-        infof(ctx, "proc.spawn: ");
+        geode_verbosef(ctx, "proc.spawn: ");
         for(char** arg = argv; *arg; arg++) {
             printf("%s ", *arg);
         }
@@ -252,9 +250,9 @@ static struct shard_value builtin_proc_spawn(volatile struct shard_evaluator* e,
         if(WIFEXITED(pid_status))
             return_val.integer = WEXITSTATUS(pid_status);
         else if(WIFSIGNALED(pid_status))
-            infof(ctx, "proc.spawn: '%s' terminated with signal %s (%d)\n", exec.string, strsignal(WTERMSIG(pid_status)), WTERMSIG(pid_status));
+            geode_verbosef(ctx, "proc.spawn: '%s' terminated with signal %s (%d)\n", exec.string, strsignal(WTERMSIG(pid_status)), WTERMSIG(pid_status));
         else if(WIFSTOPPED(pid_status))
-            infof(ctx, "proc.spawn: '%s' terminated with signal %s (%d)\n", exec.string, strsignal(WSTOPSIG(pid_status)), WSTOPSIG(pid_status));
+            geode_verbosef(ctx, "proc.spawn: '%s' terminated with signal %s (%d)\n", exec.string, strsignal(WSTOPSIG(pid_status)), WSTOPSIG(pid_status));
     }
     else
         return_val.integer = pid;
@@ -293,7 +291,7 @@ static struct shard_value builtin_proc_spawnPipe(volatile struct shard_evaluator
 
     struct geode_context* ctx = e->ctx->userp;
     if(ctx->flags.verbose) {
-        infof(ctx, "proc.spawnPipe: ");
+        geode_verbosef(ctx, "proc.spawnPipe: ");
         for(char** arg = argv; *arg; arg++) {
             printf("%s ", *arg);
         }
@@ -353,9 +351,9 @@ static struct shard_value builtin_proc_spawnPipe(volatile struct shard_evaluator
         if(WIFEXITED(pid_status))
             exit_code = WEXITSTATUS(pid_status);
         else if(WIFSIGNALED(pid_status))
-            infof(ctx, "proc.spawn: '%s' terminated with signal %s (%d)\n", exec.string, strsignal(WTERMSIG(pid_status)), WTERMSIG(pid_status));
+            geode_verbosef(ctx, "proc.spawn: '%s' terminated with signal %s (%d)\n", exec.string, strsignal(WTERMSIG(pid_status)), WTERMSIG(pid_status));
         else if(WIFSTOPPED(pid_status))
-            infof(ctx, "proc.spawn: '%s' terminated with signal %s (%d)\n", exec.string, strsignal(WSTOPSIG(pid_status)), WSTOPSIG(pid_status));
+            geode_verbosef(ctx, "proc.spawn: '%s' terminated with signal %s (%d)\n", exec.string, strsignal(WSTOPSIG(pid_status)), WSTOPSIG(pid_status));
     } 
 
     struct shard_set* result = shard_set_init(e->ctx, 3);

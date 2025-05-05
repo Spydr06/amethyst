@@ -37,7 +37,7 @@ GEODE_LIBS := libarchive
 GEODE_SOURCES := $(shell find $(GEODE_DIR) -name '*.c')
 GEODE_OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(GEODE_SOURCES))
 
-GEODE_CFLAGS := -I$(GEODE_DIR)/include $(shell pkg-config --cflags $(GEODE_LIBS))
+GEODE_CFLAGS := -I$(GEODE_DIR)/include $(shell pkg-config --cflags $(GEODE_LIBS)) -D_POSIX_C_SOURCE=200809L
 GEODE_LDFLAGS := $(shell pkg-config --libs $(GEODE_LIBS))
 
 SHELL_BIN := $(BUILD_DIR)/shard-sh

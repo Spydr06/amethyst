@@ -1,42 +1,60 @@
 #ifndef _GEODE_H
 #define _GEODE_H
 
+#include "lifetime.h"
+#include "exception.h"
+
 #include <libshard.h>
-#include <stdio.h>
+#include <stdbool.h>
 
-#define EITHER(a, b) ((a) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define LEN(arr) (sizeof((arr)) / sizeof((arr)[0]))
-
-#define LSTR(str) ((char[]){str})
-
-#define TUPLE(...) { __VA_ARGS__ }
-
-#define C_RED "\033[31m"
-#define C_BLACK "\033[90m"
-#define C_BLUE "\033[34m"
-#define C_PURPLE "\033[35m"
-
-#define C_BLD "\033[1m"
-#define C_RST "\033[0m"
-#define C_NOBLD "\033[22m"
-
-#define errorf(fmt, ...) (fprintf(stderr, C_RED C_BLD "[error]" C_NOBLD " " fmt C_RST __VA_OPT__(,) __VA_ARGS__))
-
-#define infof(ctx, ...) ((ctx)->flags.verbose ? fprintf(stdout, C_BLD "[info]" C_NOBLD " " __VA_ARGS__) : 0)
-
-#ifdef unreachable
-    #undef unreachable
+#ifndef __len
+    #define __len(arr) (sizeof((arr)) / sizeof(*(arr)))
 #endif
 
-#define unreachable() do {                                                                                         \
-        errorf("%s:%d:%s `unreachable()` encountered. This should never happen.\n", __FILE__, __LINE__, __func__); \
-        exit(EXIT_FAILURE);                                                                                        \
-    } while(0)
+struct option_string {
+    char *string;
+    bool overwritten;
+};
 
-struct geode_context;
+struct geode_context {
+    const char *progname;
 
-void geode_generate_initrd(struct geode_context* ctx, const char* path);
+    struct option_string prefix_path;
+    struct option_string store_path;
+    struct option_string pkgs_path;
+    struct option_string config_path;
+
+    struct shard_context shard;
+
+    lifetime_t l_global;
+    struct geode_exception_handler *e_handler;
+
+    long jobcnt;
+
+    struct {
+        bool verbose : 1;
+        bool out_no_color : 1;
+        bool err_no_color : 1;
+    } flags;
+};
+
+int geode_mkcontext(struct geode_context *context, const char *progname);
+void geode_delcontext(struct geode_context *context);
+
+void geode_set_prefix(struct geode_context *context, char *prefix_path);
+void geode_set_store(struct geode_context *context, char *store_path);
+void geode_set_config(struct geode_context *context, char *config_path);
+int geode_set_jobcnt(struct geode_context *context, char *jobcnt);
+void geode_set_verbose(struct geode_context *context, bool verbose);
+
+void geode_load_builtins(struct geode_context *context);
+void geode_apply_flags(struct geode_context *context);
+
+// subcommands
+
+int geode_bootstrap(struct geode_context *context, int argc, char *argv[]);
+int geode_query(struct geode_context *context, int argc, char *argv[]);
+int geode_list(struct geode_context *context, int argc, char *argv[]);
 
 #endif /* _GEODE_H */
 
