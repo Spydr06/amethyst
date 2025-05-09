@@ -1,4 +1,4 @@
-{ pkgs, archive, prelude, ... }: prelude.mkConfig rec {
+/*{ pkgs, archive, prelude, ... }: prelude.mkConfig rec {
     boot.initrd.enabled = true;
 
     environment.packages = with pkgs; [
@@ -10,11 +10,35 @@
         limine
         initsys
         coreutils
-        (shard {
+        /* (shard {
             ffi.enabled = false;
             repl.enabled = false;
-        })
+        }) */
         # shard-sh
     ];
+}*/
+
+{ lib, pkgs, modules, ...}:
+lib.mkConfig {
+    env.extraSources = [
+
+    ];
+
+    boot.initrd.enable = true;
+    boot.loader.limine.enable = true;
+
+    boot.kernel.modules = with modules; [
+
+    ];
+
+    env.packages = with pkgs; [
+        amethyst-kernel
+        coreutils
+    ];
+
+    env.exports."SHELL" = /bin/sh;
+
+    services.logind.enable = true;
+
 }
 

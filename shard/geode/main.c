@@ -1,6 +1,7 @@
 #include "log.h"
 #include "exception.h"
 #include "geode.h"
+#include "../shard_libc_driver.h"
 
 #include <getopt.h>
 #include <stdarg.h>
@@ -25,7 +26,6 @@ static const struct subcommand cmdline_subcommands[] = {
 static const struct option cmdline_options[] = {
     {"help",        no_argument,        NULL,   'h'},
     {"prefix",      required_argument,  NULL,   'p'},
-    {"config",      required_argument,  NULL,   'c'},
     {"store",       required_argument,  NULL,   's'},
     {"verbose",     no_argument,        NULL,   'v'},
     {"jobs",        required_argument,  NULL,   'j'},
@@ -51,24 +51,36 @@ static void help(struct geode_context *context) {
     printf("\nOptions:\n");
     printf("  -h, --help              Print this help text and exit.\n");
     printf("  -p, --prefix <path>     Set the system prefix. [%s]\n", context->prefix_path.string);
+    printf("  -g, --pkgs <path>       Set the system package path. [%s]", context->pkgs_path.string);
     printf("  -s, --store <path>      Set the system store path. [%s]\n", context->store_path.string);
-    printf("  -c, --config <path>     Set the system configuration path. [%s]\n", context->config_path.string);
     printf("  -v, --verbose           Enable verbose output.\n");
+    printf("  -y                      Answer `yes' by default.\n");
 
     printf("\n");
 }
 
-static void geode_default_exception_handler(struct geode_context *context, volatile exception_t *e) {
+static void default_exception_handler(struct geode_context *context, volatile exception_t *e) {
     switch(e->type) {
     case GEODE_EX_SUBCOMMAND:
         geode_errorf(context, "%s", e->description);
+	usage(context->progname, stderr);
+        break;
+    case GEODE_EX_SHARD:
+        geode_errorf(context, "%s", e->description); 
+        print_shard_error(stderr, e->payload.shard.errors);
+        break;
+    case GEODE_EX_IO:
+        geode_errorf(context, "%s: %s", e->description, strerror(e->payload.ioerrno));
         break;
     default:
         if(e->description)
-            geode_panic(context, "Unknown exception `%s': ", exception_type_to_string(e->type), e->description);
+            geode_panic(context, "Unknown exception `%s': %s", exception_type_to_string(e->type), e->description);
         else
             geode_panic(context, "Unknwon exception `%s'", exception_type_to_string(e->type));
     }
+
+    if(e->stacktrace_size)
+        geode_print_stacktrace(context, (void**) e->stacktrace, e->stacktrace_size);
 }
 
 int main(int argc, char *argv[]) {
@@ -78,7 +90,7 @@ int main(int argc, char *argv[]) {
 
     volatile exception_t *e = geode_catch(&context, GEODE_ANY_EXCEPTION);
     if(e) {
-        geode_default_exception_handler(&context, e);
+        default_exception_handler(&context, e);
         ret = EXIT_FAILURE;
         goto cleanup;
     }
@@ -86,16 +98,13 @@ int main(int argc, char *argv[]) {
     geode_load_builtins(&context);
 
     int c; 
-    while((c = getopt_long(argc, argv, "vp:c:s:j:h", cmdline_options, NULL)) != EOF) {
+    while((c = getopt_long(argc, argv, "vp:c:g:s:j:h", cmdline_options, NULL)) != EOF) {
         switch(c) {
         case 'p':
             geode_set_prefix(&context, optarg);
             break;
         case 's':
             geode_set_store(&context, optarg);
-            break;
-        case 'c':
-            geode_set_config(&context, optarg);
             break;
         case 'j':
             if((err = geode_set_jobcnt(&context, optarg))) {
@@ -109,6 +118,12 @@ int main(int argc, char *argv[]) {
             goto cleanup;
         case 'v':
             geode_set_verbose(&context, true);
+            break;
+        case 'g':
+            geode_set_pkgs_dir(&context, optarg);
+            break;
+        case 'y':
+            context.flags.default_yes = true;
             break;
         case '?':
         default:

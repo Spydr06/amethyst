@@ -40,7 +40,7 @@ void geode_vinfof(struct geode_context *context, const char *format, va_list ap)
 void geode_verbosef(struct geode_context *context, const char *format, ...) {
     va_list ap;
     va_start(ap, format);
-    geode_verrorf(context, format, ap);
+    geode_vverbosef(context, format, ap);
     va_end(ap);
 }
 

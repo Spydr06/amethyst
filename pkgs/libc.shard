@@ -1,0 +1,23 @@
+{ lib, pkgs, ... }:
+lib.mkPackage rec {
+    name = "libc";
+    version = "0.0.1";
+
+    sourceDir = util.paths.store + name;
+    buildDir = sourceDir + "build";
+
+    build = util.shell.make [
+        "-C" sourceDir
+            ("PREFIX=" + $ builtins.toString util.paths.prefix)
+    ];
+
+    install = builtins.seqList [
+        (util.shell.make [
+         "-C" sourceDir 
+         "install"
+         ("PREFIX=" + $ builtins.toString util.paths.prefix)
+        ])
+        (geode.setenv "CFLAGS" $ "-specs=" + (builtins.toString util.paths.gcc_specs) + " " + $ let cflags = geode.getenv "CFLAGS"; in if cflags == null then "" else cflags)
+    ];
+}
+

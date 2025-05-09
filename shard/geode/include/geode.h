@@ -35,6 +35,7 @@ struct geode_context {
         bool verbose : 1;
         bool out_no_color : 1;
         bool err_no_color : 1;
+        bool default_yes : 1;
     } flags;
 };
 
@@ -44,6 +45,7 @@ void geode_delcontext(struct geode_context *context);
 void geode_set_prefix(struct geode_context *context, char *prefix_path);
 void geode_set_store(struct geode_context *context, char *store_path);
 void geode_set_config(struct geode_context *context, char *config_path);
+void geode_set_pkgs_dir(struct geode_context *context, char *pkgs_path);
 int geode_set_jobcnt(struct geode_context *context, char *jobcnt);
 void geode_set_verbose(struct geode_context *context, bool verbose);
 

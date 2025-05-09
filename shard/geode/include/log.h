@@ -17,15 +17,19 @@
 #define C_RST "\033[0m"
 #define C_NOBLD "\033[22m"
 
+__attribute__((format(printf, 2, 3)))
 void geode_infof(struct geode_context *context, const char *format, ...);
 void geode_vinfof(struct geode_context *context, const char *format, va_list ap);
 
+__attribute__((format(printf, 2, 3)))
 void geode_verbosef(struct geode_context *context, const char *format, ...);
 void geode_vverbosef(struct geode_context *context, const char *format, va_list ap);
 
+__attribute__((format(printf, 2, 3)))
 void geode_errorf(struct geode_context *context, const char *format, ...);
 void geode_verrorf(struct geode_context *context, const char *format, va_list ap);
 
+__attribute__((format(printf, 2, 3)))
 noreturn void geode_panic(struct geode_context *context, const char *format, ...);
 noreturn void geode_vpanic(struct geode_context *context, const char *format, va_list ap);
 

@@ -9,11 +9,18 @@
 #include <stdlib.h>
 #include <stdnoreturn.h>
 
+#ifdef __GNUC__
+    #define MAX_STACK_LEVELS 16
+#else
+    #define MAX_STACK_LEVELS 0
+#endif
+
 struct geode_context;
 
 enum geode_exception_type : uint32_t {
     GEODE_EX_SUBCOMMAND = 0b00000001,
-    GEODE_EX_SHARD      = 0b00000010
+    GEODE_EX_SHARD      = 0b00000010,
+    GEODE_EX_IO         = 0b00000100,
 };
 
 #define GEODE_ANY_EXCEPTION UINT32_MAX
@@ -29,7 +36,12 @@ struct geode_exception {
             int count;
             struct shard_error *errors;
         } shard;
+
+        int ioerrno;
     } payload;
+
+    unsigned stacktrace_size;
+    void *stacktrace[MAX_STACK_LEVELS];
 };
 
 typedef struct geode_exception exception_t;
@@ -50,9 +62,13 @@ noreturn void geode_vthrowf(struct geode_context *context, enum geode_exception_
 exception_t *geode_shard_ex(struct geode_context *context);
 exception_t *geode_shard_ex2(struct geode_context *context, int num_errors, struct shard_error *errors);
 
-noreturn void geode_throw(struct geode_context *context, exception_t *exception);
+exception_t *geode_io_ex(struct geode_context *context, int errno, const char *format, ...);
+
+noreturn void geode_throw(struct geode_context *context, volatile exception_t *exception);
 
 struct geode_exception_handler *__geode_catch(struct geode_context *context, enum geode_exception_type catches);
+
+void geode_print_stacktrace(struct geode_context *context, void *stacktrace[], unsigned size);
 
 #define geode_catch(context, catches) ({ \
         struct geode_exception_handler *handler = __geode_catch((context), (catches));  \

@@ -4,10 +4,15 @@
 #include "libshard.h"
 #include "log.h"
 
+#ifdef __GNUC__
+#include <execinfo.h>
+#endif
+
 #include <assert.h>
 #include <memory.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 const char *exception_type_to_string(enum geode_exception_type type) {
     switch(type) {
@@ -49,7 +54,26 @@ exception_t *geode_shard_ex(struct geode_context *context) {
     return geode_shard_ex2(context, shard_get_num_errors(&context->shard), shard_get_errors(&context->shard));
 }
 
-noreturn void geode_throw(struct geode_context *context, exception_t *e) {
+exception_t *geode_io_ex(struct geode_context *context, int errno, const char *format, ...) {
+    va_list ap;
+    va_start(ap, format);
+
+    exception_t *e = l_malloc(&context->l_global, sizeof(exception_t));
+    memset(e, 0, sizeof(exception_t));
+
+    e->type = GEODE_EX_IO;
+    e->description = l_vsprintf(&context->l_global, format, ap);
+    e->payload.ioerrno = errno;
+
+#ifdef __GNUC__
+    e->stacktrace_size = backtrace(e->stacktrace, MAX_STACK_LEVELS);
+#endif
+
+    va_end(ap);
+    return e;
+}
+
+noreturn void geode_throw(struct geode_context *context, volatile exception_t *e) {
     struct geode_exception_handler *handler = context->e_handler;
     while(handler && !(handler->catches & e->type)) {
         handler = handler->outer;
@@ -86,3 +110,21 @@ void geode_pop_exception_handler(struct geode_context *context) {
     context->e_handler = context->e_handler->outer;
     free(handler);
 }
+
+void geode_print_stacktrace(struct geode_context *context, void *stacktrace[], unsigned size) {
+#ifdef __GNUC__
+    char **symbols = backtrace_symbols(stacktrace, size);
+    if(!symbols)
+        return;
+
+    fprintf(stderr, "\n");
+    geode_infof(context, "stack trace:");
+
+    for(unsigned i = 0; i < size; i++) {
+        fprintf(stderr, "% 4d: %s\n", i, symbols[i]);
+    }
+
+    free(symbols);
+#endif
+}
+

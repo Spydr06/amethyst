@@ -68,6 +68,11 @@ void geode_set_config(struct geode_context *context, char *config_path) {
     context->config_path.overwritten = true;
 }
 
+void geode_set_pkgs_dir(struct geode_context *context, char *pkgs_path) {
+    context->pkgs_path.string = pkgs_path;
+    context->pkgs_path.overwritten = true;
+}
+
 int geode_set_jobcnt(struct geode_context *context, char *jobcnt) {
     errno = 0;
     context->jobcnt = (int) strtol(jobcnt, NULL, 10);

@@ -113,7 +113,7 @@ $(BUILD_DIR)/%.cpp.o: %.cpp | $(VERSION_H)
 
 $(BUILD_DIR)/%.S: %.S | $(VERSION_H)
 	@mkdir -p $(dir $@)
-	@echo "  GEN   $(notdir $@)"
+	@echo "  CPP   $(notdir $@)"
 	@$(CC) $(CFLAGS) -DASM_FILE -MMD -MP -MF "$(@:%.S=%.s.d)" -E $^ -o $@
 
 $(BUILD_DIR)/%.S.o: $(BUILD_DIR)/%.S
