@@ -24,3 +24,7 @@ struct shard_set *geode_call_package(struct geode_context *context, struct geode
 package_t *geode_decl_package(struct geode_context *context, struct geode_package_index *index, const char *origin, struct shard_set *decl) {
 
 }
+
+void geode_install_package_from_file(struct geode_context *context, struct geode_package_index *index, const char *filepath) {
+    package_t *package = geode_load_package_file(context, index, filepath);
+}

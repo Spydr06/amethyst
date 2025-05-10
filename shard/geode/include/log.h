@@ -17,6 +17,11 @@
 #define C_RST "\033[0m"
 #define C_NOBLD "\033[22m"
 
+
+__attribute__((format(printf, 2, 3)))
+void geode_headingf(struct geode_context *context, const char *format, ...);
+void geode_vheadingf(struct geode_context *context, const char *format, va_list ap);
+
 __attribute__((format(printf, 2, 3)))
 void geode_infof(struct geode_context *context, const char *format, ...);
 void geode_vinfof(struct geode_context *context, const char *format, va_list ap);

@@ -1,13 +1,15 @@
 #ifndef _GEODE_EXCEPTION_H
 #define _GEODE_EXCEPTION_H
 
-#include "libshard.h"
 #include <assert.h>
 #include <setjmp.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdnoreturn.h>
+
+#include <libshard.h>
+#include <git2/errors.h>
 
 #ifdef __GNUC__
     #define MAX_STACK_LEVELS 16
@@ -21,6 +23,7 @@ enum geode_exception_type : uint32_t {
     GEODE_EX_SUBCOMMAND = 0b00000001,
     GEODE_EX_SHARD      = 0b00000010,
     GEODE_EX_IO         = 0b00000100,
+    GEODE_EX_GIT        = 0b00001000,
 };
 
 #define GEODE_ANY_EXCEPTION UINT32_MAX
@@ -38,6 +41,10 @@ struct geode_exception {
         } shard;
 
         int ioerrno;
+
+        struct {
+            const git_error *error;
+        } git;
     } payload;
 
     unsigned stacktrace_size;

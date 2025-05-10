@@ -72,6 +72,9 @@ static void default_exception_handler(struct geode_context *context, volatile ex
     case GEODE_EX_IO:
         geode_errorf(context, "%s: %s", e->description, strerror(e->payload.ioerrno));
         break;
+    case GEODE_EX_GIT:
+        geode_errorf(context, "%s: (%d) %s", e->description, e->payload.git.error->klass, e->payload.git.error->message);
+        break;
     default:
         if(e->description)
             geode_panic(context, "Unknown exception `%s': %s", exception_type_to_string(e->type), e->description);

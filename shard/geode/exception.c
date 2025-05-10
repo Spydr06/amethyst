@@ -16,6 +16,12 @@
 
 const char *exception_type_to_string(enum geode_exception_type type) {
     switch(type) {
+    case GEODE_EX_SUBCOMMAND:
+        return "subcommand";
+    case GEODE_EX_IO:
+        return "io";
+    case GEODE_EX_GIT:
+        return "git";
     default:
         return "<unknown>";
     }

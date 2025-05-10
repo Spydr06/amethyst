@@ -36,6 +36,7 @@ struct geode_context {
         bool out_no_color : 1;
         bool err_no_color : 1;
         bool default_yes : 1;
+        bool git_initialized : 1;
     } flags;
 };
 

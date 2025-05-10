@@ -1,13 +1,14 @@
 #include "util.h"
-#include "alloca.h"
-#include "fcntl.h"
 
-#include <stdio.h>
-#include <string.h>
+#include <alloca.h>
+#include <assert.h>
 #include <dirent.h>
 #include <errno.h>
-#include <unistd.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 bool strendswith(const char *str, const char *suffix) {
     if(!str || !suffix)
@@ -20,6 +21,56 @@ bool strendswith(const char *str, const char *suffix) {
     return strncmp(str + str_len - suffix_len, suffix, suffix_len) == 0;
 }
 
+bool fexists(const char *filepath) {
+    return access(filepath, F_OK) == 0; 
+}
+
+bool fwritable(const char *filepath) {
+    return access(filepath, W_OK) == 0;
+}
+
+bool freadable(const char *filepath) {
+    return access(filepath, R_OK) == 0;
+}
+
+bool fexecutable(const char *filepath) {
+    return access(filepath, X_OK) == 0;
+}
+
+int copy_file(const char *src_path, const char *dst_path) {
+    struct stat _stat;
+    if(stat(src_path, &_stat) < 0)
+        return errno;
+
+    int fd_in = open(src_path, O_RDONLY);
+    if(!fd_in)
+        return errno;
+
+    int fd_out = open(dst_path, O_WRONLY | O_CREAT, _stat.st_mode & 0777);
+    if(!fd_out) {
+        close(fd_in);
+        return errno;
+    }
+    
+    int err = copy_file_fd(fd_in, fd_out);
+
+    close(fd_in);
+    close(fd_out);
+
+    return err;
+}
+
+int copy_file_fd(int fd_in, int fd_out) {
+    char *block = alloca(BUFSIZ);
+    ssize_t bytes_read = 0;
+    while((bytes_read = read(fd_in, block, BUFSIZ)) > 0) {
+        if(write(fd_out, block, bytes_read) < 0)
+            return errno;
+    }
+
+    return bytes_read < 0 ? errno : 0;
+}
+
 static int _mkdir_recursive(const char *path, const char *seek, int mode) {
     char *sep = strchrnul(seek, '/');
     
@@ -28,7 +79,7 @@ static int _mkdir_recursive(const char *path, const char *seek, int mode) {
 
     int err = 0;
 
-    if(access(path, F_OK))
+    if(!fexists(path))
         err = mkdir(path, mode);
 
     sep[0] = prev;
@@ -100,24 +151,14 @@ int copy_recursive_fd(int fd_in, int fd_out) {
                 goto cleanup;
             }
 
-            int ent_fd_out = openat(fd_out, entry->d_name, O_WRONLY | O_CREAT, 0);
+            int ent_fd_out = openat(fd_out, entry->d_name, O_WRONLY | O_CREAT, ent_stat.st_mode & 0777);
             if(!ent_fd_out) {
                 err = errno;
                 close(ent_fd_in);
                 goto cleanup;
             }
 
-            char *block = alloca(BUFSIZ);
-            ssize_t bytes_read = 0;
-            while((bytes_read = read(ent_fd_in, block, BUFSIZ)) > 0) {
-                if(write(ent_fd_out, block, bytes_read) < 0) {
-                    err = errno;
-                    break;
-                }
-            }
-
-            if(bytes_read < 0)
-                err = errno;
+            err = copy_file_fd(ent_fd_in, ent_fd_out);
 
             close(ent_fd_out);
             close(ent_fd_in);
@@ -153,6 +194,7 @@ int copy_recursive_fd(int fd_in, int fd_out) {
                 goto cleanup;
         } break;
         default:
+            assert("unimplemented!\n");
             // TODO
             break;
         }

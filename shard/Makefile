@@ -32,7 +32,7 @@ TEST_RUNNER_BIN := $(BUILD_DIR)/tests/runner
 
 GEODE_BIN := $(BUILD_DIR)/geode-bin
 
-GEODE_LIBS := libarchive
+GEODE_LIBS := libarchive libgit2
 
 GEODE_SOURCES := $(shell find $(GEODE_DIR) -name '*.c')
 GEODE_OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(GEODE_SOURCES))

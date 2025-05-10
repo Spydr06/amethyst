@@ -21,6 +21,30 @@ noreturn void geode_vpanic(struct geode_context *context, const char *format, va
     exit(EXIT_FAILURE);
 }
 
+void geode_headingf(struct geode_context *context, const char *format, ...) {
+    va_list ap;
+    va_start(ap, format);
+    geode_vheadingf(context, format, ap);
+    va_end(ap);
+}
+
+void geode_vheadingf(struct geode_context *context, const char *format, va_list ap) {
+    if(!context->flags.out_no_color)
+        printf(C_BLD C_BLUE);
+
+    printf(" >> ");
+
+    if(!context->flags.out_no_color)
+        printf(C_PURPLE C_NOBLD);
+
+    vprintf(format, ap);
+
+    if(!context->flags.out_no_color)
+        printf(C_RST);
+
+    printf("\n");
+}
+
 void geode_infof(struct geode_context *context, const char *format, ...) {
     va_list ap;
     va_start(ap, format);

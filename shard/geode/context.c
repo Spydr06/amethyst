@@ -1,10 +1,11 @@
+#include "defaults.h"
 #include "exception.h"
 #include "geode.h"
-#include "defaults.h"
+#include "git.h"
 #include "lifetime.h"
+#include "log.h"
 
 #include "../shard_libc_driver.h"
-#include "log.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -42,6 +43,7 @@ int geode_mkcontext(struct geode_context *context, const char *progname) {
 }
 
 void geode_delcontext(struct geode_context *context) {
+    git_shutdown(context);
     shard_deinit(&context->shard);
     l_free(&context->l_global);
 }

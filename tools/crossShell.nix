@@ -26,5 +26,6 @@ cross.mkShell.override {
         libtool
         xorriso
         libedit
+        libgit2
     ];
 }
