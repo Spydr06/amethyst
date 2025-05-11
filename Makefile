@@ -1,5 +1,7 @@
 ARCH ?= x86_64
-VERSION ?= 0.0.1
+
+VERSION_FILE := ./version
+VERSION ?= $(file < $(VERSION_FILE))
 
 BUILD_DIR ?= build
 SHARD_BUILD_DIR ?= $(BUILD_DIR)/shard

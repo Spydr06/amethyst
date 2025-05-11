@@ -26,6 +26,7 @@ static const struct subcommand cmdline_subcommands[] = {
 static const struct option cmdline_options[] = {
     {"help",        no_argument,        NULL,   'h'},
     {"prefix",      required_argument,  NULL,   'p'},
+    {"pkgs",        required_argument,  NULL,   'g'},
     {"store",       required_argument,  NULL,   's'},
     {"verbose",     no_argument,        NULL,   'v'},
     {"jobs",        required_argument,  NULL,   'j'},

@@ -72,6 +72,8 @@ int copy_file_fd(int fd_in, int fd_out) {
 }
 
 static int _mkdir_recursive(const char *path, const char *seek, int mode) {
+    while(seek[0] == '/')
+        seek++;
     char *sep = strchrnul(seek, '/');
     
     char prev = sep[0];
@@ -79,8 +81,8 @@ static int _mkdir_recursive(const char *path, const char *seek, int mode) {
 
     int err = 0;
 
-    if(!fexists(path))
-        err = mkdir(path, mode);
+    if(!fexists(path) && mkdir(path, mode) < 0)
+        err = errno;
 
     sep[0] = prev;
 
@@ -104,12 +106,16 @@ int copy_recursive(const char *src_path, const char *dst_path) {
         return errno;
 
     int err = mkdir_recursive(dst_path, stat_in.st_mode & 0777);
-    if(err)
+    if(err) {
+        close(fd_in);
         return err;
+    }
 
     int fd_out = open(dst_path, O_RDONLY);
-    if(fd_out < 0)
+    if(fd_out < 0) {
+        close(fd_in);
         return errno;
+    }
 
     int res = copy_recursive_fd(fd_in, fd_out);
 

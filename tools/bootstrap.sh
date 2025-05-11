@@ -11,7 +11,7 @@ NJOBS=1
 USE_GCBOEHM="-DSHARD_USE_GCBOEHM"
 
 CONFIGURATION_FILE="${PROJECT_DIR}/configuration.shard"
-STORE_DIR="${PROJECT_DIR}/store"
+PKGS_DIR="${PROJECT_DIR}/pkgs"
 SHARD_DIR="${PROJECT_DIR}/shard"
 
 RUN_AFTERWARDS=0
@@ -40,7 +40,7 @@ function show_help() {
     echo "  -C, --clean-all         clean the build files of all subprojects"
     echo "  -jN, --jobs=N           use N parallel threads for building"
     echo "      --build-dir=<path>  put build files in <path> [$BUILD_DIR]"
-    echo "      --store-dir=<path>  set the geode store dir to <path> [$STORE_DIR]"
+    echo "      --pkgs-dir=<path>  set the geode store dir to <path> [$PKGS_DIR]"
     echo "      --config=<path>     set the main system configuration path to <path> [$CONFIGURATION_FILE]"
     echo "      --disable-gcboehm   don't use gcboehm on host libshard"
     echo
@@ -51,13 +51,14 @@ function clean_build_files() {
     [ -e amethyst.iso ] && rm -r amethyst.iso
 }
 
-function clean_store_build_files() {
-    for dir in "$STORE_DIR"/*/; do
-        if [ -f "${dir}Makefile" ]; then
-            make -C "${dir}" clean
-        fi
-    done
-}
+#function clean_store_build_files() {
+
+    # for dir in "$STORE_DIR"/*/; do
+    #    if [ -f "${dir}Makefile" ]; then
+    #        make -C "${dir}" clean
+    #    fi
+    # done
+#}
 
 function clean_shard_build_files() {
     make -C $SHARD_DIR clean
@@ -67,6 +68,9 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --build-dir=*)
             BUILD_DIR=$(realpath ${1#*=})
+            ;;
+        --pkgs-dir=*)
+            PKGS_DIR=$(realpath ${1#*=})
             ;;
         -j*)
             NJOBS=${1#*j}
@@ -88,7 +92,7 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         -C|--clean-all)
-            clean_store_build_files
+            # clean_store_build_files
             clean_shard_build_files
             clean_build_files
             exit 0
@@ -112,15 +116,17 @@ done
 
 HOST_BUILD_DIR="${BUILD_DIR}/host"
 BOOTSTRAP_DIR="${BUILD_DIR}/bootstrap"
-GEODE_BIN="${HOST_BUILD_DIR}/geode-host"
+GEODE_BIN="${HOST_BUILD_DIR}/geode-bin"
 
-CFLAGS="${USE_GCBOEHM}" make -C ${PROJECT_DIR}/shard -j${NJOBS} ${GEODE_BIN} BUILD_DIR=${HOST_BUILD_DIR}
+CFLAGS="${USE_GCBOEHM} -g" make -C ${PROJECT_DIR}/shard -j${NJOBS} ${GEODE_BIN} BUILD_DIR=${HOST_BUILD_DIR}
 
 [ -e ${GEODE_BIN} ] || error "compiling host geode binary failed."
 
 set -x
 
-${GEODE_BIN} bootstrap --prefix=${BOOTSTRAP_DIR} --config=${CONFIGURATION_FILE} --store=${STORE_DIR} -j${NJOBS} --verbose
+mkdir -p ${BOOTSTRAP_DIR}
+
+${GEODE_BIN} --prefix=${BOOTSTRAP_DIR} --pkgs=${PKGS_DIR} bootstrap ${CONFIGURATION_FILE} -j${NJOBS} --verbose
 
 set +x
 
