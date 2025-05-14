@@ -9,5 +9,8 @@
 #define DEFAULT_STORE_PATH DEFAULT_SHARD_PATH  "/store"
 #define DEFAULT_PKGS_PATH DEFAULT_SHARD_PATH   "/pkgs"
 
+#define AMETHYST_PKG_NAME "amethyst"
+#define VERSION_FILENAME "version"
+
 #endif /* _GEODE_DEFAULTS_H */
 

@@ -66,10 +66,14 @@ void *l_malloc(lifetime_t *l, size_t size_bytes) {
     return (void*) (result + 1);
 }
 
+void *l_zalloc(lifetime_t *l, size_t size_bytes) {
+    void *ptr = l_malloc(l, size_bytes);
+    memset(ptr, 0, size_bytes);
+    return  ptr;
+}
+
 void *l_calloc(lifetime_t *l, size_t nmemb, size_t size) {
-    void *ptr = l_malloc(l, nmemb * size);
-    memset(ptr, 0, nmemb * size);
-    return ptr;
+    return l_zalloc(l, nmemb * size);
 }
 
 void *l_realloc(lifetime_t *l, void *old_ptr, size_t new_size) {

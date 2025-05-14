@@ -1,7 +1,9 @@
 #include "util.h"
+#include "lifetime.h"
 
 #include <alloca.h>
 #include <assert.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -19,6 +21,18 @@ bool strendswith(const char *str, const char *suffix) {
     if(suffix_len > str_len)
         return false;
     return strncmp(str + str_len - suffix_len, suffix, suffix_len) == 0;
+}
+
+char *strtrim(char *str) {
+    while(isspace(*str))
+        str++;
+
+    size_t size = strlen(str);
+
+    while(size > 0 && isspace(str[size - 1]))
+        str[--size] = '\0';
+
+    return str;
 }
 
 bool fexists(const char *filepath) {
@@ -213,5 +227,26 @@ cleanup:
         closedir(d_out);
 
     return err;
+}
+
+ssize_t read_whole_file(lifetime_t *l, const char *path, char **bufptr) {
+    struct stat s;
+    if(stat(path, &s) < 0)
+        return -errno;
+
+    (*bufptr) = l_malloc(l, s.st_size + sizeof(char));
+    if(!*bufptr)
+        return -ENOMEM;
+
+    FILE *f = fopen(path, "rb");
+    if(!f)
+        return -errno;
+
+    size_t r = fread(*bufptr, 1, s.st_size, f);
+    if(r != (size_t) s.st_size)
+        return -errno;
+
+    (*bufptr)[r] = '\0';
+    return r;
 }
 

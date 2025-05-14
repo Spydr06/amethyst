@@ -16,8 +16,13 @@ void geode_index_packages(struct geode_context *context, struct geode_package_in
 
 struct geode_version {
     int x, y, z, w;
-    int commit;
+    char commit[7];
 };
+
+int geode_parse_version(struct geode_version *version, const char *str);
+char *geode_version_to_string(lifetime_t *l, struct geode_version *version);
+
+void geode_hash_pkg(uint8_t hash[16], const char *pkg_name, struct geode_version *pkg_version);
 
 struct geode_dependency {
     const char *name;
@@ -58,6 +63,8 @@ struct shard_set *geode_call_package(struct geode_context *context, struct geode
 package_t *geode_decl_package(struct geode_context *context, struct geode_package_index *index, const char *origin, struct shard_set *decl);
 
 void geode_install_package_from_file(struct geode_context *context, struct geode_package_index *index, const char *filepath);
+
+char *geode_package_directory(struct geode_context *context, lifetime_t *l, const char *pkg_name, struct geode_version *pkg_version);
 
 #endif /* _SHARD_PACKAGE_H */
 

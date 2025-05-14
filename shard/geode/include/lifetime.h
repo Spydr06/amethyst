@@ -22,6 +22,7 @@ typedef struct lifetime lifetime_t;
 void *l_malloc(lifetime_t *l, size_t size);
 void *l_calloc(lifetime_t *l, size_t nmemb, size_t size);
 void *l_realloc(lifetime_t *l, void *old_ptr, size_t new_size);
+void *l_zalloc(lifetime_t *l, size_t size_bytes);
 
 char *l_strdup(lifetime_t *l, const char *str);
 void *l_memdup(lifetime_t *l, const void *data, size_t size);
