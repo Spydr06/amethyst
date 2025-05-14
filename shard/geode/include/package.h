@@ -3,6 +3,7 @@
 
 #include "geode.h"
 #include "lifetime.h"
+#include "exception.h"
 
 typedef struct geode_package package_t;
 

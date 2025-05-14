@@ -11,9 +11,9 @@ noreturn void geode_panic(struct geode_context *context, const char *format, ...
 
 noreturn void geode_vpanic(struct geode_context *context, const char *format, va_list ap) {
     if(context->flags.err_no_color)
-        fprintf(stderr, "%s: panic: ", context->progname);
+        fprintf(stderr, "panic: ");
     else
-        fprintf(stderr, "%s: " C_BLD C_RED "panic:" C_RST " ", context->progname);
+        fprintf(stderr, C_BLD C_RED "panic:" C_RST " ");
     vfprintf(stderr, format, ap);
     fprintf(stderr, "\n");
 
@@ -54,9 +54,9 @@ void geode_infof(struct geode_context *context, const char *format, ...) {
 
 void geode_vinfof(struct geode_context *context, const char *format, va_list ap) {
     if(context->flags.err_no_color)
-        fprintf(stderr, "%s: info: ", context->progname);
+        fprintf(stderr, "info: ");
     else
-        fprintf(stderr, "%s: " C_BLD C_PURPLE "info:" C_RST " ", context->progname);
+        fprintf(stderr, C_BLD C_PURPLE "info:" C_RST " ");
     vfprintf(stderr, format, ap);
     fprintf(stderr, "\n");
 }
@@ -70,9 +70,9 @@ void geode_verbosef(struct geode_context *context, const char *format, ...) {
 
 void geode_vverbosef(struct geode_context *context, const char *format, va_list ap) {
     if(context->flags.err_no_color)
-        fprintf(stderr, "%s: info: ", context->progname);
+        fprintf(stderr, "info: ");
     else
-        fprintf(stderr, "%s: " C_BLD C_BLACK "info:" C_RST " ", context->progname);
+        fprintf(stderr, C_BLD C_BLACK "info:" C_RST " ");
     vfprintf(stderr, format, ap);
     fprintf(stderr, "\n");
 }
@@ -87,9 +87,9 @@ void geode_errorf(struct geode_context *context, const char *format, ...) {
 
 void geode_verrorf(struct geode_context *context, const char *format, va_list ap) {
     if(context->flags.err_no_color)
-        fprintf(stderr, "%s: ""error: ", context->progname);
+        fprintf(stderr, "error: ");
     else
-        fprintf(stderr, "%s: " C_BLD C_RED "error:" C_RST " ", context->progname);
+        fprintf(stderr, C_BLD C_RED "error:" C_RST " ");
     vfprintf(stderr, format, ap);
     fprintf(stderr, "\n");
 }

@@ -70,6 +70,8 @@ static void bootstrap_monorepo(struct geode_context *context) {
     if(!getcwd(cwd, sizeof(cwd)))
         geode_throw(context, geode_io_ex(context, errno, "Could not get working directory"));
 
+    geode_infof(context, "Bootstrapping monorepo [%s -> %s]...", cwd, context->store_path.string);
+
     struct git_repository *monorepo = NULL;
     int err = git_repository_open_ext(&monorepo, cwd, GIT_REPOSITORY_OPEN_NO_SEARCH, NULL);
     if(err < 0)
@@ -116,14 +118,10 @@ static void bootstrap_monorepo(struct geode_context *context) {
         goto cleanup_obj;
     }
 
-    printf("%.*s\n", (int) sizeof(head_hash), head_hash);
-
     memcpy(version.commit, head_hash, sizeof(version.commit));
 
     const char *pkg_name = AMETHYST_PKG_NAME;
-
     char *pkg_dir = geode_package_directory(context, &context->l_global, pkg_name, &version);
-    printf("%s\n", pkg_dir);
 
     struct git_repository *cloned = NULL;
     if(fexists(l_strcat(&context->l_global, pkg_dir, "/.git"))) {
@@ -162,6 +160,8 @@ cleanup_cloned_head:
             goto cleanup_obj;
         }
     }
+
+    geode_verbosef(context, "Patching `%s'...", pkg_dir);
 
     struct git_diff *head_diff = NULL;
     if((err = git_diff_index_to_workdir(&head_diff, monorepo, NULL, NULL))) {

@@ -24,8 +24,11 @@ enum geode_exception_type : uint32_t {
     GEODE_EX_SHARD      = 0b00000010,
     GEODE_EX_IO         = 0b00000100,
     GEODE_EX_GIT        = 0b00001000,
+    GEODE_EX_PKG_DECL   = 0b00010000,
+    GEODE_EX_PKG_DEP    = 0b00100000,
 };
 
+#define GEODE_PKG_EXCEPTION (GEODE_EX_PKG_DECL | GEODE_EX_PKG_DEP)
 #define GEODE_ANY_EXCEPTION UINT32_MAX
 
 #define GEODE_LOCALEXCEPT(ctx) __attribute__((cleanup(geode_pop_exception_handler, (ctx))))

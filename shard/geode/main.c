@@ -28,6 +28,7 @@ static const struct option cmdline_options[] = {
     {"prefix",      required_argument,  NULL,   'p'},
     {"pkgs",        required_argument,  NULL,   'g'},
     {"store",       required_argument,  NULL,   's'},
+    {"modules",     required_argument,  NULL,   'm'},
     {"verbose",     no_argument,        NULL,   'v'},
     {"jobs",        required_argument,  NULL,   'j'},
     {NULL,          0,                  NULL,   0  },
@@ -102,13 +103,16 @@ int main(int argc, char *argv[]) {
     geode_load_builtins(&context);
 
     int c; 
-    while((c = getopt_long(argc, argv, "vp:c:g:s:j:h", cmdline_options, NULL)) != EOF) {
+    while((c = getopt_long(argc, argv, "vp:c:g:s:m:j:h", cmdline_options, NULL)) != EOF) {
         switch(c) {
         case 'p':
             geode_set_prefix(&context, optarg);
             break;
         case 's':
             geode_set_store(&context, optarg);
+            break;
+        case 'm':
+            geode_set_module_dir(&context, optarg);
             break;
         case 'j':
             if((err = geode_set_jobcnt(&context, optarg))) {
@@ -148,6 +152,8 @@ int main(int argc, char *argv[]) {
     
     if(!subcommand->name)
         geode_throwf(&context, GEODE_EX_SUBCOMMAND, "Unknown subcommand `%s'.", argv[optind]);
+
+    geode_prelude(&context);
 
     ret = subcommand->handler(&context, argc - (optind + 1), argv + optind + 1);
 

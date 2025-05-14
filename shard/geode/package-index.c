@@ -69,8 +69,8 @@ static void index_dir(struct geode_context *context, struct geode_package_index 
 
         char *filepath = l_sprintf(&index->lifetime, "%s/%s", d->path, entry->d_name);
 
-        printf("%s\n", filepath);
-        geode_load_package_file(context, index, filepath);
+        package_t *package = geode_load_package_file(context, index, filepath);
+        index_add_package(context, index, package);
     }
 
     if(errno)

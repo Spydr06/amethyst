@@ -23,6 +23,7 @@ int geode_mkcontext(struct geode_context *context, const char *progname) {
     context->store_path.string = DEFAULT_STORE_PATH;
     context->pkgs_path.string = DEFAULT_PKGS_PATH;
     context->config_path.string = DEFAULT_CONFIG_PATH;
+    context->module_path.string = DEFAULT_MODULES_PATH;
 
     context->flags.out_no_color = isatty(fileno(stdout)) != 1;
     context->flags.err_no_color = isatty(fileno(stderr)) != 1;
@@ -58,6 +59,13 @@ void geode_set_prefix(struct geode_context *context, char *prefix_path) {
         context->config_path.string = l_strcat(&context->l_global, prefix_path, DEFAULT_CONFIG_PATH);
     if(!context->pkgs_path.overwritten)
         context->config_path.string = l_strcat(&context->l_global, prefix_path, DEFAULT_PKGS_PATH);
+    if(!context->module_path.overwritten)
+        context->module_path.string = l_strcat(&context->l_global, prefix_path, DEFAULT_MODULES_PATH);
+}
+
+void geode_set_module_dir(struct geode_context *context, char *module_path) {
+    context->module_path.string = module_path;
+    context->module_path.overwritten = true;
 }
 
 void geode_set_store(struct geode_context *context, char *store_path) {

@@ -23,8 +23,10 @@ struct geode_context {
     struct option_string store_path;
     struct option_string pkgs_path;
     struct option_string config_path;
+    struct option_string module_path;
 
     struct shard_context shard;
+    struct shard_set *prelude;
 
     lifetime_t l_global;
     struct geode_exception_handler *e_handler;
@@ -43,9 +45,12 @@ struct geode_context {
 int geode_mkcontext(struct geode_context *context, const char *progname);
 void geode_delcontext(struct geode_context *context);
 
+void geode_prelude(struct geode_context *context);
+
 void geode_set_prefix(struct geode_context *context, char *prefix_path);
 void geode_set_store(struct geode_context *context, char *store_path);
 void geode_set_config(struct geode_context *context, char *config_path);
+void geode_set_module_dir(struct geode_context *context, char *module_path);
 void geode_set_pkgs_dir(struct geode_context *context, char *pkgs_path);
 int geode_set_jobcnt(struct geode_context *context, char *jobcnt);
 void geode_set_verbose(struct geode_context *context, bool verbose);
