@@ -15,6 +15,7 @@ bool fwritable(const char *filepath);
 bool freadable(const char *filepath);
 bool fexecutable(const char *filepath);
 
+int rmdir_recursive(const char *path);
 int mkdir_recursive(const char *path, int mode);
 
 int copy_file(const char *src_path, const char *dst_path);

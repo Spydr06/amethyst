@@ -13,6 +13,7 @@ USE_GCBOEHM="-DSHARD_USE_GCBOEHM"
 CONFIGURATION_FILE="${PROJECT_DIR}/configuration.shard"
 PKGS_DIR="${PROJECT_DIR}/pkgs"
 SHARD_DIR="${PROJECT_DIR}/shard"
+MODULES_DIR="${SHARD_DIR}/modules"
 
 RUN_AFTERWARDS=0
 
@@ -126,7 +127,7 @@ set -x
 
 mkdir -p ${BOOTSTRAP_DIR}
 
-${GEODE_BIN} --prefix=${BOOTSTRAP_DIR} --pkgs=${PKGS_DIR} bootstrap ${CONFIGURATION_FILE} -j${NJOBS} --verbose
+${GEODE_BIN} --prefix=${BOOTSTRAP_DIR} --pkgs=${PKGS_DIR} --modules=${MODULES_DIR} bootstrap ${CONFIGURATION_FILE} -j${NJOBS} --verbose
 
 set +x
 

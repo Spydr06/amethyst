@@ -202,7 +202,7 @@ int copy_recursive_fd(int fd_in, int fd_out) {
             if(!ent_fd_out) {
                 err = errno;
                 close(ent_fd_in);
-                goto cleanup;
+             goto cleanup;
             }
 
             err = copy_recursive_fd(ent_fd_in, ent_fd_out);
@@ -227,6 +227,45 @@ cleanup:
         closedir(d_out);
 
     return err;
+}
+
+int rmdir_recursive(const char *path) {
+    DIR *dir = opendir(path);
+    if(!dir)
+        return errno;
+
+    int err = 0;
+    char path_buf[PATH_MAX + 1];
+    struct dirent *entry;
+    while((entry = readdir(dir))) {
+        if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+
+        strncpy(path_buf, path, PATH_MAX);
+        strncat(path_buf, "/", PATH_MAX);
+        strncat(path_buf, entry->d_name, PATH_MAX);
+
+        switch(entry->d_type) {
+        case DT_DIR:
+            err = rmdir_recursive(path_buf);
+            if(err)
+                goto cleanup;
+            break;
+        default:
+            if(remove(path_buf) < 0) {
+                err = errno;
+                goto cleanup;
+            }
+        }
+    }
+
+cleanup:
+    closedir(dir);
+
+    if(err)
+        return err;
+
+    return remove(path) ? errno : 0;
 }
 
 ssize_t read_whole_file(lifetime_t *l, const char *path, char **bufptr) {

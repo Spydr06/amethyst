@@ -7,14 +7,32 @@
 #include <memory.h>
 #include <stdlib.h>
 
-extern char geode_prelude_source[];
-extern size_t geode_prelude_source_length;
+static const char geode_prelude_source[] = "(import <modules>).loadModule \"geode\"";
+
+int geode_prelude_attr(struct geode_context *context, const char *attr_name, struct shard_value *value) {
+    assert(context->prelude);
+
+    shard_ident_t attr = shard_get_ident(&context->shard, attr_name); 
+    struct shard_lazy_value *lazy_value = NULL;
+
+    int err = shard_set_get(context->prelude, attr, &lazy_value);
+    if(err)
+        return err;
+
+    if((err = shard_eval_lazy(&context->shard, lazy_value)))
+        geode_throw(context, geode_shard_ex(context));
+
+    assert(lazy_value->evaluated);
+    *value = lazy_value->eval;
+
+    return 0;
+}
 
 void geode_prelude(struct geode_context *context) {
     shard_include_dir(&context->shard, context->module_path.string);
 
     struct shard_source prelude_source;
-    int err = shard_string_source(&context->shard, &prelude_source, "prelude.shard", geode_prelude_source, geode_prelude_source_length, 0);
+    int err = shard_string_source(&context->shard, &prelude_source, "prelude.shard", geode_prelude_source, sizeof(geode_prelude_source), 0);
     if(err)    
         geode_throw(context, geode_shard_ex(context));
 

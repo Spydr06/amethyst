@@ -153,8 +153,6 @@ int main(int argc, char *argv[]) {
     if(!subcommand->name)
         geode_throwf(&context, GEODE_EX_SUBCOMMAND, "Unknown subcommand `%s'.", argv[optind]);
 
-    geode_prelude(&context);
-
     ret = subcommand->handler(&context, argc - (optind + 1), argv + optind + 1);
 
 cleanup:

@@ -27,13 +27,32 @@ static void test_prefix_writable(struct geode_context *context) {
         geode_throw(context, geode_io_ex(context, EACCES, "prefix [%s] is not writable", prefix));
 }
 
+static void bootstrap_shard_modules(struct geode_context *context) {
+    char *modules_dest = l_strcat(&context->l_global, context->prefix_path.string, DEFAULT_MODULES_PATH);
+
+    int err;
+    if(fexists(modules_dest) && (err = rmdir_recursive(modules_dest)))
+        geode_throw(context, geode_io_ex(context, err, "Directory `%s' exists but could not be removed", modules_dest));
+
+    geode_verbosef(context, "copying shard modules... [%s -> %s]", context->module_path.string, modules_dest);
+
+    if((err = copy_recursive(context->module_path.string, modules_dest)))
+        geode_throw(context, geode_io_ex(context, err, "Failed copying shard modules"));
+
+    context->module_path.string = modules_dest;
+    context->module_path.overwritten = true;
+}
+
 static void bootstrap_pkgs_dir(struct geode_context *context) {
     char *pkgs_dest = l_strcat(&context->l_global, context->prefix_path.string, DEFAULT_PKGS_PATH);
 
+    int err;
+    if(fexists(pkgs_dest) && (err = rmdir_recursive(pkgs_dest)))
+        geode_throw(context, geode_io_ex(context, err, "Directory `%s' exists but could not be removed", pkgs_dest));
+
     geode_verbosef(context, "copying package index... [%s -> %s]", context->pkgs_path.string, pkgs_dest);
 
-    int err = copy_recursive(context->pkgs_path.string, pkgs_dest);
-    if(err)
+    if((err = copy_recursive(context->pkgs_path.string, pkgs_dest)))
         geode_throw(context, geode_io_ex(context, err, "Failed copying package index"));
 
     context->pkgs_path.string = pkgs_dest;
@@ -206,11 +225,16 @@ int geode_bootstrap(struct geode_context *context, int argc, char *argv[]) {
 
     test_prefix_writable(context);
 
+    bootstrap_shard_modules(context);
+
     bootstrap_pkgs_dir(context);
     bootstrap_configuration_file(context);
 
     create_store(context);
     bootstrap_monorepo(context);
+
+    // start up shard with the copied files
+    geode_prelude(context);
 
     struct geode_package_index pkg_index;
     geode_mkindex(&pkg_index);

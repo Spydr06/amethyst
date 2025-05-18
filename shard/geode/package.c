@@ -50,8 +50,8 @@ package_t *geode_load_package_file(struct geode_context *context, struct geode_p
 }
 
 struct shard_set *geode_call_package(struct geode_context *context, struct geode_package_index *index, struct shard_value value) {
-//    struct shard_value pkg_decl;
-//    shard_call(&context->shard, value, &pkg_decl, &pkg_decl);
+    struct shard_value pkg_decl;
+    shard_call(&context->shard, value, &pkg_decl, &pkg_decl);
 }
 
 package_t *geode_decl_package(struct geode_context *context, struct geode_package_index *index, const char *origin, struct shard_set *decl) {

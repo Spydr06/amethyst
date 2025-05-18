@@ -1,6 +1,0 @@
-let 
-    geodeModule = (import <modules>).loadModule "geode";
-in
-{
-    pkgDeclarationArgs = geodeModule.pkgDeclarationArgs;
-}
