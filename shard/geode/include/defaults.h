@@ -10,7 +10,8 @@
 #define DEFAULT_PKGS_PATH DEFAULT_SHARD_PATH   "/pkgs"
 #define DEFAULT_MODULES_PATH DEFAULT_SHARD_PATH "/modules"
 
-#define AMETHYST_PKG_NAME "amethyst"
+#define AMETHYST_SOURCE_PKG_NAME "amethyst-source"
+#define DEFAULT_SOURCE_DIR "source"
 #define VERSION_FILENAME "version"
 
 #endif /* _GEODE_DEFAULTS_H */

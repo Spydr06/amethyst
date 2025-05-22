@@ -1,7 +1,7 @@
-{ lib, pkgs, modules, ...}:
-lib.mkConfig {
+{ lib, pkgs, ...}:
+lib.mkSystemConfig {
     env.extraSources = [
-
+        
     ];
 
     boot.initrd.enable = true;

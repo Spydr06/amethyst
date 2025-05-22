@@ -289,3 +289,52 @@ ssize_t read_whole_file(lifetime_t *l, const char *path, char **bufptr) {
     return r;
 }
 
+char *geode_getcwd(lifetime_t *l) {
+    long path_max = pathconf(".", _PC_PATH_MAX);
+    if(path_max < 0)
+        return 0;
+
+    char *cwd = l_malloc(l, (path_max + 1) * sizeof(char)); 
+    return getcwd(cwd, path_max + 1);
+}
+
+int geode_pushd(struct geode_context *context, const char *path) {
+    int dfd = open(path, O_RDONLY);
+    if(dfd < 0)
+        return errno;
+
+    if(context->dirstack.capacity < context->dirstack.count + 1) {
+        size_t new_capacity = MAX(context->dirstack.capacity * 2, 32);
+        int *new_dfds = realloc(context->dirstack.dfds, new_capacity * sizeof(int));
+        if(!new_dfds) {
+            close(dfd);
+            return errno;
+        }
+
+        context->dirstack.dfds = new_dfds;
+        context->dirstack.capacity = new_capacity;
+    }
+
+    if(fchdir(dfd) < 0) {
+        close(dfd);
+        return errno;
+    }
+
+    context->dirstack.dfds[context->dirstack.count++] = dfd;
+
+    return 0;
+}
+
+int geode_popd(struct geode_context *context) {
+    switch(context->dirstack.count) {
+    case 0:
+        return EOF;
+    case 1:
+        return close(context->dirstack.dfds[--context->dirstack.count]) < 0 ? errno : 0;
+    default:
+        if(fchdir(context->dirstack.dfds[context->dirstack.count - 2]) < 0)
+            return errno;
+        return close(context->dirstack.dfds[--context->dirstack.count]) < 0 ? errno : 0;
+    }
+}
+

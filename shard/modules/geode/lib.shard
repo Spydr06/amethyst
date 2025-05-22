@@ -1,0 +1,22 @@
+rec {
+    mkDerivation = deriv :: set: 
+        geode.derivation {
+            name = deriv.name;
+            version = deriv.version;
+            
+            builder = prefix:
+                null;
+        };
+
+    mkPackage = decl :: set: null;
+
+    callPackage = call :: function: null;
+
+    mkShell = decl :: set: null;
+
+    mkSystemConfig = config :: set: 
+        mkDerivation {
+            name = "system";
+            version = config.systemVersion or "0.0.0";
+        };
+}

@@ -40,12 +40,20 @@ struct geode_context {
         bool default_yes : 1;
         bool git_initialized : 1;
     } flags;
+
+    struct {
+        unsigned capacity, count;
+        int *dfds;
+    } dirstack;
+
+    const char *initial_workdir;
 };
 
 int geode_mkcontext(struct geode_context *context, const char *progname);
 void geode_delcontext(struct geode_context *context);
 
 void geode_prelude(struct geode_context *context);
+void geode_call_with_prelude(struct geode_context *context, struct shard_value *result, struct shard_value function);
 
 void geode_set_prefix(struct geode_context *context, char *prefix_path);
 void geode_set_store(struct geode_context *context, char *store_path);

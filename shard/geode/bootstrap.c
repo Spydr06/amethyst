@@ -4,11 +4,13 @@
 #include "git2/errors.h"
 #include "git2/repository.h"
 #include "git2/reset.h"
+#include "include/derivation.h"
+#include "libshard.h"
 #include "log.h"
-#include "package.h"
 #include "util.h"
 #include "git.h"
 
+#include <git2/refs.h>
 #include <stdio.h>
 #include <memory.h>
 #include <limits.h>
@@ -81,38 +83,99 @@ static void create_store(struct geode_context *context) {
         geode_throw(context, geode_io_ex(context, errno, "Failed creating store [%s]", context->store_path.string));
 }
 
-static void bootstrap_monorepo(struct geode_context *context) {    
+static void monorepo_builder(struct geode_context *context, struct geode_derivation *deriv, void *userp) {
+    struct git_repository *source = (struct git_repository *) userp;
+
     git_lazy_init(context);
     exception_t *ex = NULL;
 
-    char cwd[PATH_MAX + 1];
-    if(!getcwd(cwd, sizeof(cwd)))
+    int err;
+    struct git_repository *cloned = NULL;
+    if(fexists(DEFAULT_SOURCE_DIR "/.git")) {
+        if((err = git_repository_open_ext(&cloned, DEFAULT_SOURCE_DIR, GIT_REPOSITORY_OPEN_NO_SEARCH, 0))) {
+            ex = geode_git_ex(context, git_error_last(), "Could not open repository `%s/%s'", deriv->prefix, DEFAULT_SOURCE_DIR);
+            goto cleanup_repo;
+        }
+
+        struct git_reference *cloned_head_ref = NULL;
+        if((err = git_repository_head(&cloned_head_ref, cloned))) {
+            ex = geode_git_ex(context, git_error_last(), "Could not get head of repository `%s/%s'", deriv->prefix, DEFAULT_SOURCE_DIR);
+            goto cleanup_repo;
+        }
+
+        struct git_object *cloned_head_obj = NULL;
+        if((err = git_reference_peel(&cloned_head_obj, cloned_head_ref, GIT_OBJECT_ANY))) {
+            ex = geode_git_ex(context, git_error_last(), "Could not get object from HEAD reference");
+            goto cleanup_cloned_head;
+        }
+
+        if((err = git_reset(cloned, cloned_head_obj, GIT_RESET_HARD, NULL))) {
+            ex = geode_git_ex(context, git_error_last(), "Could not hard-reset repository `%s/%s'", deriv->prefix, DEFAULT_SOURCE_DIR);
+            goto cleanup_cloned_obj;
+        }
+
+cleanup_cloned_obj:
+        git_object_free(cloned_head_obj);
+cleanup_cloned_head:
+        git_reference_free(cloned_head_ref);
+        if(ex)
+            goto cleanup_repo;
+    }
+    else {
+        assert(context->dirstack.count > 0);
+
+        if((err = git_clone(&cloned, context->initial_workdir, DEFAULT_SOURCE_DIR, NULL))) {
+            ex = geode_git_ex(context, git_error_last(), "Could not clone repository [%s -> %s/%s]", context->initial_workdir, deriv->prefix, DEFAULT_SOURCE_DIR);
+            goto cleanup_repo;
+        }
+    }
+
+    geode_verbosef(context, "Patching `%s/%s'...", deriv->prefix, DEFAULT_SOURCE_DIR);
+
+    struct git_diff *head_diff = NULL;
+    if((err = git_diff_index_to_workdir(&head_diff, source, NULL, NULL))) {
+        ex = geode_git_ex(context, git_error_last(), "Could not get diff between index and working directory");
+        goto cleanup_cloned;
+    }
+
+    if((err = git_apply(cloned, head_diff, GIT_APPLY_LOCATION_WORKDIR, NULL))) {
+        ex = geode_git_ex(context, git_error_last(), "Could not apply diff to cloned repository `%s/%s'", deriv->prefix);
+        goto cleanup_diff;
+    }
+
+cleanup_diff:
+    git_diff_free(head_diff);
+cleanup_cloned:
+    git_repository_free(cloned);
+cleanup_repo:
+    git_repository_free(source);
+
+    if(ex)
+        geode_throw(context, ex);
+}
+
+static void bootstrap_monorepo(struct geode_context *context) {    
+    git_lazy_init(context);
+    exception_t *ex = NULL;
+    int err;
+
+    char *cwd = geode_getcwd(&context->l_global);
+    if(!cwd)
         geode_throw(context, geode_io_ex(context, errno, "Could not get working directory"));
-
-    geode_infof(context, "Bootstrapping monorepo [%s -> %s]...", cwd, context->store_path.string);
-
-    struct git_repository *monorepo = NULL;
-    int err = git_repository_open_ext(&monorepo, cwd, GIT_REPOSITORY_OPEN_NO_SEARCH, NULL);
-    if(err < 0)
-        geode_throw(context, geode_git_ex(context, git_error_last(), "Could not open monorepo in `%s'", cwd));
-    
-    assert(monorepo);
 
     const char *version_filename = "./" VERSION_FILENAME;
     char *version_string = NULL;
 
-    if((err = (int) read_whole_file(&context->l_global, version_filename, &version_string)) < 0) {
-        ex = geode_io_ex(context, -err, "Could not open `%s'", version_filename);
-        goto cleanup_repo;
-    }
+    if((err = (int) read_whole_file(&context->l_global, version_filename, &version_string)) < 0)
+        geode_throw(context, geode_io_ex(context, -err, "Could not open `%s'", version_filename));
 
     version_string = strtrim(version_string);
 
-    struct geode_version version;
-    if((err = geode_parse_version(&version, version_string))) {
-        ex = geode_io_ex(context, EINVAL, "Could not parse version file `%s' [%s]", version_filename, version_string);
-        goto cleanup_repo;
-    }
+    struct git_repository *monorepo = NULL;
+    if((err = git_repository_open_ext(&monorepo, cwd, GIT_REPOSITORY_OPEN_NO_SEARCH, NULL)) < 0)
+        geode_throw(context, geode_git_ex(context, git_error_last(), "Could not open git repository in `%s'", cwd));
+    
+    assert(monorepo);
 
     struct git_reference *head_ref = NULL;
     if((err = git_repository_head(&head_ref, monorepo))) {
@@ -134,78 +197,22 @@ static void bootstrap_monorepo(struct geode_context *context) {
     const struct git_oid *head_id = git_commit_id(head);
     if((err = git_oid_nfmt(head_hash, sizeof(head_hash), head_id))) {
         ex = geode_git_ex(context, git_error_last(), "Could not get ID of last commit");
-        goto cleanup_obj;
+        goto cleanup_ref;
     }
 
-    memcpy(version.commit, head_hash, sizeof(version.commit));
+    char *version = l_sprintf(&context->l_global, "%s-%.7s", version_string, head_hash);
 
-    const char *pkg_name = AMETHYST_PKG_NAME;
-    char *pkg_dir = geode_package_directory(context, &context->l_global, pkg_name, &version);
-
-    struct git_repository *cloned = NULL;
-    if(fexists(l_strcat(&context->l_global, pkg_dir, "/.git"))) {
-        if((err = git_repository_open_ext(&cloned, pkg_dir, GIT_REPOSITORY_OPEN_NO_SEARCH, 0))) {
-            ex = geode_git_ex(context, git_error_last(), "Could not open repository `%s'", pkg_dir);
-            goto cleanup_obj;
-        }
-
-        struct git_reference *cloned_head_ref = NULL;
-        if((err = git_repository_head(&cloned_head_ref, cloned))) {
-            ex = geode_git_ex(context, git_error_last(), "Could not get head of repository `%s'", pkg_dir);
-            goto cleanup_obj;
-        }
-
-        struct git_object *cloned_head_obj = NULL;
-        if((err = git_reference_peel(&cloned_head_obj, cloned_head_ref, GIT_OBJECT_ANY))) {
-            ex = geode_git_ex(context, git_error_last(), "Could not get object from HEAD reference");
-            goto cleanup_cloned_head;
-        }
-
-        if((err = git_reset(cloned, cloned_head_obj, GIT_RESET_HARD, NULL))) {
-            ex = geode_git_ex(context, git_error_last(), "Could not hard-reset repository `%s'", pkg_dir);
-            goto cleanup_cloned_obj;
-        }
-
-cleanup_cloned_obj:
-        git_object_free(cloned_head_obj);
-cleanup_cloned_head:
-        git_reference_free(cloned_head_ref);
-        if(ex)
-            goto cleanup_obj;
-    }
-    else {
-        if((err = git_clone(&cloned, cwd, pkg_dir, NULL))) {
-            ex = geode_git_ex(context, git_error_last(), "Could not clone repository [%s -> %s]", cwd, pkg_dir);
-            goto cleanup_obj;
-        }
-    }
-
-    geode_verbosef(context, "Patching `%s'...", pkg_dir);
-
-    struct git_diff *head_diff = NULL;
-    if((err = git_diff_index_to_workdir(&head_diff, monorepo, NULL, NULL))) {
-        ex = geode_git_ex(context, git_error_last(), "Could not get diff between index and working directory");
-        goto cleanup_cloned;
-    }
-
-    if((err = git_apply(cloned, head_diff, GIT_APPLY_LOCATION_WORKDIR, NULL))) {
-        ex = geode_git_ex(context, git_error_last(), "Could not apply diff to cloned repository `%s'", pkg_dir);
-        goto cleanup_diff;
-    }
-
-cleanup_diff:
-    git_diff_free(head_diff);
-cleanup_cloned:
-    git_repository_free(cloned);
-cleanup_obj:
     git_object_free(head_obj);
 cleanup_ref:
     git_reference_free(head_ref);
 cleanup_repo:
-    git_repository_free(monorepo);
-
-    if(ex)
+    if(ex) {
+        git_repository_free(monorepo);
         geode_throw(context, ex);
+    }
+
+    struct geode_derivation *deriv = geode_mkderivation(context, AMETHYST_SOURCE_PKG_NAME, version, geode_native_builder(monorepo_builder, monorepo));
+    geode_call_builder(context, deriv);
 }
 
 int geode_bootstrap(struct geode_context *context, int argc, char *argv[]) {
@@ -233,14 +240,25 @@ int geode_bootstrap(struct geode_context *context, int argc, char *argv[]) {
     create_store(context);
     bootstrap_monorepo(context);
 
-    // start up shard with the copied files
-    geode_prelude(context);
+    struct shard_open_source *config_src = shard_open(&context->shard, context->config_path.string);
+    
+    if(shard_eval(&context->shard, config_src))
+        geode_throw(context, geode_shard_ex(context));
+    
+    assert(config_src->evaluated);
 
-    struct geode_package_index pkg_index;
-    geode_mkindex(&pkg_index);
-    geode_index_packages(context, &pkg_index);
+    struct shard_value result;
+    geode_call_with_prelude(context, &result, config_src->result);
 
-    geode_install_package_from_file(context, &pkg_index, context->config_path.string);
+    struct shard_string result_str = {0};
+    if(shard_value_to_string(&context->shard, &result_str, &result, 4))
+        geode_throw(context, geode_shard_ex(context));
+
+    shard_string_push(&context->shard, &result_str, '\0');
+
+    printf("Bootstrap result: %s\n", result_str.items); 
+
+    shard_string_free(&context->shard, &result_str);
 
     return EXIT_SUCCESS;
 }

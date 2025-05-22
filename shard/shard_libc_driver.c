@@ -1,3 +1,5 @@
+#define _XOPEN_SOURCE 700
+
 #include "shard_libc_driver.h"
 
 #include <assert.h>
@@ -100,7 +102,7 @@ static void print_basic_error(FILE* stream, struct shard_error* error, bool colo
 
     fprintf(stream, "%s       at%s %s:%u:%u:%s\n",
 C(color, C_BLD C_BLUE), C(color, C_PURPLE),
-            error->loc.src->origin, error->loc.line, error->loc.column,
+            error->loc.src ? error->loc.src->origin : "<unknown>", error->loc.line, error->loc.column,
             C(color, C_RST));
 }
 

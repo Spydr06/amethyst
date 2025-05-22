@@ -4,6 +4,7 @@
 #include "git.h"
 #include "lifetime.h"
 #include "log.h"
+#include "util.h"
 
 #include "../shard_libc_driver.h"
 
@@ -40,6 +41,10 @@ int geode_mkcontext(struct geode_context *context, const char *progname) {
     if(err)
         geode_panic(context, "Failed initializing shard context: %s\n", strerror(errno));
 
+    context->initial_workdir = geode_getcwd(&context->l_global);
+    assert(context->initial_workdir != NULL);
+    assert(geode_pushd(context, context->initial_workdir) == 0);
+
     return 0;
 }
 
@@ -47,6 +52,10 @@ void geode_delcontext(struct geode_context *context) {
     git_shutdown(context);
     shard_deinit(&context->shard);
     l_free(&context->l_global);
+
+    while(context->dirstack.count > 0)
+        geode_popd(context);
+    free(context->dirstack.dfds);
 }
 
 void geode_set_prefix(struct geode_context *context, char *prefix_path) {

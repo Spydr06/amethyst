@@ -10,6 +10,9 @@
 static const char geode_prelude_source[] = "(import <modules>).loadModule \"geode\"";
 
 int geode_prelude_attr(struct geode_context *context, const char *attr_name, struct shard_value *value) {
+    if(!context->prelude)
+        geode_prelude(context);
+
     assert(context->prelude);
 
     shard_ident_t attr = shard_get_ident(&context->shard, attr_name); 
@@ -32,7 +35,7 @@ void geode_prelude(struct geode_context *context) {
     shard_include_dir(&context->shard, context->module_path.string);
 
     struct shard_source prelude_source;
-    int err = shard_string_source(&context->shard, &prelude_source, "prelude.shard", geode_prelude_source, sizeof(geode_prelude_source), 0);
+    int err = shard_string_source(&context->shard, &prelude_source, "<geode prelude>", geode_prelude_source, sizeof(geode_prelude_source), 0);
     if(err)    
         geode_throw(context, geode_shard_ex(context));
 
@@ -58,5 +61,15 @@ void geode_prelude(struct geode_context *context) {
     shard_gc_make_static(context->shard.gc, prelude_result.set);
     
     context->prelude = prelude_result.set;
+}
+
+void geode_call_with_prelude(struct geode_context *context, struct shard_value *result, struct shard_value function) {
+    if(!context->prelude)
+        geode_prelude(context);
+
+    assert(context->prelude);
+    
+    if(shard_call(&context->shard, function, &(struct shard_value){.type = SHARD_VAL_SET, .set = context->prelude}, result))
+        geode_throw(context, geode_shard_ex(context));
 }
 

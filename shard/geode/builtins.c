@@ -1,5 +1,6 @@
 #include "geode.h"
 #include "log.h"
+#include "derivation.h"
 
 #include <libshard.h>
 
@@ -31,7 +32,6 @@ static struct shard_value builtin_setenv(volatile struct shard_evaluator* e, str
 static struct shard_value builtin_getenv(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 static struct shard_value builtin_unsetenv(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 
-
 static struct shard_builtin geode_builtin_functions[] = {
     SHARD_BUILTIN("geode.debug.dump", builtin_debug_dump, SHARD_VAL_ANY),
     SHARD_BUILTIN("geode.debug.println", builtin_debug_println, SHARD_VAL_STRING),
@@ -48,6 +48,7 @@ static struct shard_builtin geode_builtin_functions[] = {
     SHARD_BUILTIN("geode.setenv", builtin_setenv, SHARD_VAL_STRING, SHARD_VAL_STRING),
     SHARD_BUILTIN("geode.getenv", builtin_getenv, SHARD_VAL_STRING),
     SHARD_BUILTIN("geode.unsetenv", builtin_unsetenv, SHARD_VAL_STRING),
+    SHARD_BUILTIN("geode.derivation", geode_builtin_derivation, SHARD_VAL_SET),
 };
 
 static void load_constants(struct geode_context* ctx) {

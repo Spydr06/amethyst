@@ -24,8 +24,8 @@ enum geode_exception_type : uint32_t {
     GEODE_EX_SHARD      = 0b00000010,
     GEODE_EX_IO         = 0b00000100,
     GEODE_EX_GIT        = 0b00001000,
-    GEODE_EX_PKG_DECL   = 0b00010000,
-    GEODE_EX_PKG_DEP    = 0b00100000,
+    GEODE_EX_DERIV_DECL = 0b00010000,
+    GEODE_EX_DERIV_DEP  = 0b00100000,
 };
 
 #define GEODE_PKG_EXCEPTION (GEODE_EX_PKG_DECL | GEODE_EX_PKG_DEP)
@@ -94,6 +94,8 @@ void geode_print_stacktrace(struct geode_context *context, void *stacktrace[], u
 
 void geode_push_exception_handler(struct geode_context *context, struct geode_exception_handler *handler);
 void geode_pop_exception_handler(struct geode_context *context);
+
+struct shard_value geode_exception_to_shard_value(struct shard_context *ctx, volatile exception_t *e);
 
 #endif /* _GEODE_EXCEPTION_H */
 
