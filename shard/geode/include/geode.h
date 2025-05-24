@@ -3,6 +3,7 @@
 
 #include "lifetime.h"
 #include "exception.h"
+#include "store.h"
 
 #include <libshard.h>
 #include <stdbool.h>
@@ -27,6 +28,8 @@ struct geode_context {
 
     struct shard_context shard;
     struct shard_set *prelude;
+
+    struct geode_store store;
 
     lifetime_t l_global;
     struct geode_exception_handler *e_handler;

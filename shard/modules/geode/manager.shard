@@ -1,0 +1,33 @@
+let
+    lib = import ./lib.shard;
+
+    fix = f: let x = f x; in x;
+
+    findSystemPkgs = dir :: path:
+        let
+            checkFile = iter: name: type: 
+                let
+                    filePath = builtins.toPath "${dir}/${name}";
+                in (case type of
+                    "regular"   => iter ++ [ filePath ];
+                    "directory" => if name == "." || name == ".." 
+                        then iter 
+                        else iter ++ findSystemPkgs filePath;
+                    _ => iter
+                );
+        in (case geode.file.readDir dir of
+            errno :: int => 
+                builtins.throw "Could not read directory `${dir}': ${builtins.errnoString errno}";
+            dirents =>  
+                builtins.foldAttrs checkFile [] dirents
+        );
+
+    loadSystemPkg = import;
+    pkgCallbacks = builtins.map loadSystemPkg $ findSystemPkgs geode.pkgsDir;
+
+    pkgs = let
+        unresolved = pkgs: builtins.foldl (lib.callPackageWith) {} pkgCallbacks;
+    in unresolved {}; 
+in
+pkgs
+

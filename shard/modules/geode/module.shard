@@ -3,6 +3,6 @@
     moduleVersion = "0.0.1";
 
     lib = import ./lib.shard; 
-    pkgs = {};
+    pkgs = import ./manager.shard;
 }
 

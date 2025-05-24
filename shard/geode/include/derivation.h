@@ -61,6 +61,7 @@ struct geode_derivation *geode_mkderivation(struct geode_context *context, const
 void geode_call_builder(struct geode_context *context, struct geode_derivation *deriv);
 
 struct shard_value geode_builtin_derivation(volatile struct shard_evaluator *e, struct shard_builtin *builtin, struct shard_lazy_value** args);
+struct shard_value geode_builtin_storeEntry(volatile struct shard_evaluator *e, struct shard_builtin *builtin, struct shard_lazy_value** args);
 
 #endif /* _SHARD_DERIVATION_H */
 

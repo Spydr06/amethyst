@@ -651,7 +651,7 @@ static inline struct shard_value ffi_fromret(volatile struct shard_evaluator* e,
 static void ffi_doccall(struct ffi_ccall* ccall, void* address, intptr_t gp_result[2], intptr_t sse_result[2]) {
 #ifdef __x86_64__
 
-    __asm__ volatile (_("\
+/*    __asm__ volatile (_("\
             // ffi_docall\n\
             movq %[calladdr], %%r10\n\
             test %[stacksz], %[stacksz]\n\
@@ -705,7 +705,9 @@ static void ffi_doccall(struct ffi_ccall* ccall, void* address, intptr_t gp_resu
             [sser]      "m"(sse_result)
         :   "rax", "rsi", "rdi", "rcx", "rdx", "r8", "r9", "r10", "r11",
             "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7"
-    );
+    );*/
+
+    assert(false);
 
 #else
     #error "Unsupported architecture"

@@ -28,7 +28,7 @@ lib.mkPackage {
     getSanitizers = builtins.join "," config.sanitize;
 
     buildDependencies = with pkgs; [
-        limine
+     #   limine
     ];
 
     limineConfig = template: 

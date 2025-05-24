@@ -3,6 +3,7 @@
 #include "exception.h"
 #include "geode.h"
 #include "hash.h"
+#include "include/log.h"
 #include "libshard.h"
 #include "util.h"
 
@@ -14,6 +15,9 @@
 
 #define STRING_VAL(s, l) ((struct shard_value) { .type = SHARD_VAL_STRING, .string = (s), .strlen = (l) })
 #define CSTRING_VAL(s) STRING_VAL(s, strlen((s)))
+
+#define PATH_VAL(p, l) ((struct shard_value) { .type = SHARD_VAL_PATH, .path = (p), .pathlen = (l) })
+#define CPATH_VAL(p) PATH_VAL(p, strlen(p))
 
 void create_prefix(struct geode_context *context, struct geode_derivation *deriv) {
     if(!deriv->prefix) {
@@ -32,6 +36,8 @@ void create_prefix(struct geode_context *context, struct geode_derivation *deriv
 struct geode_derivation *geode_mkderivation(struct geode_context *context, const char *name, const char *version, struct geode_builder builder) {
     struct geode_derivation *deriv = l_malloc(&context->l_global, sizeof(struct geode_derivation));
 
+    memset(deriv, 0, sizeof(struct geode_derivation));
+
     deriv->name = name;
     deriv->version = version;
     deriv->builder = builder;
@@ -48,7 +54,12 @@ struct geode_derivation *geode_mkderivation(struct geode_context *context, const
         geode_throw(context, geode_io_ex(context, err, "Could not calculate hash for derivaiton `%s-%s'", deriv->name, deriv->version));
     }
 
+    if((err = geode_store_register(&context->store, deriv)))
+        geode_throwf(context, GEODE_EX_DERIV_DECL, "derivation `%s' is already defined", hash_data);
+
     create_prefix(context, deriv);
+
+    geode_infof(context, "Using derivation `%s'", hash_data);
 
     free(hash_data);
     return deriv;
@@ -131,9 +142,29 @@ struct shard_value geode_builtin_derivation(volatile struct shard_evaluator *e, 
 
     struct geode_derivation *deriv = geode_mkderivation(context, name->string, version->string, geode_shard_builder(builder));
     geode_call_builder(context, deriv);
+
+    deriv_result = CPATH_VAL(deriv->prefix);
     
 cleanup:
     geode_pop_exception_handler(context);
     return deriv_result;
+}
+
+struct shard_value geode_builtin_storeEntry(volatile struct shard_evaluator *e, struct shard_builtin *builtin, struct shard_lazy_value** args) {
+    struct geode_context *context = e->ctx->userp;
+
+    struct shard_value deriv_path = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    const struct geode_derivation *deriv;
+    int err = geode_store_get_by_prefix(&context->store, deriv_path.path, &deriv);
+    if(err)
+        shard_eval_throw(e, e->error_scope->loc, "`%s': %s", deriv_path.path, strerror(err));
+
+    struct shard_set *entry = shard_set_init(e->ctx, 2);
+
+    shard_set_put(entry, shard_get_ident(e->ctx, "name"), shard_unlazy(e->ctx, CSTRING_VAL(deriv->name)));
+    shard_set_put(entry, shard_get_ident(e->ctx, "version"), shard_unlazy(e->ctx, CSTRING_VAL(deriv->version)));
+
+    return (struct shard_value){.type=SHARD_VAL_SET, .set=entry};
 }
 

@@ -1,5 +1,11 @@
 { lib, pkgs, ...}:
 lib.mkSystemConfig {
+    env.packages = with pkgs; [
+        amethyst-kernel
+        libshard
+    ];
+}
+/*lib.mkSystemConfig {
     env.extraSources = [
         
     ];
@@ -18,5 +24,6 @@ lib.mkSystemConfig {
 
     services.logind.enable = true;
 
-}
+    /* systemVersion = builtins.trim $ lib.readFile ./version; */
+#}
 

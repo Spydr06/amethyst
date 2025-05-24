@@ -5,6 +5,7 @@
 #include <libshard.h>
 
 #include <assert.h>
+#include <dirent.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +25,7 @@ static struct shard_value builtin_file_dirname(volatile struct shard_evaluator* 
 static struct shard_value builtin_file_exists(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 static struct shard_value builtin_file_mkdir(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 static struct shard_value builtin_file_writeFile(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_file_readDir(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 static struct shard_value builtin_errno_toString(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 static struct shard_value builtin_error_throw(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 static struct shard_value builtin_proc_spawn(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
@@ -41,6 +43,7 @@ static struct shard_builtin geode_builtin_functions[] = {
     SHARD_BUILTIN("geode.file.exists", builtin_file_exists, SHARD_VAL_PATH),
     SHARD_BUILTIN("geode.file.mkdir", builtin_file_mkdir, SHARD_VAL_PATH),
     SHARD_BUILTIN("geode.file.writeFile", builtin_file_writeFile, SHARD_VAL_PATH, SHARD_VAL_STRING),
+    SHARD_BUILTIN("geode.file.readDir", builtin_file_readDir, SHARD_VAL_PATH),
     SHARD_BUILTIN("geode.errno.toString", builtin_errno_toString, SHARD_VAL_INT),
     SHARD_BUILTIN("geode.error.throw", builtin_error_throw, SHARD_VAL_STRING),
     SHARD_BUILTIN("geode.proc.spawn", builtin_proc_spawn, SHARD_VAL_STRING, SHARD_VAL_LIST, SHARD_VAL_BOOL),
@@ -49,6 +52,7 @@ static struct shard_builtin geode_builtin_functions[] = {
     SHARD_BUILTIN("geode.getenv", builtin_getenv, SHARD_VAL_STRING),
     SHARD_BUILTIN("geode.unsetenv", builtin_unsetenv, SHARD_VAL_STRING),
     SHARD_BUILTIN("geode.derivation", geode_builtin_derivation, SHARD_VAL_SET),
+    SHARD_BUILTIN("geode.storeEntry", geode_builtin_storeEntry, SHARD_VAL_PATH),
 };
 
 static void load_constants(struct geode_context* ctx) {
@@ -57,7 +61,9 @@ static void load_constants(struct geode_context* ctx) {
         struct shard_value value;
     } builtin_constants[] = {
         {"geode.prefix", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->prefix_path.string, .pathlen=strlen(ctx->prefix_path.string)}},
-        {"geode.store", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->store_path.string, .pathlen=strlen(ctx->store_path.string)}},
+        {"geode.storeDir", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->store_path.string, .pathlen=strlen(ctx->store_path.string)}},
+        {"geode.pkgsDir", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->pkgs_path.string, .pathlen=strlen(ctx->pkgs_path.string)}},
+        {"geode.moduleDir", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->module_path.string, .pathlen=strlen(ctx->module_path.string)}},
         {"geode.architecture", (struct shard_value){.type=SHARD_VAL_STRING, .string="x86_64", .strlen=6}}, // TODO: make properly
         {"geode.proc.nJobs", (struct shard_value){.type=SHARD_VAL_INT, .integer=ctx->jobcnt}},
     };
@@ -172,6 +178,60 @@ static struct shard_value builtin_file_writeFile(volatile struct shard_evaluator
     int err = fclose(fp);
 
     return (struct shard_value){.type=SHARD_VAL_INT, .integer=err};
+}
+
+static struct shard_value builtin_file_readDir(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value path = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    DIR* dir = opendir(path.path);
+    if(!dir)
+        return (struct shard_value){.type=SHARD_VAL_INT, .integer=errno};
+
+    struct dirent *entry;
+    size_t dirsize = 0;
+
+    while((entry = readdir(dir)))
+        dirsize++; 
+
+    rewinddir(dir);
+    struct shard_set *entries = shard_set_init(e->ctx, dirsize);
+
+    while((entry = readdir(dir))) {
+        shard_ident_t name = shard_get_ident(e->ctx, entry->d_name);
+
+        const char *value = "unknown";
+        switch(entry->d_type) {
+        case DT_FIFO:
+            value = "fifo";
+            break;
+        case DT_CHR:
+            value = "chardev";
+            break;
+        case DT_DIR:
+            value = "directory";
+            break;
+        case DT_BLK:
+            value = "blockdev";
+            break;
+        case DT_REG:
+            value = "regular";
+            break;
+        case DT_LNK:
+            value = "link";
+            break;
+        case DT_SOCK:
+            value = "socket";
+            break;
+        default:
+            value = "unknown";
+            break;
+        }
+
+        shard_set_put(entries, name, shard_unlazy(e->ctx, (struct shard_value){.type=SHARD_VAL_STRING, .string=value, .strlen=strlen(value)}));
+    }
+
+    closedir(dir);
+    return (struct shard_value){.type=SHARD_VAL_SET, .set=entries};
 }
 
 static struct shard_value builtin_errno_toString(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {

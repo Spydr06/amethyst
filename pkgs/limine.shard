@@ -1,6 +1,7 @@
 { lib, pkgs, ... }:
 lib.mkPackage rec {
     name = "limine";
+    version = "7.4.1";
 
     config = {
         boot.loader.platform = {

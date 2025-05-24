@@ -1,14 +1,42 @@
-rec {
+let
+    defaultArgs = pkgs :: set: { inherit lib; inherit pkgs; };
+
+    callPackageWith = pkgs :: set: pkgFunc :: function:
+        let
+            pkg = pkgFunc $ defaultArgs pkgs; 
+        in
+            builtins.setAttr pkg.publicName pkg.derivation pkgs;
+
+    ensureInstalled = let
+           checkInstalled = builtins.isPath; 
+        in builtins.all checkInstalled;
+
     mkDerivation = deriv :: set: 
-        geode.derivation {
-            name = deriv.name;
-            version = deriv.version;
-            
-            builder = prefix:
-                null;
+        /* builder:
+           - fetch
+           - patch
+           - configure
+           - build
+           - check
+           - install
+           - postInstall
+        */
+        {
+            publicName = deriv.publicName or deriv.name;
+            derivation = geode.derivation {
+                name = deriv.name;
+                version = deriv.version;
+                builder = let
+                        buildDependencies = deriv.buildDependencies or [];
+                    in
+                    if ensureInstalled buildDependencies then
+                        null    
+                    else
+                        geode.throw "Could not install required dependencies for `${deriv.name}-${deriv.version}`";
+            };
         };
 
-    mkPackage = decl :: set: null;
+    mkPackage = mkDerivation;
 
     callPackage = call :: function: null;
 
@@ -18,5 +46,18 @@ rec {
         mkDerivation {
             name = "system";
             version = config.systemVersion or "0.0.0";
+
+            buildDependencies = config.env.packages or [];
         };
-}
+
+    readFile = filepath :: path: null;
+
+    lib = {
+        inherit callPackage;
+        inherit callPackageWith;
+        inherit mkDerivation;
+        inherit mkPackage;
+        inherit mkShell;
+        inherit mkSystemConfig;
+    };
+in lib

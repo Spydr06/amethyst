@@ -100,8 +100,6 @@ int main(int argc, char *argv[]) {
         goto cleanup;
     }
 
-    geode_load_builtins(&context);
-
     int c; 
     while((c = getopt_long(argc, argv, "vp:c:g:s:m:j:h", cmdline_options, NULL)) != EOF) {
         switch(c) {

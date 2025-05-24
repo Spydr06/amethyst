@@ -1,24 +1,24 @@
 { lib, pkgs, ... }:
-lib.mkCollection {
-    libshard = lib.mkPackage rec {
-        name = "libshard";
-        version = "0.0.1";
+lib.mkPackage rec {
+    name = "libshard";
+    version = "0.0.1";
 
-        sourceDir = "shard";
-        makeTarget = "lib";
-        installTarget = "install-lib";
+    sourceDir = "shard";
+    makeTarget = "lib";
+    installTarget = "install-lib";
 
-        dependencies = with pkgs; [ libc ];
+    dependencies = with pkgs; [ libc ];
 
-        build = util.shell.make ["-C" sourceDir makeTarget
-            ("CFLAGS=-specs=" + $ builtins.toString util.paths.gcc_specs)
-            ("PREFIX=" + $ builtins.toString util.paths.prefix)
-        ];
+    build = util.shell.make ["-C" sourceDir makeTarget
+        ("CFLAGS=-specs=" + $ builtins.toString util.paths.gcc_specs)
+        ("PREFIX=" + $ builtins.toString util.paths.prefix)
+    ];
 
-        install = util.shell.make ["-C" sourceDir installTarget
-            ("PREFIX=" + $ builtins.toString util.paths.prefix)
-        ];
-    };
+    install = util.shell.make ["-C" sourceDir installTarget
+        ("PREFIX=" + $ builtins.toString util.paths.prefix)
+    ];
+};
+/*lib.mkCollection {
 
     shard-sh = lib.mkPackage rec {
         name = "shard-sh";
@@ -82,4 +82,4 @@ lib.mkCollection {
         dependencies = with pkgs; [ libshard shard-sh ];
     };
 }
-
+*/

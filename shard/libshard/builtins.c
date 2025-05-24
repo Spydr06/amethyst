@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 struct shard_builtin_const {
     const char* full_name;
     struct shard_value value;
@@ -201,6 +203,21 @@ static struct shard_value builtin_filter(volatile struct shard_evaluator* e, str
     }
 
     return LIST_VAL(result_head);
+}
+
+static struct shard_value builtin_functionArgs(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value func = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    struct shard_pattern *arg_pattern = func.function.arg;
+    
+    struct shard_set *arg_set = shard_set_init(e->ctx, arg_pattern->attrs.count);
+    
+    for(size_t i = 0; i < arg_pattern->attrs.count; i++) {
+        struct shard_binding *binding = arg_pattern->attrs.items + i;
+        shard_set_put(arg_set, binding->ident, shard_unlazy(e->ctx, BOOL_VAL(binding->value != NULL)));
+    }
+
+    return SET_VAL(arg_set);
 }
 
 static struct shard_value builtin_map(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
@@ -430,6 +447,32 @@ static struct shard_value builtin_catAttrs(volatile struct shard_evaluator* e, s
     return LIST_VAL(head);
 }
 
+static struct shard_value builtin_foldAttrs(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value op = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value set = shard_builtin_eval_arg(e, builtin, args, 2);
+
+    struct shard_lazy_value* result = args[1];
+    
+    for(size_t i = 0; i < set.set->capacity; i++) {
+        if(!set.set->entries[i].key)
+            continue;
+
+        struct shard_value op2 = shard_eval_call(e, op, result, e->error_scope->loc);
+        if(!(op2.type & SHARD_VAL_CALLABLE))
+            shard_eval_throw(e, e->error_scope->loc, "`builtins.foldAttrs` expects first argument to take three call arguments");
+
+        struct shard_lazy_value *attr_name = shard_unlazy(e->ctx, CSTRING_VAL(set.set->entries[i].key));
+        struct shard_value op3 = shard_eval_call(e, op2, attr_name, e->error_scope->loc);
+        if(!(op3.type & SHARD_VAL_CALLABLE))
+            shard_eval_throw(e, e->error_scope->loc, "`builtins.foldAttrs` expects first argument to take three call arguments");
+
+        struct shard_lazy_value *attr_value = set.set->entries[i].value;
+        result = shard_unlazy(e->ctx, shard_eval_call(e, op3, attr_value, e->error_scope->loc));
+    }
+
+    return shard_eval_lazy2(e, result);
+}
+
 static struct shard_value builtin_foldl(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value op = shard_builtin_eval_arg(e, builtin, args, 0);
     struct shard_value list = shard_builtin_eval_arg(e, builtin, args, 2);
@@ -484,6 +527,22 @@ static struct shard_value builtin_getAttr(volatile struct shard_evaluator* e, st
     return shard_eval_lazy2(e, attr_lazy);
 }
 
+static struct shard_value builtin_setAttr(volatile struct shard_evaluator* e, struct shard_builtin *builtin, struct shard_lazy_value** args) {
+    struct shard_value attr_name = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value old_set = shard_builtin_eval_arg(e, builtin, args, 2);
+
+    struct shard_set *new_set = shard_set_init(e->ctx, old_set.set->size + 1);
+    for(size_t i = 0; i < old_set.set->capacity; i++) {
+        if(!old_set.set->entries[i].key)
+            continue;
+
+        shard_set_put(new_set, old_set.set->entries[i].key, old_set.set->entries[i].value);
+    }
+
+    shard_set_put(new_set, shard_get_ident(e->ctx, attr_name.string), args[1]);
+    return SET_VAL(new_set);
+}
+
 static struct shard_value builtin_concatLists(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value lists = shard_builtin_eval_arg(e, builtin, args, 0);
 
@@ -509,6 +568,23 @@ static struct shard_value builtin_concatLists(volatile struct shard_evaluator* e
     }
 
     return LIST_VAL(concat_head);
+}
+
+static struct shard_value builtin_intersectAttrs(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value e1 = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value e2 = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    struct shard_set *result = shard_set_init(e->ctx, MIN(e1.set->size, e2.set->size));
+    
+    for(size_t i = 0; i < e2.set->capacity; i++) {
+        shard_ident_t attr = e2.set->entries[i].key;
+        if(!attr || shard_set_get(e1.set, attr, NULL))
+            continue;
+
+        shard_set_put(result, attr, e2.set->entries[i].value);
+    }
+
+    return SET_VAL(result);
 }
 
 static struct shard_value builtin_isAttrs(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
@@ -879,12 +955,15 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.errnoString", builtin_errnoString, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.evalutated", builtin_evaluated, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.floor", builtin_floor, SHARD_VAL_FLOAT),
+    SHARD_BUILTIN("builtins.foldAttrs", builtin_foldAttrs, SHARD_VAL_CALLABLE, SHARD_VAL_ANY, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.foldl", builtin_foldl, SHARD_VAL_CALLABLE, SHARD_VAL_ANY, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.find",  builtin_find, SHARD_VAL_CALLABLE, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.filter", builtin_filter, SHARD_VAL_CALLABLE, SHARD_VAL_LIST),
+    SHARD_BUILTIN("builtins.functionArgs", builtin_functionArgs, SHARD_VAL_FUNCTION),
     SHARD_BUILTIN("builtins.genList", builtin_genList, SHARD_VAL_CALLABLE, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.getAttr", builtin_getAttr, SHARD_VAL_STRING, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.head", builtin_head, SHARD_VAL_LIST),
+    SHARD_BUILTIN("builtins.intersectAttrs", builtin_intersectAttrs, SHARD_VAL_SET, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.isAttrs", builtin_isAttrs, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.isBool", builtin_isBool, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.isFloat", builtin_isFloat, SHARD_VAL_ANY),
@@ -900,6 +979,7 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.mergeTree", builtin_mergeTree, SHARD_VAL_SET, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.mul", builtin_mul, SHARD_VAL_NUMERIC, SHARD_VAL_NUMERIC),
     SHARD_BUILTIN("builtins.not", builtin_not, SHARD_VAL_BOOL),
+    SHARD_BUILTIN("builtins.setAttr", builtin_setAttr, SHARD_VAL_STRING, SHARD_VAL_ANY, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.seq", builtin_seq, SHARD_VAL_ANY, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.seqList", builtin_seqList, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.split", builtin_split, SHARD_VAL_STRING, SHARD_VAL_STRING),

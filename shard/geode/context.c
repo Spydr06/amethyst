@@ -2,6 +2,7 @@
 #include "exception.h"
 #include "geode.h"
 #include "git.h"
+#include "include/store.h"
 #include "lifetime.h"
 #include "log.h"
 #include "util.h"
@@ -45,10 +46,13 @@ int geode_mkcontext(struct geode_context *context, const char *progname) {
     assert(context->initial_workdir != NULL);
     assert(geode_pushd(context, context->initial_workdir) == 0);
 
+    geode_store_init(context, &context->store);
+
     return 0;
 }
 
 void geode_delcontext(struct geode_context *context) {
+    geode_store_free(&context->store);
     git_shutdown(context);
     shard_deinit(&context->shard);
     l_free(&context->l_global);

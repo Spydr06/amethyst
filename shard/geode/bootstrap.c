@@ -230,6 +230,8 @@ int geode_bootstrap(struct geode_context *context, int argc, char *argv[]) {
 
     geode_headingf(context, "Bootstrapping `%s' to `%s'.", context->config_path.string, context->prefix_path.string);
 
+    geode_load_builtins(context);
+
     test_prefix_writable(context);
 
     bootstrap_shard_modules(context);
