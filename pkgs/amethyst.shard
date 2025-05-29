@@ -1,19 +1,11 @@
 { lib, pkgs, ... }: 
-lib.mkPackage {
+lib.mkPackage rec {
     name = "amethyst-kernel";
     version = "0.0.1";
 
-    buildDir = "./build";
-    kernelElf = "amethyst-" + version + "-" + geode.architecture + ".elf";
-
-    buildTarget = buildDir + "/" + kernelElf;
-    installTarget = "install";
-
-    publicHeaderDir = "include/amethyst";
-
-    limineConfigTemplate = "limine.cfg.in";
-    limineConfigPath = /boot/limine/limine.cfg;
-
+    buildDir = lib.realpath "./build";
+    sourceDir = builtins.toPath "${pkgs.amethyst-source}/source";
+ 
     config = {
         kernel.arguments = [];
         kernel.extra-arguments = [];
@@ -23,12 +15,20 @@ lib.mkPackage {
         sanitize = [];
     };
 
+    kernelElf = "amethyst-" + version + "-" + geode.architecture + ".elf";
+    
+    limineConfigTemplate = "${sourceDir}/limine.cfg.in";
+    limineConfigPath = /boot/limine/limine.cfg;
+
+    buildTarget = buildDir + "/" + kernelElf;
+    installTarget = "install";
+
+    publicHeaderDir = "${sourceDir}/include/amethyst";
+
     fullArguments = config.kernel.arguments ++ [ "--" ] ++ config.kernel.extra-arguments;
 
-    getSanitizers = builtins.join "," config.sanitize;
-
-    buildDependencies = with pkgs; [
-     #   limine
+    buildDependencies = [
+        pkgs.limine
     ];
 
     limineConfig = template: 
@@ -41,11 +41,14 @@ lib.mkPackage {
     ] "";
     in assert sed.exitCode == 0; sed.stdout;
 
-    build = util.shell.make [buildTarget ("SANITIZERS=" + getSanitizers)];
+    getSanitizers = builtins.join "," config.sanitize;
 
-    install = [
-        (util.installFile { src = buildTarget; dst = /boot/ + kernelElf; mode = "755"; })
-            (util.installDir publicHeaderDir publicHeaderDir)
-            (util.writeFile (util.paths.prefix + limineConfigPath) $ limineConfig "limine.cfg.in")
+    buildPhase = lib.make ["-C" sourceDir buildTarget "BUILD_DIR=${buildDir}" "SANITIZERS=${getSanitizers}"];
+
+    installPhase = builtins.seqList [
+        (lib.installFile { src = buildTarget; dst = /boot/ + kernelElf; mode = "755"; })
+        (lib.installDir publicHeaderDir publicHeaderDir)
+        #(lib.writeFile (geode.prefix + limineConfigPath) $ limineConfig "limine.cfg.in")
     ];
 }
+

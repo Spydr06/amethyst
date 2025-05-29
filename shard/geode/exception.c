@@ -8,6 +8,8 @@
 #include <execinfo.h>
 #endif
 
+#include <archive.h>
+
 #include <assert.h>
 #include <memory.h>
 #include <stdio.h>
@@ -33,6 +35,10 @@ const char *exception_type_to_string(enum geode_exception_type type) {
         return "derivation declaration";
     case GEODE_EX_DERIV_DEP:
         return "derivarion dependency";
+    case GEODE_EX_NET:
+        return "network";
+    case GEODE_EX_ARCHIVE:
+        return "archive";
     default:
         return "<unknown>";
     }
@@ -83,8 +89,27 @@ exception_t *geode_io_ex(struct geode_context *context, int errno, const char *f
     e->payload.ioerrno = errno;
 
 #ifdef __GNUC__
-    e->stacktrace_size = backtrace(e->stacktrace, MAX_STACK_LEVELS);
+    void *stacktrace[MAX_STACK_LEVELS];
+    e->stacktrace_size = backtrace(stacktrace, MAX_STACK_LEVELS);
+
+    for(size_t i = 0; i < e->stacktrace_size; i++) {
+        e->stacktrace[i] = l_strdup(&context->l_global, stacktrace[i]);
+    }
 #endif
+
+    va_end(ap);
+    return e;
+}
+
+exception_t *geode_archive_ex(struct geode_context *context, struct archive *a, const char *format, ...) {
+    va_list ap;
+    va_start(ap, format);
+
+    exception_t *e = l_malloc(&context->l_global, sizeof(exception_t));
+    memset(e, 0, sizeof(exception_t));
+
+    e->type = GEODE_EX_ARCHIVE;
+    e->description = l_sprintf(&context->l_global, "%s: %s", l_vsprintf(&context->l_global, format, ap), archive_error_string(a));
 
     va_end(ap);
     return e;

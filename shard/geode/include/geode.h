@@ -12,6 +12,8 @@
     #define __len(arr) (sizeof((arr)) / sizeof(*(arr)))
 #endif
 
+shard_dynarr(tmpfile_list, char*);
+
 struct option_string {
     char *string;
     bool overwritten;
@@ -30,6 +32,7 @@ struct geode_context {
     struct shard_set *prelude;
 
     struct geode_store store;
+    struct geode_store intrinsic_store;
 
     lifetime_t l_global;
     struct geode_exception_handler *e_handler;
@@ -49,6 +52,8 @@ struct geode_context {
         int *dfds;
     } dirstack;
 
+    struct tmpfile_list tmpfiles;
+    
     const char *initial_workdir;
 };
 

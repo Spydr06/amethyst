@@ -7,16 +7,16 @@ lib.mkPackage rec {
     sourceDir = util.paths.store + name;
     buildDir = sourceDir + "build";
 
-    buildDependencies = with pkgs; [
-        libc
-            getopt
-            libshard
+    buildDependencies = [
+        pkgs.libc
+        pkgs.getopt
+        pkgs.libshard
     ];
 
-    runtimeDependencies = with pkgs; [
-        libc
-            getopt
-            libshard
+    runtimeDependencies = [
+        pkgs.libc
+        pkgs.getopt
+        pkgs.libshard
     ];
 
     build = util.shell.make ["-C" sourceDir 

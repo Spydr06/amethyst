@@ -26,8 +26,8 @@ let
     pkgCallbacks = builtins.map loadSystemPkg $ findSystemPkgs geode.pkgsDir;
 
     pkgs = let
-        unresolved = pkgs: builtins.foldl (lib.callPackageWith) {} pkgCallbacks;
-    in unresolved {}; 
+        unresolved = pkgs: builtins.foldl (lib.callPackageWith pkgs) (geode.intrinsicStore {}) pkgCallbacks;
+    in fix unresolved; 
 in
 pkgs
 

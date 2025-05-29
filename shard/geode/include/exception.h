@@ -26,12 +26,16 @@ enum geode_exception_type : uint32_t {
     GEODE_EX_GIT        = 0b00001000,
     GEODE_EX_DERIV_DECL = 0b00010000,
     GEODE_EX_DERIV_DEP  = 0b00100000,
+    GEODE_EX_NET        = 0b01000000,
+    GEODE_EX_ARCHIVE    = 0b10000000,
 };
 
 #define GEODE_PKG_EXCEPTION (GEODE_EX_PKG_DECL | GEODE_EX_PKG_DEP)
 #define GEODE_ANY_EXCEPTION UINT32_MAX
 
 #define GEODE_LOCALEXCEPT(ctx) __attribute__((cleanup(geode_pop_exception_handler, (ctx))))
+
+struct archive;
 
 struct geode_exception {
     enum geode_exception_type type;
@@ -68,6 +72,8 @@ const char *exception_type_to_string(enum geode_exception_type type);
 __attribute__((format(printf, 3, 4)))
 noreturn void geode_throwf(struct geode_context *context, enum geode_exception_type type, const char *format, ...);
 noreturn void geode_vthrowf(struct geode_context *context, enum geode_exception_type type, const char *format, va_list ap);
+
+exception_t *geode_archive_ex(struct geode_context *context, struct archive *a, const char *format, ...);
 
 exception_t *geode_shard_ex(struct geode_context *context);
 exception_t *geode_shard_ex2(struct geode_context *context, int num_errors, struct shard_error *errors);

@@ -805,6 +805,12 @@ static struct shard_value builtin_tryGetLocation(volatile struct shard_evaluator
     return SET_VAL(set);
 }
 
+static struct shard_value builtin_throw(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value message = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    shard_eval_throw(e, e->error_scope->loc, "%s", message.string);
+}
+
 static struct shard_value builtin_typeOf(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value val = shard_builtin_eval_arg(e, builtin, args, 0);
     return CSTRING_VAL(shard_value_type_to_string(e->ctx, val.type));
@@ -991,6 +997,7 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.parseInt", builtin_parseInt, SHARD_VAL_STRING),
     SHARD_BUILTIN("builtins.tryEval", builtin_tryEval, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.tryGetLocation", builtin_tryGetLocation, SHARD_VAL_ANY),
+    SHARD_BUILTIN("builtins.throw", builtin_throw, SHARD_VAL_STRING),
     SHARD_BUILTIN("builtins.typeOf", builtin_typeOf, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.when", builtin_when, SHARD_VAL_BOOL, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.while", builtin_while, SHARD_VAL_CALLABLE),

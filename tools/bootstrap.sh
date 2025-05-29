@@ -123,6 +123,10 @@ CFLAGS="${USE_GCBOEHM} -g" make -C ${PROJECT_DIR}/shard -j${NJOBS} ${GEODE_BIN} 
 
 [ -e ${GEODE_BIN} ] || error "compiling host geode binary failed."
 
+unset C_CXX_FLAGS
+unset CFLAGS
+unset LDFLAGS
+
 set -x
 
 mkdir -p ${BOOTSTRAP_DIR}

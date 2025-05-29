@@ -10,41 +10,39 @@ lib.mkPackage rec {
         };
     };
 
-    limineDir = builtins.toPath "./limine";
+    sourceDir = "./limine-${version}";
 
-    limineBin = "limine";
+    limineBin = "${sourceDir}/limine";
 
     limineLoaders = 
         (builtins.when config.boot.loader.platform.bios [ "limine-bios.sys" "limine-bios-cd.bin" ]) ++
         (builtins.when config.boot.loader.platform.efi "limine-uefi-cd.bin");
 
-    biosInstaller = iso: if (geode.getenv "NIXOS_HOST") == null
-        then [ (limineDir + limineBin) "bios-install" iso ]
-        else [ "steam-run" (limineDir + liminebin) "bios-install" iso ];
+    biosInstaller = iso: lib.runPrecompiled [ (sourceDir + limineBin) "bios-install" iso ];
 
     bootX64Efi = "BOOTX64.EFI";
     bootIA32Efi = "BOOTIA32.EFI";
 
-    check = util.ensureExists { path = limineDir; };
+    fetchPhase = let
+            url = "https://github.com/limine-bootloader/limine/releases/download/v${version}/${sourceDir}.tar.gz";
+        in builtins.toString $ lib.fetchTarball url;
 
-    install = util.installFiles (
-            (builtins.map (loader: {
-                           src = limineDir + loader;
-                           dst = /boot/limine + loader;
-                           }) limineLoaders) ++
-            (builtins.when config.boot.loader.platform.efi [
-             { src = limineDir + bootX64Efi; dst = /EFI/BOOT + bootX64Efi; }
-             { src = limineDir + bootIA32Efi; dst = /EFI/BOOT + bootIA32Efi; }
-            ])
-            );
+    configurePhase = geode.proc.spawn "${sourceDir}/configure" [
+            "--prefix" (builtins.toString geode.prefix) 
+            "--enable-bios-cd" "--enable-bios" "--enable-uefi-x86-64" "--enable-uefi-cd"
+        ] true;
 
-    hooks = {
+    buildPhase = lib.make ["all"];
+
+    installPhase = lib.make ["install"];
+
+    /*hooks = {
         postMkIso = iso: with builtins; 
         let
             installer = biosInstaller iso;
         in if config.boot.loader.platform.bios 
             then geode.proc.spawn (head installer) (tail installer) true
             else null;
-    };
+    };*/
 }
 

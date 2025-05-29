@@ -1,4 +1,5 @@
 #include "util.h"
+#include "include/defaults.h"
 #include "lifetime.h"
 
 #include <alloca.h>
@@ -336,5 +337,47 @@ int geode_popd(struct geode_context *context) {
             return errno;
         return close(context->dirstack.dfds[--context->dirstack.count]) < 0 ? errno : 0;
     }
+}
+
+char *geode_tmpfile(struct geode_context *context, const char *name) {
+    if(context->tmpfiles.capacity < context->tmpfiles.count + 1) {
+        size_t new_capacity = MAX(context->tmpfiles.capacity * 2, 32);
+        char **new_tmpfiles = realloc(context->tmpfiles.items, new_capacity * sizeof(char*));
+        if(!new_tmpfiles)
+            geode_throw(context, geode_io_ex(context, errno, "failed allocating tmpfile buffer"));
+        
+        context->tmpfiles.items = new_tmpfiles;
+        context->tmpfiles.capacity = new_capacity;
+    }
+
+    char *tmpname = l_sprintf(&context->l_global, DEFAULT_TMPFILE_FORMAT, getpid(), rand(), name);
+
+    if(fexists(tmpname))
+        geode_throw(context, geode_io_ex(context, EEXIST, "temporary file `%s'", tmpname));
+
+    context->tmpfiles.items[context->tmpfiles.count++] = tmpname;
+    return tmpname;
+}
+
+void geode_unlink_tmpfiles(struct geode_context *context) {
+    for(size_t i = 0; i < context->tmpfiles.count; i++) {
+        if(fexists(context->tmpfiles.items[i]))
+            unlink(context->tmpfiles.items[i]);
+    }
+
+    free(context->tmpfiles.items);
+    context->tmpfiles.items = NULL;
+    context->tmpfiles.count = 0;
+    context->tmpfiles.capacity = 0;
+}
+
+const char *inplace_basename(const char *path) {
+    if(!path)
+        return NULL;
+
+    char *last_sep = strrchr(path, '/');
+    return last_sep
+        ? last_sep + 1
+        : path;
 }
 

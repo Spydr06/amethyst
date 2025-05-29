@@ -83,6 +83,29 @@ static void create_store(struct geode_context *context) {
         geode_throw(context, geode_io_ex(context, errno, "Failed creating store [%s]", context->store_path.string));
 }
 
+/*static int update_submodule(struct git_submodule *sm, const char *name, void *userp) {
+    struct geode_context *context = (struct geode_context *) userp;
+    int err;
+
+    // Init submodule (does not clone)
+    err = git_submodule_init(sm, 0);
+    if (err < 0) return err;
+
+    // Update submodule (clone if needed, checkout correct commit)
+    git_submodule_update_options opts = GIT_SUBMODULE_UPDATE_OPTIONS_INIT;
+    opts.checkout_opts.checkout_strategy = GIT_CHECKOUT_SAFE;
+    err = git_submodule_update(sm, 1, &opts);
+
+    if (err < 0) {
+        const git_error *e = git_error_last();
+        geode_errorf(context, "Failed to update submodule %s: %s\n", name, e->message);
+    } else {
+        geode_verbosef(context, "Updated submodule `%s'", name);
+    }
+
+    return err;
+}*/
+
 static void monorepo_builder(struct geode_context *context, struct geode_derivation *deriv, void *userp) {
     struct git_repository *source = (struct git_repository *) userp;
 
@@ -129,6 +152,12 @@ cleanup_cloned_head:
             goto cleanup_repo;
         }
     }
+
+    // Initialize submodules (parse .gitmodules)
+/*    if((err = git_submodule_foreach(cloned, update_submodule, context))) {
+        ex = geode_git_ex(context, git_error_last(), "Could not synchronize submodules");
+        goto cleanup_cloned;
+    } */
 
     geode_verbosef(context, "Patching `%s/%s'...", deriv->prefix, DEFAULT_SOURCE_DIR);
 
@@ -212,6 +241,8 @@ cleanup_repo:
     }
 
     struct geode_derivation *deriv = geode_mkderivation(context, AMETHYST_SOURCE_PKG_NAME, version, geode_native_builder(monorepo_builder, monorepo));
+    if((err = geode_store_register(&context->intrinsic_store, deriv)))
+        geode_throwf(context, GEODE_EX_DERIV_DECL, "Could not register derivation `%s-%s' in intrinsic store", deriv->name, deriv->version);
     geode_call_builder(context, deriv);
 }
 

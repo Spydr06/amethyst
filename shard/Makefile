@@ -32,7 +32,7 @@ TEST_RUNNER_BIN := $(BUILD_DIR)/tests/runner
 
 GEODE_BIN := $(BUILD_DIR)/geode-bin
 
-GEODE_LIBS := libarchive libgit2
+GEODE_LIBS := libarchive libcurl libgit2
 
 GEODE_SOURCES := $(shell find $(GEODE_DIR) -name '*.c' -or -name '*.S')
 GEODE_OBJECTS := $(patsubst %.S, $(BUILD_DIR)/%.o, $(patsubst %.c, $(BUILD_DIR)/%.o, $(GEODE_SOURCES)))
@@ -58,7 +58,6 @@ define unique
 	$(strip $(if $1,$(firstword $1) $(call unique,$(filter-out $(firstword $1),$1))))
 endef
 
-LDFLAGS +=
 override LDFLAGS := $(call unique, $(LDFLAGS))
 
 override CFLAGS += -Wall -Wextra -std=c2x -I$(LIBSHARD_DIR)/include
@@ -93,7 +92,7 @@ $(BUILD_DIR):
 	@echo "  MKDIR $(BUILD_DIR)"
 	@mkdir -p $(BUILD_DIR)
 
-$(SHARD_BIN): $(LDLFLAGS) $(SHARDBIN_OBJECTS) $(LIBSHARD_OBJ) $(LIBC_DRIVER)
+$(SHARD_BIN): $(SHARDBIN_OBJECTS) $(LIBSHARD_OBJ) $(LIBC_DRIVER)
 	@echo "  LD    $@"
 	@$(CC) $(LDFLAGS) -o $@ $^ -ledit
 
@@ -118,7 +117,7 @@ $(LIBSHARD_OBJ): $(LIBSHARD_OBJECTS) | $(BUILD_DIR)
 	@echo "  LD    $@"
 	@$(LD) -r $^ -o $@
 
-$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR) $(GCBOEHM_LIB) 
+$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	@echo "  CC    $^"
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) \

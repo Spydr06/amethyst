@@ -6,6 +6,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <libshard.h>
+
 struct geode_derivation;
 struct geode_context;
 
@@ -23,6 +25,8 @@ void geode_store_free(struct geode_store *store);
 int geode_store_register(struct geode_store *store, const struct geode_derivation *deriv);
 int geode_store_get(struct geode_store *store, const uint8_t *hash, const struct geode_derivation **deriv);
 int geode_store_get_by_prefix(struct geode_store *store, const char *path, const struct geode_derivation **deriv);
+
+struct shard_value geode_store_to_shard_value(struct shard_context *ctx, struct geode_store *store);
 
 #endif /* GEODE_STORE_H */
 

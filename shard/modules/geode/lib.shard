@@ -1,9 +1,11 @@
 let
-    defaultArgs = pkgs :: set: { inherit lib; inherit pkgs; };
+    stdenv = import ./stdenv;
 
-    callPackageWith = pkgs :: set: pkgFunc :: function:
+    defaultArgs = pkgs: { inherit lib; inherit stdenv; inherit pkgs; };
+
+    callPackageWith = dependencyPkgs: pkgs: pkgFunc :: function:
         let
-            pkg = pkgFunc $ defaultArgs pkgs; 
+            pkg = pkgFunc $ defaultArgs dependencyPkgs; 
         in
             builtins.setAttr pkg.publicName pkg.derivation pkgs;
 
@@ -11,28 +13,54 @@ let
            checkInstalled = builtins.isPath; 
         in builtins.all checkInstalled;
 
+    sequencedTasks = tasks :: list:
+        builtins.seqList tasks;
+
+    /* builder:
+       - fetch
+       - patch
+       - configure
+       - build
+       - check
+       - install
+       - postInstall
+    */
+    # TODO: environment handling
+    derivationBuilder = deriv :: set:
+        let
+            buildDeps = deriv.buildDependencies or [];
+            runtimeDeps = deriv.buildRuntimeDependencies or [];
+            
+            installDeps = depList: if ensureInstalled depList
+                then null 
+                else builtins.seq
+                    (geode.debug.dump depList)
+                    (builtins.throw "Could not satisfy dependencies for `${deriv.name}-${deriv.version}'");
+            
+            installBuildDeps = installDeps buildDeps;
+            installRuntimeDeps = installDeps runtimeDeps;
+
+            builderTasks = [
+                installBuildDeps
+                deriv.fetchPhase or null
+                deriv.patchPhase or null
+                deriv.configurePhase or null
+                deriv.buildPhase or null
+                installRuntimeDeps 
+                deriv.checkPhase or null
+                deriv.installPhase or null
+                deriv.postInstallPhase or null
+            ];
+        in
+            sequencedTasks builderTasks;
+
     mkDerivation = deriv :: set: 
-        /* builder:
-           - fetch
-           - patch
-           - configure
-           - build
-           - check
-           - install
-           - postInstall
-        */
         {
             publicName = deriv.publicName or deriv.name;
             derivation = geode.derivation {
                 name = deriv.name;
                 version = deriv.version;
-                builder = let
-                        buildDependencies = deriv.buildDependencies or [];
-                    in
-                    if ensureInstalled buildDependencies then
-                        null    
-                    else
-                        geode.throw "Could not install required dependencies for `${deriv.name}-${deriv.version}`";
+                builder = derivationBuilder deriv;
             };
         };
 
@@ -52,12 +80,88 @@ let
 
     readFile = filepath :: path: null;
 
+    mkdirRec = path: if geode.file.exists path
+            then 0
+            else builtins.seq
+                (mkdirRec (geode.file.dirname path))
+                (geode.file.mkdir path);
+
+    shell = {
+        cp = args: 
+            geode.proc.spawn "cp" (builtins.map builtins.toString args) true;
+
+        install = args:
+            geode.proc.spawn "install" (builtins.map builtins.toString args) true;
+    };
+
+    installFile = { src, dst, mode ? "744" }: let dstDir = geode.file.dirname (geode.prefix + dst); 
+            in assert (mkdirRec dstDir) == 0;
+                shell.install ["-m" mode src (geode.prefix + dst)];
+
+    installDir = src: dst: let 
+            dstDir = geode.file.dirname (geode.prefix + dst);
+        in assert (mkdirRec dstDir) == 0;
+            shell.cp ["-r" src (geode.prefix + dst)];
+
+    fetchGitRepoTo = to: args:
+        let
+            fetchRepo = url: if geode.file.exists $ builtins.toPath "${to}/.git"
+                then geode.git.pullRepo to
+                else geode.git.cloneRepo url to;
+            checkoutBranch = geode.git.checkoutBranch;
+        in (case args of
+            url :: string => fetchRepo url;
+            { url, branch } => builtins.seq
+                (fetchRepo url)
+                (checkoutBranch branch to);
+            _ => builtins.throw "invalid arguments provided to `lib.fetchGitRepoTo'"
+        );
+
+    fetchTarballTo = to :: path: url :: string: geode.archive.extractTar (geode.net.downloadTmp url) to;
+    
+    defaultSourceDir = builtins.toPath "./source";
+
     lib = {
+        inherit defaultArgs;
+        inherit defaultSourceDir;
+
         inherit callPackage;
         inherit callPackageWith;
         inherit mkDerivation;
         inherit mkPackage;
         inherit mkShell;
         inherit mkSystemConfig;
+
+        inherit mkdirRec;
+
+        inherit installDir;
+        inherit installFile;
+
+        inherit fetchGitRepoTo;
+        fetchGitRepo = fetchGitRepoTo defaultSourceDir;
+
+        inherit fetchTarballTo;
+        fetchTarball = fetchTarballTo defaultSourceDir;
+
+        realpath = p :: path | string:
+            let
+                result = geode.proc.spawnPipe "realpath" [ (builtins.toString p) ] "";
+            in if result.exitCode == 0
+                then builtins.toString $ builtins.trim $ result.stdout
+                else builtins.throw "realpath exited with code ${result.exitCode}: ${result.stderr}";
+
+        make = args :: list: 
+            geode.proc.spawn "make" (builtins.map builtins.toString (args ++ ["-j" (geode.proc.nJobs)])) true;
+        
+        installFiles = builtins.map installFile;
+
+        writeFile = file: data: builtins.seq
+            (mkdirRec $ geode.file.dirname file)
+            (geode.file.writeFile file $ builtins.toString data);
+
+        runPrecompiled = args :: list:
+            if (geode.getenv "NIXOS_HOST") == null
+                then args
+                else [ "steam-run" ] ++ args;
     };
 in lib

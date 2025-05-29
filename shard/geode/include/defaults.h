@@ -14,5 +14,8 @@
 #define DEFAULT_SOURCE_DIR "source"
 #define VERSION_FILENAME "version"
 
+#define DEFAULT_TMPDIR "/tmp"
+#define DEFAULT_TMPFILE_FORMAT DEFAULT_TMPDIR "/%d-%x-%s"
+
 #endif /* _GEODE_DEFAULTS_H */
 

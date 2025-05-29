@@ -1,6 +1,9 @@
 #include "geode.h"
 #include "log.h"
 #include "derivation.h"
+#include "git.h"
+#include "net.h"
+#include "archives.h"
 
 #include <libshard.h>
 
@@ -35,6 +38,7 @@ static struct shard_value builtin_getenv(volatile struct shard_evaluator* e, str
 static struct shard_value builtin_unsetenv(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 
 static struct shard_builtin geode_builtin_functions[] = {
+    SHARD_BUILTIN("geode.archive.extractTar", builtin_archive_extractTar, SHARD_VAL_PATH, SHARD_VAL_PATH),
     SHARD_BUILTIN("geode.debug.dump", builtin_debug_dump, SHARD_VAL_ANY),
     SHARD_BUILTIN("geode.debug.println", builtin_debug_println, SHARD_VAL_STRING),
     SHARD_BUILTIN("geode.debug.unimplemented", builtin_debug_unimplemented, SHARD_VAL_STRING),
@@ -46,6 +50,10 @@ static struct shard_builtin geode_builtin_functions[] = {
     SHARD_BUILTIN("geode.file.readDir", builtin_file_readDir, SHARD_VAL_PATH),
     SHARD_BUILTIN("geode.errno.toString", builtin_errno_toString, SHARD_VAL_INT),
     SHARD_BUILTIN("geode.error.throw", builtin_error_throw, SHARD_VAL_STRING),
+    SHARD_BUILTIN("geode.git.checkoutBranch", builtin_git_checkoutBranch, SHARD_VAL_STRING, SHARD_VAL_PATH),
+    SHARD_BUILTIN("geode.git.pullRepo", builtin_git_pullRepo, SHARD_VAL_PATH),
+    SHARD_BUILTIN("geode.git.cloneRepo", builtin_git_cloneRepo, SHARD_VAL_STRING, SHARD_VAL_PATH),
+    SHARD_BUILTIN("geode.net.downloadTmp", builtin_net_downloadTmp, SHARD_VAL_STRING),
     SHARD_BUILTIN("geode.proc.spawn", builtin_proc_spawn, SHARD_VAL_STRING, SHARD_VAL_LIST, SHARD_VAL_BOOL),
     SHARD_BUILTIN("geode.proc.spawnPipe", builtin_proc_spawnPipe, SHARD_VAL_STRING, SHARD_VAL_LIST, SHARD_VAL_STRING),
     SHARD_BUILTIN("geode.setenv", builtin_setenv, SHARD_VAL_STRING, SHARD_VAL_STRING),
@@ -53,6 +61,7 @@ static struct shard_builtin geode_builtin_functions[] = {
     SHARD_BUILTIN("geode.unsetenv", builtin_unsetenv, SHARD_VAL_STRING),
     SHARD_BUILTIN("geode.derivation", geode_builtin_derivation, SHARD_VAL_SET),
     SHARD_BUILTIN("geode.storeEntry", geode_builtin_storeEntry, SHARD_VAL_PATH),
+    SHARD_BUILTIN("geode.intrinsicStore", geode_builtin_intrinsicStore, SHARD_VAL_SET),
 };
 
 static void load_constants(struct geode_context* ctx) {

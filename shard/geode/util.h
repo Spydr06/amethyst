@@ -35,5 +35,11 @@ int geode_popd(struct geode_context *context);
 
 char *geode_getcwd(lifetime_t *l);
 
+char *geode_tmpfile(struct geode_context *context, const char *name);
+
+void geode_unlink_tmpfiles(struct geode_context *context);
+
+const char *inplace_basename(const char *path);
+
 #endif /* _GEODE_UTIL_H */
 

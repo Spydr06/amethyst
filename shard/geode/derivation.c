@@ -4,6 +4,7 @@
 #include "geode.h"
 #include "hash.h"
 #include "include/log.h"
+#include "include/store.h"
 #include "libshard.h"
 #include "util.h"
 
@@ -167,4 +168,10 @@ struct shard_value geode_builtin_storeEntry(volatile struct shard_evaluator *e, 
 
     return (struct shard_value){.type=SHARD_VAL_SET, .set=entry};
 }
+
+struct shard_value geode_builtin_intrinsicStore(volatile struct shard_evaluator *e, struct shard_builtin *, struct shard_lazy_value**) {
+    struct geode_context *context = e->ctx->userp;
+    return geode_store_to_shard_value(e->ctx, &context->intrinsic_store);
+}
+
 

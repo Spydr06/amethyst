@@ -1,8 +1,9 @@
+let
+    pkgs = import ./manager.shard;
+    lib = import ./lib.shard;
+in
 {
     moduleName = "geode";
     moduleVersion = "0.0.1";
-
-    lib = import ./lib.shard; 
-    pkgs = import ./manager.shard;
-}
+} // lib.defaultArgs pkgs;
 

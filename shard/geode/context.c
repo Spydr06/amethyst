@@ -46,13 +46,20 @@ int geode_mkcontext(struct geode_context *context, const char *progname) {
     assert(context->initial_workdir != NULL);
     assert(geode_pushd(context, context->initial_workdir) == 0);
 
+    geode_store_init(context, &context->intrinsic_store);
     geode_store_init(context, &context->store);
+
+    srand(time(NULL));
 
     return 0;
 }
 
 void geode_delcontext(struct geode_context *context) {
     geode_store_free(&context->store);
+    geode_store_free(&context->intrinsic_store);
+
+    geode_unlink_tmpfiles(context);
+
     git_shutdown(context);
     shard_deinit(&context->shard);
     l_free(&context->l_global);
