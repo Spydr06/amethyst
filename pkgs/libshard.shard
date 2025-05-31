@@ -3,20 +3,21 @@ lib.mkPackage rec {
     name = "libshard";
     version = "0.0.1";
 
-    sourceDir = "shard";
+    sourceDir = "${pkgs.amethyst-source}/source/shard";
     makeTarget = "lib";
     installTarget = "install-lib";
 
     dependencies = with pkgs; [ libc ];
 
-    build = util.shell.make ["-C" sourceDir makeTarget
-        ("CFLAGS=-specs=" + $ builtins.toString util.paths.gcc_specs)
-        ("PREFIX=" + $ builtins.toString util.paths.prefix)
-    ];
+    env = {
+        PREFIX = builtins.toString lib.prefix;
+        CFLAGS = "-specs=${lib.prefix}/lib/gcc/cross-libc.specs";
+        BUILD_DIR = "./build";
+    };
 
-    install = util.shell.make ["-C" sourceDir installTarget
-        ("PREFIX=" + $ builtins.toString util.paths.prefix)
-    ];
+    buildPhase = lib.make ["-C" sourceDir makeTarget];
+
+    installPhase = lib.make ["-C" sourceDir installTarget];
 };
 /*lib.mkCollection {
 

@@ -38,7 +38,7 @@ static struct shard_value builtin_getenv(volatile struct shard_evaluator* e, str
 static struct shard_value builtin_unsetenv(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 
 static struct shard_builtin geode_builtin_functions[] = {
-    SHARD_BUILTIN("geode.archive.extractTar", builtin_archive_extractTar, SHARD_VAL_PATH, SHARD_VAL_PATH),
+    SHARD_BUILTIN("geode.archive.extractTar", builtin_archive_extractTar, SHARD_VAL_PATH),
     SHARD_BUILTIN("geode.debug.dump", builtin_debug_dump, SHARD_VAL_ANY),
     SHARD_BUILTIN("geode.debug.println", builtin_debug_println, SHARD_VAL_STRING),
     SHARD_BUILTIN("geode.debug.unimplemented", builtin_debug_unimplemented, SHARD_VAL_STRING),
@@ -53,10 +53,10 @@ static struct shard_builtin geode_builtin_functions[] = {
     SHARD_BUILTIN("geode.git.checkoutBranch", builtin_git_checkoutBranch, SHARD_VAL_STRING, SHARD_VAL_PATH),
     SHARD_BUILTIN("geode.git.pullRepo", builtin_git_pullRepo, SHARD_VAL_PATH),
     SHARD_BUILTIN("geode.git.cloneRepo", builtin_git_cloneRepo, SHARD_VAL_STRING, SHARD_VAL_PATH),
-    SHARD_BUILTIN("geode.net.downloadTmp", builtin_net_downloadTmp, SHARD_VAL_STRING),
+    SHARD_BUILTIN("geode.net.downloadFile", builtin_net_downloadFile, SHARD_VAL_PATH, SHARD_VAL_STRING),
     SHARD_BUILTIN("geode.proc.spawn", builtin_proc_spawn, SHARD_VAL_STRING, SHARD_VAL_LIST, SHARD_VAL_BOOL),
     SHARD_BUILTIN("geode.proc.spawnPipe", builtin_proc_spawnPipe, SHARD_VAL_STRING, SHARD_VAL_LIST, SHARD_VAL_STRING),
-    SHARD_BUILTIN("geode.setenv", builtin_setenv, SHARD_VAL_STRING, SHARD_VAL_STRING),
+    SHARD_BUILTIN("geode.setenv", builtin_setenv, SHARD_VAL_STRING, SHARD_VAL_STRING | SHARD_VAL_NULL),
     SHARD_BUILTIN("geode.getenv", builtin_getenv, SHARD_VAL_STRING),
     SHARD_BUILTIN("geode.unsetenv", builtin_unsetenv, SHARD_VAL_STRING),
     SHARD_BUILTIN("geode.derivation", geode_builtin_derivation, SHARD_VAL_SET),
@@ -438,10 +438,21 @@ static struct shard_value builtin_proc_spawnPipe(volatile struct shard_evaluator
 }
 
 static struct shard_value builtin_setenv(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct geode_context *context = e->ctx->userp;
+
     struct shard_value var = shard_builtin_eval_arg(e, builtin, args, 0);
     struct shard_value val = shard_builtin_eval_arg(e, builtin, args, 1);
 
-    return (struct shard_value){.type=SHARD_VAL_INT, .integer=setenv(var.string, val.string, true)};
+    const char *old_val = getenv(var.string);
+    
+    if(val.type == SHARD_VAL_NULL)
+        unsetenv(var.string);
+    else if(setenv(var.string, val.string, true) < 0)
+        geode_throw(context, geode_io_ex(context, errno, "setenv(`%s', `%s') failed", var.string, val.string));
+
+    if(!old_val)
+        return (struct shard_value){.type=SHARD_VAL_NULL};
+    return (struct shard_value){.type=SHARD_VAL_STRING, .string=old_val, .strlen=strlen(old_val)};
 }
 
 static struct shard_value builtin_getenv(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {

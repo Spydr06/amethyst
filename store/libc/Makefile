@@ -26,7 +26,7 @@ TARGETS := $(LIB_A) $(CRT_OBJECTS) $(NATIVE_GCC_SPECS) $(CROSS_GCC_SPECS)
 
 PUBLIC_HEADERS := $(shell find $(INCLUDE_DIR) -name '*.h')
 
-INSTALL_TARGETS := $(patsubst $(BUILD_DIR)/%,$(PREFIX)/lib/%,$(TARGETS)) $(patsubst %,$(PREFIX)/%,$(PUBLIC_HEADERS))
+INSTALL_TARGETS := $(patsubst $(BUILD_DIR)/%,$(PREFIX)/lib/%,$(TARGETS)) $(patsubst %,$(PREFIX)/usr/%,$(PUBLIC_HEADERS))
 
 CFLAGS += -std=c2x -ggdb -nostdinc -nostdlib -nostartfiles -I$(ARCH_INCLUDE_DIR) -I$(INCLUDE_DIR) -I$(LIB_DIR)/$(INCLUDE_DIR) -I$(PREFIX)/include -I$(PREFIX)/usr/include -Wall -Wextra -pedantic
 LDFLAGS += -nostdlib -nostartfiles
@@ -80,7 +80,7 @@ $(PREFIX)/lib/%: $(BUILD_DIR)/%
 	@echo "  INSTALL $< -> $@"
 	@install -m 644 $< $@
 
-$(PREFIX)/$(INCLUDE_DIR)/%: $(INCLUDE_DIR)/%
+$(PREFIX)/usr/$(INCLUDE_DIR)/%: $(INCLUDE_DIR)/%
 	@mkdir -p $(dir $@)
 	@echo "  INSTALL $< -> $@"
 	@install -m 644 $< $@

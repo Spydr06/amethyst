@@ -10,7 +10,11 @@
 #include "util.h"
 #include "git.h"
 
+#include <git2/apply.h>
+#include <git2/deprecated.h>
+#include <git2/diff.h>
 #include <git2/refs.h>
+
 #include <stdio.h>
 #include <memory.h>
 #include <limits.h>
@@ -18,6 +22,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <libgen.h>
 
 static void test_prefix_writable(struct geode_context *context) {
     const char *prefix = context->prefix_path.string;
@@ -161,19 +166,27 @@ cleanup_cloned_head:
 
     geode_verbosef(context, "Patching `%s/%s'...", deriv->prefix, DEFAULT_SOURCE_DIR);
 
-    struct git_diff *head_diff = NULL;
-    if((err = git_diff_index_to_workdir(&head_diff, source, NULL, NULL))) {
+    git_diff_options diff_opts = GIT_DIFF_OPTIONS_INIT;
+    diff_opts.flags = GIT_DIFF_INCLUDE_UNTRACKED | GIT_DIFF_RECURSE_UNTRACKED_DIRS | GIT_DIFF_SHOW_UNTRACKED_CONTENT;
+
+    struct git_diff *workdir_diff = NULL;
+    if((err = git_diff_index_to_workdir(&workdir_diff, source, NULL, &diff_opts))) {
         ex = geode_git_ex(context, git_error_last(), "Could not get diff between index and working directory");
         goto cleanup_cloned;
     }
 
-    if((err = git_apply(cloned, head_diff, GIT_APPLY_LOCATION_WORKDIR, NULL))) {
-        ex = geode_git_ex(context, git_error_last(), "Could not apply diff to cloned repository `%s/%s'", deriv->prefix);
+    if((ex = git_diff_create_untracked(context, workdir_diff, DEFAULT_SOURCE_DIR)))
+        goto cleanup_diff;
+
+    git_apply_options apply_opts = GIT_APPLY_OPTIONS_INIT;
+    apply_opts.flags = GIT_APPLY_LOCATION_WORKDIR;
+    if((err = git_apply(cloned, workdir_diff, GIT_APPLY_LOCATION_WORKDIR, &apply_opts))) {
+        ex = geode_git_ex(context, git_error_last(), "Could not apply diff to cloned repository `%s/%s'", deriv->prefix, DEFAULT_SOURCE_DIR);
         goto cleanup_diff;
     }
 
 cleanup_diff:
-    git_diff_free(head_diff);
+    git_diff_free(workdir_diff);
 cleanup_cloned:
     git_repository_free(cloned);
 cleanup_repo:

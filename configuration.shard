@@ -2,7 +2,7 @@
 lib.mkSystemConfig {
     env.packages = with pkgs; [
         amethyst-kernel
-        libshard
+        initsys
     ];
 }
 /*lib.mkSystemConfig {

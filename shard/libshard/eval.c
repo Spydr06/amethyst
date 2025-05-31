@@ -268,7 +268,7 @@ static inline struct shard_value eval_eq(volatile struct shard_evaluator* e, str
         eval(e, expr->binop.rhs)
     };
 
-    return BOOL_VAL(shard_values_equal(&values[0], &values[1]) ^ negate);
+    return BOOL_VAL(shard_values_equal(e, &values[0], &values[1]) ^ negate);
 }
 
 #define CMP_OP(e, lhs, op, rhs, loc) do {   \
@@ -585,15 +585,33 @@ static inline struct shard_value eval_attr_test(volatile struct shard_evaluator*
     return BOOL_VAL(eval_get_attr(e, shard_lazy(e->ctx, expr->attr_test.set, e->scope), &expr->attr_test.path, expr->loc) != 0);
 }
 
+static inline char *attr_path_string(volatile struct shard_evaluator* e, struct shard_attr_path *path) {
+    size_t length = 1;
+    for(size_t i = 0; i < path->count; i++) {
+        length += strlen(path->items[i]) + 1;
+    }
+
+    char *str = shard_gc_malloc(e->gc, length * sizeof(char));
+    str[0] = '\0';
+
+    for(size_t i = 0; i < path->count; i++) {
+        if(i != 0)
+            strncat(str, ".", length);
+        strncat(str, path->items[i], length);
+    }
+    
+    return str;
+}
+
 static inline struct shard_value eval_attr_sel(volatile struct shard_evaluator* e, struct shard_expr* expr) {
-    struct shard_lazy_value* value = eval_get_attr(e, shard_lazy(e->ctx, expr->attr_test.set, e->scope), &expr->attr_test.path, expr->loc);
+    struct shard_lazy_value* value = eval_get_attr(e, shard_lazy(e->ctx, expr->attr_sel.set, e->scope), &expr->attr_sel.path, expr->loc);
     if(value)
         return eval_lazy(e, value);
 
     if(expr->attr_sel.default_value)
         return eval(e, expr->attr_sel.default_value);
 
-    shard_eval_throw(e, expr->loc, "`.`: set does not have this attribute");
+    shard_eval_throw(e, expr->loc, "`.`: set does not have attribute `%s`", attr_path_string(e, &expr->attr_sel.path));
 }
 
 static inline bool is_truthy(struct shard_value value) {
@@ -669,6 +687,13 @@ static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struc
         case SHARD_PAT_SET:
             set = shard_set_init(e->ctx, pattern->attrs.count + (size_t) !!pattern->ident);
 
+            if(!value.set) {
+                if(error_loc)
+                    shard_eval_throw(e, *error_loc, "set is NULL");
+                else
+                    return MATCH_FAIL;
+            }
+
             size_t expected_arity = value.set->size;
             for(size_t i = 0; i < pattern->attrs.count; i++) {
                 struct shard_lazy_value* val;
@@ -701,7 +726,7 @@ static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struc
             struct shard_value lhs = eval_lazy(e, lazy_value);
             struct shard_value rhs = eval(e, pattern->constant);
 
-            set = shard_values_equal(&lhs, &rhs) ? MATCH_OK : MATCH_FAIL;
+            set = shard_values_equal(e, &lhs, &rhs) ? MATCH_OK : MATCH_FAIL;
 
             if(error_loc && set == MATCH_FAIL)
                 shard_eval_throw(e, *error_loc, "argument is not equal to pattern constant");

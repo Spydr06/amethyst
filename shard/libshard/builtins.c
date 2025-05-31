@@ -1,8 +1,9 @@
-#include <string.h>
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
 
 #include <ctype.h>
+#include <libgen.h>
+#include <string.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -77,7 +78,7 @@ static struct shard_value builtin_elem(volatile struct shard_evaluator* e, struc
     struct shard_list* head = list.list.head;
     while(head) {
         struct shard_value elem = shard_eval_lazy2(e, head->value);
-        if(shard_values_equal(&want, &elem))
+        if(shard_values_equal(e, &want, &elem))
             return BOOL_VAL(true);
 
         head = head->next;
@@ -248,6 +249,31 @@ static struct shard_value builtin_map(volatile struct shard_evaluator* e, struct
     return LIST_VAL(result_head);
 }
 
+static struct shard_value builtin_mapAttrs(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value func = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value set = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    struct shard_set *result = shard_set_init(e->ctx, set.set->size);
+
+    for(size_t i = 0; i < set.set->capacity; i++) {
+        shard_ident_t key = set.set->entries[i].key;
+        if(!key)
+            continue;
+
+        struct shard_lazy_value *val = set.set->entries[i].value;
+
+        struct shard_value func2 = shard_eval_call(e, func, shard_unlazy(e->ctx, CSTRING_VAL(key)), e->error_scope->loc);
+        if(!(func2.type & SHARD_VAL_CALLABLE))
+            shard_eval_throw(e, e->error_scope->loc, "builtins.mapAttrs: Mapper function is required to take in two arguments");
+
+        struct shard_value mapped = shard_eval_call(e, func2, val, e->error_scope->loc);
+
+        shard_set_put(result, key, shard_unlazy(e->ctx, mapped));
+    }
+
+    return SET_VAL(result);
+}
+
 static struct shard_value builtin_split(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value delim = shard_builtin_eval_arg(e, builtin, args, 0);
     struct shard_value string = shard_builtin_eval_arg(e, builtin, args, 1);
@@ -355,6 +381,24 @@ static struct shard_value builtin_attrValues(volatile struct shard_evaluator* e,
 
     // TODO: sort after keys alphabetically
     return LIST_VAL(head);
+}
+
+static struct shard_value builtin_basename(volatile struct shard_evaluator *e, struct shard_builtin *builtin, struct shard_lazy_value** args) {
+    struct shard_value path = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    char *base = shard_gc_strdup(e->gc, path.path, path.pathlen);
+    base = basename(base);
+
+    return CPATH_VAL(base);
+}
+
+static struct shard_value builtin_dirname(volatile struct shard_evaluator *e, struct shard_builtin *builtin, struct shard_lazy_value** args) {
+    struct shard_value path = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    char *dir = shard_gc_strdup(e->gc, path.path, path.pathlen);
+    dir = dirname(dir);
+
+    return CPATH_VAL(dir);
 }
 
 static struct shard_value merge_set(volatile struct shard_evaluator* e, struct shard_set* fst, struct shard_set* snd) {
@@ -525,6 +569,13 @@ static struct shard_value builtin_getAttr(volatile struct shard_evaluator* e, st
         return NULL_VAL();
 
     return shard_eval_lazy2(e, attr_lazy);
+}
+
+static struct shard_value builtin_hasAttr(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value attr_name = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value set = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    return BOOL_VAL(shard_set_get(set.set, shard_get_ident(e->ctx, attr_name.string), NULL) == 0);
 }
 
 static struct shard_value builtin_setAttr(volatile struct shard_evaluator* e, struct shard_builtin *builtin, struct shard_lazy_value** args) {
@@ -949,12 +1000,13 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.any", builtin_any, SHARD_VAL_CALLABLE, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.attrNames", builtin_attrNames, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.attrValues", builtin_attrValues, SHARD_VAL_SET),
-    SHARD_BUILTIN("builtins.bitAnd", builtin_bitAnd, SHARD_VAL_INT, SHARD_VAL_INT),
+    SHARD_BUILTIN("builtins.basename", builtin_basename, SHARD_VAL_PATH),
     SHARD_BUILTIN("builtins.bitOr", builtin_bitOr, SHARD_VAL_INT, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.bitXor", builtin_bitXor, SHARD_VAL_INT, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.catAttrs", builtin_catAttrs, SHARD_VAL_STRING, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.ceil", builtin_ceil, SHARD_VAL_FLOAT),
     SHARD_BUILTIN("builtins.concatLists", builtin_concatLists, SHARD_VAL_LIST),
+    SHARD_BUILTIN("builtins.dirname", builtin_dirname, SHARD_VAL_PATH),
     SHARD_BUILTIN("builtins.div", builtin_div, SHARD_VAL_NUMERIC, SHARD_VAL_NUMERIC),
     SHARD_BUILTIN("builtins.elem", builtin_elem, SHARD_VAL_ANY, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.elemAt", builtin_elemAt, SHARD_VAL_LIST, SHARD_VAL_INT),
@@ -968,6 +1020,7 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.functionArgs", builtin_functionArgs, SHARD_VAL_FUNCTION),
     SHARD_BUILTIN("builtins.genList", builtin_genList, SHARD_VAL_CALLABLE, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.getAttr", builtin_getAttr, SHARD_VAL_STRING, SHARD_VAL_SET),
+    SHARD_BUILTIN("builtins.hasAttr", builtin_hasAttr, SHARD_VAL_STRING, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.head", builtin_head, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.intersectAttrs", builtin_intersectAttrs, SHARD_VAL_SET, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.isAttrs", builtin_isAttrs, SHARD_VAL_ANY),
@@ -982,6 +1035,7 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.join", builtin_join, SHARD_VAL_STRING, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.length", builtin_length, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.map", builtin_map, SHARD_VAL_CALLABLE, SHARD_VAL_LIST),
+    SHARD_BUILTIN("builtins.mapAttrs", builtin_mapAttrs, SHARD_VAL_CALLABLE, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.mergeTree", builtin_mergeTree, SHARD_VAL_SET, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.mul", builtin_mul, SHARD_VAL_NUMERIC, SHARD_VAL_NUMERIC),
     SHARD_BUILTIN("builtins.not", builtin_not, SHARD_VAL_BOOL),

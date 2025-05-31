@@ -101,7 +101,7 @@ static void print_basic_error(FILE* stream, struct shard_error* error, bool colo
             EITHER(error->err, strerror(error->_errno)));
 
     fprintf(stream, "%s       at%s %s:%u:%u:%s\n",
-C(color, C_BLD C_BLUE), C(color, C_PURPLE),
+            C(color, C_BLD C_BLUE), C(color, C_PURPLE),
             error->loc.src ? error->loc.src->origin : "<unknown>", error->loc.line, error->loc.column,
             C(color, C_RST));
 }
@@ -125,6 +125,8 @@ static void print_file_error(FILE* stream, struct shard_error* error, bool color
     (void) !! fread(line_str, line_end - line_start, sizeof(char), fd);
 
     print_basic_error(stream, error, color);
+
+    fprintf(stderr, "%s % 4d |%s ", C(color, C_BLACK), (int) error->loc.line, C(color, C_RST));
 
     fwrite(line_str, sizeof(char), error->loc.column, stderr);
     fprintf(stderr, "%s", C(color, C_RED C_RST));

@@ -25,8 +25,13 @@ let
     loadSystemPkg = import;
     pkgCallbacks = builtins.map loadSystemPkg $ findSystemPkgs geode.pkgsDir;
 
+    defaultEnv = {
+        PREFIX = builtins.toString lib.prefix;
+#        CFLAGS="-specs"
+    };
+
     pkgs = let
-        unresolved = pkgs: builtins.foldl (lib.callPackageWith pkgs) (geode.intrinsicStore {}) pkgCallbacks;
+        unresolved = pkgs: builtins.foldl (lib.createEnv defaultEnv << lib.callPackageWith pkgs) (geode.intrinsicStore {}) pkgCallbacks;
     in fix unresolved; 
 in
 pkgs

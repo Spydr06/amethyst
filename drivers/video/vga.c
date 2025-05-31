@@ -5,8 +5,6 @@
 #include <errno.h>
 #include <stddef.h>
 
-#include <limine/limine.h>
-
 #include <mem/heap.h>
 
 struct vga vga;

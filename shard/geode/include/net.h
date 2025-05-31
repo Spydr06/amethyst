@@ -3,7 +3,7 @@
 
 #include <libshard.h>
 
-struct shard_value builtin_net_downloadTmp(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+struct shard_value builtin_net_downloadFile(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 
 #endif /* _GEODE_NET_H */
 

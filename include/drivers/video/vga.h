@@ -9,7 +9,7 @@
 #ifndef ASM_FILE
 
 #include <stdint.h>
-#include <limine/limine.h>
+#include <limine.h>
 
 enum vga_mode : uint8_t {
     VGA_UNKNOWN = 0,

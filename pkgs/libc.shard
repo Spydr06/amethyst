@@ -3,21 +3,18 @@ lib.mkPackage rec {
     name = "libc";
     version = "0.0.1";
 
-    sourceDir = util.paths.store + name;
-    buildDir = sourceDir + "build";
+    sourceDir = "${pkgs.amethyst-source}/source/store/libc";
+    buildDir = "./build";
 
-    build = util.shell.make [
-        "-C" sourceDir
-            ("PREFIX=" + $ builtins.toString util.paths.prefix)
-    ];
+    env = {
+        PREFIX = builtins.toString lib.prefix;
+        BUILD_DIR = buildDir;
+    };
 
-    install = builtins.seqList [
-        (util.shell.make [
-         "-C" sourceDir 
-         "install"
-         ("PREFIX=" + $ builtins.toString util.paths.prefix)
-        ])
-        (geode.setenv "CFLAGS" $ "-specs=" + (builtins.toString util.paths.gcc_specs) + " " + $ let cflags = geode.getenv "CFLAGS"; in if cflags == null then "" else cflags)
-    ];
+    buildPhase = lib.make ["-C" sourceDir];
+
+    installPhase = lib.make ["-C" sourceDir "install"];
+        #(geode.setenv "CFLAGS" $ "-specs=" + (builtins.toString util.paths.gcc_specs) + " " + $ let cflags = geode.getenv "CFLAGS"; in if cflags == null then "" else cflags)
+    #];
 }
 

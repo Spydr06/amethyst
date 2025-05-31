@@ -1,10 +1,13 @@
 #include "archives.h"
 
 #include "exception.h"
+#include "util.h"
 #include "log.h"
 
 #include <archive.h>
 #include <archive_entry.h>
+
+#include <string.h>
 
 static int copy_data(struct archive *ar, struct archive *aw) {
     const void *buff;
@@ -29,10 +32,8 @@ struct shard_value builtin_archive_extractTar(volatile struct shard_evaluator* e
     struct geode_context *context = e->ctx->userp;
 
     struct shard_value src_path = shard_builtin_eval_arg(e, builtin, args, 0);
-    struct shard_value dst_path = shard_builtin_eval_arg(e, builtin, args, 1);
 
-    // FIXME: respect `dst_path`!
-    geode_verbosef(context, "Extracting `%s' to `%s'", src_path.path, dst_path.path);
+    geode_infof(context, "Extracting `%s'...", src_path.path);
 
     struct archive *a = archive_read_new();
     struct archive *ext = archive_write_disk_new();
@@ -51,8 +52,21 @@ struct shard_value builtin_archive_extractTar(volatile struct shard_evaluator* e
         goto cleanup;
     }
 
+    char *dst_path = NULL;
+
     struct archive_entry *entry;
     while((err = archive_read_next_header(a, &entry)) == ARCHIVE_OK) {
+        if(!dst_path) {
+            const char *ent_path = archive_entry_pathname(entry);
+            dst_path = shard_gc_strdup(e->gc, ent_path, strlen(ent_path));
+            strchrnul(dst_path, '/')[0] = '\0';
+
+            if(fexists(dst_path)) {
+                geode_verbosef(context, "`%s': File exists", dst_path);
+                goto cleanup;
+            }
+        }
+
         if((err = archive_write_header(ext, entry)) < ARCHIVE_OK) {
             ex = geode_archive_ex(context, ext, "Could not extract `%s'", archive_entry_pathname(entry));
             goto cleanup;
@@ -75,6 +89,6 @@ cleanup:
     if(ex)
         geode_throw(context, ex);
 
-    return dst_path;
+    return (struct shard_value){.type=SHARD_VAL_PATH, .path=dst_path, .pathlen=strlen(dst_path)};
 }
 

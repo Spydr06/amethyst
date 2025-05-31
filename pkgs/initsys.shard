@@ -3,23 +3,21 @@ lib.mkPackage rec {
     name = "initsys";
     version = "0.0.1";
 
-# TODO: fetch/verify source from repo
-    sourceDir = util.paths.store + name;
-    buildDir = sourceDir + "build";
+    buildDir = lib.realpath "./build";
+    sourceDir = builtins.toPath "${pkgs.amethyst-source}/source/store/initsys";
 
-    buildDependencies = [
-        pkgs.libc
-        pkgs.getopt
-        pkgs.libshard
+    env = {
+        PREFIX = builtins.toString lib.prefix;
+        CFLAGS = "-specs=${lib.prefix}/lib/gcc/cross-libc.specs";
+    };
+
+    buildDependencies = with pkgs; [
+        libc
+        getopt
+        libshard
     ];
 
-    runtimeDependencies = [
-        pkgs.libc
-        pkgs.getopt
-        pkgs.libshard
-    ];
-
-    build = util.shell.make ["-C" sourceDir 
+    buildPhase = lib.make ["-C" sourceDir 
 #          ("CFLAGS=-specs=" + $ builtins.toString util.paths.gcc_specs)
     ];
 

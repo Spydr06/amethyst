@@ -2,7 +2,7 @@
 #define _AMETHYST_X86_64_MMU_H
 
 #include <cdefs.h>
-#include <limine/limine.h>
+#include <limine.h>
 #include <x86_64/cpu/cpu.h>
 
 #include <mem/mmap.h>

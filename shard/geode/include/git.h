@@ -11,6 +11,7 @@ void git_lazy_init(struct geode_context *context);
 void git_shutdown(struct geode_context *context);
 
 exception_t *geode_git_ex(struct geode_context *context, const git_error *e, const char *fmt, ...);
+exception_t *git_diff_create_untracked(struct geode_context *context, struct git_diff *diff, const char *repo_path);
 
 struct shard_value builtin_git_checkoutBranch(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 struct shard_value builtin_git_pullRepo(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);

@@ -2,7 +2,7 @@
 
 #include <ff/tar.h>
 #include <init/cmdline.h>
-#include <limine/limine.h>
+#include <limine.h>
 #include <mem/vmm.h>
 #include <mem/pmm.h>
 #include <filesystem/virtual.h>

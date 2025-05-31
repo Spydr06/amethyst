@@ -2,12 +2,15 @@
 
 #include "exception.h"
 #include "log.h"
+#include "util.h"
 
 #include <git2/global.h>
 #include <git2/checkout.h>
 #include <git2/remote.h>
 #include <git2/repository.h>
 
+#include <stdio.h>
+#include <libgen.h>
 #include <memory.h>
 
 #ifdef __GNUC__
@@ -46,6 +49,37 @@ exception_t *geode_git_ex(struct geode_context *context, const git_error *e, con
 #endif
 
     return ex;
+}
+
+exception_t *git_diff_create_untracked(struct geode_context *context, struct git_diff *diff, const char *repo_path) {
+    int err;
+    size_t num_deltas = git_diff_num_deltas(diff);
+
+    for(size_t i = 0; i < num_deltas; i++) {
+        const git_diff_delta *delta = git_diff_get_delta(diff, i);
+
+        const char *path = delta->new_file.path;
+        if(delta->status != GIT_DELTA_UNTRACKED || fexists(path))
+            continue;
+        
+        char *full_path = l_sprintf(&context->l_global, "%s/%s", repo_path, path);
+        
+        char *path_copy = strdup(full_path);
+        char *dir = dirname(path_copy);
+        if(!fexists(dir) && (err = mkdir_recursive(dir, 0777)))
+            return geode_io_ex(context, err, "Could not make directory `%s'", dir);
+
+        free(path_copy);
+
+        FILE *f = fopen(full_path, "wb");
+        if(!f)
+            return geode_io_ex(context, err, "Could not create file `%s'", full_path);
+        fclose(f);
+
+        geode_verbosef(context, "Create untracked file `%s'", full_path);
+    }
+
+    return NULL;
 }
 
 struct shard_value builtin_git_checkoutBranch(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {

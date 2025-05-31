@@ -1,3 +1,27 @@
-{
+rec {
+    lazyMap = f :: function | set: xs :: list:
+        (case builtins.length xs of
+            0 => [];
+            1 => [ (f $ builtins.head xs) ];
+            _ => [ (f $ builtins.head xs) ] ++ (lazyMap f $ builtins.tail xs)
+        );
 
+    lazyFilter = f :: function | set: xs :: list:
+        let
+            x = builtins.head xs;
+        in if xs == []
+            then []
+            else (builtins.when (f x) x) ++ (lazyFilter f $ builtins.tail xs);
+
+    fileExists = file :: path | string:
+        (case file of
+            _ :: path   => geode.file.exists file;
+            _ :: string => geode.file.exists $ builtins.toPath file
+        );
+
+    setEnv = geode.setenv;
+    getEnv = geode.getenv;
+
+    applyEnvSet = builtins.mapAttrs setEnv;
 }
+

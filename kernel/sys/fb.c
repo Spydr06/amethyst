@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <assert.h>
 
-#include <limine/limine.h>
+#include <limine.h>
 #include <mem/heap.h>
 #include <mem/user.h>
 

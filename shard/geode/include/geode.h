@@ -5,6 +5,8 @@
 #include "exception.h"
 #include "store.h"
 
+#include <sys/ioctl.h>
+
 #include <libshard.h>
 #include <stdbool.h>
 
@@ -55,6 +57,11 @@ struct geode_context {
     struct tmpfile_list tmpfiles;
     
     const char *initial_workdir;
+
+    struct {
+        bool isatty;
+        struct winsize termsize;
+    } outstream, errstream;
 };
 
 int geode_mkcontext(struct geode_context *context, const char *progname);
@@ -73,6 +80,8 @@ void geode_set_verbose(struct geode_context *context, bool verbose);
 
 void geode_load_builtins(struct geode_context *context);
 void geode_apply_flags(struct geode_context *context);
+
+void geode_update_termsize(struct geode_context *context);
 
 // subcommands
 

@@ -20,7 +20,7 @@
 #include <assert.h>
 #include <kernelio.h>
 
-#include <limine/limine.h>
+#include <limine.h>
 
 size_t smp_cpus_awake = 1;
 static struct cpu* smp_cpus;

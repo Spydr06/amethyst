@@ -2,7 +2,7 @@
 #define _AMETHYST_X86_64_TRACE_H
 
 #include <stdint.h>
-#include <limine/limine.h>
+#include <limine.h>
 #include <cpu/cpu.h>
 
 void load_symtab(struct limine_kernel_file_response* response);

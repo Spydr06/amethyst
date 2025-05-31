@@ -27,18 +27,26 @@ lib.mkPackage rec {
 
     fullArguments = config.kernel.arguments ++ [ "--" ] ++ config.kernel.extra-arguments;
 
+    env = {
+        # kernel cannot use system import
+        C_CXX_FLAGS="-I${pkgs.limine}";
+        BUILD_DIR=buildDir;
+        SANITIZERS=getSanitizers;
+    };
+
     buildDependencies = [
         pkgs.limine
     ];
 
     limineConfig = template: 
-        let kernelArgs = builtins.join " " fullArguments;
-    sed = geode.proc.spawnPipe "sed" [
-        "-e" ("s|@VERSION@|" + version + "|g")
-            "-e" ("s|@KERNEL_ELF@|" + kernelElf + "|")
-            "-e" ("s|@KERNEL_ARGS@|" + kernelArgs + "|")
-            template
-    ] "";
+        let 
+            kernelArgs = builtins.join " " fullArguments;
+            sed = geode.proc.spawnPipe "sed" [
+                "-e" ("s|@VERSION@|" + version + "|g")
+                "-e" ("s|@KERNEL_ELF@|" + kernelElf + "|")
+                "-e" ("s|@KERNEL_ARGS@|" + kernelArgs + "|")
+                template
+            ] "";
     in assert sed.exitCode == 0; sed.stdout;
 
     getSanitizers = builtins.join "," config.sanitize;
@@ -47,8 +55,8 @@ lib.mkPackage rec {
 
     installPhase = builtins.seqList [
         (lib.installFile { src = buildTarget; dst = /boot/ + kernelElf; mode = "755"; })
-        (lib.installDir publicHeaderDir publicHeaderDir)
-        #(lib.writeFile (geode.prefix + limineConfigPath) $ limineConfig "limine.cfg.in")
+        (lib.installDir publicHeaderDir /usr/include)
+        # (lib.writeFile (geode.prefix + limineConfigPath) $ limineConfig "limine.cfg.in")
     ];
 }
 

@@ -1,6 +1,6 @@
 #include <x86_64/cpu/acpi.h>
 
-#include <limine/limine.h>
+#include <limine.h>
 
 #include <kernelio.h>
 #include <assert.h>

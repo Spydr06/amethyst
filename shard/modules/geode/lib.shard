@@ -1,5 +1,5 @@
 let
-    stdenv = import ./stdenv;
+    stdenv = import ./stdenv.shard;
 
     defaultArgs = pkgs: { inherit lib; inherit stdenv; inherit pkgs; };
 
@@ -13,8 +13,31 @@ let
            checkInstalled = builtins.isPath; 
         in builtins.all checkInstalled;
 
-    sequencedTasks = tasks :: list:
-        builtins.seqList tasks;
+    createEnv = env :: set: value:
+        let
+            saveEnv = stdenv.applyEnvSet env;
+            restoreEnv = stdenv.applyEnvSet saveEnv;
+        in builtins.seqList [
+            saveEnv
+            value
+            restoreEnv
+            value
+        ];
+
+    sequencedTasks = tasks :: list: deriv :: set:
+        let
+            checkExitCode = { name, task }:
+                let 
+                    isOk = x: x == null || x == 0;
+                    failWith = message: builtins.throw "Task `${name}` of ${deriv.name}-${deriv.version} failed with ${message}.";
+                in (case task of
+                    x if isOk x       => false;
+                    exitCode :: int   => failWith "exit code ${exitCode}";
+                    message :: string => failWith ": ${message}";
+                    result            => failWith "unknown value ${result}"
+                );
+        in
+        assert (builtins.filter checkExitCode tasks) == []; [];
 
     /* builder:
        - fetch
@@ -25,9 +48,10 @@ let
        - install
        - postInstall
     */
-    # TODO: environment handling
     derivationBuilder = deriv :: set:
         let
+            phases = [ "fetch" "patch" "configure" "build" "check" "install" "post install" ];
+
             buildDeps = deriv.buildDependencies or [];
             runtimeDeps = deriv.buildRuntimeDependencies or [];
             
@@ -40,19 +64,21 @@ let
             installBuildDeps = installDeps buildDeps;
             installRuntimeDeps = installDeps runtimeDeps;
 
-            builderTasks = [
-                installBuildDeps
-                deriv.fetchPhase or null
-                deriv.patchPhase or null
-                deriv.configurePhase or null
-                deriv.buildPhase or null
-                installRuntimeDeps 
-                deriv.checkPhase or null
-                deriv.installPhase or null
-                deriv.postInstallPhase or null
-            ];
-        in
-            sequencedTasks builderTasks;
+            filterPhase = name: builtins.hasAttr (name + "Phase") deriv;
+
+            builderPhase = name: let
+                    phase = builtins.getAttr (name + "Phase") deriv;
+                    infoMessage = geode.debug.println ">>> Entering phase ${name} of ${deriv.name}-${deriv.version}";
+                in builtins.seq
+                    infoMessage
+                    { inherit name; task = createEnv deriv.env or {} $ phase; };
+
+            builderTasks = 
+                [ { name = "build dependencies"; task = installBuildDeps; } ]
+                ++ (stdenv.lazyMap builderPhase $ stdenv.lazyFilter filterPhase phases)
+                ++ [ { name = "build dependencies"; task = installRuntimeDeps; } ];
+
+        in sequencedTasks builderTasks deriv; 
 
     mkDerivation = deriv :: set: 
         {
@@ -80,7 +106,7 @@ let
 
     readFile = filepath :: path: null;
 
-    mkdirRec = path: if geode.file.exists path
+    mkdirRec = path: if stdenv.fileExists path
             then 0
             else builtins.seq
                 (mkdirRec (geode.file.dirname path))
@@ -116,15 +142,22 @@ let
                 (checkoutBranch branch to);
             _ => builtins.throw "invalid arguments provided to `lib.fetchGitRepoTo'"
         );
-
-    fetchTarballTo = to :: path: url :: string: geode.archive.extractTar (geode.net.downloadTmp url) to;
-    
+ 
     defaultSourceDir = builtins.toPath "./source";
+
+    fetchFileTo = dest: if stdenv.fileExists dest
+        then _: dest
+        else geode.net.downloadFile dest;
+        
+    fetchTarballTo = dest: geode.archive.extractTar << fetchFileTo dest;
 
     lib = {
         inherit defaultArgs;
         inherit defaultSourceDir;
 
+        prefix = geode.prefix;
+
+        inherit createEnv;
         inherit callPackage;
         inherit callPackageWith;
         inherit mkDerivation;
@@ -140,8 +173,11 @@ let
         inherit fetchGitRepoTo;
         fetchGitRepo = fetchGitRepoTo defaultSourceDir;
 
+        inherit fetchFileTo;
+        fetchFile = url :: string: fetchTarballTo (builtins.basename $ builtins.toPath url) url;
+
         inherit fetchTarballTo;
-        fetchTarball = fetchTarballTo defaultSourceDir;
+        fetchTarball = url :: string: fetchTarballTo (builtins.basename $ builtins.toPath url) url;
 
         realpath = p :: path | string:
             let
@@ -152,7 +188,11 @@ let
 
         make = args :: list: 
             geode.proc.spawn "make" (builtins.map builtins.toString (args ++ ["-j" (geode.proc.nJobs)])) true;
-        
+
+        requireFile = file: if stdenv.fileExists file
+            then null
+            else "`${file}': No such file or directory";
+
         installFiles = builtins.map installFile;
 
         writeFile = file: data: builtins.seq

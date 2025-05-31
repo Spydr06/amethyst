@@ -3,7 +3,7 @@
 #include <drivers/video/console.h>
 #include <drivers/video/vga.h>
 #include <init/interrupts.h>
-#include <limine/limine.h>
+#include <limine.h>
 #include <mem/heap.h>
 #include <mem/mmap.h>
 #include <mem/pmm.h>

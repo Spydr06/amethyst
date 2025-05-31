@@ -607,7 +607,7 @@ struct shard_value {
     };
 };
 
-SHARD_DECL bool shard_values_equal(struct shard_value* lhs, struct shard_value* rhs);
+SHARD_DECL bool shard_values_equal(volatile struct shard_evaluator *e, struct shard_value* lhs, struct shard_value* rhs);
 
 struct shard_lazy_value {
     union {

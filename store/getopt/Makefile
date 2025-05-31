@@ -21,6 +21,7 @@ $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 
 .PHONY: install
 install:
+	install -m 644 $(INCLUDE_DIR)/getopt.h $(PREFIX)/usr/$(INCLUDE_DIR)/getopt.h
 	install -m 644 $(LIBGETOPT) $(PREFIX)/lib/$(notdir $(LIBGETOPT))
 
 $(BUILD_DIR):

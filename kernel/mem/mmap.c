@@ -1,7 +1,7 @@
 #include <mem/mmap.h>
 #include <kernelio.h>
 #include <mem/pmm.h>
-#include <limine/limine.h>
+#include <limine.h>
 
 #include <errno.h>
 #include <string.h>

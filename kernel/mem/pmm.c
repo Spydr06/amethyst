@@ -10,7 +10,7 @@
 #include <math.h>
 #include <string.h>
 
-#include <limine/limine.h>
+#include <limine.h>
 
 static struct bitmap physical;
 static spinlock_t pmm_lock;

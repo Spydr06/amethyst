@@ -1,36 +1,35 @@
-{ lib, pkgs, ... }:
+{ lib, pkgs, stdenv, ... }:
 lib.mkPackage rec {
     name = "limine";
     version = "7.4.1";
 
     config = {
-        boot.loader.platform = {
+        platform = {
             efi = true;
             bios = true;
         };
     };
 
-    sourceDir = "./limine-${version}";
+    sourceDir = let
+            url = lib.fetchTarball "https://github.com/limine-bootloader/limine/releases/download/v${version}/limine-${version}.tar.gz";
+        in url;
 
     limineBin = "${sourceDir}/limine";
 
-    limineLoaders = 
-        (builtins.when config.boot.loader.platform.bios [ "limine-bios.sys" "limine-bios-cd.bin" ]) ++
-        (builtins.when config.boot.loader.platform.efi "limine-uefi-cd.bin");
-
     biosInstaller = iso: lib.runPrecompiled [ (sourceDir + limineBin) "bios-install" iso ];
 
-    bootX64Efi = "BOOTX64.EFI";
-    bootIA32Efi = "BOOTIA32.EFI";
+    fetchPhase = lib.requireFile sourceDir;
 
-    fetchPhase = let
-            url = "https://github.com/limine-bootloader/limine/releases/download/v${version}/${sourceDir}.tar.gz";
-        in builtins.toString $ lib.fetchTarball url;
-
-    configurePhase = geode.proc.spawn "${sourceDir}/configure" [
-            "--prefix" (builtins.toString geode.prefix) 
-            "--enable-bios-cd" "--enable-bios" "--enable-uefi-x86-64" "--enable-uefi-cd"
-        ] true;
+    configurePhase = if stdenv.fileExists "GNUmakefile" 
+        then 0
+        else geode.proc.spawn "${sourceDir}/configure" (
+            [ "--prefix" "${lib.prefix}/usr" ]
+            ++ (builtins.when config.platform.bios "--enable-bios")
+            ++ (builtins.when config.platform.bios "--enable-bios-cd")
+            ++ (builtins.when config.platform.efi "--enable-uefi-x86-64")
+            ++ (builtins.when config.platform.efi "--enable-uefi-cd")
+        )
+        true;
 
     buildPhase = lib.make ["all"];
 

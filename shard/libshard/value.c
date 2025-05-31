@@ -122,7 +122,7 @@ int shard_value_to_string(struct shard_context* ctx, struct shard_string* str, c
     return ctx->errors.count;
 }
 
-bool shard_values_equal(struct shard_value* lhs, struct shard_value* rhs) {
+bool shard_values_equal(volatile struct shard_evaluator *e, struct shard_value* lhs, struct shard_value* rhs) {
     if(lhs->type != rhs->type)
         return false;
 
@@ -141,10 +141,45 @@ bool shard_values_equal(struct shard_value* lhs, struct shard_value* rhs) {
             return strcmp(lhs->string, rhs->string) == 0;
         case SHARD_VAL_FUNCTION:
             return memcmp(&lhs->function, &rhs->function, sizeof(lhs->function)) == 0;
-     case SHARD_VAL_BUILTIN:
+        case SHARD_VAL_BUILTIN:
             return lhs->builtin.builtin == rhs->builtin.builtin;
-        case SHARD_VAL_SET:
         case SHARD_VAL_LIST:
+            struct shard_list *l_head = lhs->list.head,
+                              *r_head = rhs->list.head;
+
+            while(l_head && r_head) {
+                struct shard_value l_val = shard_eval_lazy2(e, l_head->value);
+                struct shard_value r_val = shard_eval_lazy2(e, r_head->value);
+
+                if(!shard_values_equal(e, &l_val, &r_val))
+                    return false;
+
+                l_head = l_head->next;
+                r_head = r_head->next;
+            }
+            
+            return !l_head && !r_head;
+        case SHARD_VAL_SET:
+            struct shard_set *l_set = lhs->set, *r_set = rhs->set;
+            if(l_set->size != r_set->size)
+                return false;
+
+            for(size_t i = 0; i < l_set->capacity; i++) {
+                if(!l_set->entries[i].key)
+                    continue;
+
+                struct shard_lazy_value *r_lazy;
+                if(shard_set_get(r_set, l_set->entries[i].key, &r_lazy))
+                    return false;
+
+                struct shard_value l_val = shard_eval_lazy2(e, l_set->entries[i].value);
+                struct shard_value r_val = shard_eval_lazy2(e, r_lazy);
+
+                if(!shard_values_equal(e, &l_val, &r_val))
+                    return false;
+            }
+
+            return true;
         default:
             assert(false && "unimplemented!");
     }

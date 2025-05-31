@@ -9,6 +9,7 @@
 
 #include "../shard_libc_driver.h"
 
+#include <asm-generic/ioctls.h>
 #include <assert.h>
 #include <errno.h>
 #include <memory.h>
@@ -111,5 +112,15 @@ int geode_set_jobcnt(struct geode_context *context, char *jobcnt) {
 
 void geode_set_verbose(struct geode_context *context, bool verbose) {
     context->flags.verbose = verbose;
+}
+
+void geode_update_termsize(struct geode_context *context) {
+    if((context->outstream.isatty = isatty(STDOUT_FILENO))
+            && ioctl(STDOUT_FILENO, TIOCGWINSZ, &context->outstream.termsize) == -1) 
+        geode_throw(context, geode_io_ex(context, errno, "Could not get stdout terminal size"));
+
+    if((context->errstream.isatty = isatty(STDERR_FILENO))
+            && ioctl(STDERR_FILENO, TIOCGWINSZ, &context->errstream.termsize) == -1) 
+        geode_throw(context, geode_io_ex(context, errno, "Could not get stderr terminal size"));
 }
 

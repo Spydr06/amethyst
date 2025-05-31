@@ -1,6 +1,7 @@
 #include <libgen.h>
 #include <stddef.h>
 #include <string.h>
+#include <assert.h>
 
 char *dirname(char *s)
 {
@@ -14,3 +15,7 @@ char *dirname(char *s)
 	return s;
 }
 
+char *basename(char *s)
+{
+    assert(!"unimplemented");
+}
