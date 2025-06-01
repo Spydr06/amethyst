@@ -3,7 +3,9 @@ lib.mkPackage rec {
     name = "libshard";
     version = "0.0.1";
 
+    buildDir = lib.realpath "./build";
     sourceDir = "${pkgs.amethyst-source}/source/shard";
+
     makeTarget = "lib";
     installTarget = "install-lib";
 
@@ -12,7 +14,7 @@ lib.mkPackage rec {
     env = {
         PREFIX = builtins.toString lib.prefix;
         CFLAGS = "-specs=${lib.prefix}/lib/gcc/cross-libc.specs";
-        BUILD_DIR = "./build";
+        BUILD_DIR = builtins.toString buildDir;
     };
 
     buildPhase = lib.make ["-C" sourceDir makeTarget];
