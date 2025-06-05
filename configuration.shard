@@ -1,29 +1,23 @@
-{ lib, pkgs, ...}:
+{ lib, pkgs, stdenv, ... }:
 lib.mkSystemConfig {
-    env.packages = with pkgs; [
+    imports = [
+    ];
+
+    env = {
+
+    };
+
+    boot.initrd.enable = true;
+
+    boot.kernelArgs = [
+        "loglevel=debug" "log-syscalls"
+    ];
+
+    systemPackages = with pkgs; [
         amethyst-kernel
         initsys
     ];
+
+    systemVersion = builtins.trim $ stdenv.readFile "${pkgs.amethyst-source}/source/version";
 }
-/*lib.mkSystemConfig {
-    env.extraSources = [
-        
-    ];
-
-    boot.initrd.enable = true;
-    boot.loader.limine.enable = true;
-
-    boot.kernel.modules = with modules; [
-
-    ];
-
-    env.packages = with pkgs; [
-        amethyst-kernel
-        coreutils
-    ];
-
-    services.logind.enable = true;
-
-    /* systemVersion = builtins.trim $ lib.readFile ./version; */
-#}
 

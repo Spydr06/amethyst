@@ -259,7 +259,46 @@ cleanup_repo:
     geode_call_builder(context, deriv);
 }
 
+static int bootstrap_finish(struct geode_context *context, struct shard_value result) {
+    int exit_code = EXIT_SUCCESS;
+
+    struct shard_lazy_value *system_deriv_path_value;
+    if(shard_set_get(result.set, shard_get_ident(&context->shard, "derivation"), &system_deriv_path_value)) {
+        geode_errorf(context, "Bootstrap result does not have required `derivation' attr");
+        exit_code = EXIT_FAILURE;
+        goto cleanup;
+    }
+
+    if(shard_eval_lazy(&context->shard, system_deriv_path_value) > 0)
+        geode_throw(context, geode_shard_ex(context));
+   
+    if(system_deriv_path_value->eval.type != SHARD_VAL_PATH) {
+        geode_errorf(context, 
+                "Bootstrap result `derivation' attr is required to be of type `path', got `%s'",
+                shard_value_type_to_string(&context->shard, system_deriv_path_value->eval.type)
+            );
+        exit_code = EXIT_FAILURE;
+        goto cleanup;
+    }
+
+    char *copy_cmd = l_sprintf(&context->l_global, "cp %s %s/*.iso .", context->flags.verbose ? "-v" : "", system_deriv_path_value->eval.path);
+    int err = system(copy_cmd);
+    if(err < 0)
+        geode_throw(context, geode_io_ex(context, errno, "cmd failed: %s", copy_cmd));
+    
+    if(WEXITSTATUS(err) != 0) {
+        geode_errorf(context, "cmd exited with code %d: %s", WEXITSTATUS(err), copy_cmd);
+        exit_code = EXIT_FAILURE;
+        goto cleanup;
+    }
+
+cleanup:
+    return exit_code;
+}
+
 int geode_bootstrap(struct geode_context *context, int argc, char *argv[]) {
+    int exit_code = EXIT_SUCCESS;
+
     switch(argc) {
     case 0:
         break;
@@ -274,7 +313,7 @@ int geode_bootstrap(struct geode_context *context, int argc, char *argv[]) {
 
     geode_headingf(context, "Bootstrapping `%s' to `%s'.", context->config_path.string, context->prefix_path.string);
 
-    geode_load_builtins(context);
+    geode_load_builtins(context, "bootstrap");
 
     test_prefix_writable(context);
 
@@ -302,10 +341,18 @@ int geode_bootstrap(struct geode_context *context, int argc, char *argv[]) {
 
     shard_string_push(&context->shard, &result_str, '\0');
 
-    printf("Bootstrap result: %s\n", result_str.items); 
+    if(result.type != SHARD_VAL_SET) {
+        geode_errorf(context, "Unexpected bootstrap result: %s", result_str.items);
+        exit_code = EXIT_FAILURE;
+        goto cleanup;
+    } 
+    else
+        geode_verbosef(context, "Bootstrap result: %s", result_str.items);
 
+    exit_code = bootstrap_finish(context, result);
+
+cleanup:
     shard_string_free(&context->shard, &result_str);
-
-    return EXIT_SUCCESS;
+    return exit_code;
 }
 

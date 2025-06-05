@@ -1,0 +1,50 @@
+config: assert config.enable or false;
+{ lib, pkgs, stdenv, ... }: 
+let
+    kernelPackage = lib.storeEntry config.kernelPackage or pkgs.amethyst-kernel;
+
+    kernelVersion = kernelPackage.version;
+    kernelName = kernelPackage.name;
+
+    version = config.version or kernelVersion;
+    name = "initrd-${config.name or kernelName}";
+
+    compression = config.compression or "ustar";
+    installFile = builtins.toPath "/boot/amethyst-${kernelVersion}-${stdenv.targetArch}.initrd";
+
+    extraPackages = config.extraPackages or [];
+
+    removeTrailingSep = p :: path: (case builtins.splitFirst "/" $ builtins.toString p of
+            xs :: list if (builtins.head xs) == "" => builtins.elemAt xs 1;
+            xs => xs
+        );
+
+    filterExisting = builtins.filter (p: stdenv.fileExists "${lib.prefix}/${p}");
+
+    # TODO: include additional paths provided by extraPackages
+    defaultFiles = [ /bin /sbin /include stdenv.configPath stdenv.pkgsPath ];
+
+    extraDirs = config.extraDirs or [];
+    initrdDirs = builtins.map removeTrailingSep 
+        $ filterExisting
+        $ config.overwriteDirs or defaultFiles ++ extraDirs;
+in
+lib.mkDerivation {
+    inherit name;
+    inherit version;
+
+    publicName = "initrd";
+
+    buildDependencies = extraPackages;
+
+    buildPhase = lib.spawnProcess $ [
+            "tar"
+            "--format=${compression}"
+            "-cf" "./${builtins.basename installFile}"
+            "--recursion"
+            "--directory=${lib.prefix}"
+        ] ++ initrdDirs;
+
+    installPhase = lib.installFile { src = "./${builtins.basename installFile}"; dst = installFile; mode = 0644; };
+};
+

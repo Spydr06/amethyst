@@ -174,4 +174,3 @@ struct shard_value geode_builtin_intrinsicStore(volatile struct shard_evaluator 
     return geode_store_to_shard_value(e->ctx, &context->intrinsic_store);
 }
 
-

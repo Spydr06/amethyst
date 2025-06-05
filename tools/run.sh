@@ -73,6 +73,14 @@ while [[ $# -gt 0 ]]; do
         (--gdb=*)
             GDB=${1#*=}
             ;;
+        --help)
+            show_help
+            exit 0
+            ;;
+        -h)
+            show_help
+            exit 0
+            ;;
         *)
             error "unknown option -- '$1'"
             ;;

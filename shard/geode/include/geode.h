@@ -78,7 +78,7 @@ void geode_set_pkgs_dir(struct geode_context *context, char *pkgs_path);
 int geode_set_jobcnt(struct geode_context *context, char *jobcnt);
 void geode_set_verbose(struct geode_context *context, bool verbose);
 
-void geode_load_builtins(struct geode_context *context);
+void geode_load_builtins(struct geode_context *context, const char *subcommand);
 void geode_apply_flags(struct geode_context *context);
 
 void geode_update_termsize(struct geode_context *context);

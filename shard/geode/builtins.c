@@ -4,6 +4,7 @@
 #include "git.h"
 #include "net.h"
 #include "archives.h"
+#include "util.h"
 
 #include <libshard.h>
 
@@ -28,7 +29,9 @@ static struct shard_value builtin_file_dirname(volatile struct shard_evaluator* 
 static struct shard_value builtin_file_exists(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 static struct shard_value builtin_file_mkdir(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 static struct shard_value builtin_file_writeFile(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_file_readFile(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 static struct shard_value builtin_file_readDir(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
+static struct shard_value builtin_file_removeFile(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 static struct shard_value builtin_errno_toString(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 static struct shard_value builtin_error_throw(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
 static struct shard_value builtin_proc_spawn(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);
@@ -47,7 +50,9 @@ static struct shard_builtin geode_builtin_functions[] = {
     SHARD_BUILTIN("geode.file.exists", builtin_file_exists, SHARD_VAL_PATH),
     SHARD_BUILTIN("geode.file.mkdir", builtin_file_mkdir, SHARD_VAL_PATH),
     SHARD_BUILTIN("geode.file.writeFile", builtin_file_writeFile, SHARD_VAL_PATH, SHARD_VAL_STRING),
+    SHARD_BUILTIN("geode.file.readFile", builtin_file_readFile, SHARD_VAL_PATH),
     SHARD_BUILTIN("geode.file.readDir", builtin_file_readDir, SHARD_VAL_PATH),
+    SHARD_BUILTIN("geode.file.removeFile", builtin_file_removeFile, SHARD_VAL_PATH),
     SHARD_BUILTIN("geode.errno.toString", builtin_errno_toString, SHARD_VAL_INT),
     SHARD_BUILTIN("geode.error.throw", builtin_error_throw, SHARD_VAL_STRING),
     SHARD_BUILTIN("geode.git.checkoutBranch", builtin_git_checkoutBranch, SHARD_VAL_STRING, SHARD_VAL_PATH),
@@ -64,11 +69,12 @@ static struct shard_builtin geode_builtin_functions[] = {
     SHARD_BUILTIN("geode.intrinsicStore", geode_builtin_intrinsicStore, SHARD_VAL_SET),
 };
 
-static void load_constants(struct geode_context* ctx) {
+static void load_constants(struct geode_context* ctx, const char *subcommand) {
     struct {
         const char* ident;
         struct shard_value value;
     } builtin_constants[] = {
+        {"geode.subcommand", (struct shard_value){.type=SHARD_VAL_STRING, .string=subcommand, .strlen=strlen(subcommand)}},
         {"geode.prefix", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->prefix_path.string, .pathlen=strlen(ctx->prefix_path.string)}},
         {"geode.storeDir", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->store_path.string, .pathlen=strlen(ctx->store_path.string)}},
         {"geode.pkgsDir", (struct shard_value){.type=SHARD_VAL_PATH, .path=ctx->pkgs_path.string, .pathlen=strlen(ctx->pkgs_path.string)}},
@@ -88,8 +94,8 @@ static void load_constants(struct geode_context* ctx) {
     }
 }
 
-void geode_load_builtins(struct geode_context* ctx) {
-    load_constants(ctx);
+void geode_load_builtins(struct geode_context* ctx, const char *subcommand) {
+    load_constants(ctx, subcommand);
 
     for(size_t i = 0; i < __len(geode_builtin_functions); i++) {
         int err = shard_define_builtin(
@@ -189,6 +195,27 @@ static struct shard_value builtin_file_writeFile(volatile struct shard_evaluator
     return (struct shard_value){.type=SHARD_VAL_INT, .integer=err};
 }
 
+static struct shard_value builtin_file_readFile(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value file = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    FILE* fp = fopen(file.path, "r");
+    if(!fp)
+        return (struct shard_value){.type=SHARD_VAL_INT, .integer=errno};
+
+    fseek(fp, 0, SEEK_END);
+    size_t filesz = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    char *data = shard_gc_malloc(e->gc, filesz + 1);
+    fread(data, 1, filesz, fp);
+
+    data[filesz] = '\0';
+
+    fclose(fp);
+
+    return (struct shard_value){.type=SHARD_VAL_STRING, .string=data, .strlen=filesz+1};
+}
+
 static struct shard_value builtin_file_readDir(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value path = shard_builtin_eval_arg(e, builtin, args, 0);
 
@@ -241,6 +268,18 @@ static struct shard_value builtin_file_readDir(volatile struct shard_evaluator* 
 
     closedir(dir);
     return (struct shard_value){.type=SHARD_VAL_SET, .set=entries};
+}
+
+static struct shard_value builtin_file_removeFile(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value path = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    int err = 0;
+    if(fisdir(path.path))
+        err = rmdir_recursive(path.path);
+    else if(unlink(path.path) < 0)
+        err = errno;
+
+    return (struct shard_value){.type=SHARD_VAL_INT, .integer=err};
 }
 
 static struct shard_value builtin_errno_toString(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {

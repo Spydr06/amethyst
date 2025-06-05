@@ -19,9 +19,77 @@ rec {
             _ :: string => geode.file.exists $ builtins.toPath file
         );
 
+    removeFile = file :: path | string: if fileExists file 
+        then (case file of
+                _ :: path => geode.file.removeFile file;
+                _ :: string => geode.file.removeFile $ builtins.toPath file
+            )
+        else 0;
+
+    readFile = file :: path | string: let
+            filepath = (case file of
+                    _ :: path   => file;
+                    _ :: string => builtins.toPath file
+                );
+        in (case geode.file.readFile filepath of
+            data :: string  => builtins.trim data;
+            errno :: int    => builtins.throw "Could not read file `${file}`: ${builtins.errnoString errno}"
+        );
+
+    writeFile = file :: path | string: data :: string: let
+            filepath = (case file of
+                    _ :: path   => file;
+                    _ :: string => builtins.toPath file
+                );
+        in (case geode.file.writeFile filepath data of
+            0 => 0;
+            errno :: int => builtins.throw "Could not write file `${file}`: ${builtins.errnoString errno}"
+        );
+
+    readDir = dir :: path | string: let
+            dirpath = (case dir of
+                    _ :: path   => dir;
+                    _ :: string => builtins.toPath dir
+                );
+        in (case geode.file.readDir dirpath of
+            errno :: int => builtins.throw "Could not read directory `${dir}`: ${builtins.errnoString errno}";
+            entries => entries
+        );
+
+    hasFileExt = ext :: string: file :: string: let
+            xs = builtins.splitFirst "." file;
+            x = builtins.head xs;
+        in (case builtins.length xs of
+            1 => x == ext;
+            _ => hasFileExt ext $ builtins.head $ builtins.tail xs
+        );
+
+    stripFileExt = file :: string: let
+            removeLast = xs: let 
+                x = builtins.head xs;
+                xn = removeLast $ builtins.tail xs;
+            in (case builtins.length xs of
+                1 => "";
+                _ => x + if xn == "" then "" else ".${xn}"
+            );
+        in removeLast $ builtins.split "." file;
+                
+
+    errnoString = geode.builtins.errnoString;
+
+    filterExisting = builtins.filter fileExists;
+
     setEnv = geode.setenv;
     getEnv = geode.getenv;
 
     applyEnvSet = builtins.mapAttrs setEnv;
+
+    # TODO: figure out dynamically
+    configPath = /shard/configuration.shard;
+    pkgsPath = /shard/pkgs;
+
+    # TODO: figure out dynamically
+    targetArch = "x86_64";
+    hostArch = "x86_64";
 }
 

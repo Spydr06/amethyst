@@ -9,9 +9,22 @@ let
         in
             builtins.setAttr pkg.publicName pkg.derivation pkgs;
 
+    callPackage = pkgFunc :: function: pkgFunc << defaultArgs;
+
+    initrdPkg = config: let
+            pkgs = import ./manager.shard;
+            pkgFunc = (import ./initrd.shard) config;
+        in (callPackage pkgFunc pkgs).derivation;
+
     ensureInstalled = let
            checkInstalled = builtins.isPath; 
         in builtins.all checkInstalled;
+
+    ensureDependencies = { name, version, ... }: depList :: list: if ensureInstalled depList
+        then 0
+        else builtins.seq
+            (geode.debug.dump depList)
+            (builtins.throw "Could not satisfy dependencies for `${name}-${version}'");
 
     createEnv = env :: set: value:
         let
@@ -37,7 +50,7 @@ let
                     result            => failWith "unknown value ${result}"
                 );
         in
-        assert (builtins.filter checkExitCode tasks) == []; [];
+        assert (builtins.filter checkExitCode tasks) == []; 0;
 
     /* builder:
        - fetch
@@ -54,15 +67,9 @@ let
 
             buildDeps = deriv.buildDependencies or [];
             runtimeDeps = deriv.buildRuntimeDependencies or [];
-            
-            installDeps = depList: if ensureInstalled depList
-                then null 
-                else builtins.seq
-                    (geode.debug.dump depList)
-                    (builtins.throw "Could not satisfy dependencies for `${deriv.name}-${deriv.version}'");
-            
-            installBuildDeps = installDeps buildDeps;
-            installRuntimeDeps = installDeps runtimeDeps;
+             
+            installBuildDeps = ensureDependencies deriv buildDeps;
+            installRuntimeDeps = ensureDependencies deriv runtimeDeps;
 
             filterPhase = name: builtins.hasAttr (name + "Phase") deriv;
 
@@ -81,30 +88,93 @@ let
         in sequencedTasks builderTasks deriv; 
 
     mkDerivation = deriv :: set: 
+        let
+            throwMissingAttributeError = name: attrName: builtins.throw "Derivation `${name}' has missing attribute `${attrName}'";
+
+            name = deriv.name or $ throwMissingAttributeError "<unknown>" "name";
+            version = deriv.version or $ throwMissingAttributeError name "version";
+        in
         {
-            publicName = deriv.publicName or deriv.name;
+            publicName = deriv.publicName or name;
             derivation = geode.derivation {
-                name = deriv.name;
-                version = deriv.version;
+                inherit name;
+                inherit version;
+
                 builder = derivationBuilder deriv;
             };
         };
 
     mkPackage = mkDerivation;
 
-    callPackage = call :: function: null;
-
     mkShell = decl :: set: null;
 
-    mkSystemConfig = config :: set: 
-        mkDerivation {
-            name = "system";
+    mkSystemConfig = baseConfig :: set:
+        let
+            readImports = attrs :: set:
+                builtins.foldl builtins.mergeTree attrs $ builtins.map import $ attrs.imports or [];
+
+            config = readImports baseConfig;
+
+            pkgs = import ./manager.shard;
+
             version = config.systemVersion or "0.0.0";
 
-            buildDependencies = config.env.packages or [];
-        };
+            derivHeader = { name = "system"; inherit version; };
 
-    readFile = filepath :: path: null;
+            bootloader = config.boot.loader or 
+                $ extraPackages.limine or
+                $ builtins.throw "No supported boot loader selected in `boot.initrd.extraArguments'";
+
+            finishBootstrap = let
+                    isoFile = "amethyst-${version}-${stdenv.targetArch}.iso";
+                in [
+                    {
+                        name = "remove existing image";
+                        task = (case stdenv.removeFile isoFile of
+                            0 => 0;
+                            errno :: int => "`${isoFile}': ${stdenv.errnoString errno}"
+                        );
+                    }
+                    {
+                        name = "install limine-config";
+                        task = if builtins.isPath pkgs.limine-config then 0 else 1;
+                    }
+                    {
+                        name = "create iso image";
+                        task = lib.spawnProcess [
+                            "xorriso"
+                            "-as" "mkisofs" "-b" "usr/share/limine/limine-bios-cd.bin"
+                            "-no-emul-boot" "-boot-load-size" "4" "-boot-info-table"
+                            lib.prefix "-o" isoFile
+                        ];
+                    }
+                    {
+                        name = "install bootloader";
+                        task = lib.spawnProcess [
+                            "${lib.prefix}/usr/bin/limine"
+                            "bios-install" isoFile
+                        ];
+                    }
+                ];
+        in
+            mkDerivation {
+                name = derivHeader.name;
+                version = derivHeader.version;
+
+                env = config.env or {};
+                buildDependencies = config.systemPackages or [];
+
+                buildPhase = ensureDependencies derivHeader
+                    (optionalPkg (config.boot.initrd.enable or false) $ initrdPkg config.boot.initrd);
+
+                installPhase = (case geode.subcommand of
+                        "bootstrap" => sequencedTasks finishBootstrap derivHeader;
+                        unknown     =>
+                            geode.throw "Unknown geode subcommand `${unknown}', this should never happen."
+                    );       
+            };
+
+    optionalPkg = builtins.when;
 
     mkdirRec = path: if stdenv.fileExists path
             then 0
@@ -151,6 +221,8 @@ let
         
     fetchTarballTo = dest: geode.archive.extractTar << fetchFileTo dest;
 
+    seqList = xs :: list: if builtins.all (x: x == 0) xs then 0 else 1;
+
     lib = {
         inherit defaultArgs;
         inherit defaultSourceDir;
@@ -183,17 +255,20 @@ let
             let
                 result = geode.proc.spawnPipe "realpath" [ (builtins.toString p) ] "";
             in if result.exitCode == 0
-                then builtins.toString $ builtins.trim $ result.stdout
+                then builtins.toPath $ builtins.trim $ result.stdout
                 else builtins.throw "realpath exited with code ${result.exitCode}: ${result.stderr}";
 
         make = args :: list: 
             geode.proc.spawn "make" (builtins.map builtins.toString (args ++ ["-j" (geode.proc.nJobs)])) true;
 
+        spawnProcess = args :: list:
+            geode.proc.spawn (builtins.head args) (builtins.map builtins.toString $ builtins.tail args) true;
+
         requireFile = file: if stdenv.fileExists file
             then null
             else "`${file}': No such file or directory";
 
-        installFiles = builtins.map installFile;
+        installFiles = files :: list: lib.seqList $ builtins.map installFile files;
 
         writeFile = file: data: builtins.seq
             (mkdirRec $ geode.file.dirname file)
@@ -203,5 +278,10 @@ let
             if (geode.getenv "NIXOS_HOST") == null
                 then args
                 else [ "steam-run" ] ++ args;
+
+        storeEntry = geode.storeEntry;
+
+        inherit seqList;
+        seq = a: b: if a == 0 && b == 0 then 0 else 1;
     };
 in lib

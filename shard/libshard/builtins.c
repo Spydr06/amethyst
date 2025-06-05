@@ -206,6 +206,29 @@ static struct shard_value builtin_filter(volatile struct shard_evaluator* e, str
     return LIST_VAL(result_head);
 }
 
+static struct shard_value builtin_filterAttrs(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value pred = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value set = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    struct shard_set* result = shard_set_init(e->ctx, set.set->size);
+    for(size_t i = 0; i < set.set->capacity; i++) {
+        if(!set.set->entries[i].key)
+            continue;
+
+        struct shard_value inner_pred = shard_eval_call(e, pred, shard_unlazy(e->ctx, CSTRING_VAL(set.set->entries[i].key)), e->error_scope->loc);
+        if(!(inner_pred.type & SHARD_VAL_CALLABLE))
+            shard_eval_throw(e, e->error_scope->loc, "predicate function passed to `builtins.filterAttrs` is expected to take two arguments");
+
+        struct shard_value filter_result = shard_eval_call(e, inner_pred, set.set->entries[i].value, e->error_scope->loc);
+        if(filter_result.type != SHARD_VAL_BOOL || !filter_result.boolean)
+            continue;
+
+        shard_set_put(result, set.set->entries[i].key, set.set->entries[i].value);
+    }
+
+    return SET_VAL(result);
+}
+
 static struct shard_value builtin_functionArgs(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value func = shard_builtin_eval_arg(e, builtin, args, 0);
 
@@ -859,7 +882,11 @@ static struct shard_value builtin_tryGetLocation(volatile struct shard_evaluator
 static struct shard_value builtin_throw(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value message = shard_builtin_eval_arg(e, builtin, args, 0);
 
-    shard_eval_throw(e, e->error_scope->loc, "%s", message.string);
+    struct shard_error_scope *err_scope = e->error_scope;
+    if(err_scope->prev)
+        err_scope = err_scope->prev;
+
+    shard_eval_throw(e, err_scope->loc, "%s", message.string);
 }
 
 static struct shard_value builtin_typeOf(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
@@ -1017,6 +1044,7 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.foldl", builtin_foldl, SHARD_VAL_CALLABLE, SHARD_VAL_ANY, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.find",  builtin_find, SHARD_VAL_CALLABLE, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.filter", builtin_filter, SHARD_VAL_CALLABLE, SHARD_VAL_LIST),
+    SHARD_BUILTIN("builtins.filterAttrs", builtin_filterAttrs, SHARD_VAL_CALLABLE, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.functionArgs", builtin_functionArgs, SHARD_VAL_FUNCTION),
     SHARD_BUILTIN("builtins.genList", builtin_genList, SHARD_VAL_CALLABLE, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.getAttr", builtin_getAttr, SHARD_VAL_STRING, SHARD_VAL_SET),

@@ -65,7 +65,7 @@ struct shard_value geode_store_to_shard_value(struct shard_context *ctx, struct 
 
         shard_ident_t name = shard_get_ident(ctx, current->name);
         struct shard_lazy_value *prefix = shard_unlazy(ctx, (struct shard_value){
-            .type=SHARD_VAL_STRING,
+            .type=SHARD_VAL_PATH,
             .string=current->prefix,
             .strlen=strlen(current->prefix)
         });

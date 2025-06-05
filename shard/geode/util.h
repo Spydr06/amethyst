@@ -18,6 +18,7 @@ bool fexists(const char *filepath);
 bool fwritable(const char *filepath);
 bool freadable(const char *filepath);
 bool fexecutable(const char *filepath);
+bool fisdir(const char *filepath);
 
 int rmdir_recursive(const char *path);
 int mkdir_recursive(const char *path, int mode);

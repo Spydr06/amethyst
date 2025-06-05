@@ -52,6 +52,14 @@ bool fexecutable(const char *filepath) {
     return access(filepath, X_OK) == 0;
 }
 
+bool fisdir(const char *filepath) {
+    struct stat _stat;
+    if(stat(filepath, &_stat) < 0)
+        return false;
+
+    return (_stat.st_mode & S_IFMT) == S_IFDIR;
+}
+
 int copy_file(const char *src_path, const char *dst_path) {
     struct stat _stat;
     if(stat(src_path, &_stat) < 0)
