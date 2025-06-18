@@ -43,7 +43,7 @@ let
 
             bootEntries = builtins.map bootEntry $
                 builtins.attrNames $
-                builtins.filterAttrs isKernelImage $ stdenv.readDir "${lib.prefix}/${bootDir}";
+                builtins.filterAttrs isKernelImage $ stdenv.readDir "${lib.prefix + bootDir}";
         in 
             { inherit timeout; entries = bootEntries; };
 

@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ lib, pkgs, config, ... }:
 lib.mkPackage rec {
     name = "initsys";
     version = "0.0.1";
@@ -21,5 +21,5 @@ lib.mkPackage rec {
 #          ("CFLAGS=-specs=" + $ builtins.toString util.paths.gcc_specs)
     ];
 
-    installPhase = lib.make ["-C" sourceDir "install" "PREFIX=${env.PREFIX}"];
+    installPhase = builtins.seq (geode.debug.dump config) $ lib.make ["-C" sourceDir "install" "PREFIX=${env.PREFIX}"];
 }

@@ -1,5 +1,5 @@
 let
-    pkgs = import ./manager.shard;
+    pkgs = import ./pkgs.shard;
     lib = import ./lib.shard;
 in
 {

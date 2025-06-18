@@ -263,8 +263,8 @@ static int bootstrap_finish(struct geode_context *context, struct shard_value re
     int exit_code = EXIT_SUCCESS;
 
     struct shard_lazy_value *system_deriv_path_value;
-    if(shard_set_get(result.set, shard_get_ident(&context->shard, "derivation"), &system_deriv_path_value)) {
-        geode_errorf(context, "Bootstrap result does not have required `derivation' attr");
+    if(shard_set_get(result.set, shard_get_ident(&context->shard, "outPath"), &system_deriv_path_value)) {
+        geode_errorf(context, "Bootstrap result does not have required `outPath' attr");
         exit_code = EXIT_FAILURE;
         goto cleanup;
     }
@@ -274,7 +274,7 @@ static int bootstrap_finish(struct geode_context *context, struct shard_value re
    
     if(system_deriv_path_value->eval.type != SHARD_VAL_PATH) {
         geode_errorf(context, 
-                "Bootstrap result `derivation' attr is required to be of type `path', got `%s'",
+                "Bootstrap result `outPath' attr is required to be of type `path', got `%s'",
                 shard_value_type_to_string(&context->shard, system_deriv_path_value->eval.type)
             );
         exit_code = EXIT_FAILURE;

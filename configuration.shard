@@ -14,7 +14,7 @@ lib.mkSystemConfig {
     ];
 
     systemPackages = with pkgs; [
-        amethyst-kernel
+        (amethyst-kernel.override { sanitize = [ "undefined" ]; })
         initsys
     ];
 

@@ -1,4 +1,15 @@
-{ lib, pkgs, stdenv, ... }: 
+/*let
+    defaultConfig = {
+        kernel.arguments = [];
+        kernel.extra-arguments = [];
+        boot = {
+            loader.timeout = 5;
+        };
+        sanitize = [];
+        foo = "FOO: DEFAULT VALUE";
+    };
+in*/
+{ lib, pkgs, stdenv, config ? { foo = "FOO: DEFAULT VALUE"; sanitize = []; }, ... }: 
 lib.mkPackage rec {
     name = "amethyst-kernel";
     version = "0.0.1";
@@ -6,21 +17,12 @@ lib.mkPackage rec {
     buildDir = lib.realpath "build";
     sourceDir = builtins.toPath "${pkgs.amethyst-source}/source";
  
-    config = {
-        kernel.arguments = [];
-        kernel.extra-arguments = [];
-        boot = {
-            loader.timeout = 5;
-        };
-        sanitize = [];
-    };
-
     kernelElf = "amethyst-" + version + "-" + geode.architecture + ".elf";
     
     limineConfigTemplate = "${sourceDir}/limine.cfg.in";
     limineConfigPath = /boot/limine/limine.cfg;
 
-    buildTarget = buildDir + "/" + kernelElf;
+    buildTarget = "${buildDir}/${kernelElf}";
     installTarget = "install";
 
     publicHeaderDir = "${sourceDir}/include/amethyst";
@@ -54,6 +56,7 @@ lib.mkPackage rec {
     buildPhase = lib.make ["-C" sourceDir buildTarget "BUILD_DIR=${buildDir}" "SANITIZERS=${getSanitizers}"];
 
     installPhase = builtins.seqList [
+        (geode.debug.dump config.foo)
         (lib.installFile { src = buildTarget; dst = /boot/ + kernelElf; mode = "755"; })
         (lib.installDir publicHeaderDir /usr/include)
         (stdenv.writeFile "${lib.prefix}/boot/amethyst-${version}-${geode.architecture}-cmdline.txt" $ builtins.join " " config.kernel.arguments or [])

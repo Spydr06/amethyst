@@ -229,6 +229,25 @@ static struct shard_value builtin_filterAttrs(volatile struct shard_evaluator* e
     return SET_VAL(result);
 }
 
+static struct shard_value builtin_defaultFunctionArg(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value arg_name = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value func = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    shard_ident_t arg_ident = shard_get_ident(e->ctx, arg_name.string);
+    struct shard_pattern *arg_pattern = func.function.arg;
+
+    for(size_t i = 0; i < arg_pattern->attrs.count; i++) {
+        struct shard_binding *binding = arg_pattern->attrs.items + i;
+
+        if(binding->ident == arg_ident)
+            return binding->value ? 
+                shard_eval_lazy2(e, shard_lazy(e->ctx, binding->value, func.function.scope))
+                : NULL_VAL();
+    }
+
+    return NULL_VAL();
+}
+
 static struct shard_value builtin_functionArgs(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value func = shard_builtin_eval_arg(e, builtin, args, 0);
 
@@ -1033,6 +1052,7 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.catAttrs", builtin_catAttrs, SHARD_VAL_STRING, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.ceil", builtin_ceil, SHARD_VAL_FLOAT),
     SHARD_BUILTIN("builtins.concatLists", builtin_concatLists, SHARD_VAL_LIST),
+    SHARD_BUILTIN("builtins.defaultFunctionArg", builtin_defaultFunctionArg, SHARD_VAL_STRING, SHARD_VAL_FUNCTION),
     SHARD_BUILTIN("builtins.dirname", builtin_dirname, SHARD_VAL_PATH),
     SHARD_BUILTIN("builtins.div", builtin_div, SHARD_VAL_NUMERIC, SHARD_VAL_NUMERIC),
     SHARD_BUILTIN("builtins.elem", builtin_elem, SHARD_VAL_ANY, SHARD_VAL_LIST),

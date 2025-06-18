@@ -1,7 +1,6 @@
-config: assert config.enable or false;
-{ lib, pkgs, stdenv, ... }: 
+{ lib, pkgs, stdenv, config ? {}, ... }: 
 let
-    kernelPackage = lib.storeEntry config.kernelPackage or pkgs.amethyst-kernel;
+    kernelPackage = lib.storeEntry (config.kernelPackage or pkgs.amethyst-kernel).outPath;
 
     kernelVersion = kernelPackage.version;
     kernelName = kernelPackage.name;

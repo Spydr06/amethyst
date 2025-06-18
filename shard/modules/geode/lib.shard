@@ -1,23 +1,45 @@
 let
     stdenv = import ./stdenv.shard;
 
-    defaultArgs = pkgs: { inherit lib; inherit stdenv; inherit pkgs; };
+    typecheckConfig = arg: (case arg of
+            _ :: null => {};
+            _ :: set => arg;
+            other => builtins.throw 
+                "Package configuration may only accept `set' types for configuration, got ${builtins.typeOf arg} instead."
+        );
+
+    defaultConfig = typecheckConfig << (builtins.defaultFunctionArg "config");
+
+    defaultArgs = pkgFunc: pkgs: let
+            config = defaultConfig pkgFunc;
+        in
+            { inherit lib stdenv pkgs config; };
+
+    wrapPackage = pkgFunc: baseArgs:
+        let
+            result = pkgFunc baseArgs;
+        in result // {
+            override = overrideArgs :: set | function: 
+                let 
+                    oldArgs = result.override or defaultConfig pkgFunc;
+                    extraArgs = (case overrideArgs of
+                        _ :: function => overrideArgs oldArgs;
+                        _ => oldArgs // overrideArgs
+                    );
+                    newArgs = baseArgs // { config = extraArgs; };
+                in wrapPackage pkgFunc newArgs;
+        };
 
     callPackageWith = dependencyPkgs: pkgs: pkgFunc :: function:
         let
-            pkg = pkgFunc $ defaultArgs dependencyPkgs; 
+            pkg = wrapPackage pkgFunc $ defaultArgs pkgFunc dependencyPkgs;
         in
-            builtins.setAttr pkg.publicName pkg.derivation pkgs;
-
-    callPackage = pkgFunc :: function: pkgFunc << defaultArgs;
-
-    initrdPkg = config: let
-            pkgs = import ./manager.shard;
-            pkgFunc = (import ./initrd.shard) config;
-        in (callPackage pkgFunc pkgs).derivation;
+            builtins.setAttr pkg.publicName pkg pkgs;
+    
+    callPackage = pkgFunc :: function: pkgFunc << (defaultArgs pkgFunc);
 
     ensureInstalled = let
-           checkInstalled = builtins.isPath; 
+            checkInstalled = { outPath, ... }: builtins.isPath outPath;
         in builtins.all checkInstalled;
 
     ensureDependencies = { name, version, ... }: depList :: list: if ensureInstalled depList
@@ -87,21 +109,22 @@ let
 
         in sequencedTasks builderTasks deriv; 
 
-    mkDerivation = deriv :: set: 
+    mkDerivation = attrs :: set: 
         let
             throwMissingAttributeError = name: attrName: builtins.throw "Derivation `${name}' has missing attribute `${attrName}'";
 
-            name = deriv.name or $ throwMissingAttributeError "<unknown>" "name";
-            version = deriv.version or $ throwMissingAttributeError name "version";
+            name = attrs.name or $ throwMissingAttributeError "<unknown>" "name";
+            version = attrs.version or $ throwMissingAttributeError name "version";
         in
         {
-            publicName = deriv.publicName or name;
-            derivation = geode.derivation {
+            publicName = attrs.publicName or name;
+            outPath = geode.derivation {
                 inherit name;
                 inherit version;
 
-                builder = derivationBuilder deriv;
+                builder = derivationBuilder attrs;
             };
+            __toString = self: builtins.toString self.outPath;
         };
 
     mkPackage = mkDerivation;
@@ -115,7 +138,7 @@ let
 
             config = readImports baseConfig;
 
-            pkgs = import ./manager.shard;
+            pkgs = import ./pkgs.shard;
 
             version = config.systemVersion or "0.0.0";
 
@@ -137,7 +160,7 @@ let
                     }
                     {
                         name = "install limine-config";
-                        task = if builtins.isPath pkgs.limine-config then 0 else 1;
+                        task = if builtins.isPath pkgs.limine-config.outPath then 0 else 1;
                     }
                     {
                         name = "create iso image";
@@ -165,7 +188,7 @@ let
                 buildDependencies = config.systemPackages or [];
 
                 buildPhase = ensureDependencies derivHeader
-                    (optionalPkg (config.boot.initrd.enable or false) $ initrdPkg config.boot.initrd);
+                    (optionalPkg (config.boot.initrd.enable or false) $ pkgs.initrd.override config.boot.initrd);
 
                 installPhase = (case geode.subcommand of
                         "bootstrap" => sequencedTasks finishBootstrap derivHeader;
@@ -224,7 +247,7 @@ let
     seqList = xs :: list: if builtins.all (x: x == 0) xs then 0 else 1;
 
     lib = {
-        inherit defaultArgs;
+        defaultArgs = defaultArgs (_: null);
         inherit defaultSourceDir;
 
         prefix = geode.prefix;
