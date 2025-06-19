@@ -1,15 +1,15 @@
 { lib, pkgs, stdenv, config ? {}, ... }: 
 let
-    kernelPackage = lib.storeEntry (config.kernelPackage or pkgs.amethyst-kernel).outPath;
-
-    kernelVersion = kernelPackage.version;
-    kernelName = kernelPackage.name;
+    kernelVersion = config.kernelVersion or "unknown";
+    kernelName = config.kernelName or "unknown";
 
     version = config.version or kernelVersion;
     name = "initrd-${config.name or kernelName}";
 
     compression = config.compression or "ustar";
-    installFile = builtins.toPath "/boot/amethyst-${kernelVersion}-${stdenv.targetArch}.initrd";
+
+    defaultFile = "/boot/amethyst-${kernelVersion}-${stdenv.targetArch}.initrd";
+    installFile = builtins.toPath config.outputFile or defaultFile;
 
     extraPackages = config.extraPackages or [];
 

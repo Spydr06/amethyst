@@ -1,0 +1,12 @@
+{ lib, pkgs, stdenv, ... }:
+let
+    sourceDir = builtins.toPath "${pkgs.amethyst-source}/source"; 
+    publicHeaderDir = "${sourceDir}/include/amethyst";
+in
+lib.mkDerivation {
+    name = "amethyst-headers";
+    version = pkgs.amethyst-kernel.publicVersion;
+
+    installPhase = lib.installDir publicHeaderDir /usr/include/amethyst;
+}
+

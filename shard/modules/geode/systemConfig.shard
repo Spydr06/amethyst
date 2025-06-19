@@ -1,0 +1,112 @@
+baseConfig:
+let
+    lib = import ./lib.shard;
+    pkgs = import ./pkgs.shard;
+    stdenv = import ./stdenv.shard;
+
+    readImports = attrs :: set:
+        builtins.foldl builtins.mergeTree attrs $ builtins.map import $ attrs.imports or [];
+    
+    config = readImports baseConfig;
+
+    version = config.version or "0.0.0";
+    derivHeader = { name = "system"; inherit version; };
+
+    patchKernelConfig = name: kconf: let
+            kernelPkg = wrapKernelPkg name kconf.package;
+
+            initrd = kconf.initrd or config.boot.initrd or {};
+
+            initrdFile = "/boot/${kernelPkg.publicName}-${kernelPkg.publicVersion}-${geode.architecture}.initrd";
+            initrdPkg = (initrd.package or pkgs.initrd).override {
+                    kernelVersion = kernelPkg.publicVersion;
+                    kernelName = kernelPkg.publicName;
+                    outputFile = initrdFile;
+                };
+
+            initrdEnabled = initrd.enable or false;
+
+            extraArguments = if initrdEnabled
+                then [ "initrd=${initrdFile}" "rootfs=tmpfs" ]
+                else [];
+        in 
+        {
+            package = kernelPkg;
+            inherit initrdPkg initrdFile;
+
+            arguments = extraArguments ++ kconf.arguments or [];
+        };
+
+    kernels = builtins.mapAttrs patchKernelConfig config.kernel or {};
+
+    getKernelPkg = name :: string: value :: set: (case value of
+            { package, ... } => package;
+            _ => builtins.throw "Kernel entry `kernel.\"${name}\"` does have required `.package` attr."
+        );
+
+    getInitrdPkg = name :: string: value :: set: value.initrdPkg or null;
+
+    wrapKernelPkg = name :: string: pkg: 
+        pkg.override { overrideName = name; };
+
+    kernelPkgs = builtins.mapAttrs getKernelPkg kernels;
+
+    initrdPkgs = builtins.mapAttrs getInitrdPkg kernels;
+
+    bootloader = config.boot.loader or 
+        $ extraPackages.limine or
+        $ builtins.throw "No supported boot loader selected in `boot.initrd.extraArguments'";
+
+    finishBootstrap = let
+        isoFile = "amethyst-${version}-${stdenv.targetArch}.iso";
+    in [
+        {
+            name = "remove existing image";
+            task = (case stdenv.removeFile isoFile of
+                0 => 0;
+                errno :: int => "`${isoFile}': ${stdenv.errnoString errno}"
+            );
+        }
+        {
+            name = "install limine-config";
+            task = let 
+                    configPkg = pkgs.limine-config.override { 
+                        inherit kernels; 
+                    };
+                in
+                    if builtins.isPath configPkg.outPath then 0 else 1;
+        }
+        {
+            name = "create iso image";
+            task = lib.spawnProcess [
+                "xorriso"
+                "-as" "mkisofs" "-b" "usr/share/limine/limine-bios-cd.bin"
+                "-no-emul-boot" "-boot-load-size" "4" "-boot-info-table"
+                lib.prefix "-o" isoFile
+            ];
+        }
+        {
+            name = "install bootloader";
+            task = lib.spawnProcess [
+                "${lib.prefix}/usr/bin/limine"
+                "bios-install" isoFile
+            ];
+        }
+    ];
+
+in
+{
+    inherit (derivHeader) name version;
+
+    env = config.env or {};
+
+    buildDependencies = (config.systemPackages or [])
+        ++ (builtins.attrValues kernelPkgs)
+        ++ (builtins.attrValues initrdPkgs);
+
+    installPhase = (case geode.subcommand of
+        "bootstrap" => lib.sequencedTasks finishBootstrap derivHeader;
+        unknown => geode.throw "Unknown geode subcommand `${unknown}', this should never happen."
+    );       
+}
+

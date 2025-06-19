@@ -1,33 +1,21 @@
-/*let
+let
     defaultConfig = {
-        kernel.arguments = [];
-        kernel.extra-arguments = [];
-        boot = {
-            loader.timeout = 5;
-        };
         sanitize = [];
-        foo = "FOO: DEFAULT VALUE";
     };
-in*/
-{ lib, pkgs, stdenv, config ? { foo = "FOO: DEFAULT VALUE"; sanitize = []; }, ... }: 
+in
+{ lib, pkgs, stdenv, config ? defaultConfig, ... }: 
 lib.mkPackage rec {
-    name = "amethyst-kernel";
+    name = config.overrideName or "amethyst-kernel";
     version = "0.0.1";
 
     buildDir = lib.realpath "build";
-    sourceDir = builtins.toPath "${pkgs.amethyst-source}/source";
- 
-    kernelElf = "amethyst-" + version + "-" + geode.architecture + ".elf";
+    sourceDir = builtins.toPath "${pkgs.amethyst-source}/source"; 
     
-    limineConfigTemplate = "${sourceDir}/limine.cfg.in";
-    limineConfigPath = /boot/limine/limine.cfg;
+    targetElf = "amethyst-${version}-${geode.architecture}.elf";
+    kernelElf = "${name}-${version}-${geode.architecture}.elf";    
 
-    buildTarget = "${buildDir}/${kernelElf}";
+    buildTarget = "${buildDir}/${targetElf}";
     installTarget = "install";
-
-    publicHeaderDir = "${sourceDir}/include/amethyst";
-
-    fullArguments = config.kernel.arguments ++ [ "--" ] ++ config.kernel.extra-arguments;
 
     env = {
         # kernel cannot use system import
@@ -40,27 +28,10 @@ lib.mkPackage rec {
         pkgs.limine
     ];
 
-    limineConfig = template: 
-        let 
-            kernelArgs = builtins.join " " fullArguments;
-            sed = geode.proc.spawnPipe "sed" [
-                "-e" ("s|@VERSION@|" + version + "|g")
-                "-e" ("s|@KERNEL_ELF@|" + kernelElf + "|")
-                "-e" ("s|@KERNEL_ARGS@|" + kernelArgs + "|")
-                template
-            ] "";
-    in assert sed.exitCode == 0; sed.stdout;
-
     getSanitizers = builtins.join "," config.sanitize;
 
     buildPhase = lib.make ["-C" sourceDir buildTarget "BUILD_DIR=${buildDir}" "SANITIZERS=${getSanitizers}"];
 
-    installPhase = builtins.seqList [
-        (geode.debug.dump config.foo)
-        (lib.installFile { src = buildTarget; dst = /boot/ + kernelElf; mode = "755"; })
-        (lib.installDir publicHeaderDir /usr/include)
-        (stdenv.writeFile "${lib.prefix}/boot/amethyst-${version}-${geode.architecture}-cmdline.txt" $ builtins.join " " config.kernel.arguments or [])
-        # (lib.writeFile (geode.prefix + limineConfigPath) $ limineConfig "limine.cfg.in")
-    ];
+    installPhase = lib.installFile { src = buildTarget; dst = /boot/ + kernelElf; mode = "755"; };
 }
 

@@ -118,6 +118,10 @@ let
         in
         {
             publicName = attrs.publicName or name;
+            publicVersion = attrs.publicVersion or version;
+
+            exports = attrs.exports or {};
+
             outPath = geode.derivation {
                 inherit name;
                 inherit version;
@@ -131,73 +135,7 @@ let
 
     mkShell = decl :: set: null;
 
-    mkSystemConfig = baseConfig :: set:
-        let
-            readImports = attrs :: set:
-                builtins.foldl builtins.mergeTree attrs $ builtins.map import $ attrs.imports or [];
-
-            config = readImports baseConfig;
-
-            pkgs = import ./pkgs.shard;
-
-            version = config.systemVersion or "0.0.0";
-
-            derivHeader = { name = "system"; inherit version; };
-
-            bootloader = config.boot.loader or 
-                $ extraPackages.limine or
-                $ builtins.throw "No supported boot loader selected in `boot.initrd.extraArguments'";
-
-            finishBootstrap = let
-                    isoFile = "amethyst-${version}-${stdenv.targetArch}.iso";
-                in [
-                    {
-                        name = "remove existing image";
-                        task = (case stdenv.removeFile isoFile of
-                            0 => 0;
-                            errno :: int => "`${isoFile}': ${stdenv.errnoString errno}"
-                        );
-                    }
-                    {
-                        name = "install limine-config";
-                        task = if builtins.isPath pkgs.limine-config.outPath then 0 else 1;
-                    }
-                    {
-                        name = "create iso image";
-                        task = lib.spawnProcess [
-                            "xorriso"
-                            "-as" "mkisofs" "-b" "usr/share/limine/limine-bios-cd.bin"
-                            "-no-emul-boot" "-boot-load-size" "4" "-boot-info-table"
-                            lib.prefix "-o" isoFile
-                        ];
-                    }
-                    {
-                        name = "install bootloader";
-                        task = lib.spawnProcess [
-                            "${lib.prefix}/usr/bin/limine"
-                            "bios-install" isoFile
-                        ];
-                    }
-                ];
-        in
-            mkDerivation {
-                name = derivHeader.name;
-                version = derivHeader.version;
-
-                env = config.env or {};
-                buildDependencies = config.systemPackages or [];
-
-                buildPhase = ensureDependencies derivHeader
-                    (optionalPkg (config.boot.initrd.enable or false) $ pkgs.initrd.override config.boot.initrd);
-
-                installPhase = (case geode.subcommand of
-                        "bootstrap" => sequencedTasks finishBootstrap derivHeader;
-                        unknown     =>
-                            geode.throw "Unknown geode subcommand `${unknown}', this should never happen."
-                    );       
-            };
-
-    optionalPkg = builtins.when;
+    mkSystemConfig = mkDerivation << (import ./systemConfig.shard);
 
     mkdirRec = path: if stdenv.fileExists path
             then 0
@@ -255,10 +193,16 @@ let
         inherit createEnv;
         inherit callPackage;
         inherit callPackageWith;
+
+        inherit ensureDependencies;
+
         inherit mkDerivation;
         inherit mkPackage;
         inherit mkShell;
         inherit mkSystemConfig;
+
+        optionalPkg = builtins.when;
+        inherit sequencedTasks;
 
         inherit mkdirRec;
 

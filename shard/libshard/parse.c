@@ -506,7 +506,8 @@ static int parse_const_pattern(struct parser* p, struct shard_pattern* pattern) 
 }
 
 static int parse_pattern(struct parser* p, struct shard_pattern* pattern) {
-    pattern->condition = NULL;
+    memset(pattern, 0, sizeof(struct shard_pattern));
+
     switch(p->token.type) {
         case SHARD_TOK_IDENT:
             struct shard_location ident_loc = p->token.location;
@@ -737,8 +738,12 @@ static int parse_set(struct parser* p, struct shard_expr* expr, bool recursive) 
             }
 
             key = p->token.value.string;
-            err = consume(p, SHARD_TOK_IDENT);
-            if(err)
+
+            if(p->token.type == SHARD_TOK_STRING) {
+                key = shard_get_ident(p->ctx, key);
+                advance(p);
+            }
+            else if((err = consume(p, SHARD_TOK_IDENT)))
                 break;
         }
 

@@ -11,6 +11,10 @@ lib.mkPackage rec {
         BUILD_DIR = buildDir;
     };
 
+    buildDependencies = with pkgs; [
+        amethyst-headers
+    ];
+
     buildPhase = lib.make ["-C" sourceDir];
 
     installPhase = lib.make ["-C" sourceDir "install"];

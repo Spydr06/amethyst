@@ -4,6 +4,7 @@
 #include "geode.h"
 
 #include <stdarg.h>
+#include <stdio.h>
 #include <stdnoreturn.h>
 
 #define C_RED "\033[31m"
@@ -17,6 +18,15 @@
 #define C_RST "\033[0m"
 #define C_NOBLD "\033[22m"
 
+/*struct geode_logfile {
+    char *path;
+    FILE *file;
+    
+    struct geode_logfile *outer;
+};
+
+void geode_push_logfile(struct geode_context *context, const char *name);
+char *geode_pop_logfile(struct geode_context *context);*/
 
 __attribute__((format(printf, 2, 3)))
 void geode_headingf(struct geode_context *context, const char *format, ...);

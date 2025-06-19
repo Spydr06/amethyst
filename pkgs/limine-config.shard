@@ -1,8 +1,9 @@
-{ lib, pkgs, stdenv, ... }:
+{ lib, pkgs, stdenv, config ? {}, ... }:
 let
     configFile = "limine.cfg";
 
-    timeout = 5;
+    defaultTimeout = 5;
+    timeout = config.timeout or defaultTimeout;
 
     bootDir = /boot;
 
@@ -18,40 +19,27 @@ let
             "  PROTOCOL=${protocol}"
             "  KERNEL_PATH=boot://${bootDir}/${kernel}"
             "  KERNEL_CMDLINE=${cmdline}"
-        ] ++ 
-            $ builtins.when (initrd != null) "  MODULE_PATH=boot://${bootDir}/${initrd}";
+        ] ++ (builtins.when (initrd != null) "  MODULE_PATH=boot://${initrd}")
+          ++ [ "" ];
 
-
-    readConfigFromBoot = let
-            bootDirFile = f: "${lib.prefix}/${bootDir}/${f}";
-
-            initrdFile = kernel: "${stdenv.stripFileExt kernel}.initrd";
-
-            bootEntry = kernel: let
-                    initrd = "${stdenv.stripFileExt kernel}.initrd";
-                    hasInitrd = stdenv.fileExists $ bootDirFile $ initrd;
-
-                    cmdlineFile = bootDirFile "${stdenv.stripFileExt kernel}-cmdline.txt";
-                    hasCmdlineFile = stdenv.fileExists $ cmdlineFile;
-                in {
-                    inherit kernel;
-                    initrd = if hasInitrd then initrd else null;
-                    cmdline = if hasCmdlineFile then builtins.trim $ stdenv.readFile cmdlineFile else "";
+    getKernelEntries = let
+            bootEntry = name :: string: kernel: assert kernel ? package; 
+                let
+                    fullKernelName = "${name}-${kernel.package.publicVersion}-${geode.architecture}";
+                in
+                {
+                    kernel = "${fullKernelName}.elf";
+                    initrd = kernel.initrdFile or null;
+                    cmdline = builtins.join " " kernel.arguments or [];
                 };
 
-            isKernelImage = name: type: type == "regular" && stdenv.hasFileExt "elf" $ bootDirFile name;
-
-            bootEntries = builtins.map bootEntry $
-                builtins.attrNames $
-                builtins.filterAttrs isKernelImage $ stdenv.readDir "${lib.prefix + bootDir}";
-        in 
-            { inherit timeout; entries = bootEntries; };
-
+            bootEntries = builtins.attrValues $ builtins.mapAttrs bootEntry config.kernels;
+        in { inherit timeout; entries = bootEntries; };
 in lib.mkPackage {
     name = "limine-config";
     version = "0.0.1"; 
 
-    buildPhase = stdenv.writeFile configFile $ geode.debug.dump $ mkLimineConfig readConfigFromBoot;
+    buildPhase = stdenv.writeFile configFile $ mkLimineConfig getKernelEntries;
 
     installPhase = lib.installFile { src = configFile; dst = "${bootDir}/limine/${configFile}"; };
 }

@@ -7,17 +7,25 @@ lib.mkSystemConfig {
 
     };
 
+    kernel."amethyst-default" = {
+        package = pkgs.amethyst-kernel;
+
+        arguments = [ "loglevel=info" ];       
+    };
+
+    kernel."amethyst-debug" = with pkgs; {
+        package = pkgs.amethyst-kernel.override { sanitize = [ "undefined" ]; };
+
+        arguments = [ "loglevel=debug" "log-syscalls" ];
+    };
+
     boot.initrd.enable = true;
 
-    boot.kernelArgs = [
-        "loglevel=debug" "log-syscalls"
-    ];
-
     systemPackages = with pkgs; [
-        (amethyst-kernel.override { sanitize = [ "undefined" ]; })
         initsys
     ];
 
+    systemArch = "x86_64";
     systemVersion = builtins.trim $ stdenv.readFile "${pkgs.amethyst-source}/source/version";
 }
 
