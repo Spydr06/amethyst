@@ -100,4 +100,10 @@ void* kcalloc(size_t n, size_t size) {
     return ptr;
 }
 
+char *kstrdup(const char *str) {
+    size_t len = strlen(str);
+    char *dup = kmalloc(len + 1);
+    strncpy(dup, str, len);
+    return dup;
+}
 

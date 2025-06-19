@@ -11,5 +11,7 @@ void* krealloc(void* ptr, size_t size);
 void kfree(void* ptr);
 void* kcalloc(size_t n, size_t size);
 
+char *kstrdup(const char *str);
+
 #endif /* _AMETHYST_MEM_HEAP_H */
 

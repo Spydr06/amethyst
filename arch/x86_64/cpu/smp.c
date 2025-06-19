@@ -15,10 +15,11 @@
 #include <mem/vmm.h>
 #include <mem/pmm.h>
 
-#include <stddef.h>
-#include <math.h>
 #include <assert.h>
 #include <kernelio.h>
+#include <math.h>
+#include <memory.h>
+#include <stddef.h>
 
 #include <limine.h>
 
@@ -59,13 +60,48 @@ static __noreturn void cpu_wakeup(struct limine_smp_info* smp_info) {
 }
 
 void smp_init(void) {
-    size_t cpu_count = apic_lapic_count();
-    assert(smp_request.response && smp_request.response->cpu_count == cpu_count);
+    if(!smp_request.response) {
+        klog(WARN, "SMP is not available");
+        return;
+    }
 
-    klog(DEBUG, "%zu processor%s found", cpu_count, cpu_count > 1 ? "s" : "");
+    size_t cpu_count = smp_request.response->cpu_count;
+    klog(DEBUG, "[%zu] smp processor%s", cpu_count, cpu_count == 1 ? "" : "s");
 
-    struct lapic_entry lapics[cpu_count];
-    assert(apic_get_lapic_entries(lapics, cpu_count) == cpu_count);
+    size_t smp_cpu_size = ROUND_UP(sizeof(struct cpu) * smp_request.response->cpu_count, PAGE_SIZE);
+
+    smp_cpus = pmm_alloc(smp_cpu_size / PAGE_SIZE, PMM_SECTION_DEFAULT);
+    assert(smp_cpus);
+    smp_cpus = MAKE_HHDM(smp_cpus);
+
+    memset(smp_cpus, 0, sizeof(smp_cpu_size));
+
+    void (*wakeup_fn)(struct limine_smp_info*) = cpu_wakeup;
+
+    for(size_t i = 0; i < cpu_count; i++) {
+        if(smp_request.response->cpus[i]->lapic_id == smp_request.response->bsp_lapic_id) {
+            continue;
+        }
+
+        smp_request.response->cpus[i]->extra_argument = (uint64_t) &smp_cpus[i];
+
+        __atomic_store_n(&smp_request.response->cpus[i]->goto_address, wakeup_fn, __ATOMIC_SEQ_CST);
+    }
+
+    if(wakeup_fn == cpu_wakeup)
+        while(__atomic_load_n(&smp_cpus_awake, __ATOMIC_SEQ_CST) != cpu_count)
+            pause();
+
+    klog(DEBUG, "awoke other processors");
+
+/*    assert(smp_request.response);
+
+    size_t lapic_count = apic_lapic_count();
+
+    klog(DEBUG, "%zu lapics, %zu smp processors", lapic_count, smp_request.response->cpu_count);
+
+    struct lapic_entry lapics[lapic_count];
+    assert(apic_get_lapic_entries(lapics, lapic_count) == lapic_count);
 
     uint8_t bootstrap_id;
     __asm__ volatile(
@@ -75,15 +111,18 @@ void smp_init(void) {
         : "=b"(bootstrap_id)
     );
 
-    smp_cpus = pmm_alloc(ROUND_UP(sizeof(struct cpu) * cpu_count, PAGE_SIZE) / PAGE_SIZE, PMM_SECTION_DEFAULT);
-    assert(smp_cpus);
-    smp_cpus = MAKE_HHDM(smp_cpus);
 
-    void (*wakeup_fn)(struct limine_smp_info*) = cpu_wakeup;
 
-    for(size_t i = 0; i < cpu_count; i++) {
-        if(lapics[i].lapicid == bootstrap_id)
-            continue;
+    klog(DEBUG, "bootstrap id: %hhu", bootstrap_id);
+    for(size_t i = 0; i < lapic_count; i++) {
+        klog(DEBUG, "lapic[%zu].id = %hhu", i, lapics[i].lapicid);
+    }
+
+    for(size_t i = 1; i < smp_request.response->cpu_count; i++) {
+//        klog(DEBUG, "SMP core %zu, lapic %zu", i, i * lapics_per_cpu);
+//        if(lapics[i].lapicid == bootstrap_id)
+//            continue;
+//        here();
 
         smp_request.response->cpus[i]->extra_argument = (uint64_t)&smp_cpus[i];
 
@@ -91,10 +130,10 @@ void smp_init(void) {
     }
 
     if(wakeup_fn == cpu_wakeup)
-        while(__atomic_load_n(&smp_cpus_awake, __ATOMIC_SEQ_CST) != cpu_count)
+        while(__atomic_load_n(&smp_cpus_awake, __ATOMIC_SEQ_CST) != smp_request.response->cpu_count)
             pause();
 
-    klog(INFO, "awoke other processors");
+    klog(INFO, "awoke other processors");*/
 }
 
 void smp_send_ipi(struct cpu* cpu, struct isr* isr, enum smp_ipi_target target, bool nmi) {

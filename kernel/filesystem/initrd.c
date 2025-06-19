@@ -5,6 +5,7 @@
 #include <limine.h>
 #include <mem/vmm.h>
 #include <mem/pmm.h>
+#include <mem/heap.h>
 #include <filesystem/virtual.h>
 
 #include <math.h>
@@ -18,6 +19,38 @@ static volatile struct limine_module_request module_request = {
 };
 
 static void build_entry(struct tar_entry* entry, void* addr);
+
+int create_parent_dirs(const char *entry_name, struct vattr *entry_attr) {
+    int err = 0;
+
+    char *saveptr;
+    char *entry = kstrdup(entry_name);
+    char *dirname = strtok_r(entry, "/", &saveptr);
+    char *next;
+
+    struct vnode *parent_node = vfs_root;
+
+    while((next = strtok_r(NULL, "/", &saveptr))) {
+        if(dirname[0] == '\0')
+            continue;
+
+        struct vnode *dir_node;
+        if(vfs_lookup(&dir_node, parent_node, dirname, NULL, 0) == 0)
+            goto next;
+
+        if((err = vfs_create(parent_node, dirname, entry_attr, V_TYPE_DIR, &dir_node)))
+            goto cleanup;
+
+    next:
+        assert(dir_node != NULL);
+        parent_node = dir_node;
+        dirname = next;
+    }
+
+cleanup:
+    kfree(entry);
+    return err;
+}
 
 int initrd_unpack(void) {
     const char* filename = cmdline_get("initrd");
@@ -60,7 +93,7 @@ int initrd_unpack(void) {
         if(strncmp((const char*) entry.indicator, "ustar", 5))
             break;
 
-        //klog(INFO, "Entry `%s`", entry.name);
+        // klog(INFO, "Entry `%s`", entry.name);
 
         struct vattr entry_attr;
         entry_attr.gid = entry.gid;
@@ -71,7 +104,12 @@ int initrd_unpack(void) {
         ptr = (void*)((uintptr_t) data_start + ROUND_UP(entry.size, TAR_BLOCKSIZE));
         cleaned_bytes += TAR_BLOCKSIZE;
 
-        int err = 0;
+        int err = create_parent_dirs((const char*) entry.name, &entry_attr);
+        if(err) {
+            klog(ERROR, "failed to create parent directory of %s: %s (%d)\n", entry.name, strerror(err), err);
+            continue;
+        }
+
         struct vnode* node;
         size_t write_count;
         switch(entry.type) {
