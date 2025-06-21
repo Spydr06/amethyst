@@ -1,0 +1,46 @@
+let
+    defaultConfig = {
+        enableStatic = true;
+        enableDynamic = false;
+        debug = true;
+        optimize = "-O0";
+    };
+in
+{ lib, stdenv, pkgs, config ? defaultConfig, ... }:
+lib.mkDerivation rec {
+    name = "musl";
+    version = "1.2.5";
+
+    sourceDir = "${pkgs.amethyst-source}/source/store/${name}-${version}";
+    buildDir = "./build";
+
+    env = {
+        PREFIX = builtins.toString lib.prefix;
+        BUILD_DIR = buildDir;
+
+        # TODO: handle this in the package manasger at bootstrap!
+        AR = "${stdenv.arch}-elf-ar";
+        AS = "${stdenv.arch}-elf-as";
+        CC = "${stdenv.arch}-elf-gcc";
+        CXX = "${stdenv.arch}-elf-g++";
+        LD = "${stdenv.arch}-elf-ld";
+        OBJCOPY = "${stdenv.arch}-elf-objcopy";
+    };
+
+    buildDependencies = with pkgs; [
+        amethyst-headers
+    ];
+
+    configurePhase = with builtins;
+        lib.spawnProcess $ [
+            "${sourceDir}/configure"
+            "--prefix=${env.PREFIX}"
+            "--target=${stdenv.arch}"
+            "--enable-warnings"
+        ]
+        ++ (when (!config.enableStatic or $ defaultConfig.enableStatic) "--disable-static")
+        ++ (when (!config.enableDynamic or $ defaultConfig.enableDynamic) "--disable-dynamic")
+        ++ (when (config ? optimize) "--enable-optimize=${config.optimize}")
+        ++ (when (config.debug or $ defaultConfig.debug) "--enable-debug");
+}
+

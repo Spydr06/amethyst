@@ -91,5 +91,6 @@ rec {
     # TODO: figure out dynamically
     targetArch = "x86_64";
     hostArch = "x86_64";
+    arch = targetArch;
 }
 

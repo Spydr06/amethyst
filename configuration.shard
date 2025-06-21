@@ -22,7 +22,8 @@ lib.mkSystemConfig {
     boot.initrd.enable = true;
 
     systemPackages = with pkgs; [
-        initsys
+#        initsys
+        musl
     ];
 
     systemArch = "x86_64";

@@ -3,7 +3,7 @@ lib.mkPackage rec {
     name = "libc";
     version = "0.0.1";
 
-    sourceDir = "${pkgs.amethyst-source}/source/store/libc";
+    sourceDir = "${pkgs.amethyst-source}/source/store/${name}";
     buildDir = "./build";
 
     env = {
