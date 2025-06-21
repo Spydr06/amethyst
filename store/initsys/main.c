@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <getopt.h>
+#include <fcntl.h>
 
 #define DEFAULT_CONFIGURATION_PATH "/bin/configuration.shard"
 
@@ -22,6 +23,12 @@ struct target {
     const char* mount_point;
     const char* fs;
 };
+
+static char *progname;
+
+static char *_getprogname(void) {
+    return progname;
+}
 
 struct target mount_targets[] = {
     {"/dev", "devfs"},
@@ -72,6 +79,7 @@ static void help(void) {
 
 int main(int argc, char** argv) {
     int c;
+    progname = argv[0];
 
     while((c = getopt_long(argc, argv, "l:h", long_options, NULL)) != EOF) {
         switch(c) {

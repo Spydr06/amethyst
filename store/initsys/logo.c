@@ -1,6 +1,7 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <amethyst/fb.h>
+#include <amethyst/ioctl.h>
 
 #include <stdint.h>
 #include <stdlib.h>

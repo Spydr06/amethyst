@@ -6,7 +6,7 @@ OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 
 TARGET := $(BUILD_DIR)/init
 
-LDFLAGS += -static -l:libgetopt.a -lshard
+LDFLAGS += -static -lshard
 CFLAGS += -D_AMETHYST_SRC
 
 .PHONY: all

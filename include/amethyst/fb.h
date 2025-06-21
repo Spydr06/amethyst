@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+
 #ifdef _AMETHYST_KERNEL_SRC
     #include <abi.h>
 #else

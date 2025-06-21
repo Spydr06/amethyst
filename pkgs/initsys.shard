@@ -12,13 +12,13 @@ lib.mkPackage rec {
     };
 
     buildDependencies = with pkgs; [
-        libc
-        getopt
+        musl
+        #getopt
         libshard
     ];
 
     buildPhase = lib.make ["-C" sourceDir 
-#          ("CFLAGS=-specs=" + $ builtins.toString util.paths.gcc_specs)
+        "CFLAGS=-specs=${lib.prefix}/usr/lib/musl-gcc.specs"
     ];
 
     installPhase = builtins.seq (geode.debug.dump config) $ lib.make ["-C" sourceDir "install" "PREFIX=${env.PREFIX}"];

@@ -14,17 +14,11 @@ lib.mkDerivation rec {
     sourceDir = "${pkgs.amethyst-source}/source/store/${name}-${version}";
     buildDir = "./build";
 
-    env = {
-        PREFIX = builtins.toString lib.prefix;
+    env = rec {
+        ARCH = "${stdenv.arch}-elf";
+        PREFIX = "${lib.prefix}/usr";
         BUILD_DIR = buildDir;
-
-        # TODO: handle this in the package manasger at bootstrap!
-        AR = "${stdenv.arch}-elf-ar";
-        AS = "${stdenv.arch}-elf-as";
-        CC = "${stdenv.arch}-elf-gcc";
-        CXX = "${stdenv.arch}-elf-g++";
-        LD = "${stdenv.arch}-elf-ld";
-        OBJCOPY = "${stdenv.arch}-elf-objcopy";
+        CFLAGS = "-nostdinc";
     };
 
     buildDependencies = with pkgs; [
@@ -35,12 +29,18 @@ lib.mkDerivation rec {
         lib.spawnProcess $ [
             "${sourceDir}/configure"
             "--prefix=${env.PREFIX}"
-            "--target=${stdenv.arch}"
+            "--syslibdir=${lib.prefix}/lib"
+            "--target=${env.ARCH}"
+            "--enable-wrapper"
             "--enable-warnings"
         ]
         ++ (when (!config.enableStatic or $ defaultConfig.enableStatic) "--disable-static")
         ++ (when (!config.enableDynamic or $ defaultConfig.enableDynamic) "--disable-dynamic")
         ++ (when (config ? optimize) "--enable-optimize=${config.optimize}")
         ++ (when (config.debug or $ defaultConfig.debug) "--enable-debug");
+
+    buildPhase = lib.make [];
+
+    installPhase = lib.make ["install"];
 }
 

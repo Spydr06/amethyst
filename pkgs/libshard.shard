@@ -9,11 +9,11 @@ lib.mkPackage rec {
     makeTarget = "lib";
     installTarget = "install-lib";
 
-    dependencies = with pkgs; [ libc ];
+    dependencies = with pkgs; [ musl ];
 
     env = {
-        PREFIX = builtins.toString lib.prefix;
-        CFLAGS = "-specs=${lib.prefix}/lib/gcc/cross-libc.specs";
+        PREFIX = "${lib.prefix}/usr";
+        CFLAGS = "-specs=${lib.prefix}/usr/lib/musl-gcc.specs";
         BUILD_DIR = builtins.toString buildDir;
     };
 
