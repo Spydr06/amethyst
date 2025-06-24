@@ -11,6 +11,7 @@ cross.mkShell.override {
         gcc14
         binutils
         gdb
+        curl
     ];
 
     nativeBuildInputs = with pkgs; [
@@ -21,6 +22,7 @@ cross.mkShell.override {
         automake
         autoconf
         gnumake
+        nasm
         openssl
         libarchive
         libtool
