@@ -15,12 +15,12 @@ all: $(TARGET)
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(dir $@)
 	@echo "  CCLD  $@ ($^)"
-	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
 
 $(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)
 	@echo "  CC    $^"
-	@$(CC) $(CFLAGS) -ggdb -MMD -MP -MF "$(@:%.o=%.d)" -c -o $@ $^
+	$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.o=%.d)" -c -o $@ $^
 
 $(PREFIX)/bin:
 	mkdir $@

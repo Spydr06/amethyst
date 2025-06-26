@@ -10,6 +10,16 @@ lib.mkPackage rec {
         };
     };
 
+    env = {
+        AR = "ar";
+        AS = "as";
+        CC = "gcc";
+        CXX = "cxx";
+        LD = "ld";
+        OBJCOPY = "objcopy";
+        RANLIB = "ranlib";
+    };
+
     sourceDir = let
             url = lib.fetchTarball "https://github.com/limine-bootloader/limine/releases/download/v${version}/limine-${version}.tar.gz";
         in url;
