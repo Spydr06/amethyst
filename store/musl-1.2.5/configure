@@ -321,25 +321,9 @@ printf "%s\n" "$target"
 #
 case "$target" in
 # Catch these early to simplify matching for 32-bit archs
-arm*) ARCH=arm ;;
-aarch64*) ARCH=aarch64 ;;
-i?86-nt32*) ARCH=nt32 ;;
 i?86*) ARCH=i386 ;;
 x86_64-x32*|x32*|x86_64*x32) ARCH=x32 ;;
-x86_64-nt64*) ARCH=nt64 ;;
 x86_64*) ARCH=x86_64 ;;
-loongarch64*) ARCH=loongarch64 ;;
-m68k*) ARCH=m68k ;;
-mips64*|mipsisa64*) ARCH=mips64 ;;
-mips*) ARCH=mips ;;
-microblaze*) ARCH=microblaze ;;
-or1k*) ARCH=or1k ;;
-powerpc64*|ppc64*) ARCH=powerpc64 ;;
-powerpc*|ppc*) ARCH=powerpc ;;
-riscv64*) ARCH=riscv64 ;;
-riscv32*) ARCH=riscv32 ;;
-sh[1-9bel-]*|sh|superh*) ARCH=sh ;;
-s390x*) ARCH=s390x ;;
 unknown) fail "$0: unable to detect target arch; try $0 --target=..." ;;
 *) fail "$0: unknown or unsupported target \"$target\"" ;;
 esac
@@ -643,117 +627,6 @@ fi
 
 if test "$ARCH" = "x86_64" ; then
 trycppif __ILP32__ "$t" && ARCH=x32
-fi
-
-if test "$ARCH" = "arm" ; then
-if trycppif __thumb2__ "$t" ; then
-tryflag CFLAGS_AUTO -mimplicit-it=always
-tryflag CFLAGS_AUTO -Wa,-mimplicit-it=always
-tryflag CFLAGS_AUTO -Wa,-mthumb
-fi
-trycppif __ARMEB__ "$t" && SUBARCH=${SUBARCH}eb
-trycppif __ARM_PCS_VFP "$t" && SUBARCH=${SUBARCH}hf
-# Versions of clang up until at least 3.8 have the wrong constraint codes
-# for floating point operands to inline asm. Detect this so the affected
-# source files can just disable the asm.
-if test "$cc_family" = clang ; then
-printf "checking whether clang's vfp asm constraints work... "
-echo 'float f(float x) { __asm__("":"+t"(x)); return x; }' > "$tmpc"
-if $CC $CFLAGS_C99FSE $CPPFLAGS $CFLAGS -c -o /dev/null "$tmpc" >/dev/null 2>&1 ; then
-printf "yes\n"
-else
-printf "no\n"
-CFLAGS_AUTO="$CFLAGS_AUTO -DBROKEN_VFP_ASM"
-CFLAGS_AUTO="${CFLAGS_AUTO# }"
-fi
-fi
-fi
-
-if test "$ARCH" = "aarch64" ; then
-trycppif __AARCH64EB__ "$t" && SUBARCH=${SUBARCH}_be
-fi
-
-if test "$ARCH" = "loongarch64" ; then
-trycppif __loongarch_soft_float "$t" && SUBARCH=${SUBARCH}-sf
-trycppif __loongarch_single_float "$t" && SUBARCH=${SUBARCH}-sp
-printf "checking whether assembler support FCSRs... "
-echo "__asm__(\"movfcsr2gr \$t0,\$fcsr0\");" > "$tmpc"
-if $CC -c -o /dev/null "$tmpc" >/dev/null 2>&1 ; then
-printf "yes\n"
-else
-printf "no\n"
-CFLAGS_AUTO="$CFLAGS_AUTO -DBROKEN_LOONGARCH_FCSR_ASM"
-fi
-fi
-
-if test "$ARCH" = "m68k" ; then
-if trycppif "__HAVE_68881__" ; then : ;
-elif trycppif "__mcffpu__" ; then SUBARCH="-fp64"
-else SUBARCH="-sf"
-fi
-fi
-
-if test "$ARCH" = "mips" ; then
-trycppif "__mips_isa_rev >= 6" "$t" && SUBARCH=${SUBARCH}r6
-trycppif "_MIPSEL || __MIPSEL || __MIPSEL__" "$t" && SUBARCH=${SUBARCH}el
-trycppif __mips_soft_float "$t" && SUBARCH=${SUBARCH}-sf
-fi
-
-if test "$ARCH" = "mips64" ; then
-trycppif "_MIPS_SIM != _ABI64" "$t" && ARCH=mipsn32
-trycppif "__mips_isa_rev >= 6" "$t" && SUBARCH=${SUBARCH}r6
-trycppif "_MIPSEL || __MIPSEL || __MIPSEL__" "$t" && SUBARCH=${SUBARCH}el
-trycppif __mips_soft_float "$t" && SUBARCH=${SUBARCH}-sf
-fi
-
-if test "$ARCH" = "powerpc" ; then
-trycppif "_SOFT_FLOAT || __NO_FPRS__" "$t" && SUBARCH=${SUBARCH}-sf
-printf "checking whether compiler can use 'd' constraint in asm... "
-echo 'double f(double x) { __asm__ ("fabs %0, %1" : "=d"(x) : "d"(x)); return x; }' > "$tmpc"
-if $CC $CFLAGS_C99FSE $CPPFLAGS $CFLAGS -c -o /dev/null "$tmpc" >/dev/null 2>&1 ; then
-printf "yes\n"
-else
-printf "no\n"
-CFLAGS_AUTO="$CFLAGS_AUTO -DBROKEN_PPC_D_ASM"
-CFLAGS_AUTO="${CFLAGS_AUTO# }"
-fi
-fi
-
-test "$ARCH" = "microblaze" && trycppif __MICROBLAZEEL__ "$t" \
-&& SUBARCH=${SUBARCH}el
-
-if test "$ARCH" = "powerpc64" ; then
-trycppif "_CALL_ELF == 2" "$t" || fail "$0: error: unsupported powerpc64 ABI"
-trycppif __LITTLE_ENDIAN__ "$t" && SUBARCH=${SUBARCH}le
-trycppif _SOFT_FLOAT "$t" && fail "$0: error: soft-float not supported on powerpc64"
-fi
-
-if test "$ARCH" = "riscv64" -o "$ARCH" = "riscv32" ; then
-trycppif __riscv_float_abi_soft "$t" && SUBARCH=${SUBARCH}-sf
-trycppif __riscv_float_abi_single "$t" && SUBARCH=${SUBARCH}-sp
-fi
-
-if test "$ARCH" = "sh" ; then
-tryflag CFLAGS_AUTO -Wa,--isa=any
-trycppif __BIG_ENDIAN__ "$t" && SUBARCH=${SUBARCH}eb
-if trycppif "__SH_FPU_ANY__ || __SH4__" "$t" ; then
-# Some sh configurations are broken and replace double with float
-# rather than using softfloat when the fpu is present but only
-# supports single precision. Reject them.
-printf "checking whether compiler's double type is IEEE double... "
-echo 'typedef char dblcheck[(int)sizeof(double)-5];' > "$tmpc"
-if $CC $CFLAGS_C99FSE $CPPFLAGS $CFLAGS -c -o /dev/null "$tmpc" >/dev/null 2>&1 ; then
-printf "yes\n"
-else
-printf "no\n"
-fail "$0: error: compiler's floating point configuration is unsupported"
-fi
-else
-SUBARCH=${SUBARCH}-nofpu
-fi
-if trycppif __SH_FDPIC__ "$t" ; then
-SUBARCH=${SUBARCH}-fdpic
-fi
 fi
 
 test "$SUBARCH" \
