@@ -26,24 +26,11 @@ let
     loadSystemPkg = import;
     pkgCallbacks = builtins.map loadSystemPkg $ findSystemPkgs geode.pkgsDir;
 
-    defaultEnv = let
-            target = "${stdenv.targetArch}-elf";
-        in {
-            PREFIX = "${geode.prefix}/bin:${geode.prefix}/sbin:${geode.prefix}/usr/bin";
-            CC = "${target}-gcc";
-            CXX = "${target}-g++";
-            AS = "${target}-as";
-            AR = "${target}-ar";
-            NASM = "${target}-nasm";
-            OBJCOPY = "${target}-objcopy";
-            GDB = "${target}-gdb";
-            PATH = builtins.toString lib.prefix;
-            # CFLAGS="-specs"
-        };
-
     pkgs = let
-        unresolved = pkgs: builtins.foldl (lib.createEnv defaultEnv << lib.callPackageWith pkgs) (geode.intrinsicStore {}) pkgCallbacks;
+        unresolved = pkgs: builtins.foldl (lib.callPackageWith pkgs) (geode.intrinsicStore {}) pkgCallbacks;
     in fix unresolved; 
 in
-pkgs
+builtins.seq
+    (stdenv.applyEnvSet stdenv.defaultCompileEnv)
+    pkgs
 

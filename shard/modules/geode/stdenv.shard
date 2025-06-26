@@ -73,7 +73,8 @@ rec {
                 _ => x + if xn == "" then "" else ".${xn}"
             );
         in removeLast $ builtins.split "." file;
-                
+
+    systemPrefix = geode.prefix; 
 
     errnoString = geode.builtins.errnoString;
 
@@ -91,5 +92,32 @@ rec {
     # TODO: figure out dynamically
     targetArch = "x86_64";
     hostArch = "x86_64";
+
+    hostToolchain = "${hostArch}-elf";
+    targetToolchain = "${targetArch}-elf";
+
+    mkCompileEnv = toolchain :: string: rec {
+        # TODO: create as derivation
+        PREFIX = "${systemPrefix}";
+        #PATH = "${PREFIX}/bin:${PREFIX}/sbin:${PREFIX}/usr/bin:${PREFIX}/usr/sbin";
+
+        CC = "${toolchain}-gcc";
+        CXX = "${toolchain}-g++";
+        LD = "${toolchain}-ld";
+        AS = "${toolchain}-as";
+        NASM = "${toolchain}-nasm";
+        AR = "${toolchain}-ar";
+        RANLIB = "${toolchain}-ranlib";
+        OBJCOPY = "${toolchain}-objcopy";
+        READELF = "${toolchain}-readelf";
+    };
+
+    crossCompileEnv = mkCompileEnv targetToolchain;
+    hostCompileEnv = mkCompileEnv hostToolchain;
+
+    defaultCompileEnv = (case geode.subcommand of
+        "bootstrap" => crossCompileEnv;
+        _ => hostCompileEnv
+    );
 }
 

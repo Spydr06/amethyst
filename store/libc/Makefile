@@ -28,8 +28,8 @@ PUBLIC_HEADERS := $(shell find $(INCLUDE_DIR) -name '*.h')
 
 INSTALL_TARGETS := $(patsubst $(BUILD_DIR)/%,$(PREFIX)/lib/%,$(TARGETS)) $(patsubst %,$(PREFIX)/usr/%,$(PUBLIC_HEADERS))
 
-CFLAGS += -std=c2x -ggdb -nostdinc -nostdlib -nostartfiles -I$(ARCH_INCLUDE_DIR) -I$(INCLUDE_DIR) -I$(LIB_DIR)/$(INCLUDE_DIR) -I$(PREFIX)/include -I$(PREFIX)/usr/include -Wall -Wextra -pedantic
-LDFLAGS += -nostdlib -nostartfiles
+CFLAGS += -ggdb -std=c2x -ggdb -nostdinc -nostdlib -nostartfiles -I$(ARCH_INCLUDE_DIR) -I$(INCLUDE_DIR) -I$(LIB_DIR)/$(INCLUDE_DIR) -I$(PREFIX)/include -I$(PREFIX)/usr/include -Wall -Wextra -pedantic
+LDFLAGS += -ggdb -nostdlib -nostartfiles
 
 .PHONY: all
 all: $(TARGETS)
@@ -42,7 +42,7 @@ $(LIB_A): $(LIB_OBJECTS)
 $(BUILD_DIR)/%.c.o: %.c
 	@mkdir -p $(dir $@)
 	@echo "  CC    $<"
-	@$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(BUILD_DIR)/%.S.o: %.S
 	@mkdir -p $(dir $@)
@@ -52,7 +52,7 @@ $(BUILD_DIR)/%.S.o: %.S
 $(BUILD_DIR)/%.o: $(CRT_DIR)/%.c
 	@mkdir -p $(dir $@)
 	@echo "  CC    $<"
-	@$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(NATIVE_GCC_SPECS): libc-gcc.specs.in
 	@mkdir -p $(dir $@)
