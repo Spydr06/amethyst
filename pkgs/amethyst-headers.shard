@@ -7,6 +7,11 @@ lib.mkDerivation {
     name = "amethyst-headers";
     version = pkgs.amethyst-kernel.publicVersion;
 
-    installPhase = lib.installDir publicHeaderDir /usr/include/amethyst;
+    fetchPhase = lib.seqList [
+        (lib.mkdirRec $ builtins.toPath "./include")
+        (lib.spawnProcess [ "cp" "-rpv" publicHeaderDir "./include" ])
+    ];
+
+    installPhase = lib.installDir "./include/amethyst" /usr/include/amethyst;
 }
 

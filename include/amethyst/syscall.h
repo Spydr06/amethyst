@@ -31,5 +31,7 @@
 #define SYS_sysinfo     99
 #define SYS_knldebug    255
 
+#define __SYS_invalid   1000
+
 #endif /* _AMETHYST_SYSCALL_H */
 

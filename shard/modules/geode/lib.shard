@@ -120,7 +120,7 @@ let
             publicName = attrs.publicName or name;
             publicVersion = attrs.publicVersion or version;
 
-            exports = attrs.exports or {};
+            exports = createEnv attrs.env or {} $ attrs.exports or {};
 
             outPath = geode.derivation {
                 inherit name;
@@ -158,7 +158,7 @@ let
     installDir = src: dst: let 
             dstDir = geode.file.dirname (geode.prefix + dst);
         in assert (mkdirRec dstDir) == 0;
-            shell.cp ["-r" src (geode.prefix + dst)];
+            shell.cp ["-rp" src (geode.prefix + dst)];
 
     fetchGitRepoTo = to: args:
         let
