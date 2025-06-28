@@ -26,10 +26,15 @@ RUN_SH := $(TOOLS_DIR)/run.sh
 TOOLPREFIX ?= $(ARCH)-elf-
 
 override ARCH_DIR := arch/$(ARCH)
+override ARCH_INCLUDE_DIR := arch/include/$(ARCH)
+
 override SOURCE_DIRS := kernel init drivers $(ARCH_DIR)
+override HEADER_DIRS := include $(ARCH_INCLUDE_DIR)
 
 SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S" -or -name "*.ids"
 SOURCES := $(shell find $(SOURCE_DIRS) $(SOURCE_PATTERN) | grep -v "arch/")
+
+HEADERS := $(shell find $(HEADER_DIRS) -name '*.h')
 
 INCLUDES := . include arch/include $(SHARD_DIR)/libshard/include
 
@@ -103,12 +108,12 @@ $(KERNEL_ELF): $(OBJECTS) $(CONSOLEFONT_OBJECT) $(SHARD_OBJECT)
 	@$(OBJCOPY) --only-keep-debug $(KERNEL_ELF) $(KERNEL_SYM)
 	@$(OBJCOPY) --strip-debug $(KERNEL_ELF)
 
-$(BUILD_DIR)/%.c.o: %.c | $(VERSION_H)
+$(BUILD_DIR)/%.c.o: %.c | $(VERSION_H) $(HEADERS)
 	@mkdir -p $(dir $@)
 	@echo "  CC    $^"
 	@$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.c.o=%.c.d)" -c $^ -o $@
 
-$(BUILD_DIR)/%.cpp.o: %.cpp | $(VERSION_H)
+$(BUILD_DIR)/%.cpp.o: %.cpp | $(VERSION_H) $(HEADERS)
 	@mkdir -p $(dir $@)
 	@echo "  CXX   $^"
 	@$(CXX) $(CXXFLAGS) -MMD -MP -MF "$(@:%.cpp.o=%.cpp.d)" -c $^ -o $@

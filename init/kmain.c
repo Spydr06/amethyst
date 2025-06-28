@@ -1,6 +1,7 @@
-#include "drivers/char/keyboard.h"
 #include <cpu/cpu.h>
+#include <drivers/char/keyboard.h>
 #include <drivers/char/ps2.h>
+#include <drivers/pci/nvme.h>
 #include <drivers/pci/pci.h>
 #include <drivers/video/vga.h>
 #include <filesystem/device.h>
@@ -70,6 +71,7 @@ void kmain(size_t cmdline_size, const char* cmdline)
     create_ttys(); 
 
     pci_init(); 
+    nvme_init();
 
     greet();
     color_test();

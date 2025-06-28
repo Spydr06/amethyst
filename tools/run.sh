@@ -92,7 +92,12 @@ done
 SYMBOL_FILE="$BUILD_DIR/amethyst-0.0.1-${QEMU_ARCH}.sym"
 
 QEMU="qemu-system-${QEMU_ARCH}"
-QEMUFLAGS+="-m ${MEMORY} -serial stdio -smp cpus=${CPUS} -no-reboot -no-shutdown -cdrom ${QEMU_IMAGE} -boot order=d"
+QEMUFLAGS+="-m ${MEMORY} -serial stdio \
+    -smp cpus=${CPUS} -no-reboot -no-shutdown \
+    -drive file=build/nvme.img,if=none,id=nvm,format=raw \
+    -device nvme,serial=deadbeef,drive=nvm \
+    -drive file=${QEMU_IMAGE},media=cdrom \
+    -boot order=d"
 
 [ $ENABLE_KVM -eq 1 ] && QEMUFLAGS+=" -enable-kvm"
 
