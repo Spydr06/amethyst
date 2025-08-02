@@ -62,7 +62,7 @@ const char* _syscall_get_name(size_t i) {
 }
 
 const char* _syscall_get_debug_fmt(size_t i) {
-    return i < __len(_syscall_table) && _syscall_table[i].syscall ? _syscall_table[i].debug_fmt : " N/A";
+    return i < __len(_syscall_table) && _syscall_table[i].syscall ? _syscall_table[i].debug_fmt : "N/A";
 }
 
 bool syscalls_init(void)

@@ -130,6 +130,35 @@ static struct shard_value builtin_ceil(volatile struct shard_evaluator* e, struc
     return INT_VAL((int64_t) (arg.floating + 1.0));
 }
 
+static struct shard_value builtin_char(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    static char ascii_table[0xff * 2];
+    static bool ascii_table_init = false;
+
+    if(!ascii_table_init) {
+        for(size_t i = 0; i < 0xff; i++) {
+            ascii_table[i * 2] = (char) i;
+            ascii_table[i * 2 + 1] = '\0';
+        }
+
+        ascii_table_init = true;
+    }
+
+    struct shard_value ascii_val = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    if(ascii_val.integer >= 0 && ascii_val.integer < 0xff)
+        return STRING_VAL(&ascii_table[ascii_val.integer], 1);
+    return NULL_VAL();
+}
+
+static struct shard_value builtin_charAt(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value index = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value string = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    if(index.integer >= 0 && string.strlen > (size_t) index.integer)
+        return INT_VAL(string.string[index.integer]);
+    return NULL_VAL();
+}
+
 static struct shard_value builtin_all(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value pred = shard_builtin_eval_arg(e, builtin, args, 0);
     struct shard_value list = shard_builtin_eval_arg(e, builtin, args, 1);
@@ -1051,6 +1080,8 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.bitXor", builtin_bitXor, SHARD_VAL_INT, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.catAttrs", builtin_catAttrs, SHARD_VAL_STRING, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.ceil", builtin_ceil, SHARD_VAL_FLOAT),
+    SHARD_BUILTIN("builtins.char", builtin_char, SHARD_VAL_INT),
+    SHARD_BUILTIN("builtins.charAt", builtin_charAt, SHARD_VAL_INT, SHARD_VAL_STRING),
     SHARD_BUILTIN("builtins.concatLists", builtin_concatLists, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.defaultFunctionArg", builtin_defaultFunctionArg, SHARD_VAL_STRING, SHARD_VAL_FUNCTION),
     SHARD_BUILTIN("builtins.dirname", builtin_dirname, SHARD_VAL_PATH),
