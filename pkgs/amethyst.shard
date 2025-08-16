@@ -17,16 +17,23 @@ lib.mkPackage rec {
 
     buildTarget = "${buildDir}/${targetElf}";
     installTarget = "install";
+    
+    uacpi = pkgs.uacpi.override { 
+        overrideName = name;
+        extraCFlags = []; 
+    };
 
     env = {
-        # kernel cannot use system import
-        C_CXX_FLAGS="-I${pkgs.limine} " + getDefines;
-        BUILD_DIR=builtins.toString buildDir;
-        SANITIZERS=getSanitizers;
-    };
+            # kernel cannot use system import
+            C_CXX_FLAGS="-I${pkgs.limine} -I${uacpi}/${uacpi.exports.includeDir}" + getDefines;
+            LDFLAGS="${uacpi}/${uacpi.exports.staticLib}";
+            BUILD_DIR=builtins.toString buildDir;
+            SANITIZERS=getSanitizers;
+        };
 
     buildDependencies = [
         pkgs.limine
+        uacpi
     ];
 
     getDefines = with builtins;

@@ -228,6 +228,9 @@ let
         make = args :: list: 
             geode.proc.spawn "make" (builtins.map builtins.toString (args ++ ["-j" (geode.proc.nJobs)])) true;
 
+        link = file :: path | string: link :: path | string:
+            geode.proc.spawn "ln" ["-s" (builtins.toString file) (builtins.toString link)];
+
         spawnProcess = args :: list:
             geode.proc.spawn (builtins.head args) (builtins.map builtins.toString $ builtins.tail args) true;
 

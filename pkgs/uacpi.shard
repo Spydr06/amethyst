@@ -1,0 +1,57 @@
+let
+    defaultConfig = {
+        extraCFlags = []; 
+
+    };
+in
+{ lib, pkgs, stdenv, config ? defaultConfig, ... }:
+lib.mkPackage rec {
+    name = if config ? overrideName
+        then "uacpi-" + config.overrideName
+        else "uacpi";
+
+    version = "3.0.0";
+
+    sourceDir = let
+            url = "https://github.com/uACPI/uACPI/archive/refs/tags/${version}.tar.gz";
+        in lib.fetchTarball url;
+
+    includeDir = "${sourceDir}/include";
+
+    cFlags = [ "-I${includeDir}" ] ++ config.extraCFlags or [];
+
+    buildDir = "./build";
+
+    buildTarget = "uacpi-${version}.a";
+
+    exports = {
+        inherit includeDir;
+        staticLib = buildTarget;
+    };
+
+    makefile = builtins.join "\n" [
+        "SOURCES = $(wildcard ${sourceDir}/source/*.c)"
+        "OBJECTS = $(patsubst ${sourceDir}/source/%.c, ${buildDir}/%.o, $(SOURCES))"
+        "" 
+        "${buildTarget}: $(OBJECTS)"
+        "\t@echo \"  AR    $@\""
+        "\t@$(AR) -rcs $@ $^"
+        "\t@echo \"  RANLIB $@\""
+        "\t@$(RANLIB) $@"
+        ""
+        "${buildDir}/%.o: ${sourceDir}/source/%.c ${buildDir}"
+        "\t@echo \"  CC    $<\""
+        "\t@$(CC) $(CFLAGS) ${builtins.join " " cFlags} -MMD -MP -MF \"$(@:%.o=%.d)\" -c -o $@ $<"
+        ""
+        "${buildDir}:"
+        "\t@echo \"  MKDIR $@\""
+        "\t@mkdir -p $@"
+    ];
+
+    configurePhase = if !stdenv.fileExists "Makefile" || makefile != stdenv.readFile "Makefile"
+        then stdenv.writeFile "Makefile" makefile
+        else 0;
+
+    buildPhase = lib.make [ buildTarget ];
+}
+
