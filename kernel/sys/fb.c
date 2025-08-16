@@ -9,6 +9,7 @@
 #include <limine.h>
 #include <mem/heap.h>
 #include <mem/user.h>
+#include <mem/pmm.h>
 
 #include <filesystem/device.h>
 #include <filesystem/virtual.h>

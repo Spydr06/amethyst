@@ -3,8 +3,6 @@
 
 #include <filesystem/virtual.h>
 #include <mem/slab.h>
-#include <mem/mmap.h>
-#include <mem/pmm.h>
 
 #include <sys/mutex.h>
 

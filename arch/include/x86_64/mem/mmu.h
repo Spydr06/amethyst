@@ -2,10 +2,9 @@
 #define _AMETHYST_X86_64_MMU_H
 
 #include <cdefs.h>
-#include <limine.h>
-#include <x86_64/cpu/cpu.h>
+#include <stddef.h>
 
-#include <mem/mmap.h>
+#include <x86_64/cpu/cpu.h>
 
 #define PAGE_SIZE 0x1000
 
@@ -30,6 +29,8 @@ enum mmu_flags : uint64_t {
 };
 
 typedef uint64_t* page_table_ptr_t;
+
+struct mmap;
 
 void mmu_init(struct mmap* mmap);
 void mmu_apswitch(void);
