@@ -17,10 +17,16 @@ lib.mkPackage rec {
 
     buildTarget = "${buildDir}/${targetElf}";
     installTarget = "install";
-    
+
+    linkerScript = "${sourceDir}/arch/${stdenv.targetArch}/link.ld";
+
     uacpi = pkgs.uacpi.override { 
         overrideName = name;
-        extraCFlags = []; 
+        extraCFlags = [
+            "-ffreestanding" "-fstack-protector" "-fno-lto" "-fPIE" "-g"
+        ]; 
+        extraLDFlags = [
+        ];
     };
 
     env = {

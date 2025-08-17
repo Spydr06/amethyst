@@ -70,9 +70,9 @@ endif
 override LDSCRIPT := $(ARCH_DIR)/link.ld
 
 override LD := $(TOOLPREFIX)ld
-LDFLAGS += -m elf_$(ARCH) -nostdlib \
+LDFLAGS := -m elf_$(ARCH) -nostdlib \
 		   -static -no-pie --no-dynamic-linker -z max-page-size=0x1000 \
-		   -T $(LDSCRIPT)
+		   -T $(LDSCRIPT) $(LDFLAGS)
 
 override OBJCOPY := $(TOOLPREFIX)objcopy
 

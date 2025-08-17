@@ -136,6 +136,8 @@ enum MADT_entry_type : uint8_t {
 
 void acpi_init(void);
 
+struct RSDP *acpi_get_rsdp(void);
+
 struct SDT_header* acpi_find_header(const char* sig);
 bool acpi_validate_sdt(struct SDT_header* header);
 

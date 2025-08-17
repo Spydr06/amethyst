@@ -18,12 +18,14 @@ static volatile struct limine_rsdp_request rsdp_request = {
 static size_t header_count;
 static struct SDT_header** headers;
 static struct FADT* fadt;
+static struct RSDP* rsdp;
+static struct RSDP* rsdp_phys;
 
 void acpi_init(void) {
     if(!rsdp_request.response)
         panic("No ACPI information received from bootloader");
 
-    struct RSDP* rsdp = rsdp_request.response->address;
+    rsdp_phys = rsdp = rsdp_request.response->address;
 
     uintptr_t page_offset = (uintptr_t) rsdp % PAGE_SIZE;
 
@@ -89,6 +91,10 @@ void acpi_init(void) {
     else {
         klog(WARN, "No \"FACP\" table found.");
     }
+}
+
+struct RSDP *acpi_get_rsdp(void) {
+    return rsdp_phys;
 }
 
 bool acpi_validate_sdt(struct SDT_header* header) {

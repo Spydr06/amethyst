@@ -1,7 +1,7 @@
 let
     defaultConfig = {
         extraCFlags = []; 
-
+        extraLDFlags = [];
     };
 in
 { lib, pkgs, stdenv, config ? defaultConfig, ... }:
@@ -20,9 +20,11 @@ lib.mkPackage rec {
 
     cFlags = [ "-I${includeDir}" ] ++ config.extraCFlags or [];
 
+    ldFlags = [] ++ config.extraLDFlags or [];
+
     buildDir = "./build";
 
-    buildTarget = "uacpi-${version}.a";
+    buildTarget = "uacpi-${version}.o";
 
     exports = {
         inherit includeDir;
@@ -34,13 +36,14 @@ lib.mkPackage rec {
         "OBJECTS = $(patsubst ${sourceDir}/source/%.c, ${buildDir}/%.o, $(SOURCES))"
         "" 
         "${buildTarget}: $(OBJECTS)"
-        "\t@echo \"  AR    $@\""
-        "\t@$(AR) -rcs $@ $^"
-        "\t@echo \"  RANLIB $@\""
-        "\t@$(RANLIB) $@"
+        "\t$(LD) -r $^ -o $@"
+        #"\t@echo \"  AR    $@\""
+        #"\t$(AR) rcs $@ $^"
+        #"\t@echo \"  RANLIB $@\""
+        #"\t@$(RANLIB) $@"
         ""
         "${buildDir}/%.o: ${sourceDir}/source/%.c ${buildDir}"
-        "\t@echo \"  CC    $<\""
+        "\t@echo \"  CC    $(basename $<)\""
         "\t@$(CC) $(CFLAGS) ${builtins.join " " cFlags} -MMD -MP -MF \"$(@:%.o=%.d)\" -c -o $@ $<"
         ""
         "${buildDir}:"

@@ -47,6 +47,8 @@ static void color_test(void) {
     printk("\n\n");
 }
 
+int uacpi_init();
+
 void kmain(size_t cmdline_size, const char* cmdline)
 {
     cmdline_parse(cmdline_size, cmdline);
@@ -61,6 +63,8 @@ void kmain(size_t cmdline_size, const char* cmdline)
     devfs_init();
 
     pseudodevices_init();
+
+    uacpi_init();
 
     keyboard_driver_init();
 
