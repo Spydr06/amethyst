@@ -13,6 +13,7 @@
 build/
 compile_commands.json
 vgcore.*
+.devinclude/
 
 include/limine.h
 

@@ -121,9 +121,7 @@ struct shard_value builtin_git_checkoutBranch(volatile struct shard_evaluator* e
         goto cleanup_tree;
     }*/
 
-cleanup_remote:
     git_remote_free(remote);
-cleanup_repo:
     git_repository_free(repo);
 cleanup:
     if(ex)

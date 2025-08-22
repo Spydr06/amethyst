@@ -46,13 +46,12 @@ struct shard_value builtin_archive_extractTar(volatile struct shard_evaluator* e
 
     int err;
     exception_t *ex = NULL;
+    char *dst_path = NULL;
 
     if((err = archive_read_open_filename(a, src_path.path, 10240))) {
         ex = geode_archive_ex(context, a, "Could not open archive `%s'", src_path.path);
         goto cleanup;
     }
-
-    char *dst_path = NULL;
 
     struct archive_entry *entry;
     while((err = archive_read_next_header(a, &entry)) == ARCHIVE_OK) {
