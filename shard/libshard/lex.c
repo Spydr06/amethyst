@@ -241,6 +241,14 @@ static inline bool is_ident_char(char c) {
     return isalnum(c) || c == '_' || c == '-';
 }
 
+bool shard_is_valid_identifier(const char *ident) {
+    for(size_t i = 0; ident[i]; i++)
+        if(!is_ident_char(ident[i]))
+            return false;
+
+    return true;
+}
+
 static int is_path_terminator(int c) {
     return isspace(c) || c == ';' || c == ',' || c == ')' || c == ']' || c == '}';
 }

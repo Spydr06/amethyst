@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <inttypes.h>
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
@@ -1003,6 +1004,131 @@ static struct shard_value builtin_shardPath(volatile struct shard_evaluator* e, 
     return LIST_VAL(head);
 }
 
+static void serialize_escaped_string(volatile struct shard_evaluator* e, struct shard_string* buffer, const char* str, size_t len) {
+    shard_gc_string_push(e->gc, buffer, '"');
+
+    for(size_t i = 0; i < len; i++) {
+        char c = str[i];
+
+        switch(c) {
+            case '\t':
+                shard_gc_string_appendn(e->gc, buffer, "\\t", 2);
+                break;
+            case '\"':
+                shard_gc_string_appendn(e->gc, buffer, "\\\"", 2);
+                break;
+            case '\\':
+                shard_gc_string_appendn(e->gc, buffer, "\\\\", 2);
+                break;
+            case '\n':
+                shard_gc_string_appendn(e->gc, buffer, "\\n", 2);
+                break;
+            default:
+                shard_gc_string_push(e->gc, buffer, c);
+        }
+    }
+
+    shard_gc_string_push(e->gc, buffer, '"');
+}
+
+static void serialize_value(volatile struct shard_evaluator* e, struct shard_string* buffer, struct shard_value* value) {
+    switch(value->type) {
+        case SHARD_VAL_NULL:
+            shard_gc_string_append(e->gc, buffer, "null");
+            break;
+        case SHARD_VAL_BOOL:
+            if(value->boolean)
+                shard_gc_string_append(e->gc, buffer, "true");
+            else
+                shard_gc_string_append(e->gc, buffer, "false");
+            break;
+        case SHARD_VAL_STRING:
+            serialize_escaped_string(e, buffer, value->string, value->strlen);
+            break;
+        case SHARD_VAL_PATH:
+            for(size_t i = 0; i < value->pathlen; i++) {
+                char c = value->path[i];
+
+                if(isspace(c))
+                    shard_gc_string_push(e->gc, buffer, '\\');
+
+                shard_gc_string_push(e->gc, buffer, c);
+            }
+            break;
+        case SHARD_VAL_INT:
+            char itos[100];
+            snprintf(itos, sizeof(itos), "%ld", value->integer);
+
+            shard_gc_string_append(e->gc, buffer, itos);
+            break;
+        case SHARD_VAL_FLOAT:
+            char ftos[100];
+            snprintf(ftos, sizeof(ftos), "%.17f", value->floating);
+
+            shard_gc_string_append(e->gc, buffer, ftos);
+            break;
+        case SHARD_VAL_LIST:
+            shard_gc_string_push(e->gc, buffer, '[');
+            shard_gc_string_push(e->gc, buffer, ' ');
+
+            struct shard_list *iter = value->list.head;
+
+            while(iter) {
+                struct shard_value elem = shard_eval_lazy2(e, iter->value);
+                serialize_value(e, buffer, &elem);
+
+                shard_gc_string_push(e->gc, buffer, ' ');
+
+                iter = iter->next;
+            }
+
+            shard_gc_string_push(e->gc, buffer, ']');
+            break;
+        case SHARD_VAL_SET:
+            shard_gc_string_push(e->gc, buffer, '{');
+            shard_gc_string_push(e->gc, buffer, ' ');
+
+            for(size_t i = 0; i < value->set->capacity; i++) {
+                shard_ident_t key = value->set->entries[i].key;
+                struct shard_lazy_value* iter = value->set->entries[i].value;
+
+                if(!key)
+                    continue;
+
+                if(shard_is_valid_identifier(key))
+                    shard_gc_string_append(e->gc, buffer, key);
+                else
+                    serialize_escaped_string(e, buffer, key, strlen(key));
+
+                shard_gc_string_appendn(e->gc, buffer, " = ", 3);
+
+                struct shard_value elem = shard_eval_lazy2(e, iter);
+                serialize_value(e, buffer, &elem);
+
+                shard_gc_string_push(e->gc, buffer, ';');
+                shard_gc_string_push(e->gc, buffer, ' ');
+            }
+
+            shard_gc_string_push(e->gc, buffer, '}');
+            break;
+        case SHARD_VAL_BUILTIN:
+        case SHARD_VAL_FUNCTION:
+        default:
+            shard_eval_throw(e, e->error_scope->loc, "`builtins.serialize` cannot serialize value of type `%s`", shard_value_type_to_string(e->ctx, value->type));
+            break;
+    }
+}
+
+static struct shard_value builtin_serialize(volatile struct shard_evaluator* e, struct shard_builtin *builtin, struct shard_lazy_value** args) {
+    struct shard_value val = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    struct shard_string buffer = {0, 0, 0};
+
+    serialize_value(e, &buffer, &val);
+
+    return STRING_VAL(buffer.items, buffer.count);
+}
+
 static struct shard_value builtin_import(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value val = shard_builtin_eval_arg(e, builtin, args, 0); 
     const char* filepath;
@@ -1076,6 +1202,7 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.attrNames", builtin_attrNames, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.attrValues", builtin_attrValues, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.basename", builtin_basename, SHARD_VAL_PATH),
+    SHARD_BUILTIN("builtins.bitAnd", builtin_bitAnd, SHARD_VAL_INT, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.bitOr", builtin_bitOr, SHARD_VAL_INT, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.bitXor", builtin_bitXor, SHARD_VAL_INT, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.catAttrs", builtin_catAttrs, SHARD_VAL_STRING, SHARD_VAL_LIST),
@@ -1118,6 +1245,7 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.mergeTree", builtin_mergeTree, SHARD_VAL_SET, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.mul", builtin_mul, SHARD_VAL_NUMERIC, SHARD_VAL_NUMERIC),
     SHARD_BUILTIN("builtins.not", builtin_not, SHARD_VAL_BOOL),
+    SHARD_BUILTIN("builtins.serialize", builtin_serialize, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.setAttr", builtin_setAttr, SHARD_VAL_STRING, SHARD_VAL_ANY, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.seq", builtin_seq, SHARD_VAL_ANY, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.seqList", builtin_seqList, SHARD_VAL_LIST),

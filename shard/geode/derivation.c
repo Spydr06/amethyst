@@ -87,6 +87,29 @@ void geode_call_builder(struct geode_context *context, struct geode_derivation *
         geode_throw(context, geode_io_ex(context, err, "Could not chdir out of derivation prefix `%s'", deriv->prefix));
 }
 
+static const char *deriv_lockfile_path(struct geode_context *context, struct geode_derivation *deriv) {
+    if(!deriv->lockfile)
+        deriv->lockfile = l_sprintf(&context->l_global, "%s/derivation.lock", deriv->prefix);
+
+    return deriv->lockfile;
+}
+
+bool geode_load_lockfile(struct geode_context *context, struct geode_derivation *deriv) {
+    deriv_lockfile_path(context, deriv);
+
+    if(!fexists(deriv->lockfile))
+        return false;
+
+    geode_panic(context, "%s exists", deriv->lockfile);
+    return false;
+}
+
+void geode_save_lockfile(struct geode_context *context, struct geode_derivation *deriv) {
+    deriv_lockfile_path(context, deriv);
+
+    geode_headingf(context, "Saving lockfile `%s`...", deriv->lockfile);
+}
+
 static struct shard_lazy_value *deriv_lazy_attr(struct geode_context *context, struct shard_value *deriv, const char *attr) {
     assert(deriv->type == SHARD_VAL_SET);
 
@@ -142,8 +165,13 @@ struct shard_value geode_builtin_derivation(volatile struct shard_evaluator *e, 
     struct shard_lazy_value *builder = deriv_lazy_attr(context, &deriv_decl, "builder");
 
     struct geode_derivation *deriv = geode_mkderivation(context, name->string, version->string, geode_shard_builder(builder));
-    geode_call_builder(context, deriv);
+    if(geode_load_lockfile(context, deriv))
+        goto cached_deriv;
 
+    geode_call_builder(context, deriv);
+    geode_save_lockfile(context, deriv);
+
+cached_deriv:
     deriv_result = CPATH_VAL(deriv->prefix);
     
 cleanup:

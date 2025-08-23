@@ -346,6 +346,8 @@ SHARD_DECL void shard_lex_free(struct shard_lexer* l);
 
 SHARD_DECL int shard_lex(struct shard_lexer* l, struct shard_token* token);
 
+SHARD_DECL bool shard_is_valid_identifier(const char *ident);
+
 shard_dynarr(shard_attr_path, shard_ident_t);
 
 struct shard_binding {
