@@ -164,6 +164,8 @@ size_t shard_get_num_errors(struct shard_context* context);
 
 void shard_remove_errors(struct shard_context* context);
 
+#define SHARD_DYNARR_EMPTY {0, 0, 0}
+
 shard_dynarr(shard_errors, struct shard_error);
 shard_dynarr(shard_string, char);
 shard_dynarr(shard_string_list, char*);
@@ -260,6 +262,9 @@ SHARD_DECL struct shard_value shard_eval_division(volatile struct shard_evaluato
 SHARD_DECL void shard_update_set_scopes(volatile struct shard_evaluator* e, struct shard_set* new, struct shard_set* old);
 
 SHARD_DECL int shard_call(struct shard_context* ctx, struct shard_value func, struct shard_value* arg, struct shard_value* result);
+
+SHARD_DECL int shard_serialize(struct shard_context* ctx, struct shard_string* dest, struct shard_value value);
+SHARD_DECL void shard_serialize2(volatile struct shard_evaluator* e, struct shard_string* dest, struct shard_value value);
 
 enum shard_token_type {
     SHARD_TOK_EOF = 0,

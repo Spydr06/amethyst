@@ -107,6 +107,9 @@ bool geode_load_lockfile(struct geode_context *context, struct geode_derivation 
 void geode_save_lockfile(struct geode_context *context, struct geode_derivation *deriv) {
     deriv_lockfile_path(context, deriv);
 
+    struct shard_string save = SHARD_DYNARR_EMPTY;
+
+
     geode_headingf(context, "Saving lockfile `%s`...", deriv->lockfile);
 }
 

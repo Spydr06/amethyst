@@ -1030,6 +1030,18 @@ int shard_eval_lazy(struct shard_context* ctx, struct shard_lazy_value* value) {
     return ctx->errors.count;
 }
 
+SHARD_DECL int shard_serialize(struct shard_context* ctx, struct shard_string* dest, struct shard_value value) {
+    jmp_buf exception;
+    volatile struct shard_evaluator e;
+    evaluator_init(&e, ctx, &exception);
+
+    shard_serialize2(&e, dest, value);
+
+    evaluator_free(&e);
+
+    return ctx->errors.count;
+}
+
 int shard_eval(struct shard_context* ctx, struct shard_open_source* source) {
     if(!source->parsed) {
         int err = shard_parse(ctx, &source->source, &source->expr);
