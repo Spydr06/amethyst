@@ -10,12 +10,6 @@ cat <<EOF
 *cc1:
 %(cc1_cpu) -nostdinc -isystem $incdir -isystem include%s
 
-*link_libgcc:
--L$libdir -L .%s
-
-*libgcc:
-libgcc.a%s %:if-exists(libgcc_eh.a%s)
-
 *startfile:
 %{!shared: $libdir/Scrt1.o} $libdir/crti.o %s
 
@@ -23,7 +17,7 @@ libgcc.a%s %:if-exists(libgcc_eh.a%s)
 %s $libdir/crtn.o
 
 *link:
--dynamic-linker $ldso -nostdlib %{shared:-shared} %{static:-static} %{rdynamic:-export-dynamic}
+-dynamic-linker $ldso -nostdlib %{shared:-shared} %{static:-static} %{rdynamic:-export-dynamic} -L$libdir -L . 
 
 *esp_link:
 
