@@ -108,13 +108,15 @@ int main(int argc, char** argv) {
     }
 
     printf("Hello, World <3\n");
+    printf("Line two\n");
+    fflush(stdout);
 
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         mount_target(mount_targets + i);
     
     int fb = open("/dev/fb0", O_WRONLY, 0);
     if(!fb) {
-        fprintf(stderr, "/dev/fb0: open() failed: %m\n");
+        fprintf(stdout, "/dev/fb0: open() failed: %m\n");
         return 1;
     }
 

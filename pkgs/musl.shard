@@ -18,7 +18,7 @@ lib.mkDerivation rec {
         ARCH = "${stdenv.arch}-elf";
         PREFIX = "${lib.prefix}/usr";
         BUILD_DIR = buildDir;
-        CFLAGS = "-nostdinc";
+        CFLAGS = "-g -nostdinc -I${pkgs.amethyst-headers}/include";
     };
 
     buildDependencies = with pkgs; [
