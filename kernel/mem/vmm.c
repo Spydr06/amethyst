@@ -1,3 +1,4 @@
+#include "sys/mutex.h"
 #include <mem/vmm.h>
 #include <mem/pmm.h>
 #include <mem/slab.h>
@@ -298,6 +299,31 @@ void vmm_unmap(void* addr, size_t size, enum vmm_flags flags) {
     mmu_invalidate_range(addr, size);
     change_map(space, addr, size, true, flags, 0);
     mutex_release(&space->lock);
+}
+
+int vmm_change_mmu_flags(void* addr, size_t size, enum mmu_flags mmu_flags, enum vmm_flags flags) {
+    addr = (void*) ROUND_DOWN((uintptr_t) addr, PAGE_SIZE);
+    
+    if(flags & VMM_FLAGS_PAGESIZE)
+        size *= PAGE_SIZE;
+    else
+        size = ROUND_UP(size, PAGE_SIZE);
+
+    if(!size)
+        return 0;
+
+    struct vmm_space* space = vmm_get_space(addr);
+    if(!space)
+        return ENOMEM;
+
+    mutex_acquire(&space->lock, false);
+
+    int err = change_map(space, addr, size, false, flags, mmu_flags);
+    mmu_invalidate_range(addr, size);
+
+    mutex_release(&space->lock);
+
+    return err;
 }
 
 static struct vmm_cache* new_cache(void) {
