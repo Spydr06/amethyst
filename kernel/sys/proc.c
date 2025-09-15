@@ -23,6 +23,21 @@ static inline struct vnode* lock_vnode(struct proc* proc, struct vnode** vnode_p
     return vnode;
 }
 
+static inline void change_vnode(struct proc* proc, struct vnode** vnode_ptr, struct vnode* vnode_new) {
+    vop_hold(vnode_new);
+
+    bool int_status = interrupt_set(false);
+    spinlock_acquire(&proc->nodes_lock);
+
+    struct vnode* vnode_old = *vnode_ptr;
+    *vnode_ptr = vnode_new;
+
+    spinlock_release(&proc->nodes_lock);
+    interrupt_set(int_status);
+
+    vop_release(&vnode_old);
+}
+
 void proc_init(void) {
     proc_cache = slab_newcache(sizeof(struct proc), 0, nullptr, nullptr);
     assert(proc_cache);
@@ -101,7 +116,21 @@ struct vnode* proc_get_root(void) {
 struct vnode* proc_get_cwd(void) {
     struct proc* proc = current_proc();
     assert(proc);
-    return lock_vnode(proc, &proc->root);
+    return lock_vnode(proc, &proc->cwd);
+}
+
+void proc_set_cwd(struct vnode* cwd) {
+    struct proc* proc = current_proc();
+    assert(proc);
+
+    change_vnode(proc, &proc->cwd, cwd);
+}
+
+void proc_set_root(struct vnode* root) {
+    struct proc* proc = current_proc();
+    assert(proc);
+
+    change_vnode(proc, &proc->root, root);
 }
 
 size_t proc_count(void) {

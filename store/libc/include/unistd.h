@@ -58,6 +58,9 @@ long syscall(long number, ...);
 
 char *getcwd(char *buf, size_t size);
 
+int chdir(const char* pathname);
+int fchdir(int fd);
+
 pid_t getpid(void);
 
 int uname(struct utsname *utsname);

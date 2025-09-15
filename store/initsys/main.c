@@ -70,6 +70,25 @@ static void help(void) {
     );
 }
 
+static void list_dirents(const char *dirname) {
+    DIR* dir = opendir(dirname);
+    if(!dir) {
+        fprintf(stderr, "%s: opendir() failed: %m\n", dirname);
+        exit(1);
+    }
+
+    struct dirent* ent;
+
+    printf("directory listing of `%s`:\n", dirname);
+
+    int i = 0;
+    while((ent = readdir(dir))) {
+        printf(" %d) \"%s\"\n", i++, ent->d_name);
+    }
+
+    closedir(dir);
+}
+
 int main(int argc, char** argv) {
     int c;
 
@@ -114,20 +133,12 @@ int main(int argc, char** argv) {
 
     close(fb);
 
-    DIR* dir = opendir("/");
-    if(!dir) {
-        fprintf(stderr, "/: opendir() failed: %m\n");
+    if(chdir("/dev") == -1) {
+        fprintf(stderr, "/dev: chdir() failed: %m\n");
         return 1;
     }
 
-    struct dirent* ent;
-
-    int i = 0;
-    while((ent = readdir(dir))) {
-        printf(" %d) \"%s\"\n", i++, ent->d_name);
-    }
-
-    closedir(dir);
+    list_dirents(".");
 
 next:
     int err = execv(shell_bin, (char* const[]){shell_bin, NULL});

@@ -39,3 +39,12 @@ int uname(struct utsname *utsname) {
 pid_t getpid(void) {
     return syscall(SYS_getpid);
 }
+
+int chdir(const char* pathname) {
+    return syscall(SYS_chdir, pathname);
+}
+
+int fchdir(int fd) {
+    return syscall(SYS_fchdir, fd);
+}
+

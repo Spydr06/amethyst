@@ -83,6 +83,8 @@ void proc_delete(struct proc*);
 struct vnode* proc_get_root(void);
 struct vnode* proc_get_cwd(void);
 
+void proc_set_cwd(struct vnode* cwd);
+
 size_t proc_count(void);
 
 #endif /* _AMETHYST_SYS_PROC_H */

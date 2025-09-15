@@ -69,6 +69,9 @@ __syscall syscallret_t _sys_exit(struct cpu_context* ctx, int exit_code);
 __syscall syscallret_t _sys_waitpid(struct cpu_context* ctx, pid_t pid, int *wstatus, int options);
 __syscall syscallret_t _sys_uname(struct cpu_context* ctx, struct utsname* u_name);
 
+__syscall syscallret_t _sys_chdir(struct cpu_context* ctx, const char* pathname);
+__syscall syscallret_t _sys_fchdir(struct cpu_context* ctx, int fd);
+
 __syscall syscallret_t _sys_sysinfo(struct cpu_context* ctx, struct sysinfo* u_sysinfo);
 
 __syscall syscallret_t _sys_getcwd(struct cpu_context* ctx, char* cwd, size_t cwd_size);

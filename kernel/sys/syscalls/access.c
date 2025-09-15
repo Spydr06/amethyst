@@ -14,8 +14,7 @@ __syscall syscallret_t _sys_access(struct cpu_context* ctx, const char* filename
     };
 
     size_t filename_size;
-    ret._errno = user_strlen(filename, &filename_size);
-    if(ret._errno)
+    if((ret._errno = user_strlen(filename, &filename_size)))
         return ret;
 
     if(!filename_size) {

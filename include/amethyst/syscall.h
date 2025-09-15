@@ -29,6 +29,8 @@
 #define SYS_waitpid     61
 #define SYS_uname       63
 #define SYS_getcwd      79
+#define SYS_chdir       80
+#define SYS_fchdir      81
 #define SYS_sysinfo     99
 #define SYS_knldebug    255
 

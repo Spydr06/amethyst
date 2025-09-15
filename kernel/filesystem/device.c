@@ -1,3 +1,4 @@
+#include "amethyst/dirent.h"
 #include "kernelio.h"
 #include <filesystem/device.h>
 #include <filesystem/virtual.h>
@@ -10,6 +11,7 @@
 #include <string.h>
 #include <errno.h>
 #include <hashtable.h>
+#include <math.h>
 
 static struct scache* node_cache;
 
@@ -37,6 +39,7 @@ static struct vops vnode_ops = {
     .ioctl = devfs_ioctl,
     .lookup = devfs_lookup,
     .mmap = devfs_mmap,
+    .getdents = devfs_getdents,
 };
 
 static void ctor(struct scache* cache __unused, void* obj) {
@@ -423,5 +426,38 @@ int devfs_mmap(struct vnode* node, void* addr, uintmax_t offset, int flags, stru
         return ENODEV;
 
     return dev_node->devops->mmap(dev_node->vattr.rdev_minor, addr, offset, flags);
+}
+
+int devfs_getdents(struct vnode* vnode, struct amethyst_dirent *buffer, size_t count, uintmax_t offset, size_t *ents_read) {
+    if(vnode->type != V_TYPE_DIR)
+        return ENOTDIR;
+
+    struct dev_node* node = (struct dev_node*) vnode;
+
+    size_t current = 0;
+    *ents_read = 0;
+
+    HASHTABLE_FOREACH(&node->children, entry) {
+        if(current < offset) {
+            current++;
+            continue;
+        }
+
+        if(*ents_read >= count)
+            break;
+
+        struct dev_node* entry_node = entry->value;
+        struct amethyst_dirent* dent = buffer + *ents_read;
+
+        dent->d_ino = entry_node->vattr.inode;
+        dent->d_off = offset + *ents_read;
+        dent->d_reclen = sizeof(struct amethyst_dirent);
+        dent->d_type = vfs_posix_type(entry_node->vnode.type);
+        memcpy(dent->d_name, entry->key, MIN(entry->keysize, sizeof(dent->d_name)));
+
+        (*ents_read)++;
+    }
+
+    return 0;
 }
 
