@@ -36,6 +36,7 @@ void __init_libc(char **envp, char *pn)
 	__progname = __progname_full = pn;
 	for (i=0; pn[i]; i++) if (pn[i]=='/') __progname = pn+i+1;
 
+    // FIXME: no auxv information passed from the kernel atm.
 	//__init_tls(aux);
 	//__init_ssp((void *)aux[AT_RANDOM]);
 

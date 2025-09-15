@@ -13,7 +13,7 @@ int open(const char *filename, int flags, ...)
 		va_end(ap);
 	}
 
-	int fd = __sys_open_cp(filename, flags, mode);
+    int fd = __syscall(SYS_open, filename, flags, mode);
 	if (fd>=0 && (flags & O_CLOEXEC))
 		__syscall(SYS_fcntl, fd, F_SETFD, FD_CLOEXEC);
 

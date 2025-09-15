@@ -234,7 +234,6 @@
 #define __NR_clock_gettime			(228 + __SYS_invalid)
 #define __NR_clock_getres			(229 + __SYS_invalid)
 #define __NR_clock_nanosleep		(230 + __SYS_invalid)
-#define __NR_exit_group				(231 + __SYS_invalid)
 #define __NR_epoll_wait				(232 + __SYS_invalid)
 #define __NR_epoll_ctl				(233 + __SYS_invalid)
 #define __NR_tgkill					(234 + __SYS_invalid)

@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
 
     close(fb);
 
-    DIR* dir = opendir("/");
+/*    DIR* dir = opendir("/");
     if(!dir) {
         fprintf(stderr, "/: opendir() failed: %m\n");
         return 1;
@@ -139,7 +139,6 @@ int main(int argc, char** argv) {
 
     closedir(dir);
 
-next:
     int err = execv(shell_bin, (char* const[]){shell_bin, NULL});
 
     fprintf(stderr, "%s: error executing %s: %s\n", argv[0], shell_bin, strerror(errno));
@@ -159,7 +158,7 @@ next:
         exit(1);
     }
 
-    printf("forked pid %d\n", pid);
+    printf("forked pid %d\n", pid); */
 
     char buffer[100];
     while(1) {
