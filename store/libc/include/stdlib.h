@@ -32,6 +32,8 @@ long long strtoll(const char *restrict nptr, char **restrict endptr, int base);
 unsigned long strtoul(const char *restrict nptr, char **restrict endptr, int base);
 unsigned long long strtoull(const char *restrict nptr, char **restrict endptr, int base);
 
+char *realpath(const char *restrict path, char *restrict resolved_path);
+
 #ifdef _AMETHYST_SOURCE
     int getargc(void);
     char* getargv(int argc);

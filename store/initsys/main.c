@@ -11,10 +11,11 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <getopt.h>
+#include <sys/time.h>
 
 #define DEFAULT_CONFIGURATION_PATH "/bin/configuration.shard"
 
-static char shell_bin[] = "/bin/shard-sh";
+static char shell_bin[] = "/bin/shard";
 
 int draw_logo_to_fb(int fb, int scale);
 
@@ -70,25 +71,6 @@ static void help(void) {
     );
 }
 
-static void list_dirents(const char *dirname) {
-    DIR* dir = opendir(dirname);
-    if(!dir) {
-        fprintf(stderr, "%s: opendir() failed: %m\n", dirname);
-        exit(1);
-    }
-
-    struct dirent* ent;
-
-    printf("directory listing of `%s`:\n", dirname);
-
-    int i = 0;
-    while((ent = readdir(dir))) {
-        printf(" %d) \"%s\"\n", i++, ent->d_name);
-    }
-
-    closedir(dir);
-}
-
 int main(int argc, char** argv) {
     int c;
 
@@ -133,42 +115,9 @@ int main(int argc, char** argv) {
 
     close(fb);
 
-    if(chdir("/dev") == -1) {
-        fprintf(stderr, "/dev: chdir() failed: %m\n");
-        return 1;
-    }
-
-    list_dirents(".");
-
-next:
     int err = execv(shell_bin, (char* const[]){shell_bin, NULL});
 
     fprintf(stderr, "%s: error executing %s: %s\n", argv[0], shell_bin, strerror(errno));
-
-    pid = fork();
-    if(pid == 0) {
-        struct timespec ts = {.tv_nsec = 10000000, .tv_sec = 0};
-        nanosleep(&ts, NULL);
-        printf("fork you!\n");
-
-        ts.tv_nsec = 0;
-        ts.tv_sec = 1;
-        nanosleep(&ts, NULL);
-        printf("goodbye\n");
-
- //       while(1);
-        exit(1);
-    }
-
-    printf("forked pid %d\n", pid);
-
-    char buffer[100];
-    while(1) {
-        printf("echo> ");
-        fflush(stdout);
-        fgets(buffer, sizeof(buffer), stdin);
-        puts(buffer);
-    }
 
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         umount_target(mount_targets + i);

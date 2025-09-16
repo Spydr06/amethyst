@@ -79,3 +79,7 @@ int puts(const char *restrict s) {
     return -(fputs(s, stdout) < 0 || fputc('\n', stdout) < 0);
 }
 
+int putchar(int c) {
+    return fputc(c, stdout);
+}
+

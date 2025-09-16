@@ -1,0 +1,6 @@
+{
+    loadLib = p :: path: let
+        dl = system.dlOpen p;
+        bindings = import ./bindings.shard;
+    in builtins.mapAttrs (system.dlSym dl) bindings;
+}

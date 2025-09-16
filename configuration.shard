@@ -27,6 +27,7 @@ lib.mkSystemConfig {
 
     systemPackages = with pkgs; [
         initsys
+        shard
     ];
 
     systemArch = "x86_64";

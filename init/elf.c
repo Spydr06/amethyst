@@ -19,6 +19,7 @@
 
 #define STACK_TOP_BUFSIZ 8
 #define STACK_MMU_FLAGS (MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC | MMU_FLAGS_USER)
+#define STACK_SIZE (1024 * 1024 * 4)
 
 static int read_exact(struct vnode* node, void* buff, size_t count, uintmax_t offset) {
     size_t bytes_read;
@@ -235,6 +236,12 @@ void* elf_prepare_stack(void* top, Elf64_auxv_list_t* auxv, char** argv, char** 
 
     if(!vmm_map(initial_page_base, initial_size_round, VMM_FLAGS_ALLOCATE | VMM_FLAGS_EXACT, STACK_MMU_FLAGS, nullptr))
         return nullptr;
+
+    void* stack_base = (void*)((uintptr_t) top - STACK_SIZE);
+    size_t unallocated_size = STACK_SIZE - initial_size_round;
+
+    if(!vmm_map(stack_base, unallocated_size, VMM_FLAGS_EXACT, STACK_MMU_FLAGS, NULL))
+        return NULL;
 
     top = (void*)((uintptr_t) top - STACK_TOP_BUFSIZ);
 

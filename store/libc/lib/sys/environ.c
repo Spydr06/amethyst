@@ -10,7 +10,8 @@ void __libc_register_environ(char** envp) {
 }
 
 char *getenv(const char *name) {
-    assert(0 && "getenv() unimplemented");
+    return NULL;
+//    assert(0 && "getenv() unimplemented");
 }
 
 int setenv(const char *name, const char *value, int overwrite) {

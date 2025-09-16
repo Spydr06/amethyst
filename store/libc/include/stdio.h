@@ -41,6 +41,8 @@ int puts(const char *restrict s);
 int fgetc(FILE *restrict stream);
 char *fgets(char *restrict s, int size, FILE *restrict stream);
 
+int putchar(int c);
+
 int getc(FILE *restrict stream);
 int ungetc(int c, FILE *stream);
 
