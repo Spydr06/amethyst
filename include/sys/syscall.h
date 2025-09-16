@@ -11,6 +11,7 @@
 #include <cpu/cpu.h>
 #include <kernelio.h>
 #include <sys/mmap.h>
+#include <amethyst/timeval.h>
 
 #include <stdint.h>
 #include <stddef.h>
@@ -71,6 +72,8 @@ __syscall syscallret_t _sys_uname(struct cpu_context* ctx, struct utsname* u_nam
 
 __syscall syscallret_t _sys_chdir(struct cpu_context* ctx, const char* pathname);
 __syscall syscallret_t _sys_fchdir(struct cpu_context* ctx, int fd);
+
+__syscall syscallret_t _sys_gettimeofday(struct cpu_context* ctx, struct timeval *tv);
 
 __syscall syscallret_t _sys_sysinfo(struct cpu_context* ctx, struct sysinfo* u_sysinfo);
 

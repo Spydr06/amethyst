@@ -50,6 +50,7 @@ const struct syscall_entry _syscall_table[] = {
     _SYS_E(getcwd,   "%p, %lx"     ),
     _SYS_E(chdir,    "%p"),
     _SYS_E(fchdir,   "%d"),
+    _SYS_E(gettimeofday, "%p"),
     _SYS_E(sysinfo,  "%p"          ),
     _SYS_E(knldebug, "%ld, %p, %ld")
 };

@@ -1,5 +1,4 @@
 #include "amethyst/dirent.h"
-#include "kernelio.h"
 #include <filesystem/device.h>
 #include <filesystem/virtual.h>
 
