@@ -496,6 +496,11 @@ static inline struct shard_value eval_multiplication(volatile struct shard_evalu
 }
 
 struct shard_value shard_eval_division(volatile struct shard_evaluator* e, struct shard_value left, struct shard_value right, struct shard_location* loc) {
+    if((right.type == SHARD_VAL_INT && right.integer == 0)
+        || (left.type == SHARD_VAL_INT && right.type == SHARD_VAL_FLOAT && right.floating == 0.0)) {
+        shard_eval_throw(e, *loc, "`/`: division by zero");
+    }
+
     ARITH_OP_INT_FLT(/)
 }
 

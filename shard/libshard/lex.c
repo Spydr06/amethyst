@@ -250,7 +250,7 @@ bool shard_is_valid_identifier(const char *ident) {
 }
 
 static int is_path_terminator(int c) {
-    return isspace(c) || c == ';' || c == ',' || c == ')' || c == ']' || c == '}';
+    return c == EOF || isspace(c) || c == ';' || c == ',' || c == ')' || c == ']' || c == '}';
 }
 
 static int lex_ident(struct shard_lexer* l, struct shard_token* token) {
@@ -403,11 +403,11 @@ static int lex_string(struct shard_lexer* l, struct shard_token* token, int (*is
             }
             break;
         case '\n':
-            ERR_TOK(token, l, "unterminated string literal before newline");
+            ERR_TOK(token, l, is_path ? "unterminated path literal before newline" : "unterminated string literal before newline");
             break;
         case EOF:
             dynarr_free(l->ctx, &str);
-            ERR_TOK(token, l, "unterminated string literal");
+            ERR_TOK(token, l, is_path ? "unterminated path literal" : "unterminated string literal");
             return EINVAL;
         }
 

@@ -1,18 +1,10 @@
 let
-    /*dl = system.dlOpen ./mylib.so;
+    dl = system.dlOpen ./mylib.so;
     
-    greet = system.dlSym dl "greet" $ with system; 
-        ffi.cFunc ffi.cVoid [ (ffi.cPointer $ ffi.cPointer ffi.cChar) ffi.cUnsignedInt ];*/
-
-    data = {
-        foo = 123;
-        bar = [ ./test.shard "Hello, World" ];
-        baz = {
-            a = "a";
-            "with space" = [ 1 2 3 4 ];
-        };
-    };
+    greet = xs :: list: let
+        f = system.dlSym dl "greet" $ with system; 
+            ffi.cFunc ffi.cVoid [ (ffi.cPointer $ ffi.cPointer ffi.cChar) ffi.cUnsignedInt ];
+        in f xs $ builtins.length xs;
 in
-    # greet [ "callie" "nephele" "and everyone else" ] 3
-    builtins.serialize data
+    builtins.toString $ greet [ "callie" "nephele" "and everyone else" ]
 

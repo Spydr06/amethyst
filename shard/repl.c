@@ -152,7 +152,9 @@ static int handle_help(struct repl*, char*) {
         for(size_t i = strlen(buf); i < LEN(buf); i++)
             buf[i] = ' ';
 
-        printf("%.*s%s\n", (int) LEN(buf), buf, commands[i].description);
+        // TODO: fixme
+        // printf("%.*s%s\n", (int) LEN(buf), buf, commands[i].description);
+        printf("%.20s%s\n", /*(int) LEN(buf), */buf, commands[i].description);
     }
 
     printf("\n");
