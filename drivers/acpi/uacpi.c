@@ -37,9 +37,10 @@ void *uacpi_kernel_map(uacpi_phys_addr addr, uacpi_size len) {
 }
 
 void uacpi_kernel_unmap(void *addr, uacpi_size len) {
+    klog(DEBUG, "uacpi_kernel_unmap(%p, %zu)", addr, len);
     uintmax_t offset = (uintptr_t) addr % PAGE_SIZE;
 
-    vmm_unmap((void*) ROUND_DOWN((uintptr_t) addr, PAGE_SIZE), ROUND_UP(len + offset, PAGE_SIZE), 0);
+//    vmm_unmap((void*) ROUND_DOWN((uintptr_t) addr, PAGE_SIZE), ROUND_UP(len + offset, PAGE_SIZE), 0);
 }
 
 static inline enum klog_severity uacpi_log_level_to_severity(enum uacpi_log_level level) {
@@ -61,11 +62,22 @@ static inline enum klog_severity uacpi_log_level_to_severity(enum uacpi_log_leve
 
 #ifndef UACPI_FORMATTED_LOGGING
 void uacpi_kernel_log(uacpi_log_level level, const uacpi_char* msg) {
-    __klog(uacpi_log_level_to_severity(level), "[uACPI]", "%s", msg);
+    if(!msg)
+        return;
+
+    __klog_inl(uacpi_log_level_to_severity(level), "[uACPI]", "%s", msg);
 }
 #else
-void uacpi_kernel_log(uacpi_log_level, const uacpi_char*, ...);
-void uacpi_kernel_vlog(uacpi_log_level, const uacpi_char*, uacpi_va_list);
+void uacpi_kernel_log(uacpi_log_level level, const uacpi_char* fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    uacpi_kernel_vlog(level, fmt, ap);
+    va_end(ap);
+}
+
+void uacpi_kernel_vlog(uacpi_log_level level, const uacpi_char* fmt, uacpi_va_list ap) {
+    __vklog_inl(uacpi_log_level_to_severity(level), "[uACPI]", fmt, ap);
+}
 #endif
 
 uacpi_status uacpi_kernel_pci_device_open(
@@ -173,6 +185,7 @@ void uacpi_kernel_free(void *mem) {
 }
 
 uacpi_u64 uacpi_kernel_get_nanoseconds_since_boot(void) {
+    here();
     struct timespec ts = timekeeper_time_from_boot();
     return ts.ns + ts.s * 1'000'000ull;
 }
@@ -182,6 +195,7 @@ void uacpi_kernel_stall(uacpi_u8 usec) {
 }
 
 void uacpi_kernel_sleep(uacpi_u64 msec) {
+    here();
     sched_sleep(msec * 1000ull);
 }
 
@@ -211,6 +225,7 @@ uacpi_thread_id uacpi_kernel_get_thread_id(void) {
 }
 
 uacpi_status uacpi_kernel_acquire_mutex(uacpi_handle handle, uacpi_u16) {
+    here();
     // TODO: timer
     mutex_t *mut = (mutex_t*) handle;
 
@@ -268,6 +283,7 @@ void uacpi_kernel_free_spinlock(uacpi_handle handle) {
 }
 
 uacpi_cpu_flags uacpi_kernel_lock_spinlock(uacpi_handle handle) {
+    here();
     spinlock_t *lock = (spinlock_t *) handle;
     spinlock_acquire(lock);
 
@@ -275,6 +291,7 @@ uacpi_cpu_flags uacpi_kernel_lock_spinlock(uacpi_handle handle) {
 }
 
 void uacpi_kernel_unlock_spinlock(uacpi_handle handle, uacpi_cpu_flags flags) {
+    here();
     (void) flags;
 
     spinlock_t *lock = (spinlock_t *) handle;

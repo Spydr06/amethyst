@@ -11,6 +11,10 @@ lib.mkSystemConfig {
         package = pkgs.amethyst-kernel;
 
         arguments = [ "loglevel=info" ];       
+
+        defines = {
+            UACPI_FORMATTED_LOGGING = 1;
+        };
     };
 
     kernel."amethyst-debug" = with pkgs; {
@@ -20,6 +24,7 @@ lib.mkSystemConfig {
 
         defines = {
             _SCHED_DEBUG = 1;
+            UACPI_FORMATTED_LOGGING = 1;
         };
     };
 

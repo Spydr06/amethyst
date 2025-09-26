@@ -313,8 +313,11 @@ static void __klog_impl(enum klog_severity severity, bool newline, const char* f
 
     if(newline)
         kernelio_writer('\n');
-    else
-        last_was_inline = true;
+    else {
+        size_t format_len = strlen(format);
+        if(format_len < 1 || format[format_len - 1] != '\n')
+            last_was_inline = true;
+    }
 
     spinlock_release(&io_lock);
 }
