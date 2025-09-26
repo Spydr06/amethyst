@@ -12,6 +12,7 @@ MEMORY="4G"
 CPUS=4
 QEMU_ARCH=x86_64
 QEMU_IMAGE="$PROJECT_DIR/amethyst.iso"
+QEMU_NVME=
 GDB=gdb
 
 function error() {
@@ -70,6 +71,9 @@ while [[ $# -gt 0 ]]; do
         --image=*)
             QEMU_IMAGE=${1#*=}
             ;;
+        --nvme=*)
+            QEMU_NVME=${1#*=}
+            ;;
         (--gdb=*)
             GDB=${1#*=}
             ;;
@@ -94,12 +98,15 @@ SYMBOL_FILE="$BUILD_DIR/amethyst-0.0.1-${QEMU_ARCH}.sym"
 QEMU="qemu-system-${QEMU_ARCH}"
 QEMUFLAGS+="-m ${MEMORY} -serial stdio \
     -smp cpus=${CPUS} -no-reboot -no-shutdown \
-    -drive file=build/nvme.img,if=none,id=nvm,format=raw \
-    -device nvme,serial=deadbeef,drive=nvm \
     -drive file=${QEMU_IMAGE},media=cdrom \
     -boot order=d"
 
 [ $ENABLE_KVM -eq 1 ] && QEMUFLAGS+=" -enable-kvm"
+
+if [ ! -z "${QEMU_NVME}"]; then
+    QEMUFLAGS+="-drive file=${QEMU_NVME},if=none,id=nvm,format=raw \
+        -device nvme,serial=deadbeef,drive=nvm"
+fi
 
 if [ ! -e "${QEMU_IMAGE}" ]; then
     error "`${QEMU_IMAGE}`: No such file or directory. You need to bootstrap the system first."
