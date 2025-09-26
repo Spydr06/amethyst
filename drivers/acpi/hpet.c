@@ -1,5 +1,5 @@
-#include <x86_64/dev/hpet.h>
-#include <x86_64/cpu/acpi.h>
+#include <drivers/acpi/hpet.h>
+#include <drivers/acpi/acpi.h>
 
 #include <drivers/pci/pci.h>
 #include <mem/vmm.h>
@@ -19,10 +19,10 @@
 
 #define CAP_FSPERTICK(x) (((x) >> 32) & 0xfffffffful)
 
-static struct HPET* hpet;
+static struct hpet* hpet;
 static time_t ticks_per_microsecond;
 
-static __always_inline uintmax_t read(const struct HPET* hpet, unsigned reg) {
+static __always_inline uintmax_t read(const struct hpet* hpet, unsigned reg) {
     switch(hpet->counter_size) {
     case 0:
         return ((uint32_t*) hpet->addr)[reg];
@@ -33,7 +33,7 @@ static __always_inline uintmax_t read(const struct HPET* hpet, unsigned reg) {
     }
 }
 
-static __always_inline void write(struct HPET* hpet, unsigned reg, uintmax_t value) {
+static __always_inline void write(struct hpet* hpet, unsigned reg, uintmax_t value) {
     switch(hpet->counter_size) {
     case 0:
         ((uint32_t*) hpet->addr)[reg] = value;
@@ -47,13 +47,13 @@ static __always_inline void write(struct HPET* hpet, unsigned reg, uintmax_t val
 }
 
 time_t hpet_init(void) {
-    struct SDT_header* header = acpi_find_header(HPET_ACPI_HEADER_SIG);
+    struct sdt_header* header = acpi_find_header(HPET_ACPI_HEADER_SIG);
     if(!header) {
         klog(WARN, "HPET not supported on this device.");
         return -ENODEV;
     }
 
-    hpet = (struct HPET*) header;
+    hpet = (struct hpet*) header;
 
     const struct pci_vendor_id* vendor = pci_lookup_vendor_id(hpet->pci_vendor_id);
     klog(INFO,

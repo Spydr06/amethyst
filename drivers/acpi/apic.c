@@ -1,8 +1,7 @@
-#include <x86_64/dev/apic.h>
+#include <drivers/acpi/apic.h>
+#include <drivers/acpi/hpet.h>
+#include <drivers/acpi/acpi.h>
 
-#include <x86_64/dev/hpet.h>
-
-#include <x86_64/cpu/acpi.h>
 #include <x86_64/cpu/idt.h>
 #include <x86_64/cpu/cpu.h>
 
@@ -17,7 +16,7 @@
 #define LVT_MASK 0x10000
 #define LVT_DELIVERY_NMI 0x400
 
-static struct MADT* madt;
+static struct madt* madt;
 static struct apic_list_header *list_start, *list_end; 
 
 static size_t override_count, io_count, lapic_count, lapic_nmi_count;
@@ -29,7 +28,7 @@ static __always_inline struct apic_list_header* next_entry(struct apic_list_head
     return (struct apic_list_header*) (((uintptr_t) entry) + entry->length);
 }
 
-static size_t entry_count(enum MADT_entry_type type) {
+static size_t entry_count(enum madt_entry_type type) {
     struct apic_list_header* entry = list_start;
     size_t count = 0;
 
@@ -42,7 +41,7 @@ static size_t entry_count(enum MADT_entry_type type) {
     return count;
 }
 
-static struct apic_list_header* get_entry(enum MADT_entry_type type, intptr_t nth) {
+static struct apic_list_header* get_entry(enum madt_entry_type type, intptr_t nth) {
     struct apic_list_header* entry = list_start;
     while(entry < list_end) {
         if(entry->type == type && nth-- == 0)
@@ -96,10 +95,10 @@ static uint32_t lapic_read(enum lapic_register reg) {
 }
 
 void apic_init(void) {
-    madt = (struct MADT*) acpi_find_header("APIC");
+    madt = (struct madt*) acpi_find_header("APIC");
     assert(madt);
 
-    list_start = (void*) ((uintptr_t) madt + sizeof(struct MADT));
+    list_start = (void*) ((uintptr_t) madt + sizeof(struct madt));
     list_end   = (void*) ((uintptr_t) madt + madt->header.length);
 
     override_count  = entry_count(MADT_TYPE_OVERRIDE);

@@ -2,10 +2,11 @@
 #include <x86_64/cpu/gdt.h>
 #include <x86_64/cpu/idt.h>
 #include <x86_64/cpu/cpu.h>
-#include <x86_64/cpu/acpi.h>
-#include <x86_64/dev/apic.h>
-#include <x86_64/dev/hpet.h>
 #include <x86_64/mem/mmu.h>
+
+#include <drivers/acpi/acpi.h>
+#include <drivers/acpi/apic.h>
+#include <drivers/acpi/hpet.h>
 
 #include <cpu/cpu.h>
 

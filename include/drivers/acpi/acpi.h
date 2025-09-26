@@ -1,14 +1,14 @@
-#ifndef _AMETHYST_X86_64_CPU_ACPI_H
-#define _AMETHYST_X86_64_CPU_ACPI_H
+#ifndef _AMETHYST_DRIVERS_ACPI_H
+#define _AMETHYST_DRIVERS_ACPI_H
 
 #include <stdint.h>
 
-enum ACPI_revision : uint8_t {
+enum acpi_revision : uint8_t {
     ACPI_V1,
     ACPI_V2 = 2
 };
 
-struct ACPI_generic_address {
+struct acpi_generic_address {
     uint8_t address_space;
     uint8_t bit_width;
     uint8_t bit_offset;
@@ -16,11 +16,11 @@ struct ACPI_generic_address {
     uint64_t address;
 } __attribute__((packed));
 
-struct RSDP {
+struct rsdp {
     char sig[8];
     uint8_t checksum;
     char oem[6];
-    enum ACPI_revision revision;
+    enum acpi_revision revision;
     uint32_t rsdt;
     uint32_t length;
     uint64_t xsdt;
@@ -28,7 +28,7 @@ struct RSDP {
     uint8_t reserved[3];
 } __attribute__((packed));
 
-struct SDT_header {
+struct sdt_header {
     char sig[4];
     uint32_t length;
     uint8_t revision;
@@ -40,18 +40,18 @@ struct SDT_header {
     uint32_t creator_revision;
 } __attribute__((packed));
 
-struct XSDT {
-    struct SDT_header header;
+struct xsdt {
+    struct sdt_header header;
     uint64_t tables[];
 } __attribute__((packed));
 
-struct RSDT {
-    struct SDT_header header;
+struct rsdt {
+    struct sdt_header header;
     uint32_t tables[];
 } __attribute__((packed));
 
-struct FADT {
-    struct SDT_header header;
+struct fadt {
+    struct sdt_header header;
 
     uint32_t firmware_control;
     uint32_t dsdt;
@@ -98,7 +98,7 @@ struct FADT {
     uint32_t flags;
 
     // 12 byte structure; see below for details
-    struct ACPI_generic_address retset_reg;
+    struct acpi_generic_address retset_reg;
 
     uint8_t  reset_value;
     uint8_t  __reserved3[3];
@@ -107,24 +107,24 @@ struct FADT {
     uint64_t                x_firmware_control;
     uint64_t                x_dsdt;
 
-    struct ACPI_generic_address x_pm1a_event_block;
-    struct ACPI_generic_address x_pm1b_event_block;
-    struct ACPI_generic_address x_pm1a_control_block;
-    struct ACPI_generic_address x_pm1b_control_block;
-    struct ACPI_generic_address x_pm2_control_block;
-    struct ACPI_generic_address x_pm_timer_block;
-    struct ACPI_generic_address x_gpe0_block;
-    struct ACPI_generic_address x_gpe1_block;
+    struct acpi_generic_address x_pm1a_event_block;
+    struct acpi_generic_address x_pm1b_event_block;
+    struct acpi_generic_address x_pm1a_control_block;
+    struct acpi_generic_address x_pm1b_control_block;
+    struct acpi_generic_address x_pm2_control_block;
+    struct acpi_generic_address x_pm_timer_block;
+    struct acpi_generic_address x_gpe0_block;
+    struct acpi_generic_address x_gpe1_block;
 } __attribute__((packed));
 
-struct MADT {
-    struct SDT_header header;
+struct madt {
+    struct sdt_header header;
     uint32_t addr;
     uint32_t flags;
     uint8_t entries[];
 } __attribute__((packed));
 
-enum MADT_entry_type : uint8_t {
+enum madt_entry_type : uint8_t {
     MADT_TYPE_LAPIC,
     MADT_TYPE_IOAPIC,
     MADT_TYPE_OVERRIDE,
@@ -136,10 +136,10 @@ enum MADT_entry_type : uint8_t {
 
 void acpi_init(void);
 
-struct SDT_header* acpi_find_header(const char* sig);
-bool acpi_validate_sdt(struct SDT_header* header);
+struct sdt_header* acpi_find_header(const char* sig);
+bool acpi_validate_sdt(struct sdt_header* header);
 
-struct FADT* acpi_get_fadt(void);
+struct fadt* acpi_get_fadt(void);
 
-#endif /* _AMETHYST_X86_64_CPU_ACPI_H */
+#endif /* _AMETHYST_DRIVERS_ACPI_H */
 

@@ -103,8 +103,8 @@ QEMUFLAGS+="-m ${MEMORY} -serial stdio \
 
 [ $ENABLE_KVM -eq 1 ] && QEMUFLAGS+=" -enable-kvm"
 
-if [ ! -z "${QEMU_NVME}"]; then
-    QEMUFLAGS+="-drive file=${QEMU_NVME},if=none,id=nvm,format=raw \
+if [ ! -z "${QEMU_NVME}" ]; then
+    QEMUFLAGS+=" -drive file=${QEMU_NVME},if=none,id=nvm,format=raw \
         -device nvme,serial=deadbeef,drive=nvm"
 fi
 

@@ -1,13 +1,13 @@
-#ifndef _AMETHYST_X86_64_DEV_HPET_H
-#define _AMETHYST_X86_64_DEV_HPET_H
+#ifndef _AMETHYST_DRIVERS_ACPI_HPET_H
+#define _AMETHYST_DRIVERS_ACPI_HPET_H
 
 #define HPET_ACPI_HEADER_SIG "HPET"
 
-#include <x86_64/cpu/acpi.h>
+#include "acpi.h" 
 
 #include <time.h>
 
-struct HPET_addressing {
+struct hpet_addressing {
     uint8_t address_space_id;
     uint8_t register_bit_width;
     uint8_t register_bit_offset;
@@ -15,8 +15,8 @@ struct HPET_addressing {
     uint64_t address;
 } __attribute__((packed));
 
-struct HPET {
-    struct SDT_header header;
+struct hpet {
+    struct sdt_header header;
 
     uint8_t hardware_rev_id;
     uint8_t comparator_count   : 5;
@@ -41,5 +41,5 @@ bool hpet_exists(void);
 void hpet_wait_us(time_t us);
 time_t hpet_ticks(void);
 
-#endif /* _AMETHYST_X86_64_DEV_HPET_H */
+#endif /* _AMETHYST_DRIVERS_ACPI_HPET_H */
 

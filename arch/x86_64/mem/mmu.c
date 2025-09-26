@@ -11,7 +11,7 @@
 #include <x86_64/cpu/cpu.h>
 #include <x86_64/cpu/idt.h>
 #include <x86_64/cpu/smp.h>
-#include <x86_64/dev/apic.h>
+#include <drivers/acpi/apic.h>
 #include <x86_64/dev/pic.h>
 
 #include <assert.h>

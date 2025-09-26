@@ -181,6 +181,9 @@ extern struct dynarray devices;
 
 void pci_init(void);
 
+uint16_t pci_device_read_word(const struct pci_device* device, uint32_t offset);
+void pci_device_write_word(const struct pci_device* device, uint32_t offset, uint16_t value);
+
 uint32_t pci_device_read_dword(const struct pci_device* device, uint32_t offset);
 void pci_device_write_dword(const struct pci_device* device, uint32_t offset, uint32_t value);
 

@@ -1,13 +1,13 @@
-#ifndef _AMETHYST_X86_64_APIC_H
-#define _AMETHYST_X86_64_APIC_H
+#ifndef _AMETHYST_DRIVERS_ACPI_APIC_H
+#define _AMETHYST_DRIVERS_ACPI_APIC_H
 
 #include <stddef.h>
 #include <stdint.h>
 
-#include <x86_64/cpu/acpi.h>
+#include "acpi.h"
 
 struct apic_list_header {
-    enum MADT_entry_type type;
+    enum madt_entry_type type;
     uint8_t length;
 } __attribute__((packed));
 
@@ -98,4 +98,4 @@ size_t apic_get_lapic_entries(struct lapic_entry* entries, size_t n);
 
 void io_apic_register_interrupt(uint8_t irq, uint8_t vector, uint8_t proc, bool masked);
 
-#endif /* _AMETHYST_X86_64_APIC_H */
+#endif /* _AMETHYST_DRIVERS_ACPI_APIC_H */

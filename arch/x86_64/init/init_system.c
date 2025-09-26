@@ -2,6 +2,10 @@
 #include <drivers/pci/pci.h>
 #include <drivers/video/console.h>
 #include <drivers/video/vga.h>
+#include <drivers/acpi/acpi.h>
+#include <drivers/acpi/hpet.h>
+#include <drivers/acpi/apic.h>
+#include <drivers/acpi/aml.h>
 #include <init/interrupts.h>
 #include <limine.h>
 #include <mem/heap.h>
@@ -13,13 +17,10 @@
 #include <sys/scheduler.h>
 #include <sys/timekeeper.h>
 #include <sys/tty.h>
-#include <x86_64/cpu/acpi.h>
 #include <x86_64/cpu/gdt.h>
 #include <x86_64/cpu/idt.h>
 #include <x86_64/cpu/smp.h>
-#include <x86_64/dev/apic.h>
 #include <x86_64/dev/cmos.h>
-#include <x86_64/dev/hpet.h>
 #include <x86_64/dev/pic.h>
 #include <x86_64/trace.h>
 
@@ -79,6 +80,7 @@ __noreturn void _start(void)
         vga_console_init(VGACON_DEFAULT_OPTS);   
 
     acpi_init();
+    acpi_load_aml();
     time_t ticks_per_us = hpet_init();
 
     cmos_init();

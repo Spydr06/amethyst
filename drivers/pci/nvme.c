@@ -40,10 +40,17 @@ static bool nvme_accept(const struct pci_device* device) {
         device->header.prog_if == PCI_PROG_IF_NVME;
 }
 
+static void nvme_reset(struct nvme_device* device) {
+    klog(DEBUG, "controller reset");
+    device->base_registers->cc &= ~1;
+
+    while(nvme_ready(device->base_registers->csts));
+}
+
 static int nvme_init_device(struct nvme_device* device, uint64_t base_addr, struct pci_device* pci_device) {
     spinlock_acquire(&device->device_lock);
 
-    int err = 0;    
+    int err = 0;
 
     void* mapped_addr = vmm_map(nullptr, PAGE_SIZE, VMM_FLAGS_PHYSICAL, MMU_FLAGS_WRITE | MMU_FLAGS_READ | MMU_FLAGS_NOEXEC, (void*) base_addr);
     if(!mapped_addr) {
@@ -57,15 +64,37 @@ static int nvme_init_device(struct nvme_device* device, uint64_t base_addr, stru
     device->mmio_addr = mapped_addr;
     device->capability_stride = (uint8_t) ((base_addr >> 12) & 0x0f);
 
-    // check capabilities:
-    
-    klog(INFO, "NVME page size: %zu to %zu", nvme_get_min_pagesize(device->base_registers->cap), nvme_get_max_pagesize(device->base_registers->cap));
-
     struct nvme_version ver = nvme_get_version(device->base_registers->vs);
-    klog(INFO, "NVME version: %d.%d.%d", ver.major, ver.major, ver.tertiary);
+    klog(INFO, "NVME version: %d.%d.%d", ver.major, ver.minor, ver.tertiary);
 
+    // check capabilities
+    
+    size_t min_pagesize = nvme_get_min_pagesize(device->base_registers->cap);
+    size_t max_pagesize = nvme_get_max_pagesize(device->base_registers->cap);
+    klog(INFO, "NVME page size: %zu to %zu", min_pagesize, max_pagesize);
+
+    if(min_pagesize > PAGE_SIZE || max_pagesize < PAGE_SIZE) {
+        klog(ERROR, "controller does not the required page size of %u bytes", PAGE_SIZE);
+        err = ENODEV;
+        goto cleanup;
+    }
+
+    enum nvme_commandset commandset = nvme_get_commandset(device->base_registers->cap);
+
+    if(!(commandset & NVME_COMMANDSET_NVM)) {
+        klog(ERROR, "controller does not support the NVM command set");
+        err = ENODEV;
+        goto cleanup;
+    }
+
+    // enable interrupts
+    
     if((err = pci_enable_msi(pci_device)))
         goto cleanup;
+
+    // reset controller
+
+    nvme_reset(device);
 
 cleanup:
     spinlock_release(&device->device_lock);

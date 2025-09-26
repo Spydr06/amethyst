@@ -12,6 +12,21 @@ enum nvme_capabilities : uint64_t {
 
     NVME_CAP_MPSMAX = 0x0ful << NVME_CAP_MPSMAX_OFF,
     NVME_CAP_MPSMIN = 0x0ful << NVME_CAP_MPSMIN_OFF,
+
+    NVME_CAP_COMMANDSET = 0x25,
+};
+
+enum nvme_commandset : uint8_t {
+    NVME_COMMANDSET_NVM = 1
+};
+
+enum nvme_controller_status : uint16_t {
+    NVME_STATUS_RDY     = 0b00000001,
+    NVME_STATUS_CFS     = 0b00000010,
+    NVME_STATUS_SHST    = 0b00001100,
+    NVME_STATUS_NSSRO   = 0b00010000,
+    NVME_STATUS_PP      = 0b00100000,
+    NVME_STATUS_ST      = 0b01000000,
 };
 
 enum nvme_admin_command : uint8_t {
@@ -102,6 +117,15 @@ static inline uint64_t nvme_get_max_pagesize(uint64_t cap) {
 static inline uint64_t nvme_get_min_pagesize(uint64_t cap) {
     uint64_t mpsmin = (cap & NVME_CAP_MPSMIN) >> NVME_CAP_MPSMIN_OFF;
     return 2ul << (11ul + mpsmin); // 2 ^ (12 + mpsmin)
+}
+
+static inline enum nvme_commandset nvme_get_commandset(uint64_t cap) {
+    enum nvme_commandset commandset = (uint8_t) ((cap >> NVME_CAP_COMMANDSET) & 0xff);
+    return commandset;
+}
+
+static inline bool nvme_ready(uint16_t csts) {
+    return !!(csts & NVME_STATUS_RDY);
 }
 
 static inline struct nvme_version nvme_get_version(uint32_t ver) {
