@@ -14,8 +14,7 @@ __syscall syscallret_t _sys_access(struct cpu_context* ctx, const char* filename
     };
 
     size_t filename_size;
-    ret._errno = user_strlen(filename, &filename_size);
-    if(ret._errno)
+    if((ret._errno = user_strlen(filename, &filename_size)))
         return ret;
 
     if(!filename_size) {
@@ -30,13 +29,14 @@ __syscall syscallret_t _sys_access(struct cpu_context* ctx, const char* filename
     }
 
     struct vnode* vnode = nullptr;
+    struct vnode* ref = nullptr;
 
     filename_buf[filename_size] = '\0';
     ret._errno = memcpy_from_user(filename_buf, filename, filename_size);
     if(ret._errno)
         goto cleanup;
 
-    struct vnode* ref = filename_buf[0] == '/' ? proc_get_root() : proc_get_cwd();
+    ref = filename_buf[0] == '/' ? proc_get_root() : proc_get_cwd();
     assert(ref != nullptr);
 
     ret._errno = vfs_lookup(&vnode, ref, filename_buf, nullptr, 0);
@@ -46,6 +46,9 @@ __syscall syscallret_t _sys_access(struct cpu_context* ctx, const char* filename
     ret.ret = vop_access(vnode, mode, &current_proc()->cred);
 
 cleanup:
+    if(ref)
+        vop_release(&ref);
+
     kfree(filename_buf);
     return ret;
 }

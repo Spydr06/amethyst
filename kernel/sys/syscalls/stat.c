@@ -73,6 +73,10 @@ __syscall syscallret_t _sys_stat(struct cpu_context* __unused, const char* path,
 cleanup:
     if(vnode)
         vop_release(&vnode);
+
+    if(ref)
+        vop_release(&ref);
+
     kfree(path_buf);
     return ret;
 }

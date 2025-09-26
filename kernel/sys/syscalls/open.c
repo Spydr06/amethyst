@@ -108,6 +108,9 @@ cleanup:
         vop_release(&vnode);
     }
 
+    if(ref)
+        vop_release(&ref);
+
     if(new_file && ret._errno)
         assert(fd_close(new_fd) == 0);
 

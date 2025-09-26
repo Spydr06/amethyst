@@ -35,7 +35,7 @@ static int tmpfs_putpage(struct vnode* node, uintmax_t offset, struct page* page
 static int tmpfs_mmap(struct vnode *node, void *addr, uintmax_t offset, int flags, struct cred* cred);
 
 static int tmpfs_lookup(struct vnode* parent, const char* name, struct vnode** result, struct cred* cred);
-
+static int tmpfs_maxseek(struct vnode* node, size_t* max_offset);
 static int tmpfs_getdents(struct vnode* node, struct amethyst_dirent *buffer, size_t count, uintmax_t offset, size_t *readcount);
 
 static struct vfsops vfsops = {
@@ -57,6 +57,7 @@ static struct vops vops = {
     .lookup = tmpfs_lookup,
     .mmap = tmpfs_mmap,
     .getdents = tmpfs_getdents,
+    .maxseek = tmpfs_maxseek,
 };
 
 static struct scache* node_cache;
@@ -342,6 +343,21 @@ static int tmpfs_lookup(struct vnode* parent, const char* name, struct vnode** r
     vop_hold(child);
     vop_unlock(parent);
     *result = child;
+
+    return 0;
+}
+
+static int tmpfs_maxseek(struct vnode* vnode, size_t* max_offset) {
+    struct tmpfs_node* node = (struct tmpfs_node*) vnode;
+    *max_offset = node->vattr.size;
+
+    switch(vnode->type) {
+        case V_TYPE_REGULAR:
+            *max_offset = node->vattr.size;
+            break;
+        default:
+            unimplemented();
+    }
 
     return 0;
 }

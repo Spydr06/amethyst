@@ -11,6 +11,7 @@
 #include <cpu/cpu.h>
 #include <kernelio.h>
 #include <sys/mmap.h>
+#include <amethyst/timeval.h>
 
 #include <stdint.h>
 #include <stddef.h>
@@ -47,6 +48,7 @@ __syscall syscallret_t _sys_mkdir(struct cpu_context* ctx, const char* path, mod
 __syscall syscallret_t _sys_getdents(struct cpu_context* ctx, int fd, struct amethyst_dirent *dirp, size_t count);
 __syscall syscallret_t _sys_lseek(struct cpu_context* ctx, int fd, off_t offset, unsigned origin);
 __syscall syscallret_t _sys_mmap(struct cpu_context* ctx, void* addr, size_t len, enum map_prot prot, enum map_flags flags, int fd, off_t offset);
+__syscall syscallret_t _sys_mprotect(struct cpu_context* ctx, void* addr, size_t len, enum map_prot prot);
 __syscall syscallret_t _sys_munmap(struct cpu_context* ctx, void* addr, size_t len);
 __syscall syscallret_t _sys_brk(struct cpu_context* ctx, void* addr);
 
@@ -67,6 +69,11 @@ __syscall syscallret_t _sys_execve(struct cpu_context* ctx, const char *u_filena
 __syscall syscallret_t _sys_exit(struct cpu_context* ctx, int exit_code);
 __syscall syscallret_t _sys_waitpid(struct cpu_context* ctx, pid_t pid, int *wstatus, int options);
 __syscall syscallret_t _sys_uname(struct cpu_context* ctx, struct utsname* u_name);
+
+__syscall syscallret_t _sys_chdir(struct cpu_context* ctx, const char* pathname);
+__syscall syscallret_t _sys_fchdir(struct cpu_context* ctx, int fd);
+
+__syscall syscallret_t _sys_gettimeofday(struct cpu_context* ctx, struct timeval *tv);
 
 __syscall syscallret_t _sys_sysinfo(struct cpu_context* ctx, struct sysinfo* u_sysinfo);
 

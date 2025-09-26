@@ -10,7 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef _SHARD_NO_LIBEDIT
 #include <histedit.h>
+#endif
 
 #define _LIBSHARD_INTERNAL
 #define _AMETHYST_STRNLEN_DEFINED
@@ -36,6 +38,7 @@ struct repl {
 };
 
 static int handle_list(struct repl* repl, char* args);
+// static int handle_with(struct repl* repl, char* args);
 static int handle_quit(struct repl* repl, char* args);
 static int handle_help(struct repl* repl, char* args);
 
@@ -52,6 +55,7 @@ static struct {
 
     // commands
     { ":l", ":list", handle_list, "List the current inputs"},
+//    { ":w", ":with", handle_with, "Pull an attr set into the current scope" },
     { ":q", ":quit", handle_quit, "Exit the shard repl" },
     { ":?", ":help", handle_help, "Shows this help text" }
 };
@@ -150,7 +154,9 @@ static int handle_help(struct repl*, char*) {
         for(size_t i = strlen(buf); i < LEN(buf); i++)
             buf[i] = ' ';
 
-        printf("%.*s%s\n", (int) LEN(buf), buf, commands[i].description);
+        // TODO: fixme
+        // printf("%.*s%s\n", (int) LEN(buf), buf, commands[i].description);
+        printf("%.20s%s\n", /*(int) LEN(buf), */buf, commands[i].description);
     }
 
     printf("\n");
@@ -321,6 +327,22 @@ cleanup:
     return EXIT_SUCCESS;
 }
 
+#ifdef _SHARD_NO_LIBEDIT
+
+static char* repl_prompt(void) {
+    return "shard> ";
+}
+
+static char* multiline_prompt(void) {
+    return "> ";
+}
+
+static char* empty_prompt(void) {
+    return "";
+}
+
+#else
+
 static char* repl_prompt(EditLine* el) {
     (void) el;
     return "shard> ";
@@ -331,14 +353,16 @@ static char* multiline_prompt(EditLine* el) {
     return "> ";
 }
 
-static void print_version(void) {
-    printf("Shard " SHARD_VERSION " (" __DATE__ ", " __TIME__ ")\n");
-    printf("Type `:help` or `:?` for more information. Use `:q` to quit.\n");
-}
-
 static char* empty_propt(EditLine* el) {
     (void) el;
     return "";
+}
+
+#endif
+
+static void print_version(void) {
+    printf("Shard " SHARD_VERSION " (" __DATE__ ", " __TIME__ ")\n");
+    printf("Type `:help` or `:?` for more information. Use `:q` to quit.\n");
 }
 
 int shard_repl(const char* progname, struct shard_context* ctx, bool echo_result) {
@@ -348,6 +372,9 @@ int shard_repl(const char* progname, struct shard_context* ctx, bool echo_result
     struct repl repl;
     repl_init(&repl, ctx, echo_result);
 
+#ifdef _SHARD_NO_LIBEDIT
+    char* (*prompt)(void) = repl_prompt;
+#else
     EditLine* el = el_init(progname, stdin, stdout, stderr);
     if(!el)
         return EXIT_FAILURE;
@@ -365,18 +392,33 @@ int shard_repl(const char* progname, struct shard_context* ctx, bool echo_result
     el_set(el, EL_PROMPT, empty_propt);
     el_set(el, EL_HIST, history, hist);
     el_set(el, EL_SAFEREAD, 1);
+#endif 
 
     int ret = 0;
 
     int count;
-    const char* line;
 
     bool multiline = false;
     int line_buffer_size = DEFAULT_LINEBUFFER_SIZE;
     int line_buffer_count;
     char* line_buffer = malloc(line_buffer_size + 1);
 
+#ifdef _SHARD_NO_LIBEDIT
+    // TODO: support longer lines
+    char line[1024];
+
+    while(repl.running) {
+        printf("%s", prompt());
+
+        if(fflush(stdout) || fgets(line, sizeof(line), stdin) == NULL)
+            break;
+
+        count = (int) strnlen(line, sizeof(line));
+#else
+    const char* line;
+
     while(repl.running && (line = el_gets(el, &count)) != NULL) {
+#endif
         if(!multiline)
             line_buffer_count = 0;
 
@@ -391,24 +433,37 @@ int shard_repl(const char* progname, struct shard_context* ctx, bool echo_result
         if(line_buffer_count > 1 && line_buffer[line_buffer_count - 2] == '\\') {
             line_buffer[line_buffer_count -= 2] = '\n';
             multiline = true;
+#ifdef _SHARD_NO_LIBEDIT
+            prompt = multiline_prompt;
+#else
             el_set(el, EL_PROMPT, multiline_prompt);
+#endif
             continue;
         }
 
         multiline = false;
+#ifdef _SHARD_NO_LIBEDIT
+        prompt = repl_prompt;
+#else
         el_set(el, EL_PROMPT, repl_prompt);
+#endif
     
         handle_line(&repl, strdup(line_buffer));
 
+#ifndef _SHARD_NO_LIBEDIT
         if((line_buffer_count = strlen(line_buffer)))
            history(hist, &hist_ev, H_ENTER, line_buffer);
+#endif
 
+        fflush(stderr);
     }
 
     free(line_buffer);
 
+#ifndef _SHARD_NO_LIBEDIT
     history_end(hist);
     el_end(el);
+#endif
 
     repl_free(&repl);
 

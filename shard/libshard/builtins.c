@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <inttypes.h>
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
@@ -1003,6 +1004,16 @@ static struct shard_value builtin_shardPath(volatile struct shard_evaluator* e, 
     return LIST_VAL(head);
 }
 
+static struct shard_value builtin_serialize(volatile struct shard_evaluator* e, struct shard_builtin *builtin, struct shard_lazy_value** args) {
+    struct shard_value val = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    struct shard_string buffer = SHARD_DYNARR_EMPTY;
+
+    shard_serialize2(e, &buffer, val);
+
+    return STRING_VAL(buffer.items, buffer.count);
+}
+
 static struct shard_value builtin_import(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     struct shard_value val = shard_builtin_eval_arg(e, builtin, args, 0); 
     const char* filepath;
@@ -1076,6 +1087,7 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.attrNames", builtin_attrNames, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.attrValues", builtin_attrValues, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.basename", builtin_basename, SHARD_VAL_PATH),
+    SHARD_BUILTIN("builtins.bitAnd", builtin_bitAnd, SHARD_VAL_INT, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.bitOr", builtin_bitOr, SHARD_VAL_INT, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.bitXor", builtin_bitXor, SHARD_VAL_INT, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.catAttrs", builtin_catAttrs, SHARD_VAL_STRING, SHARD_VAL_LIST),
@@ -1118,6 +1130,7 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.mergeTree", builtin_mergeTree, SHARD_VAL_SET, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.mul", builtin_mul, SHARD_VAL_NUMERIC, SHARD_VAL_NUMERIC),
     SHARD_BUILTIN("builtins.not", builtin_not, SHARD_VAL_BOOL),
+    SHARD_BUILTIN("builtins.serialize", builtin_serialize, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.setAttr", builtin_setAttr, SHARD_VAL_STRING, SHARD_VAL_ANY, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.seq", builtin_seq, SHARD_VAL_ANY, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.seqList", builtin_seqList, SHARD_VAL_LIST),

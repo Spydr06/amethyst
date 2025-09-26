@@ -68,6 +68,12 @@ ifneq (,$(findstring SHARD_USE_GCBOEHM, $(CFLAGS)))
 	override CFLAGS += -I$(GCBOEHM_SRC_DIR)/include
 endif
 
+override BIN_LDFLAGS := 
+
+ifeq (,$(findstring _SHARD_NO_LIBEDIT, $(CFLAGS)))
+	override BIN_LDFLAGS += -ledit	
+endif
+
 .PHONY: all
 all: $(LIBSHARD) $(SHARD_BIN) $(GEODE_BIN) $(SHELL_BIN)
 
@@ -93,8 +99,8 @@ $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
 
 $(SHARD_BIN): $(SHARDBIN_OBJECTS) $(LIBSHARD_OBJ) $(LIBC_DRIVER)
-	@echo "  LD    $@"
-	@$(CC) $(LDFLAGS) -o $@ $^ -ledit
+	@echo "  CCLD  $@"
+	@$(CC) -o $@ $^ $(LDFLAGS) $(BIN_LDFLAGS) 
 
 $(LIBSHARD): $(LIBSHARD_OBJ)
 	@echo "  AR    $@"	

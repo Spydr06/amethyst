@@ -207,9 +207,9 @@ static struct shard_value builtin_file_readFile(volatile struct shard_evaluator*
     fseek(fp, 0, SEEK_SET);
 
     char *data = shard_gc_malloc(e->gc, filesz + 1);
-    fread(data, 1, filesz, fp);
+    ssize_t bytes_read = fread(data, 1, filesz, fp);
 
-    data[filesz] = '\0';
+    data[bytes_read] = '\0';
 
     fclose(fp);
 

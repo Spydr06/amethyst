@@ -1,6 +1,5 @@
+#define _DEFAULT_SOURCE
 #include "shard.h"
-
-#define __USE_XOPEN2K
 
 #include <assert.h>
 
@@ -12,6 +11,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 #include <libshard.h>
 
@@ -33,6 +35,10 @@ EXT_BUILTIN("system.dlClose", dlClose, SHARD_VAL_SET);
 EXT_BUILTIN("system.dlSym", dlSym, SHARD_VAL_SET, SHARD_VAL_STRING, SHARD_VAL_SET);
 EXT_BUILTIN("system.exit", exit, SHARD_VAL_INT);
 EXT_BUILTIN("system.printLn", printLn, SHARD_VAL_STRING);
+EXT_BUILTIN("system.readFile", readFile, SHARD_VAL_PATH);
+EXT_BUILTIN("system.writeFile", writeFile, SHARD_VAL_PATH, SHARD_VAL_STRING);
+EXT_BUILTIN("system.readDir", readDir, SHARD_VAL_PATH);
+EXT_BUILTIN("system.exists", exists, SHARD_VAL_PATH);
 
 static struct shard_builtin* ext_builtins[] = {
     &ext_builtin_getEnv,
@@ -42,6 +48,10 @@ static struct shard_builtin* ext_builtins[] = {
     &ext_builtin_dlSym,
     &ext_builtin_exit,
     &ext_builtin_printLn,
+    &ext_builtin_readFile,
+    &ext_builtin_writeFile,
+    &ext_builtin_readDir,
+    &ext_builtin_exists,
 };
 
 static struct shard_value gen_arg_list(struct shard_context* ctx, int argc, char** argv) {
@@ -219,4 +229,99 @@ static struct shard_value builtin_printLn(volatile struct shard_evaluator* e, st
     int err = fwrite(message.string, sizeof(char), message.strlen, stdout);
     fflush(stdout);
     return INT_VAL(err);
+}
+
+static struct shard_value builtin_exists(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value arg = shard_builtin_eval_arg(e, builtin, args, 0);
+    
+    return (struct shard_value){.type=SHARD_VAL_BOOL, .boolean=access(arg.path, F_OK) == 0};
+}
+
+static struct shard_value builtin_readFile(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value file = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    FILE* fp = fopen(file.path, "r");
+    if(!fp)
+        return (struct shard_value){.type=SHARD_VAL_INT, .integer=errno};
+
+    fseek(fp, 0, SEEK_END);
+    size_t filesz = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    char *data = shard_gc_malloc(e->gc, filesz + 1);
+    ssize_t bytes_read = fread(data, filesz, sizeof(char), fp);
+
+    data[bytes_read] = '\0';
+
+    fclose(fp);
+
+    return (struct shard_value){.type=SHARD_VAL_STRING, .string=data, .strlen=filesz};
+}
+
+static struct shard_value builtin_writeFile(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value file = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value data = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    FILE* fp = fopen(file.string, "w");
+    if(!fp)
+        return (struct shard_value){.type=SHARD_VAL_INT, .integer=errno};
+
+    fwrite(data.string, data.strlen, sizeof(char), fp);
+    int err = fclose(fp);
+
+    return (struct shard_value){.type=SHARD_VAL_INT, .integer=err};
+}
+
+static struct shard_value builtin_readDir(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value path = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    DIR* dir = opendir(path.path);
+    if(!dir)
+        return (struct shard_value){.type=SHARD_VAL_INT, .integer=errno};
+
+    struct dirent *entry;
+    size_t dirsize = 0;
+
+    while((entry = readdir(dir)))
+        dirsize++; 
+
+    rewinddir(dir);
+    struct shard_set *entries = shard_set_init(e->ctx, dirsize);
+
+    while((entry = readdir(dir))) {
+        shard_ident_t name = shard_get_ident(e->ctx, entry->d_name);
+
+        const char *value = "unknown";
+        switch(entry->d_type) {
+        case DT_FIFO:
+            value = "fifo";
+            break;
+        case DT_CHR:
+            value = "chardev";
+            break;
+        case DT_DIR:
+            value = "directory";
+            break;
+        case DT_BLK:
+            value = "blockdev";
+            break;
+        case DT_REG:
+            value = "regular";
+            break;
+        case DT_LNK:
+            value = "link";
+            break;
+        case DT_SOCK:
+            value = "socket";
+            break;
+        default:
+            value = "unknown";
+            break;
+        }
+
+        shard_set_put(entries, name, shard_unlazy(e->ctx, (struct shard_value){.type=SHARD_VAL_STRING, .string=value, .strlen=strlen(value)}));
+    }
+
+    closedir(dir);
+    return (struct shard_value){.type=SHARD_VAL_SET, .set=entries};
 }

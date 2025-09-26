@@ -71,5 +71,7 @@ int devfs_inactive(struct vnode* node);
 
 int devfs_mmap(struct vnode* node, void* addr, uintmax_t offset, int flags, struct cred* cred);
 
+int devfs_getdents(struct vnode* node, struct amethyst_dirent *buffer, size_t count, uintmax_t offset, size_t *readcount);
+
 #endif /* _AMETHYST_FILESYSTEM_DEVICE_H */
 
