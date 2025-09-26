@@ -249,13 +249,13 @@ static struct shard_value builtin_readFile(volatile struct shard_evaluator* e, s
     fseek(fp, 0, SEEK_SET);
 
     char *data = shard_gc_malloc(e->gc, filesz + 1);
-    ssize_t bytes_read = fread(data, 1, filesz, fp);
+    ssize_t bytes_read = fread(data, filesz, sizeof(char), fp);
 
     data[bytes_read] = '\0';
 
     fclose(fp);
 
-    return (struct shard_value){.type=SHARD_VAL_STRING, .string=data, .strlen=filesz+1};
+    return (struct shard_value){.type=SHARD_VAL_STRING, .string=data, .strlen=filesz};
 }
 
 static struct shard_value builtin_writeFile(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {

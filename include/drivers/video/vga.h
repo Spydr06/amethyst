@@ -1,11 +1,6 @@
 #ifndef _AMETHYST_VIDEO_VGA_H
 #define _AMETHYST_VIDEO_VGA_H
 
-#define INIT_VGA_WIDTH 1280
-#define INIT_VGA_HEIGHT 800
-
-#define INIT_VGA_DEPTH 32
-
 #ifndef ASM_FILE
 
 #include <stdint.h>

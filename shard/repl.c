@@ -38,6 +38,7 @@ struct repl {
 };
 
 static int handle_list(struct repl* repl, char* args);
+// static int handle_with(struct repl* repl, char* args);
 static int handle_quit(struct repl* repl, char* args);
 static int handle_help(struct repl* repl, char* args);
 
@@ -54,6 +55,7 @@ static struct {
 
     // commands
     { ":l", ":list", handle_list, "List the current inputs"},
+//    { ":w", ":with", handle_with, "Pull an attr set into the current scope" },
     { ":q", ":quit", handle_quit, "Exit the shard repl" },
     { ":?", ":help", handle_help, "Shows this help text" }
 };

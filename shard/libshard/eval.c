@@ -176,7 +176,7 @@ static inline struct shard_value eval_path(volatile struct shard_evaluator* e, s
             }
 
             if(!e->ctx->realpath(current_path, tmpbuf))
-                shard_eval_throw(e, expr->loc, "could not resolve relative path");
+                shard_eval_throw(e, expr->loc, "could not resolve relative path [%s]", current_path);
 
             e->ctx->free(current_path);
 
