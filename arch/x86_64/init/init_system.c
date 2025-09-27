@@ -80,8 +80,11 @@ __noreturn void _start(void)
         vga_console_init(VGACON_DEFAULT_OPTS);   
 
     acpi_init();
-    acpi_load_aml();
-    time_t ticks_per_us = hpet_init();
+    
+    if(!hpet_exists())
+        klog(ERROR, "HPET does not exist on this system");
+
+    time_t ticks_per_us = hpet_ticks_per_us();
 
     cmos_init();
     if(ticks_per_us > 0) {

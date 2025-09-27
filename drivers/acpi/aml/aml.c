@@ -1,16 +1,11 @@
 #include <drivers/acpi/aml.h>
+#include <drivers/acpi/tables.h>
 
 #include <mem/pmm.h>
 
-#include <assert.h>
+#include <kernelio.h>
 #include <errno.h>
-
-static struct dsdt *load_dsdt(struct fadt *fadt) {
-    struct dsdt* dsdt = MAKE_HHDM(fadt->dsdt);
-    assert(acpi_validate_sdt(&dsdt->header));
-
-    return dsdt;
-}
+#include <memory.h>
 
 static int aml_init(struct dsdt *dsdt) {
     klog(DEBUG, "\"%.4s\" : %.6s : %.8s", dsdt->header.sig, dsdt->header.oem_id, dsdt->header.oem_table_id);
@@ -32,16 +27,7 @@ static const char *aml_strerror(enum aml_error err) {
     }
 }
 
-int acpi_load_aml(void) {
-    struct fadt *fadt = acpi_get_fadt();
-    if(!fadt) {
-        klog(ERROR, "no \"FADT\" table found, cannot load AML.");
-        return ENOENT;
-    }
-
-    struct dsdt *dsdt = load_dsdt(fadt);
-    assert(dsdt != nullptr);
-
+static int load_from_dsdt(struct dsdt* dsdt) {
     int err = aml_init(dsdt);
     if(err)
         return err;
@@ -51,6 +37,20 @@ int acpi_load_aml(void) {
         return EINVAL;
     }
 
+    return 0; 
+}
+
+static int load_from_ssdt(struct ssdt* ssdt) {
     return 0;
+}
+
+int acpi_load_aml(const struct sdt_header *header) {
+    if(memcmp(header->sig, "DSDT", sizeof(sdt_signature_t)) == 0)
+        return load_from_dsdt((struct dsdt*) header);
+    if(memcmp(header->sig, "SSDT", sizeof(sdt_signature_t)) == 0)
+        return load_from_ssdt((struct ssdt*) header);
+
+    klog(WARN, "acpi_load_aml() called with unexpected ACPI header \"%.4s\"", header->sig);
+    return EINVAL;
 }
 

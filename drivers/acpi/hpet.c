@@ -1,5 +1,6 @@
 #include <drivers/acpi/hpet.h>
 #include <drivers/acpi/acpi.h>
+#include <drivers/acpi/tables.h>
 
 #include <drivers/pci/pci.h>
 #include <mem/vmm.h>
@@ -8,7 +9,6 @@
 
 #include <kernelio.h>
 #include <assert.h>
-#include <errno.h>
 
 #define HPET_COUNTER_SIZE(hpet) (4 + (hpet)->counter_size * 4)
 
@@ -46,13 +46,7 @@ static __always_inline void write(struct hpet* hpet, unsigned reg, uintmax_t val
     }
 }
 
-time_t hpet_init(void) {
-    struct sdt_header* header = acpi_find_header(HPET_ACPI_HEADER_SIG);
-    if(!header) {
-        klog(WARN, "HPET not supported on this device.");
-        return -ENODEV;
-    }
-
+int hpet_init(const struct sdt_header *header) {
     hpet = (struct hpet*) header;
 
     const struct pci_vendor_id* vendor = pci_lookup_vendor_id(hpet->pci_vendor_id);
@@ -76,6 +70,10 @@ time_t hpet_init(void) {
     write(hpet, HPET_REG_COUNTER, 0);
     write(hpet, HPET_REG_CONFIG, 1);
 
+    return 0;
+}
+
+time_t hpet_ticks_per_us(void) {
     return ticks_per_microsecond;
 }
 
@@ -93,6 +91,6 @@ time_t hpet_ticks(void) {
 }
 
 bool hpet_exists(void) {
-    return (bool) hpet;
+    return hpet != nullptr;
 }
 

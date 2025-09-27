@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "acpi.h"
+#include "tables.h"
 
 struct apic_list_header {
     enum madt_entry_type type;

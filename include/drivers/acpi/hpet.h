@@ -3,9 +3,9 @@
 
 #define HPET_ACPI_HEADER_SIG "HPET"
 
-#include "acpi.h" 
-
 #include <time.h>
+
+#include "tables.h"
 
 struct hpet_addressing {
     uint8_t address_space_id;
@@ -15,28 +15,10 @@ struct hpet_addressing {
     uint64_t address;
 } __attribute__((packed));
 
-struct hpet {
-    struct sdt_header header;
+int hpet_init(const struct sdt_header *header);
 
-    uint8_t hardware_rev_id;
-    uint8_t comparator_count   : 5;
-    uint8_t counter_size       : 1;
-    uint8_t __reserved         : 1;
-    uint8_t legacy_replacement : 1;
-
-    uint16_t pci_vendor_id;
-    uint8_t addr_id;
-    uint8_t bit_width;
-    uint8_t bit_offset;
-    uint8_t __reserved2;
-    uint64_t addr;
-    uint8_t hpet_number;
-    uint16_t minimum_tick;
-    uint8_t page_protection;
-} __attribute__((packed));
-
-time_t hpet_init(void);
 bool hpet_exists(void);
+time_t hpet_ticks_per_us(void);
 
 void hpet_wait_us(time_t us);
 time_t hpet_ticks(void);

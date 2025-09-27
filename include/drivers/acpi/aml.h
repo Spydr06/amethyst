@@ -1,18 +1,13 @@
 #ifndef _DRIVERS_ACPI_AML_H
 #define _DRIVERS_ACPI_AML_H
 
-#include <drivers/acpi/acpi.h>
-
-struct dsdt {
-    struct sdt_header header;
-    uint8_t definition_block[];
-} __attribute__((packed));
+#include "tables.h"
 
 enum aml_error {
     AML_OK = 0
 };
 
-int acpi_load_aml(void);
+int acpi_load_aml(const struct sdt_header *header);
 
 #endif /* _DRIVERS_ACPI_AML_H */
 

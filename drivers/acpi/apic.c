@@ -95,8 +95,11 @@ static uint32_t lapic_read(enum lapic_register reg) {
 }
 
 void apic_init(void) {
-    madt = (struct madt*) acpi_find_header("APIC");
-    assert(madt);
+    struct sdt_header* header = acpi_find_table("APIC");
+    if(!header)
+        panic("APIC not supported by ACPI on this system");
+
+    madt = (struct madt*) header;
 
     list_start = (void*) ((uintptr_t) madt + sizeof(struct madt));
     list_end   = (void*) ((uintptr_t) madt + madt->header.length);

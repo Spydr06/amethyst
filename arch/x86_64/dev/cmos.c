@@ -4,6 +4,7 @@
 #include <x86_64/cpu/cpu.h>
 
 #include <drivers/acpi/acpi.h>
+#include <drivers/acpi/tables.h>
 
 #include <kernelio.h>
 #include <stdint.h>
@@ -29,7 +30,8 @@ static __always_inline uint8_t rtc_read_register(uint8_t reg) {
 }
 
 void cmos_init(void) {
-    struct fadt* fadt = acpi_get_fadt();
+    struct sdt_header* header = acpi_find_table("FACP");
+    struct fadt* fadt = (struct fadt*) header;
     if(fadt)
         rtc_century_register = fadt->century;
     
