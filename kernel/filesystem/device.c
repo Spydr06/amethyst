@@ -432,7 +432,6 @@ int devfs_getdents(struct vnode* vnode, struct amethyst_dirent *buffer, size_t c
         return ENOTDIR;
 
     struct dev_node* node = (struct dev_node*) vnode;
-
     size_t current = 0;
     *ents_read = 0;
 
