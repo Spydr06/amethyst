@@ -5,6 +5,12 @@ LIBSHARD_DIR := libshard
 GEODE_DIR := geode
 SHELL_DIR := shell
 
+LIBFFI_TAR_LINK ?= https://github.com/libffi/libffi/releases/download/v3.4.5/libffi-3.4.5.tar.gz
+LIBFFI_TAR := $(shell basename $(LIBFFI_TAR_LINK))
+LIBFFI_SRC_DIR := $(patsubst %.tar.gz, %, $(LIBFFI_TAR))
+
+LIBFFI_LIB := $(BUILD_DIR)/libffi.a
+
 LIBATOMIC_OPS_TAR_LINK ?= https://www.hboehm.info/gc/gc_source/libatomic_ops-7.8.0.tar.gz
 LIBATOMIC_OPS_TAR := $(shell basename $(LIBATOMIC_OPS_TAR_LINK))
 LIBATOMIC_OPS_SRC_DIR := $(patsubst %.tar.gz, %, $(LIBATOMIC_OPS_TAR))
@@ -66,6 +72,11 @@ override CFLAGS := $(call unique, $(CFLAGS))
 ifneq (,$(findstring SHARD_USE_GCBOEHM, $(CFLAGS)))
 	LIBSHARD_OBJECTS += $(GCBOEHM_LIB)
 	override CFLAGS += -I$(GCBOEHM_SRC_DIR)/include
+endif
+
+ifneq (,$(findstring SHARD_ENABLE_FFI, $(CFLAGS)))
+	LIBSHARD_OBJECTS += $(LIBFFI_LIB)
+	override CFLAGS += -I$(LIBFFI_SRC_DIR)/x86_64-pc-linux-gnu/include
 endif
 
 override BIN_LDFLAGS := 
@@ -136,6 +147,29 @@ $(BUILD_DIR)/%.o: %.S | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	@$(AS) $(ASFLAGS) $^ -o $@
 
+.PHONY: libffi
+libffi: $(LIBFFI_LIB)
+
+$(LIBFFI_LIB): $(LIBFFI_SRC_DIR)/Makefile | $(BUILD_DIR)
+	$(MAKE) -C $(LIBFFI_SRC_DIR)
+	cp -rv $(shell find -name 'libffi.a') $@
+
+$(LIBFFI_SRC_DIR)/Makefile: $(LIBFFI_SRC_DIR)
+	@echo "  PUSHD $(LIBFFI_SRC_DIR)"		&& \
+		pushd $(LIBFFI_SRC_DIR)				&& \
+		echo "Configuring libffi..."		&& \
+		CC=$(CC) CXX=$(CXX)					&& \
+		./configure --enable-static=yes --enable-shared=no --disable-docs	&& \
+		echo "Configuring libffi done."
+
+$(LIBFFI_SRC_DIR): $(LIBFFI_TAR)
+	@echo "  TAR   $^"
+	@tar xf $^ -C $(dir $(LIBFFI_SRC_DIR))
+
+$(LIBFFI_TAR):
+	@echo "  WGET  $@"
+	@wget $(LIBFFI_TAR_LINK) -O $@
+
 .PHONY: gcboehm
 gcboehm: $(GCBOEHM_LIB)
 
@@ -203,6 +237,9 @@ install-bin: $(SHARD_BIN)
 install-shell: $(SHELL_BIN)
 	install -m "777" $(SHELL_BIN) $(PREFIX)/bin/$(notdir $(SHELL_BIN))
 
+.PHONY: clean-all
+clean-all: clean clean-gcboehm clean-libffi
+
 .PHONY: clean
 clean:
 	rm -rf $(BUILD_DIR)
@@ -211,4 +248,8 @@ clean:
 clean-gcboehm: clean
 	rm -rf $(LIBATOMIC_OPS_SRC_DIR) $(LIBATOMIC_OPS_TAR)
 	rm -rf $(GCBOEHM_SRC_DIR) $(GCBOEHM_TAR)
+
+.PHONY: clean-libffi
+clean-libff: clean
+	rm -rf $(LIBFFI_SRC_DIR) $(LIBFFI_TAR)
 

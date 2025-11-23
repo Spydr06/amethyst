@@ -217,6 +217,7 @@ struct shard_context {
     struct shard_gc* gc;
 
     bool builtin_initialized;
+    bool ffi_initialized;
     struct shard_scope builtin_scope;
 
     void* userp;
@@ -681,6 +682,10 @@ struct shard_open_source {
 
 SHARD_DECL struct shard_open_source* shard_open(struct shard_context* ctx, const char* origin);
 SHARD_DECL int shard_register_open(struct shard_context* ctx, const char* origin, bool is_path, struct shard_open_source* source);
+
+SHARD_DECL int shard_enable_ffi(struct shard_context *ctx);
+
+SHARD_DECL struct shard_value shard_ffi_bind(volatile struct shard_evaluator *e, const char* symbol, void *sym, struct shard_set *type);
 
 #ifdef _LIBSHARD_INTERNAL
     #include <libshard-internal.h>

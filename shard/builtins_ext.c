@@ -103,7 +103,7 @@ int load_ext_builtins(struct shard_context* ctx, int argc, char** argv) {
         return err;
 
 #ifndef _SHARD_NO_FFI
-    if((err = ffi_load(ctx)))
+    if((err = shard_enable_ffi(ctx)))
         return err;
 #endif
 
@@ -212,7 +212,7 @@ static struct shard_value builtin_dlSym(volatile struct shard_evaluator* e, stru
         return CSTRING_VAL(err);
     }
 
-    return ffi_bind(e, symbol, sym, ffi_type_val.set);
+    return shard_ffi_bind(e, symbol, sym, ffi_type_val.set);
 #else
     return NULL_VAL();
 #endif

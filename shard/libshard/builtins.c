@@ -10,8 +10,6 @@
 #include <time.h>
 #include <inttypes.h>
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-
 struct shard_builtin_const {
     const char* full_name;
     struct shard_value value;

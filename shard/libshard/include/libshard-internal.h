@@ -53,6 +53,9 @@
 #define EITHER(a, b) ((a) ? (a) : (b))
 #define LEN(arr) (sizeof((arr)) / sizeof((arr)[0]))
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 #define NULL_VAL() ((struct shard_value) { .type = SHARD_VAL_NULL })
 #define TRUE_VAL() BOOL_VAL(true)
 #define FALSE_VAL() BOOL_VAL(false)
