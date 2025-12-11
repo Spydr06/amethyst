@@ -65,11 +65,7 @@ struct file* fd_get(size_t fd) {
     return file;
 }
 
-int fd_new(int flags, struct file** filep, int* fdp) {
-    struct file* file = fd_allocate();
-    if(!file)
-        return ENOMEM;
-
+int fd_reserve(void) {
     struct proc* proc = current_proc();
     assert(proc);
 
@@ -81,10 +77,76 @@ int fd_new(int flags, struct file** filep, int* fdp) {
         int err = grow_fd_table(proc, fd + 1);
         if(err) {
             mutex_release(&proc->fd_mutex);
-            fd_free(file);
-            return err;
+            return -err;
         }
     }
+
+    proc->fd_first = fd + 1;
+    proc->fd[fd].file = NULL;
+    proc->fd[fd].flags = 0;
+
+    mutex_release(&proc->fd_mutex);
+    return fd;
+}
+
+int fd_exact(int fd) {
+    struct proc* proc = current_proc();
+    assert(proc);
+
+    int err = 0;
+    mutex_acquire(&proc->fd_mutex, false);
+
+    if(fd < (int) proc->fd_count) {
+        if(proc->fd[fd].file)
+            fd_release(proc->fd[fd].file);
+
+        proc->fd[fd].file = nullptr;
+        proc->fd[fd].flags = 0;
+
+        goto cleanup;
+    }
+
+    if((err = grow_fd_table(proc, fd + 1)))
+        goto cleanup;
+
+    proc->fd[fd].file = NULL;
+    proc->fd[fd].flags = 0;
+
+cleanup:
+    mutex_release(&proc->fd_mutex);
+    return err;
+}
+
+void fd_vacate(int fd) {
+    struct proc* proc = current_proc();
+    assert(proc);
+
+    mutex_acquire(&proc->fd_mutex, false);
+
+    if(fd < (int) proc->fd_count) {
+        assert(proc->fd[fd].file == nullptr);
+        if((int) proc->fd_first > fd)
+            proc->fd_first = fd;
+    }
+
+    mutex_release(&proc->fd_mutex);
+}
+
+int fd_new(int flags, struct file** filep, int* fdp) {
+    struct file* file = fd_allocate();
+    if(!file)
+        return ENOMEM;
+
+    int fd = fd_reserve();
+    if(fd < 0) {
+        fd_free(file);
+        return -fd;
+    }
+
+    struct proc* proc = current_proc();
+    assert(proc);
+
+    mutex_acquire(&proc->fd_mutex, false);
 
     proc->fd_first = fd + 1;
     proc->fd[fd].file = file;
@@ -96,6 +158,42 @@ int fd_new(int flags, struct file** filep, int* fdp) {
     *fdp = fd;
 
     return 0;
+}
+
+int fd_duplicate(int new_fd, int old_fd) {
+    int err = 0;
+    struct file *file = fd_get(old_fd);
+    if(!file)
+        return EBADF;
+    
+    if((err = fd_exact(new_fd))) {
+        fd_release(file);
+        return err;
+    }
+
+    struct proc* proc = current_proc();
+    assert(proc);
+
+    mutex_acquire(&proc->fd_mutex, false);
+
+    proc->fd[new_fd].flags = proc->fd[old_fd].flags;
+    if(!(proc->fd[new_fd].file = fd_allocate())) {
+        err = ENOMEM;
+        mutex_release(&proc->fd_mutex);
+
+        fd_vacate(new_fd);
+        goto cleanup;
+    }
+
+    memcpy(proc->fd[new_fd].file, file, sizeof(struct file));
+
+    // reset reference count
+    proc->fd[new_fd].file->ref_count = 1;
+
+    mutex_release(&proc->fd_mutex);
+cleanup:
+    fd_release(file);
+    return err;
 }
 
 int fd_close(int fd) {

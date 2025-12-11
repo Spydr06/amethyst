@@ -52,15 +52,26 @@ struct file* fd_allocate(void);
 void fd_free(struct file* file);
 int fd_clone(struct proc* dest);
 
+int fd_exact(int fd);
+
+int fd_reserve(void);
+void fd_vacate(int fd);
+
+int fd_duplicate(int new_fd, int old_fd);
+
 struct file* fd_get(size_t fd);
 int fd_new(int flags, struct file** file, int* fd);
 int fd_close(int fd);
 
 static inline void fd_hold(struct file* file) {
+    if(!file)
+        return;
     __atomic_add_fetch(&file->ref_count, 1, __ATOMIC_SEQ_CST);
 }
 
 static inline void fd_release(struct file* file) {
+    if(!file)
+        return;
     if(__atomic_sub_fetch(&file->ref_count, 1, __ATOMIC_SEQ_CST) == 0)
         fd_free(file);
 }

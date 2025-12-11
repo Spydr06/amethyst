@@ -8,6 +8,14 @@ int access(const char *path, int amode) {
     return syscall(SYS_access, path, amode);
 }
 
+int dup(int oldfd) {
+    return syscall(SYS_dup, oldfd);
+}
+
+int dup2(int oldfd, int newfd) {
+    return syscall(SYS_dup2, oldfd, newfd);
+}
+
 int open(const char *pathname, int flags, mode_t mode) {
     return syscall(SYS_open, pathname, flags, mode);
 }

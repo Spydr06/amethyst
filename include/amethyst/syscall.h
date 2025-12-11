@@ -22,6 +22,8 @@
 #define SYS_access          21
 #define SYS_yield           24
 #define SYS_nanosleep       25
+#define SYS_dup             32
+#define SYS_dup2            33
 #define SYS_getpid          39
 #define SYS_fork            57
 #define SYS_execve          59

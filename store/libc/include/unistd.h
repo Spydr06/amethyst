@@ -10,6 +10,10 @@
 extern "C" {
 #endif
 
+#define STDIN_FILENO  0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+
 #define O_RDONLY    00
 #define O_WRONLY    01
 #define O_RDWR      02
@@ -33,6 +37,9 @@ int access(const char *path, int amode);
 
 int brk(void* addr);
 void* sbrk(intptr_t increment);
+
+int dup(int oldfd);
+int dup2(int oldfd, int newfd);
 
 int execve(const char *pathname, char *const argv[], char *const envp[]);
 

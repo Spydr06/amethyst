@@ -61,7 +61,8 @@ __syscall syscallret_t _sys_access(struct cpu_context* ctx, const char* filename
 
 __syscall syscallret_t _sys_yield(struct cpu_context* ctx);
 __syscall syscallret_t _sys_nanosleep(struct cpu_context* ctx, const struct timespec* rq, struct timespec* rm);
-
+__syscall syscallret_t _sys_dup(struct cpu_context *ctx, int fd);
+__syscall syscallret_t _sys_dup2(struct cpu_context *ctx, int old_fd, int new_fd);
 __syscall syscallret_t _sys_getpid(struct cpu_context* ctx);
 
 __syscall syscallret_t _sys_fork(struct cpu_context* ctx);

@@ -41,6 +41,8 @@ const struct syscall_entry _syscall_table[] = {
     _SYS_E(access,   "%p, %x"      ),
     _SYS_E(yield,    ""            ),
     _SYS_E(nanosleep,"%p, %p"      ),
+    _SYS_E(dup,      "%d"          ),
+    _SYS_E(dup2,     "%d, %d"      ),
     _SYS_E(getpid,   ""            ),
     _SYS_E(fork,     ""            ),
     _SYS_E(execve,   "%p, %p, %p"  ),
