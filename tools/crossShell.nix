@@ -12,10 +12,12 @@ cross.mkShell.override {
         binutils
         gdb
         curl
+        bear
     ];
 
     nativeBuildInputs = with pkgs; [
         gcc14
+        gf
         binutils
         pkg-config
         autobuild
@@ -30,4 +32,8 @@ cross.mkShell.override {
         libedit
         libgit2
     ];
+
+    shellHook = ''
+        export TMPDIR="$(mktemp -d /tmp/nix-shell-XXXXXX)"
+    '';
 }

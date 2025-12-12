@@ -1,10 +1,14 @@
 let
-    dl = system.dlOpen ./mylib.so;
-    
-    greet = xs :: list: let
-        f = system.dlSym dl "greet" $ with builtins; 
-            ffi.cFunc ffi.cVoid [ (ffi.cPointer $ ffi.cPointer ffi.cChar) ffi.cUnsignedInt ];
-        in f xs $ builtins.length xs;
-in
-    builtins.toString $ greet [ "hallo" "welt" "..." ]
+    dl = system.dlOpen null;
+
+    puts = xs :: string: let
+        f = system.dlSym dl "puts" $ with builtins;
+            ffi.cFunc ffi.cInt [ (ffi.cPointer $ ffi.cChar) ];
+        in f xs;
+
+    printf = fmt :: string: args :: list: let
+         system.dlSym dl "printf" $ with builtins;
+            ffi.cVarFunc ffi.cInt [ (ffi.cPointer $ ffi.cChar) ];
+        #in f fmt args;
+in printf
 

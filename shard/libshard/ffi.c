@@ -23,33 +23,12 @@
         static struct shard_value builtin_##cname(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args);   \
         struct shard_builtin ffi_builtin_##cname = SHARD_BUILTIN(name, builtin_##cname, __VA_ARGS__)
 
-#define ALIGN_TO(x, a) ((x) + ((a) - 1)) & ~((a) - 1);
-
-#ifdef __x86_64__
-    #define GP_MAX 6
-    #define SSE_MAX 8
-#else
-    #error "Unsupported architecture"
-#endif
-
-struct ffi_ccall {
-    int gp_used;
-    int sse_used;
-
-    intptr_t gp[GP_MAX];
-    intptr_t sse[SSE_MAX];
-
-    uint8_t* stack_args;
-    int stack_capacity;
-    int stack_size;
-};
+#define ALIGN_TO(x, a) (((x) + ((a) - 1)) & ~((a) - 1))
 
 struct ffi_type_ops {
     const char* name;
     struct shard_value (*read)(volatile struct shard_evaluator* e, const void* address, struct shard_set* ffi_type);
     void (*write)(volatile struct shard_evaluator* e, void* address, struct shard_value value, struct shard_set* ffi_type);
-    void (*as_ccall_arg)(volatile struct shard_evaluator* e, struct ffi_ccall* ccall, struct shard_set* ffi_type, struct ffi_type_ops* ops, struct shard_value value);
-    struct shard_value (*from_ccall_return)(volatile struct shard_evaluator* e, const intptr_t gp[2], const intptr_t sse[2], const uint8_t* buffer, struct shard_set* ffi_type, struct ffi_type_ops* ops);
 };
 
 FFI_BUILTIN("builtins.ffi.void.__toString", void_toString, SHARD_VAL_SET);
@@ -57,6 +36,7 @@ FFI_BUILTIN("builtins.ffi.cPointer", cPointer, SHARD_VAL_SET);
 FFI_BUILTIN("builtins.ffi.cUnion", cUnion, SHARD_VAL_SET);
 FFI_BUILTIN("builtins.ffi.cStruct", cStruct, SHARD_VAL_SET);
 FFI_BUILTIN("builtins.ffi.cFunc", cFunc, SHARD_VAL_SET, SHARD_VAL_LIST);
+FFI_BUILTIN("builtins.ffi.cVarFunc", cVarFunc, SHARD_VAL_SET, SHARD_VAL_LIST);
 FFI_BUILTIN("builtins.ffi.cCall", cCall, SHARD_VAL_SET);
 FFI_BUILTIN("builtins.ffi.cValue", cValue, SHARD_VAL_SET);
 FFI_BUILTIN("builtins.ffi.cAssign", cAssign, SHARD_VAL_SET, SHARD_VAL_ANY);
@@ -64,6 +44,7 @@ FFI_BUILTIN("builtins.ffi.cAssign", cAssign, SHARD_VAL_SET, SHARD_VAL_ANY);
 static struct shard_builtin* ffi_builtins[] = {
     &ffi_builtin_cPointer,
     &ffi_builtin_cFunc,
+    &ffi_builtin_cVarFunc,
     &ffi_builtin_cUnion,
     &ffi_builtin_cStruct,
     &ffi_builtin_cValue,
@@ -295,66 +276,17 @@ static void ffi_write_pointer(volatile struct shard_evaluator* e, void* address,
     }
 }
 
-/*static void ccall_stack_arg(volatile struct shard_evaluator* e, struct ffi_ccall* ccall, struct shard_set* ffi_type, struct ffi_type_ops* ops, struct shard_value value) {
-    int size = c_typesz(e, ffi_type);
-
-    if(ccall->stack_size + size >= ccall->stack_capacity) {
-        ccall->stack_capacity = MAX(ccall->stack_capacity * 2ul, sizeof(void*) * 64);
-        while(ccall->stack_capacity < ccall->stack_size + size)
-            ccall->stack_capacity *= 2;
-
-        if(ccall->stack_size == 0)
-            ccall->stack_args = shard_gc_malloc(e->gc, ccall->stack_capacity);
-        else
-            ccall->stack_args = shard_gc_realloc(e->gc, ccall->stack_args, ccall->stack_capacity);
-    }
-
-    ops->write(e, ccall->stack_args + ccall->stack_size, value, ffi_type);
-    ccall->stack_size += size;
+struct shard_value ffi_read_struct(volatile struct shard_evaluator* e, const void* address, struct shard_set* ffi_type) {
+    assert(false && "unimplemented");
 }
 
-static void ccall_gp_arg(volatile struct shard_evaluator* e, struct ffi_ccall* ccall, struct shard_set* ffi_type, struct ffi_type_ops* ops, struct shard_value value) {
-    if(ccall->gp_used >= (int) LEN(ccall->gp)) {
-        ccall_stack_arg(e, ccall, ffi_type, ops, value);
-        return;
-    }
-
-    ops->write(e, ccall->gp + ccall->gp_used, value, ffi_type); 
-    ccall->gp_used++;
+static void ffi_write_struct(volatile struct shard_evaluator* e, void* address, struct shard_value value, struct shard_set* ffi_type) {
+    assert(false && "unimplemented");
 }
-
-static void ccall_sse_arg(volatile struct shard_evaluator* e, struct ffi_ccall* ccall, struct shard_set* ffi_type, struct ffi_type_ops* ops, struct shard_value value) {
-    if(ccall->sse_used >= (int) LEN(ccall->sse)) {
-        ccall_stack_arg(e, ccall, ffi_type, ops, value);
-        return;
-    }
-
-    ops->write(e, ccall->sse + ccall->sse_used, value, ffi_type); 
-    ccall->sse_used++;
-}
-
-static void ccall_void_arg(volatile struct shard_evaluator* e, struct ffi_ccall*, struct shard_set*, struct ffi_type_ops*, struct shard_value) {
-    shard_eval_throw(e, e->error_scope->loc, "cannot use ffi type `void` as a ccall argument");
-}
-
-static struct shard_value ccall_void_return(volatile struct shard_evaluator*, const intptr_t[2], const intptr_t[2], const uint8_t*, struct shard_set*, struct ffi_type_ops*) {
-    return SET_VAL(ffi_void);
-}
-
-static struct shard_value ccall_gp_return(volatile struct shard_evaluator* e, const intptr_t gp[2], const intptr_t sse[2], const uint8_t* buffer, struct shard_set* ffi_type, struct ffi_type_ops* ops) {
-    (void) sse;
-    (void) buffer;
-    return ops->read(e, gp, ffi_type);
-}
-
-static struct shard_value ccall_sse_return(volatile struct shard_evaluator* e, const intptr_t gp[2], const intptr_t sse[2], const uint8_t* buffer, struct shard_set* ffi_type, struct ffi_type_ops* ops) {
-    (void) gp;
-    (void) buffer;
-    return ops->read(e, sse, ffi_type); 
-}*/
 
 struct ffi_type_ops ffi_pointer_ops = FFI_OPS(pointer, pointer);
 struct ffi_type_ops ffi_function_ops = FFI_OPS(function, pointer);
+struct ffi_type_ops ffi_struct_ops = FFI_OPS(struct, struct);
 
 static struct shard_value gen_cType(struct shard_context* ctx, const char* name, ffi_type* type, int extra) {
     struct shard_set* set = shard_set_init(ctx, 4 + extra); 
@@ -451,6 +383,18 @@ static struct shard_list* c_arglist(volatile struct shard_evaluator* e, struct s
     return arg_list.list.head;
 }
 
+static bool c_isvariadic(volatile struct shard_evaluator *e, struct shard_set *ffi_type) {
+    if(!c_typeis(e, ffi_type, "function"))
+        return false;
+
+    struct shard_lazy_value *lazy_variadic;
+    if(shard_set_get(ffi_type, shard_get_ident(e->ctx, "variadic"), &lazy_variadic))
+        return false;
+
+    struct shard_value variadic = shard_eval_lazy2(e, lazy_variadic);
+    return variadic.type == SHARD_VAL_BOOL && variadic.boolean;
+}
+
 static struct shard_set* c_return(volatile struct shard_evaluator* e, struct shard_set* ffi_type) {
     if(!c_typeis(e, ffi_type, "function"))
         return NULL;
@@ -504,6 +448,7 @@ SHARD_DECL int shard_enable_ffi(struct shard_context* ctx) {
 
     shard_hashmap_put(ctx, &ffi_type_ops, "pointer", &ffi_pointer_ops);
     shard_hashmap_put(ctx, &ffi_type_ops, "function", &ffi_function_ops);
+    shard_hashmap_put(ctx, &ffi_type_ops, "struct", &ffi_struct_ops);
 
     ffi_void = shard_set_init(ctx, 1);
     shard_set_put(ffi_void, shard_get_ident(ctx, "__toString"), shard_unlazy(ctx, BUILTIN_VAL(&ffi_builtin_void_toString)));
@@ -631,6 +576,21 @@ static struct shard_value builtin_cFunc(volatile struct shard_evaluator* e, stru
 
     shard_builtin_eval_arg(e, builtin, args, 1);
     shard_set_put(type.set, shard_get_ident(e->ctx, "arguments"), args[1]);
+
+    return type;
+}
+
+static struct shard_value builtin_cVarFunc(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value type = gen_cType(e->ctx, "function", &ffi_type_pointer, 3);
+
+    shard_builtin_eval_arg(e, builtin, args, 0);
+    shard_set_put(type.set, shard_get_ident(e->ctx, "returns"), args[0]);
+
+    shard_builtin_eval_arg(e, builtin, args, 1);
+    shard_set_put(type.set, shard_get_ident(e->ctx, "arguments"), args[1]);
+
+    struct shard_lazy_value *variadic = shard_unlazy(e->ctx, TRUE_VAL());
+    shard_set_put(type.set, shard_get_ident(e->ctx, "variadic"), variadic);
 
     return type;
 }

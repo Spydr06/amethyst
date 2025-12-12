@@ -7,6 +7,10 @@ lib.mkSystemConfig {
 
     };
 
+    extraModules = with pkgs.modules; [
+        test
+    ];
+
     kernel."amethyst-default" = {
         package = pkgs.amethyst-kernel;
 
@@ -17,6 +21,10 @@ lib.mkSystemConfig {
         package = pkgs.amethyst-kernel.override { sanitize = [ "undefined" ]; };
 
         arguments = [ "loglevel=debug" "log-syscalls" ];
+
+        overrideModules = with pkgs.modules; [
+            test
+        ];
 
         defines = {
             _SCHED_DEBUG = 1;

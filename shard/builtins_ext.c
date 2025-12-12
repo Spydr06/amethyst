@@ -30,7 +30,7 @@
 
 EXT_BUILTIN("system.getEnv", getEnv, SHARD_VAL_STRING);
 EXT_BUILTIN("system.setEnv", setEnv, SHARD_VAL_STRING, SHARD_VAL_STRING);
-EXT_BUILTIN("system.dlOpen", dlOpen, SHARD_VAL_TEXTUAL);
+EXT_BUILTIN("system.dlOpen", dlOpen, SHARD_VAL_TEXTUAL | SHARD_VAL_NULL);
 EXT_BUILTIN("system.dlClose", dlClose, SHARD_VAL_SET);
 EXT_BUILTIN("system.dlSym", dlSym, SHARD_VAL_SET, SHARD_VAL_STRING, SHARD_VAL_SET);
 EXT_BUILTIN("system.exit", exit, SHARD_VAL_INT);
@@ -138,7 +138,10 @@ static struct shard_value builtin_dlOpen(volatile struct shard_evaluator* e, str
 #ifndef _SHARD_NO_FFI
     struct shard_value path = shard_builtin_eval_arg(e, builtin, args, 0);
 
-    void* handle = dlopen(path.path, RTLD_LAZY);
+    const char *dlpath = path.type == SHARD_VAL_NULL ? NULL : path.path;
+    void* handle = dlopen(dlpath, RTLD_LAZY);
+    if(!handle)
+        shard_eval_throw(e, e->error_scope->loc, "dlopen: %s", dlerror());
     
     struct shard_set* dylib = shard_set_init(e->ctx, 2);
 
@@ -199,7 +202,7 @@ static struct shard_value builtin_dlSym(volatile struct shard_evaluator* e, stru
         return CSTRING_VAL("missing dl attr `filename`");
 
     struct shard_value filename_val = shard_eval_lazy2(e, lazy_filename);
-    if(filename_val.type != SHARD_VAL_PATH)
+    if(!(filename_val.type & (SHARD_VAL_PATH | SHARD_VAL_NULL)))
         return CSTRING_VAL("invalid dl attr `filename`");
 
     void* handle = (void*) handle_val.integer;

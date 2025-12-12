@@ -1,0 +1,19 @@
+{ lib, pkgs, kernel, ... }: 
+lib.mkKernelModule rec {
+    name = "test";
+    version = "0.0.1";
+
+    license = "MIT";
+    description = "Simple Test Module";
+
+    buildDependencies = with pkgs; [
+        amethyst-headers
+    ];
+
+    moduleSource = "${pkgs.amethyst-source}/source/modules/${name}";
+
+    moduleFile = lib.buildKernelModule [
+        "test.c"
+    ] kernel;
+}
+
