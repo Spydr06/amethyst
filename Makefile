@@ -26,10 +26,13 @@ RUN_SH := $(TOOLS_DIR)/run.sh
 TOOLPREFIX ?= $(ARCH)-elf-
 
 override ARCH_DIR := arch/$(ARCH)
-override ARCH_INCLUDE_DIR := arch/include/$(ARCH)
+override ARCH_INCLUDE_DIR := $(ARCH_DIR)/include
 
-override SOURCE_DIRS := kernel init drivers $(ARCH_DIR)
-override HEADER_DIRS := include $(ARCH_INCLUDE_DIR)
+override ARCH_COMMON_DIR := arch/common
+override ARCH_COMMON_INCLUDE_DIR := $(ARCH_COMMON_DIR)/include
+
+override SOURCE_DIRS := kernel init drivers $(ARCH_DIR) $(ARCH_COMMON_DIR)
+override HEADER_DIRS := include $(ARCH_INCLUDE_DIR) $(ARCH_COMMON_INCLUDE_DIR)
 
 SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S" -or -name "*.ids"
 SOURCES := $(shell find $(SOURCE_DIRS) $(SOURCE_PATTERN) | grep -v "arch/")

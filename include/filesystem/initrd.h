@@ -1,7 +1,0 @@
-#ifndef _AMETHYST_FILESYSTEM_INITRD_H
-#define _AMETHYST_FILESYSTEM_INITRD_H
-
-int initrd_unpack(void);
-
-#endif /* _AMETHYST_FILESYSTEM_INITRD_H */
-
