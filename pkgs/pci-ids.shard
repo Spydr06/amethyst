@@ -1,0 +1,8 @@
+{ lib, pkgs, stdenv, ... }:
+lib.mkPackage rec {
+    name = "pci-ids";
+    version = "2.2";
+
+    fetchPhase = lib.requireFile $ lib.fetchFile "https://pci-ids.ucw.cz/v${version}/pci.ids";
+}
+

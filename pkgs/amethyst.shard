@@ -34,7 +34,12 @@ lib.mkPackage rec {
 
     getSanitizers = builtins.join "," config.sanitize;
 
-    buildPhase = lib.make ["-C" sourceDir buildTarget "BUILD_DIR=${buildDir}" "SANITIZERS=${getSanitizers}"];
+    buildPhase = lib.make [
+        "-C" sourceDir buildTarget
+        "BUILD_DIR=${buildDir}"
+        "SANITIZERS=${getSanitizers}"
+        "PCI_IDS_LIST=${pkgs.pci-ids}/pci.ids"
+    ];
 
     installPhase = lib.installFile { src = buildTarget; dst = /boot/ + kernelElf; mode = "755"; };
 }

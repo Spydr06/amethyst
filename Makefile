@@ -4,10 +4,7 @@ VERSION_FILE := ./version
 VERSION ?= $(file < $(VERSION_FILE))
 
 BUILD_DIR ?= build
-SHARD_BUILD_DIR ?= $(BUILD_DIR)/shard
-
 SHARD_DIR ?= shard
-SHARD_OBJECT ?= $(SHARD_BUILD_DIR)/libshard.o
 
 GEODE_DIR ?= shard/geode
 GEODE_HOST_BIN ?= $(SHARD_DIR)/build/geode-host
@@ -20,26 +17,28 @@ KERNEL_SYM ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).sym
 
 TOOLS_DIR ?= tools
 
+PCI_IDS_GEN := $(TOOLS_DIR)/pci-id-gen.py
+PCI_IDS_LIST ?= $(TOOLS_DIR)/pci.ids
+PCI_IDS_C_SOURCE := $(BUILD_DIR)/pci.ids.c
+PCI_IDS_OBJECT := $(BUILD_DIR)/pci.ids.o
+
 BOOTSTRAP_SH := $(TOOLS_DIR)/bootstrap.sh
 RUN_SH := $(TOOLS_DIR)/run.sh
 
 TOOLPREFIX ?= $(ARCH)-elf-
 
 override ARCH_DIR := arch/$(ARCH)
-override ARCH_INCLUDE_DIR := $(ARCH_DIR)/include
-
 override ARCH_COMMON_DIR := arch/common
-override ARCH_COMMON_INCLUDE_DIR := $(ARCH_COMMON_DIR)/include
 
 override SOURCE_DIRS := kernel init drivers $(ARCH_DIR) $(ARCH_COMMON_DIR)
-override HEADER_DIRS := include $(ARCH_INCLUDE_DIR) $(ARCH_COMMON_INCLUDE_DIR)
+override HEADER_DIRS := include
 
-SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S" -or -name "*.ids"
+SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S"
 SOURCES := $(shell find $(SOURCE_DIRS) $(SOURCE_PATTERN) | grep -v "arch/")
 
 HEADERS := $(shell find $(HEADER_DIRS) -name '*.h')
 
-INCLUDES := . include arch/include $(SHARD_DIR)/libshard/include
+INCLUDES := . include
 
 SSP := $(shell openssl rand -hex 8)
 CMOS_YEAR := $(shell date +"%Y")
@@ -98,14 +97,14 @@ endif
 CFLAGS += -std=c2x $(C_CXX_FLAGS)
 CXXFLAGS += -std=c++2x $(C_CXX_FLAGS)
 
-OBJECTS := $(patsubst %, $(BUILD_DIR)/%.o, $(SOURCES))
+OBJECTS := $(patsubst %, $(BUILD_DIR)/%.o, $(SOURCES)) $(PCI_IDS_OBJECT)
 
 VERSION_H := include/version.h
 
 .PHONY: kernel
 kernel: $(KERNEL_ELF)
 
-$(KERNEL_ELF): $(OBJECTS) $(CONSOLEFONT_OBJECT) $(SHARD_OBJECT)
+$(KERNEL_ELF): $(OBJECTS) $(CONSOLEFONT_OBJECT)
 	@echo "  LD    $@"
 	@$(LD) $(LDFLAGS) $^ -o $@
 	@$(OBJCOPY) --only-keep-debug $(KERNEL_ELF) $(KERNEL_SYM)
@@ -133,8 +132,13 @@ $(BUILD_DIR)/%.S.o: $(BUILD_DIR)/%.S
 
 $(BUILD_DIR)/%.ids.c: %.ids
 	@mkdir -p $(dir $@)
-	@echo "  MAKE  $^"
-	@$(MAKE) -C $(dir $<) OUTPUT=$(shell realpath $(BUILD_DIR))/$<.c
+	@echo "  GEN   $^"
+	$(PCI_IDS_GEN) $@ $<
+
+$(PCI_IDS_C_SOURCE): $(PCI_IDS_LIST)
+	@mkdir -p $(dir $@)
+	@echo "  GEN   $^"
+	$(PCI_IDS_GEN) $@ $<
 
 $(BUILD_DIR)/%.ids.o: $(BUILD_DIR)/%.ids.c
 	@echo "  CC    $^"
@@ -147,12 +151,6 @@ $(VERSION_H): $(VERSION_H).in
 $(CONSOLEFONT_OBJECT): $(CONSOLEFONT)
 	@echo "  LD    $^"
 	@$(LD) -r -b binary -o $@ $<
-
-$(SHARD_OBJECT): $(SHARD_DIR)
-	@echo "  MAKE  $(SHARD_DIR)"
-	echo $(CLFAGS) $(C_CXX_FLAGS)
-	@$(MAKE) -C $(SHARD_DIR) libshard_obj BUILD_DIR=$(shell realpath $(SHARD_BUILD_DIR)) \
-		C_CXX_FLAGS="$(C_CXX_FLAGS)" CFLAGS="$(CFLAGS)" LDFLAGS="$(SAVED_LDFLAGS)" 
 
 .PHONY: geode
 geode: $(GEODE_HOST_BIN)
