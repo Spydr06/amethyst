@@ -159,11 +159,7 @@ static __always_inline void cpu_extra_ctx_init(struct cpu_extra_context* ctx) {
     ctx->fx[4] = 0;
 }
 
-static __always_inline
-#ifdef _AMETHYST_CPU_SYSCALLS_H
-    __no_caller_saved_registers __general_regs_only
-#endif
-bool cpu_ctx_is_user(struct cpu_context* ctx) {
+static inline bool cpu_ctx_is_user(struct cpu_context* ctx) {
     return ctx->cs == 0x23;
 }
 
@@ -183,6 +179,10 @@ struct cpu* _cpu(void) {
         : "=a"(cpu)
     );
     return cpu->this;
+}
+
+static inline struct cpu* _wcpu(void) {
+    return _cpu();
 }
 
 static __always_inline void hlt_until_int(void) {

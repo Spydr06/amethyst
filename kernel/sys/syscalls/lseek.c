@@ -1,7 +1,7 @@
 #include <sys/syscall.h>
 
 #include <sys/fd.h>
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 
 #include <abi.h>
 #include <errno.h>
@@ -59,3 +59,4 @@ cleanup:
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_lseek, _sys_lseek, "lseek", "%d, %lx, %d");

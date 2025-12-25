@@ -1,7 +1,7 @@
 #include <mem/vmm.h>
 
 #include <mem/page.h>
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 #include <sys/timekeeper.h>
 #include <sys/mutex.h>
 #include <sys/hash.h>

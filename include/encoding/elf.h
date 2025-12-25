@@ -23,7 +23,7 @@
 
 #include <stdint.h>
 
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 
 /* Type for a 16-bit quantity.  */
 typedef uint16_t Elf32_Half;

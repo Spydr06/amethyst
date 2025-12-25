@@ -2,7 +2,7 @@
 #define _AMETHYST_FILESYSTEM_DEVICE_H
 
 #include <abi.h>
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 #include <hashtable.h>
 
 enum {

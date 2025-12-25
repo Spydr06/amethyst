@@ -1,5 +1,5 @@
 #include <x86_64/trace.h>
-#include <ff/elf.h>
+#include <encoding/elf.h>
 
 #include <kernelio.h>
 #include <stddef.h>

@@ -60,7 +60,7 @@ struct proc* proc_create(void) {
     mutex_init(&proc->mutex);
     spinlock_init(proc->nodes_lock);
     
-    proc->pid = __atomic_fetch_add(&_current_pid, 1, __ATOMIC_SEQ_CST);
+    proc->pid = proc_new_pid();
 
     proc->ref_count = 1;
     proc->state = PROC_STATE_NORMAL;

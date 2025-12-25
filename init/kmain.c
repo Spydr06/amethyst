@@ -4,10 +4,10 @@
 #include <drivers/pci/nvme.h>
 #include <drivers/pci/pci.h>
 #include <drivers/video/vga.h>
-#include <filesystem/device.h>
+#include <filesystem/devfs.h>
 #include <filesystem/initrd.h>
-#include <filesystem/temporary.h>
-#include <filesystem/virtual.h>
+#include <filesystem/tmpfs.h>
+#include <filesystem/vfs.h>
 #include <init/cmdline.h>
 #include <io/pseudo_devices.h>
 #include <io/tty.h>

@@ -43,3 +43,4 @@ cleanup:
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_getdents, _sys_getdents, "getdents", "%d, %p, %zu");

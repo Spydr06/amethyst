@@ -60,3 +60,4 @@ cleanup:
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_write, _sys_write, "write", "%d, %p, %zu");

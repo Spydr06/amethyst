@@ -4,6 +4,7 @@
 #include <amethyst/dirent.h>
 #include <amethyst/stat.h>
 #include <amethyst/syscall.h>
+#include <amethyst/syscall.h>
 #include <amethyst/sysinfo.h>
 #include <amethyst/utsname.h>
 
@@ -16,7 +17,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define __syscall __no_caller_saved_registers __general_regs_only
+#define __syscall __general_regs_only __no_caller_saved_registers
 
 typedef struct {
     uint64_t ret;
@@ -25,9 +26,24 @@ typedef struct {
 
 typedef syscallret_t (*syscall_t)(...) __no_caller_saved_registers;
 
-extern const size_t _syscall_count;
+typedef uint32_t syscallnum_t;
+
+struct syscall_entry {
+    syscallnum_t number;
+    syscall_t syscall;
+    const char* name;
+    const char* debug_fmt;
+};
+
+#define _SYSCALL_REGISTER(_num, _func, _name, _debug)                                                               \
+    static_assert((_num) >= 0 && (_num) < MAX_SYSCALLS);                                                            \
+    __attribute__((section(".static_syscalls"), used)) alignas(syscall_t) struct syscall_entry __sys_ent_##_func    \
+        = { .number = (_num), .syscall = (syscall_t)(_func), .name = (_name), .debug_fmt = (_debug) }
 
 bool syscalls_init(void);
+
+int syscall_register(const struct syscall_entry *entry);
+const struct syscall_entry *syscall_get(syscallnum_t number);
 
 const char* _syscall_get_name(size_t i);
 const char* _syscall_get_debug_fmt(size_t i);
@@ -35,52 +51,6 @@ const char* _syscall_get_debug_fmt(size_t i);
 extern void _syscall_entry(void);
 
 __syscall syscallret_t _syscall_invalid(struct cpu_context* ctx);
-
-// actual syscalls located in `kernel/sys/syscalls/`
-
-__syscall syscallret_t _sys_read(struct cpu_context* ctx, int fd, void* buffer, size_t size);
-__syscall syscallret_t _sys_write(struct cpu_context* ctx, int fd, const void* buffer, size_t size);
-__syscall syscallret_t _sys_open(struct cpu_context* ctx, const char* path, int flags, mode_t mode);
-__syscall syscallret_t _sys_close(struct cpu_context* ctx, int fd);
-__syscall syscallret_t _sys_stat(struct cpu_context* ctx, const char* path, struct stat *statbuf);
-__syscall syscallret_t _sys_fstat(struct cpu_context* ctx, int fd, struct stat *statbuf);
-__syscall syscallret_t _sys_mkdir(struct cpu_context* ctx, const char* path, mode_t mode);
-__syscall syscallret_t _sys_getdents(struct cpu_context* ctx, int fd, struct amethyst_dirent *dirp, size_t count);
-__syscall syscallret_t _sys_lseek(struct cpu_context* ctx, int fd, off_t offset, unsigned origin);
-__syscall syscallret_t _sys_mmap(struct cpu_context* ctx, void* addr, size_t len, enum map_prot prot, enum map_flags flags, int fd, off_t offset);
-__syscall syscallret_t _sys_mprotect(struct cpu_context* ctx, void* addr, size_t len, enum map_prot prot);
-__syscall syscallret_t _sys_munmap(struct cpu_context* ctx, void* addr, size_t len);
-__syscall syscallret_t _sys_brk(struct cpu_context* ctx, void* addr);
-
-__syscall syscallret_t _sys_mount(struct cpu_context* ctx, char* u_backing, char* u_dir_name, char* u_type, register_t flags, void* data);
-__syscall syscallret_t _sys_umount(struct cpu_context* ctx, const char* u_dir_name);
-
-__syscall syscallret_t _sys_ioctl(struct cpu_context* ctx, int fd, unsigned long request, void* arg);
-
-__syscall syscallret_t _sys_access(struct cpu_context* ctx, const char* filename, mode_t mode);
-
-__syscall syscallret_t _sys_yield(struct cpu_context* ctx);
-__syscall syscallret_t _sys_nanosleep(struct cpu_context* ctx, const struct timespec* rq, struct timespec* rm);
-__syscall syscallret_t _sys_dup(struct cpu_context *ctx, int fd);
-__syscall syscallret_t _sys_dup2(struct cpu_context *ctx, int old_fd, int new_fd);
-__syscall syscallret_t _sys_getpid(struct cpu_context* ctx);
-
-__syscall syscallret_t _sys_fork(struct cpu_context* ctx);
-__syscall syscallret_t _sys_execve(struct cpu_context* ctx, const char *u_filename, const char *const argv[], const char *const u_envp[]);
-__syscall syscallret_t _sys_exit(struct cpu_context* ctx, int exit_code);
-__syscall syscallret_t _sys_waitpid(struct cpu_context* ctx, pid_t pid, int *wstatus, int options);
-__syscall syscallret_t _sys_uname(struct cpu_context* ctx, struct utsname* u_name);
-
-__syscall syscallret_t _sys_chdir(struct cpu_context* ctx, const char* pathname);
-__syscall syscallret_t _sys_fchdir(struct cpu_context* ctx, int fd);
-
-__syscall syscallret_t _sys_gettimeofday(struct cpu_context* ctx, struct timeval *tv);
-
-__syscall syscallret_t _sys_sysinfo(struct cpu_context* ctx, struct sysinfo* u_sysinfo);
-
-__syscall syscallret_t _sys_getcwd(struct cpu_context* ctx, char* cwd, size_t cwd_size);
-
-__syscall syscallret_t _sys_knldebug(struct cpu_context* ctx, enum klog_severity severity, const char* user_buffer, size_t buffer_size);
 
 #endif /* _AMETHYST_CPU_SYSCALLS_H */
 

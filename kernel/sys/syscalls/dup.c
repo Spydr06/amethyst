@@ -4,6 +4,17 @@
 
 #include <errno.h>
 
+__syscall syscallret_t _sys_dup2(struct cpu_context* __unused, int old_fd, int new_fd) {
+    syscallret_t ret = {
+        .ret = -1,
+        ._errno = 0
+    };
+
+    ret._errno = fd_duplicate(new_fd, old_fd);
+    ret.ret = new_fd;
+    return ret;
+}
+
 __syscall syscallret_t _sys_dup(struct cpu_context* ctx, int old_fd) {
     syscallret_t ret = {
         .ret = -1,
@@ -22,14 +33,5 @@ __syscall syscallret_t _sys_dup(struct cpu_context* ctx, int old_fd) {
     return ret;
 }
 
-__syscall syscallret_t _sys_dup2(struct cpu_context* __unused, int old_fd, int new_fd) {
-    syscallret_t ret = {
-        .ret = -1,
-        ._errno = 0
-    };
-
-    ret._errno = fd_duplicate(new_fd, old_fd);
-    ret.ret = new_fd;
-    return ret;
-}
-
+_SYSCALL_REGISTER(SYS_dup, _sys_dup, "dup", "%d");
+_SYSCALL_REGISTER(SYS_dup2, _sys_dup2, "dup2", "%d, %d");

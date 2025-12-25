@@ -52,3 +52,5 @@ cleanup:
     kfree(filename_buf);
     return ret;
 }
+
+_SYSCALL_REGISTER(SYS_access, _sys_access, "access", "%p, %x");

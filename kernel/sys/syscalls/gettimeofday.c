@@ -31,3 +31,4 @@ __syscall syscallret_t _sys_gettimeofday(struct cpu_context* __unused, struct ti
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_gettimeofday, _sys_gettimeofday, "gettimeofday", "%p");

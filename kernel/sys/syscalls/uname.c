@@ -31,3 +31,4 @@ __syscall syscallret_t _sys_uname(struct cpu_context*, struct utsname* u_name) {
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_uname, _sys_uname, "uname", "%p");

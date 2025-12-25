@@ -1,6 +1,7 @@
-#include "amethyst/dirent.h"
-#include <filesystem/device.h>
-#include <filesystem/virtual.h>
+#include <filesystem/devfs.h>
+#include <filesystem/vfs.h>
+
+#include <amethyst/dirent.h>
 
 #include <sys/mutex.h>
 #include <mem/slab.h>

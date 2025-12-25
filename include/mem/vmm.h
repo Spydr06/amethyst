@@ -1,7 +1,7 @@
 #ifndef _AMETHYST_MEM_VMM_H
 #define _AMETHYST_MEM_VMM_H
 
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 #include <mem/slab.h>
 #include <mem/mmap.h>
 #include <mem/pmm.h>

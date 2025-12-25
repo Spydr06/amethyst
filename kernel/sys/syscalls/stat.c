@@ -2,7 +2,7 @@
 #include <sys/thread.h>
 #include <sys/proc.h>
 #include <sys/fd.h>
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 #include <amethyst/stat.h>
 
 #include <mem/heap.h>
@@ -99,3 +99,6 @@ __syscall syscallret_t _sys_fstat(struct cpu_context* __unused, int fd, struct s
     fd_release(file);
     return ret;
 }
+
+_SYSCALL_REGISTER(SYS_stat, _sys_stat, "stat", "%p, %p");
+_SYSCALL_REGISTER(SYS_fstat, _sys_fstat, "fstat", "%d, %p");

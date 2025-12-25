@@ -39,5 +39,7 @@
 
 #define __SYS_invalid       1000
 
+#define SYS_MAXIMUM 1024
+
 #endif /* _AMETHYST_SYSCALL_H */
 

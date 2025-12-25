@@ -79,3 +79,5 @@ cleanup:
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_fork, _sys_fork, "fork", "");
+

@@ -1,4 +1,3 @@
-#include "filesystem/virtual.h"
 #include <sys/syscall.h>
 #include <sys/mmap.h>
 #include <sys/fd.h>
@@ -69,3 +68,4 @@ cleanup:
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_mmap, _sys_mmap, "mmap", "%p, %zu, 0x%x, 0x%x, %d, %zu");

@@ -5,7 +5,7 @@
 #include <mem/heap.h>
 #include <mem/user.h>
 
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 
 #include <errno.h>
 #include <assert.h>
@@ -99,3 +99,4 @@ cleanup:
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_chdir, _sys_chdir, "chdir", "%p");

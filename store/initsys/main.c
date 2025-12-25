@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
 
     pid_t pid = getpid();
     if(pid != 1) {
-        fprintf(stderr, "%s: not running as pid 1", argv[0]);
+        fprintf(stderr, "%s: not running as pid 1 [%d]", argv[0], pid);
         return EXIT_FAILURE;
     }
 

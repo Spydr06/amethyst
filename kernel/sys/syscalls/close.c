@@ -7,3 +7,5 @@ __syscall syscallret_t _sys_close(struct cpu_context* __unused, int fd) {
         .ret = 0
     };
 }
+
+_SYSCALL_REGISTER(SYS_close, _sys_close, "close", "%d");

@@ -33,3 +33,4 @@ __syscall syscallret_t _sys_ioctl(struct cpu_context* __unused, int fd, unsigned
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_ioctl, _sys_ioctl, "ioctl", "%d, %d, %p");

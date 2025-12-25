@@ -1,7 +1,7 @@
 #ifndef _AMETHYST_SYS_FD_H
 #define _AMETHYST_SYS_FD_H
 
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 
 #include <sys/mutex.h>
 #include <cdefs.h>

@@ -1,22 +1,23 @@
-#include "filesystem/device.h"
-#include "filesystem/virtual.h"
-#include "sys/fd.h"
-#include "sys/semaphore.h"
-#include "sys/syscall.h"
-#include "x86_64/cpu/cpu.h"
-#include "x86_64/cpu/idt.h"
-#include <sys/loadavg.h>
 #include <sys/scheduler.h>
-#include <sys/thread.h>
-#include <sys/proc.h>
-#include <sys/mutex.h>
-#include <sys/spinlock.h>
-#include <sys/dpc.h>
 
 #include <cpu/cpu.h>
+
+#include <encoding/elf.h>
+#include <filesystem/devfs.h>
+#include <filesystem/vfs.h>
+
 #include <mem/slab.h>
 #include <mem/vmm.h>
-#include <ff/elf.h>
+
+#include <sys/dpc.h>
+#include <sys/fd.h>
+#include <sys/loadavg.h>
+#include <sys/mutex.h>
+#include <sys/proc.h>
+#include <sys/semaphore.h>
+#include <sys/spinlock.h>
+#include <sys/syscall.h>
+#include <sys/thread.h>
 
 #include <hashtable.h>
 #include <kernelio.h>
@@ -558,12 +559,12 @@ extern __syscall void _sched_userspace_check(struct cpu_context* context, bool s
     };
 
     // check if we are on the scheduler/kernel stack
-    if((void*) &args < _cpu()->scheduler_stack && (void*) &args >= _cpu()->scheduler_stack - SCHEDULER_STACK_SIZE)
+    if((void*) &args < _wcpu()->scheduler_stack && (void*) &args >= _wcpu()->scheduler_stack - SCHEDULER_STACK_SIZE)
         _context_save_and_call(userspace_check_routine, current_thread()->kernel_stack_top, &args); // switch to kernel stack first
     else
         userspace_check(&args);
 
-    _cpu()->interrupt_status = int_status;
+    _wcpu()->interrupt_status = int_status;
 }
 
 static int load_interpreter(const char* interpreter, void** entry) {

@@ -1,4 +1,4 @@
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 
 #include <cpu/cpu.h>
 #include <mem/heap.h>

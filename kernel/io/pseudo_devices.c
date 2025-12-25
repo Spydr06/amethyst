@@ -1,6 +1,6 @@
 #include <io/pseudo_devices.h>
 
-#include <filesystem/device.h>
+#include <filesystem/devfs.h>
 #include <sys/timekeeper.h>
 
 #include <cdefs.h>

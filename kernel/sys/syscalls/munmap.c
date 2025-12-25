@@ -19,3 +19,5 @@ __syscall syscallret_t _sys_munmap(struct cpu_context* __unused, void* addr, siz
 
     return (syscallret_t){0, 0};
 }
+
+_SYSCALL_REGISTER(SYS_munmap, _sys_munmap, "munmap", "%p, %zu");

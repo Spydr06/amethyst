@@ -1,10 +1,10 @@
-#include "sys/spinlock.h"
 #include <drivers/video/console.h>
 #include <drivers/video/vga.h>
 
 #include <mem/vmm.h>
-#include <ff/psf.h>
+#include <encoding/psf.h>
 #include <sys/tty.h>
+#include <sys/spinlock.h>
 
 #include <kernelio.h>
 #include <math.h>

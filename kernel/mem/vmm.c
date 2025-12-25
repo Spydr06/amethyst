@@ -4,7 +4,7 @@
 #include <mem/slab.h>
 #include <mem/page.h>
 
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 #include <sys/proc.h>
 #include <sys/thread.h>
 

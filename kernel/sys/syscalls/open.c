@@ -2,7 +2,7 @@
 
 #include <sys/proc.h>
 #include <sys/fd.h>
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 #include <mem/user.h>
 #include <mem/heap.h>
 
@@ -120,3 +120,4 @@ cleanup:
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_open, _sys_open, "open", "%p, %lx, %lx");

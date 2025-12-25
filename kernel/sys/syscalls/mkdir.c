@@ -48,3 +48,4 @@ cleanup:
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_mkdir, _sys_mkdir, "mkdir", "%p, %lx");

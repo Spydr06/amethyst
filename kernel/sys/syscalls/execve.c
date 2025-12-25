@@ -8,7 +8,7 @@
 #include <sys/thread.h>
 #include <sys/proc.h>
 
-#include <ff/elf.h>
+#include <encoding/elf.h>
 
 #include <errno.h>
 
@@ -175,3 +175,5 @@ cleanup:
 
     return ret;
 }
+
+_SYSCALL_REGISTER(SYS_execve, _sys_execve, "execve", "%p, %p, %p");

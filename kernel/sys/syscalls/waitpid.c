@@ -31,3 +31,4 @@ __syscall syscallret_t _sys_waitpid(struct cpu_context* ctx, pid_t pid, int *wst
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_waitpid, _sys_waitpid, "waitpid", "%d, %p, %d, %p");

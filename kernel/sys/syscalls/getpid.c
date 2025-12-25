@@ -13,3 +13,4 @@ syscallret_t _sys_getpid(struct cpu_context*) {
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_getpid, _sys_getpid, "getpid", "");

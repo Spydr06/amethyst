@@ -1,12 +1,11 @@
-#include "filesystem/virtual.h"
-#include "io/poll.h"
-#include "kernelio.h"
-#include "sys/termios.h"
 #include <sys/tty.h>
 #include <sys/mutex.h>
+#include <sys/termios.h>
 
-#include <filesystem/device.h>
+#include <filesystem/devfs.h>
+#include <filesystem/vfs.h>
 #include <mem/heap.h>
+#include <io/poll.h>
 
 #include <assert.h>
 #include <errno.h>

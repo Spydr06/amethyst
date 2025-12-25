@@ -1,7 +1,6 @@
 /*OUTPUT_FORMAT(elf64-x86-64)*/
 
 KERNEL_BASE = 0xFFFFFFFF80000000;
-LOGBUF_SIZE = 0x1000000;
 
 ENTRY(_start)
 
@@ -63,6 +62,12 @@ SECTIONS
     *(.padata)
     *(.data .data.*)
     *(.gnu.linkonce.d*)
+
+    . = ALIGN(0x08);
+    _STATIC_SYSCALLS_START_ = .;
+    *(.static_syscalls)
+    _STATIC_SYSCALLS_END_ = .;
+
     _DATA_END_ = .;
   } :data
 

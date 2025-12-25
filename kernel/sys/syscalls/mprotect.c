@@ -23,3 +23,4 @@ __syscall syscallret_t _sys_mprotect(struct cpu_context* __unused, void* addr, s
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_mprotect, _sys_mprotect, "mprotect", "%p, %zu, 0x%x");

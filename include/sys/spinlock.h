@@ -3,7 +3,9 @@
 
 typedef volatile bool spinlock_t;
 
-#define spinlock_init(x) ((x) = 0)
+#define SPINLOCK_INIT ((spinlock_t) false)
+
+#define spinlock_init(x) ((x) = SPINLOCK_INIT)
 
 static inline void spinlock_acquire(spinlock_t* lock) {
     while(!__sync_bool_compare_and_swap(lock, false, true))

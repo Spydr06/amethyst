@@ -10,7 +10,7 @@
 #include <sys/thread.h>
 #include <cpu/cpu.h>
 
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 
 #define PROC_HOLD(v) do {                                                   \
         int rc = __atomic_add_fetch(&(v)->ref_count, 1, __ATOMIC_SEQ_CST);  \

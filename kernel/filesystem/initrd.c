@@ -1,12 +1,12 @@
 #include <filesystem/initrd.h>
 
-#include <ff/tar.h>
+#include <encoding/tar.h>
 #include <init/cmdline.h>
 #include <limine.h>
 #include <mem/vmm.h>
 #include <mem/pmm.h>
 #include <mem/heap.h>
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 
 #include <math.h>
 #include <errno.h>

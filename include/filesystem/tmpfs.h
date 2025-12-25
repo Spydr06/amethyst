@@ -1,7 +1,7 @@
 #ifndef _AMETHYST_FILESYSTEM_TEMPORARY_H
 #define _AMETHYST_FILESYSTEM_TEMPORARY_H
 
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 #include <hashtable.h>
 
 struct tmpfs {

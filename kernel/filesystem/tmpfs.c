@@ -1,9 +1,8 @@
-#include "amethyst/dirent.h"
-#include "hashtable.h"
-#include "kernelio.h"
-#include <filesystem/temporary.h>
-#include <filesystem/virtual.h>
-#include <filesystem/device.h>
+#include <filesystem/tmpfs.h>
+#include <filesystem/vfs.h>
+#include <filesystem/devfs.h>
+
+#include <amethyst/dirent.h>
 
 #include <sys/timekeeper.h>
 #include <mem/heap.h>
@@ -14,6 +13,7 @@
 #include <math.h>
 #include <assert.h>
 #include <errno.h>
+#include <hashtable.h>
 
 static int tmpfs_mount(struct vfs** vfs, struct vnode* mount_point, struct vnode* backing, void* data);
 static int tmpfs_unmount(struct vfs* vfs);

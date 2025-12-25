@@ -1,11 +1,11 @@
-#include "filesystem/virtual.h"
-#include "x86_64/cpu/idt.h"
 #include <drivers/char/keyboard.h>
 
-#include <filesystem/device.h>
+#include <filesystem/devfs.h>
+#include <filesystem/vfs.h>
+#include <sys/mutex.h>
+
 #include <hashtable.h>
 #include <ringbuffer.h>
-#include <sys/mutex.h>
 
 #include <assert.h>
 #include <ctype.h>
