@@ -306,7 +306,7 @@ int vfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset, s
         return EINVAL;
     }
 
-    mutex_acquire(&node->size_lock, false);
+    mutex_acquire(&node->size_lock);
     
     int err = 0;
     struct vattr attr;
@@ -386,7 +386,7 @@ int vfs_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, si
     if(size + offset < offset)
         return EOVERFLOW;    
 
-    mutex_acquire(&node->size_lock, false);
+    mutex_acquire(&node->size_lock);
     size_t node_size = 0;
 
     if(node->type == V_TYPE_REGULAR) {

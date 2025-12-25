@@ -74,7 +74,7 @@ int devfs_register(struct devops* devops, const char* name, int type, int major,
     
     int key[2] = {major, minor};
 
-    mutex_acquire(&table_mutex, false);
+    mutex_acquire(&table_mutex);
     int err = hashtable_set(&dev_table, master, key, sizeof(int[2]), true);
     mutex_release(&table_mutex);
 
@@ -92,7 +92,7 @@ int devfs_register(struct devops* devops, const char* name, int type, int major,
 
     err = vfs_create((struct vnode*) devfs_root, name, &attr, type, &new_vnode);
     if(err) {
-        mutex_acquire(&table_mutex, false);
+        mutex_acquire(&table_mutex);
         assert(hashtable_remove(&dev_table, key, sizeof(int[2])) == 0);
         mutex_release(&table_mutex);
         slab_free(node_cache, master);
@@ -111,7 +111,7 @@ void devfs_remove(const char* name, int major, int minor) {
     int key[2] = {major, minor};
 
     // remove dev_table reference
-    mutex_acquire(&table_mutex, false);
+    mutex_acquire(&table_mutex);
     assert(hashtable_remove(&dev_table, key, sizeof(int[2])) == 0);
     mutex_release(&table_mutex);
 
@@ -148,9 +148,9 @@ int devfs_lookup(struct vnode* node, const char* name, struct vnode** result, st
         return ENOTDIR;
 
     void* v;
-    mutex_acquire(&node->lock, false);
+    mutex_acquire(&node->lock);
 
-    mutex_acquire(&table_mutex, false);
+    mutex_acquire(&table_mutex);
     int err = hashtable_get(&dev_node->children, &v, name, strlen(name));
     mutex_release(&table_mutex);
 
@@ -358,7 +358,7 @@ int devfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset,
 int devfs_getnode(struct vnode* physical, int major, int minor, struct vnode** node) {
     int key[2] = {major, minor};
 
-    mutex_acquire(&table_mutex, false);
+    mutex_acquire(&table_mutex);
     void* r;
     int err = hashtable_get(&dev_table, &r, key, sizeof(int[2]));
     mutex_release(&table_mutex);

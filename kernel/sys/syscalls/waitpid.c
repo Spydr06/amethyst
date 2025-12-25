@@ -14,7 +14,7 @@ __syscall syscallret_t _sys_waitpid(struct cpu_context* ctx, pid_t pid, int *wst
     struct thread* thread = current_thread();
     struct proc* proc = thread->proc;
 
-    mutex_acquire(&proc->mutex, false);
+    mutex_acquire(&proc->mutex);
 
     if(!proc->child) {
         ret._errno = ECHILD;

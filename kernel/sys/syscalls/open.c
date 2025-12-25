@@ -83,7 +83,7 @@ retry:
         goto cleanup;
 
     if(vnode->type == V_TYPE_REGULAR && (flags & O_TRUNC) && (flags & FILE_WRITE)) {
-        mutex_acquire(&vnode->size_lock, false);
+        mutex_acquire(&vnode->size_lock);
         vop_lock(vnode);
 
         ret._errno = vop_resize(vnode, 0, &current_proc()->cred);

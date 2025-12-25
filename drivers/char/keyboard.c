@@ -49,7 +49,7 @@ void keyboard_deinit(struct keyboard* kb) {
 }
 
 int keyboard_register(struct keyboard* kb) {
-    mutex_acquire(&table_lock, false);
+    mutex_acquire(&table_lock);
 
     int err = hashtable_set(&keyboard_table, kb, &current_keyboard_num, sizeof(current_keyboard_num), true);
     if(err) {
@@ -133,7 +133,7 @@ void keyboard_event(struct keyboard* kb, struct keyboard_event event) {
 
 static struct keyboard* keyboard_get(int minor) {
     struct keyboard* kb;
-    mutex_acquire(&table_lock, false);
+    mutex_acquire(&table_lock);
     hashtable_get(&keyboard_table, (void**) &kb, &minor, sizeof(int));
     mutex_release(&table_lock);
     return kb;

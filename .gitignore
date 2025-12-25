@@ -16,4 +16,7 @@ vgcore.*
 .devinclude/
 
 include/limine.h
+include/version.h
+
+tools/pci.ids
 

@@ -80,7 +80,7 @@ struct proc* proc_create(void) {
     
     semaphore_init(&proc->wait_sem, 0);
 
-    mutex_acquire(&pid_table_mutex, false);
+    mutex_acquire(&pid_table_mutex);
     if(hashtable_set(&pid_table, proc, &proc->pid, sizeof(pid_t), true)) {
         mutex_release(&pid_table_mutex);
         kfree(proc->fd);
@@ -99,7 +99,7 @@ void proc_delete(struct proc* proc) {
 
     klog(WARN, "deleting proc [pid %d] at %p", proc->pid, proc);
 
-    mutex_acquire(&pid_table_mutex, false);
+    mutex_acquire(&pid_table_mutex);
     hashtable_remove(&pid_table, &proc->pid, sizeof(pid_t));
     mutex_release(&pid_table_mutex);
 
@@ -134,7 +134,7 @@ void proc_set_root(struct vnode* root) {
 }
 
 size_t proc_count(void) {
-    mutex_acquire(&pid_table_mutex, false);
+    mutex_acquire(&pid_table_mutex);
     size_t size = hashtable_size(&pid_table);
     mutex_release(&pid_table_mutex);
     return size;

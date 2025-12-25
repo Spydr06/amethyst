@@ -42,7 +42,7 @@ $(LIB_A): $(LIB_OBJECTS)
 $(BUILD_DIR)/%.c.o: %.c
 	@mkdir -p $(dir $@)
 	@echo "  CC    $<"
-	$(CC) $(CFLAGS) -c -o $@ $<
+	@$(CC) $(CFLAGS) -c -o $@ $<
 
 $(BUILD_DIR)/%.S.o: %.S
 	@mkdir -p $(dir $@)
@@ -52,7 +52,7 @@ $(BUILD_DIR)/%.S.o: %.S
 $(BUILD_DIR)/%.o: $(CRT_DIR)/%.c
 	@mkdir -p $(dir $@)
 	@echo "  CC    $<"
-	$(CC) $(CFLAGS) -c -o $@ $<
+	@$(CC) $(CFLAGS) -c -o $@ $<
 
 $(NATIVE_GCC_SPECS): libc-gcc.specs.in
 	@mkdir -p $(dir $@)

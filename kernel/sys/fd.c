@@ -55,7 +55,7 @@ struct file* fd_get(size_t fd) {
     struct proc* proc = current_proc();
     assert(proc);
 
-    mutex_acquire(&proc->fd_mutex, false);
+    mutex_acquire(&proc->fd_mutex);
 
     struct file* file = fd < proc->fd_count ? proc->fd[fd].file : nullptr;
     if(file)
@@ -69,7 +69,7 @@ int fd_reserve(void) {
     struct proc* proc = current_proc();
     assert(proc);
 
-    mutex_acquire(&proc->fd_mutex, false);
+    mutex_acquire(&proc->fd_mutex);
 
     int fd = get_free_fd(proc, proc->fd_first);
     if(fd < 0) {
@@ -94,7 +94,7 @@ int fd_exact(int fd) {
     assert(proc);
 
     int err = 0;
-    mutex_acquire(&proc->fd_mutex, false);
+    mutex_acquire(&proc->fd_mutex);
 
     if(fd < (int) proc->fd_count) {
         if(proc->fd[fd].file)
@@ -121,7 +121,7 @@ void fd_vacate(int fd) {
     struct proc* proc = current_proc();
     assert(proc);
 
-    mutex_acquire(&proc->fd_mutex, false);
+    mutex_acquire(&proc->fd_mutex);
 
     if(fd < (int) proc->fd_count) {
         assert(proc->fd[fd].file == nullptr);
@@ -146,7 +146,7 @@ int fd_new(int flags, struct file** filep, int* fdp) {
     struct proc* proc = current_proc();
     assert(proc);
 
-    mutex_acquire(&proc->fd_mutex, false);
+    mutex_acquire(&proc->fd_mutex);
 
     proc->fd_first = fd + 1;
     proc->fd[fd].file = file;
@@ -174,7 +174,7 @@ int fd_duplicate(int new_fd, int old_fd) {
     struct proc* proc = current_proc();
     assert(proc);
 
-    mutex_acquire(&proc->fd_mutex, false);
+    mutex_acquire(&proc->fd_mutex);
 
     proc->fd[new_fd].flags = proc->fd[old_fd].flags;
     if(!(proc->fd[new_fd].file = fd_allocate())) {
@@ -200,7 +200,7 @@ int fd_close(int fd) {
     struct proc* proc = current_proc();
     assert(proc);
 
-    mutex_acquire(&proc->fd_mutex, false);
+    mutex_acquire(&proc->fd_mutex);
 
     struct file* file = fd < (int) proc->fd_count ? proc->fd[fd].file : nullptr;
     if(file) {
@@ -232,7 +232,7 @@ void fd_free(struct file* file) {
 int fd_clone(struct proc* dest) {
     struct proc* proc = current_thread()->proc;
     int err = 0;
-    mutex_acquire(&proc->fd_mutex, false);
+    mutex_acquire(&proc->fd_mutex);
 
     dest->fd_count = proc->fd_count;
     dest->fd_first = proc->fd_first;

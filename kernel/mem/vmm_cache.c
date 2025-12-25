@@ -105,7 +105,7 @@ int vmm_cache_get_page(struct vnode* vnode, uintptr_t offset, struct page** res)
     assert((offset % PAGE_SIZE) == 0);
 
 retry:
-    mutex_acquire(&mutex, false);
+    mutex_acquire(&mutex);
     
     struct page* new_page = nullptr;
     volatile struct page* page = find_page(vnode, offset);
@@ -135,7 +135,7 @@ retry:
 
         new_page = vmm_alloc_page_meta(addr);
 
-        mutex_acquire(&mutex, false);
+        mutex_acquire(&mutex);
 
         page = find_page(vnode, offset);
         if(page)
@@ -150,7 +150,7 @@ retry:
 
         int err = vop_getpage(vnode, offset, new_page);
         if(err) {
-            mutex_acquire(&mutex, false);
+            mutex_acquire(&mutex);
 
             remove_page(new_page);
 
@@ -176,7 +176,7 @@ retry:
 int vmm_cache_make_dirty(struct page* page) {
     bool dirty = false;
 
-    mutex_acquire(&mutex, false);
+    mutex_acquire(&mutex);
 
     if(!(page->flags & (PAGE_FLAGS_DIRTY | PAGE_FLAGS_TRUNCATED))) {
         dirty = true;

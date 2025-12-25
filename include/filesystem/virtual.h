@@ -179,7 +179,7 @@ static inline bool vfs_is_cacheable(struct vnode *node) {
 }
 
 static inline void vop_lock(struct vnode* node) {
-    mutex_acquire(&node->lock, false);
+    mutex_acquire(&node->lock);
 }
 
 static inline void vop_unlock(struct vnode* node) {

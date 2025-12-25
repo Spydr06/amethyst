@@ -27,7 +27,7 @@ static bool handle_pagefault(void* addr, bool user, enum vmm_action actions) {
 
     interrupt_lower_ipl(IPL_NORMAL);
 
-    mutex_acquire(&space->lock, false);
+    mutex_acquire(&space->lock);
 
     bool handled = false;
     struct vmm_range* range = vmm_get_range(space, addr);

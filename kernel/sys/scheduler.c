@@ -459,8 +459,8 @@ static void sched_proc_exit(void) {
 
     assert(proc->parent != nullptr);
 
-    mutex_acquire(&proc->mutex, false);
-    mutex_acquire(&proc->parent->mutex, false);
+    mutex_acquire(&proc->mutex);
+    mutex_acquire(&proc->parent->mutex);
 
     vop_release(&proc->root);
     vop_release(&proc->cwd);

@@ -29,7 +29,7 @@ static struct devops devops = {
 };
 
 static int register_minor(struct tty* tty) {
-    mutex_acquire(&list_mutex, false);
+    mutex_acquire(&list_mutex);
 
     int i;
     for(i = 0; i < TTY_MAX_COUNT; i++) {
@@ -48,7 +48,7 @@ static void remove_minor(int minor) {
     if(minor >= TTY_MAX_COUNT)
         return;
     
-    mutex_acquire(&list_mutex, false);
+    mutex_acquire(&list_mutex);
 
     if(!tty_list[minor])
         klog(WARN, "tty list entry `%d` is already NULL.", minor);
@@ -84,7 +84,7 @@ static int read(int minor, void* buffer, size_t size, uintmax_t offset, int flag
     int time = (tty->termios.c_lflag & ICANON) ? 0 : tty->termios.c_cc[VTIME];
 
     if(min == 0 && time == 0) {
-        mutex_acquire(&tty->read_mutex, false);
+        mutex_acquire(&tty->read_mutex);
         *bytes_read = ringbuffer_read(&tty->read_buffer, buffer, size);
         mutex_release(&tty->read_mutex);
         return 0;
@@ -92,14 +92,14 @@ static int read(int minor, void* buffer, size_t size, uintmax_t offset, int flag
 
     // TODO: implement timeouts
 
-    mutex_acquire(&tty->read_mutex, false);
+    mutex_acquire(&tty->read_mutex);
     struct io_poll_queue* poll = io_poll_make(IO_POLL_IN);
     io_poll_add(&tty->io_poll, poll);
     mutex_release(&tty->read_mutex);
 
     int err = io_poll_wait(poll);
     
-    mutex_acquire(&tty->read_mutex, false);
+    mutex_acquire(&tty->read_mutex);
     *bytes_read += ringbuffer_read(&tty->read_buffer, buffer + *bytes_read, size - *bytes_read);
     mutex_release(&tty->read_mutex);
 
@@ -175,7 +175,7 @@ void tty_process(struct tty* tty, char c) {
             flush = true;
 
         if(flush) {
-            mutex_acquire(&tty->read_mutex, false);
+            mutex_acquire(&tty->read_mutex);
             ringbuffer_write(&tty->read_buffer, tty->line_buffer, tty->line_pos);
             mutex_release(&tty->read_mutex);
 
@@ -191,7 +191,7 @@ void tty_process(struct tty* tty, char c) {
     if(echo)
         tty->write_to_device(tty->device_internal, &c, 1);
 
-    mutex_acquire(&tty->read_mutex, false);
+    mutex_acquire(&tty->read_mutex);
     ringbuffer_write(&tty->read_buffer, &c, 1);
     mutex_release(&tty->read_mutex);
 

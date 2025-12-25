@@ -1,6 +1,6 @@
 #include <x86_64/dev/io.h>
 
-uint8_t inb(uint16_t port) {
+uint8_t inb(io_port_t port) {
     uint8_t value;
     __asm__ volatile(
         "inb %w1, %b0"
@@ -10,7 +10,7 @@ uint8_t inb(uint16_t port) {
     return value;
 }
 
-void outb(uint16_t port, uint8_t value) {
+void outb(io_port_t port, uint8_t value) {
     __asm__ volatile(
         "outb %b0, %w1"
         :
@@ -18,7 +18,7 @@ void outb(uint16_t port, uint8_t value) {
     );
 }
 
-uint16_t inw(uint16_t port) {
+uint16_t inw(io_port_t port) {
     uint16_t value;
     __asm__ volatile(
         "inw %w1, %w0"
@@ -28,7 +28,7 @@ uint16_t inw(uint16_t port) {
     return value;
 }
 
-void outw(uint16_t port, uint16_t value) {
+void outw(io_port_t port, uint16_t value) {
     __asm__ volatile(
         "outw %w0, %w1"
         :
@@ -36,7 +36,7 @@ void outw(uint16_t port, uint16_t value) {
     );
 }
 
-uint32_t inl(uint16_t port) {
+uint32_t inl(io_port_t port) {
     uint32_t value;
     __asm__ volatile(
         "inl %w1, %0"
@@ -46,7 +46,7 @@ uint32_t inl(uint16_t port) {
     return value;
 }
 
-void outl(uint16_t port, uint32_t value) {
+void outl(io_port_t port, uint32_t value) {
     __asm__ volatile(
         "outl %0, %w1"
         :
