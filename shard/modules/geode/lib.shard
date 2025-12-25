@@ -213,7 +213,7 @@ let
         fetchGitRepo = fetchGitRepoTo defaultSourceDir;
 
         inherit fetchFileTo;
-        fetchFile = url :: string: fetchTarballTo (builtins.basename $ builtins.toPath url) url;
+        fetchFile = url :: string: fetchFileTo (builtins.basename $ builtins.toPath url) url;
 
         inherit fetchTarballTo;
         fetchTarball = url :: string: fetchTarballTo (builtins.basename $ builtins.toPath url) url;

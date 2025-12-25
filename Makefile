@@ -20,6 +20,11 @@ KERNEL_SYM ?= $(BUILD_DIR)/amethyst-$(VERSION)-$(ARCH).sym
 
 TOOLS_DIR ?= tools
 
+PCI_IDS_GEN := $(TOOLS_DIR)/pci-id-gen.py
+PCI_IDS_LIST ?= $(TOOLS_DIR)/pci.ids
+PCI_IDS_C_SOURCE := $(BUILD_DIR)/pci.ids.c
+PCI_IDS_OBJECT := $(BUILD_DIR)/pci.ids.o
+
 BOOTSTRAP_SH := $(TOOLS_DIR)/bootstrap.sh
 RUN_SH := $(TOOLS_DIR)/run.sh
 
@@ -28,10 +33,13 @@ TOOLPREFIX ?= $(ARCH)-elf-
 override ARCH_DIR := arch/$(ARCH)
 override ARCH_INCLUDE_DIR := arch/include/$(ARCH)
 
+override ARCH_COMMON_DIR := arch/common
+override ARCH_COMMON_INCLUDE_DIR := arch/include/common
+
 override SOURCE_DIRS := kernel init drivers $(ARCH_DIR)
 override HEADER_DIRS := include $(ARCH_INCLUDE_DIR)
 
-SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S" -or -name "*.ids"
+SOURCE_PATTERN := -name "*.c" -or -name "*.cpp" -or -name "*.S"
 SOURCES := $(shell find $(SOURCE_DIRS) $(SOURCE_PATTERN) | grep -v "arch/")
 
 HEADERS := $(shell find $(HEADER_DIRS) -name '*.h')
@@ -81,6 +89,8 @@ LDFLAGS += -m elf_$(ARCH) -nostdlib \
 
 override OBJCOPY := $(TOOLPREFIX)objcopy
 
+override PYTHON3 ?= python3
+
 CONSOLEFONT_OBJECT ?= $(BUILD_DIR)/default.psf.o
 CONSOLEFONT ?= fonts/default.psf
 
@@ -102,7 +112,7 @@ VERSION_H := include/version.h
 .PHONY: kernel
 kernel: $(KERNEL_ELF)
 
-$(KERNEL_ELF): $(OBJECTS) $(CONSOLEFONT_OBJECT) $(SHARD_OBJECT)
+$(KERNEL_ELF): $(OBJECTS) $(CONSOLEFONT_OBJECT) $(PCI_IDS_OBJECT) $(SHARD_OBJECT)
 	@echo "  LD    $@"
 	@$(LD) $(LDFLAGS) $^ -o $@
 	@$(OBJCOPY) --only-keep-debug $(KERNEL_ELF) $(KERNEL_SYM)
@@ -128,10 +138,10 @@ $(BUILD_DIR)/%.S.o: $(BUILD_DIR)/%.S
 	@echo "  AS    $^"
 	@$(AS) $(ASFLAGS) -c $^ -o $@
 
-$(BUILD_DIR)/%.ids.c: %.ids
+$(PCI_IDS_C_SOURCE): $(PCI_IDS_LIST)
 	@mkdir -p $(dir $@)
-	@echo "  MAKE  $^"
-	@$(MAKE) -C $(dir $<) OUTPUT=$(shell realpath $(BUILD_DIR))/$<.c
+	@echo "  GEN   $^"
+	@$(PYTHON3) $(PCI_IDS_GEN) $@ $<
 
 $(BUILD_DIR)/%.ids.o: $(BUILD_DIR)/%.ids.c
 	@echo "  CC    $^"

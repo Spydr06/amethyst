@@ -1,9 +1,13 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import sys
 
 num_vendors = 0
 num_devices = 0
+
+if len(sys.argv) != 3:
+    print(f'Usage: {sys.argv[0]} <c target> <pci.ids file>')
+    exit(1)
 
 output = open(sys.argv[1], 'w')
 
@@ -51,7 +55,7 @@ def next_device(device):
 ''')
     num_devices += 1
 
-with open("pci.ids", "r") as f:
+with open(sys.argv[2], "r") as f:
     for line in f:
         line = line.rstrip()
         if len(line) == 0 or line[0] in ['#', 'C']:

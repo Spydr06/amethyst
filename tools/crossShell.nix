@@ -31,6 +31,7 @@ cross.mkShell.override {
         xorriso
         libedit
         libgit2
+        python314
     ];
 
     shellHook = ''
