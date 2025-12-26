@@ -36,7 +36,7 @@ struct syscall_entry {
 };
 
 #define _SYSCALL_REGISTER(_num, _func, _name, _debug)                                                               \
-    static_assert((_num) >= 0 && (_num) < MAX_SYSCALLS);                                                            \
+    static_assert((_num) >= 0 && (_num) < SYS_MAXIMUM);                                                            \
     __attribute__((section(".static_syscalls"), used)) alignas(syscall_t) struct syscall_entry __sys_ent_##_func    \
         = { .number = (_num), .syscall = (syscall_t)(_func), .name = (_name), .debug_fmt = (_debug) }
 

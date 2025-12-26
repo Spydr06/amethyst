@@ -8,27 +8,25 @@ let
                 "Package configuration may only accept `set' types for configuration, got ${builtins.typeOf arg} instead."
         );
 
-    defaultConfig = typecheckConfig << (builtins.defaultFunctionArg "config");
+    baseConfig = typecheckConfig << (builtins.defaultFunctionArg "config");
 
     defaultArgs = pkgFunc: pkgs: let
-            config = defaultConfig pkgFunc;
+            config = baseConfig pkgFunc;
         in
             { inherit lib stdenv pkgs config; };
 
-    wrapPackage = pkgFunc: baseArgs:
-        let
+    wrapPackage = pkgFunc: baseArgs: let
             result = pkgFunc baseArgs;
-        in result // {
-            override = overrideArgs :: set | function: 
-                let 
-                    oldArgs = result.override or defaultConfig pkgFunc;
-                    extraArgs = (case overrideArgs of
-                        _ :: function => overrideArgs oldArgs;
-                        _ => oldArgs // overrideArgs
+            override = overrideConfig :: set | function:
+                let
+                    base = baseConfig pkgFunc;
+                    extra = (case overrideConfig of
+                        _ :: function => overrideConfig base;
+                        _ => base // overrideConfig
                     );
-                    newArgs = baseArgs // { config = extraArgs; };
-                in wrapPackage pkgFunc newArgs;
-        };
+                    newArgs = baseArgs // { config = extra; };
+                in wrapPackage ({ config?extra, lib, stdenv, pkgs, ... }: pkgFunc { inherit config lib stdenv pkgs; }) newArgs;
+        in builtins.setAttr "override" override result;
 
     callPackageWith = dependencyPkgs: pkgs: pkgFunc :: function:
         let
@@ -133,6 +131,14 @@ let
 
     mkPackage = mkDerivation;
 
+    mkCollection = attrs :: set:
+        let
+            deriv = mkDerivation attrs;
+            providePkgs = attrs.providePkgs or {};
+        in deriv // { pkgs = providePkgs; };
+
+    mkKernelModule = mkDerivation << (import ./kernelModule.shard);
+
     mkShell = decl :: set: null;
 
     mkSystemConfig = mkDerivation << (import ./systemConfig.shard);
@@ -194,12 +200,16 @@ let
         inherit callPackage;
         inherit callPackageWith;
 
+        fix = f: let x = f x; in x;
+
         inherit ensureDependencies;
 
         inherit mkDerivation;
         inherit mkPackage;
         inherit mkShell;
         inherit mkSystemConfig;
+        inherit mkCollection;
+        inherit mkKernelModule;
 
         optionalPkg = builtins.when;
         inherit sequencedTasks;

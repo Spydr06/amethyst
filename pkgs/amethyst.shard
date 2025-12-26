@@ -30,9 +30,9 @@ lib.mkPackage rec {
     ];
 
     getDefines = with builtins;
-        join " " $ attrValues $ mapAttrs (key: val: "${key} ${val}") config.defines;
+        join " " $ attrValues $ mapAttrs (key: val: "-D${key}=${val}") config.defines;
 
-    getSanitizers = builtins.join "," config.sanitize;
+    getSanitizers = builtins.join "," $ config.sanitize;
 
     buildPhase = lib.make [
         "-C" sourceDir buildTarget
@@ -41,6 +41,10 @@ lib.mkPackage rec {
         "PCI_IDS_LIST=${pkgs.pci-ids}/pci.ids"
     ];
 
-    installPhase = lib.installFile { src = buildTarget; dst = /boot/ + kernelElf; mode = "755"; };
+    installPhase = lib.installFile { 
+        src = buildTarget;
+        dst = /boot/ + kernelElf;
+        mode = "755";
+    };
 }
 

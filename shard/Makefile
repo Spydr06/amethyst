@@ -56,6 +56,7 @@ SHELL_LDFLAGS := -ledit
 
 LIBC_DRIVER := $(BUILD_DIR)/shard_libc_driver.o
 LIBC_DRIVER_SOURCE := shard_libc_driver.c
+LIBC_DRIVER_HEADER := shard_libc_driver.h
 
 AR ?= ar
 RANLIB ?= ranlib
@@ -237,6 +238,11 @@ install-bin: $(SHARD_BIN)
 .PHONY: install-shell
 install-shell: $(SHELL_BIN)
 	install -m "777" $(SHELL_BIN) $(PREFIX)/bin/$(notdir $(SHELL_BIN))
+
+.PHONY: install-libc-dirver
+install-libc-driver: $(LIBC_DRIVER)
+	install -m "644" $(LIBC_DRIVER) $(PREFIX)/lib/$(notdir $(LIBC_DIRVER))
+	install -m "644" $(LIBC_DRIVER_HEADER) $(PREFIX)/include/$(notdir $(LIBC_DRIVER_HEADER))
 
 .PHONY: clean-all
 clean-all: clean clean-gcboehm clean-libffi

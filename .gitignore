@@ -5,6 +5,7 @@
 *.a
 *.iso
 *.kdev*
+*.ko
 
 .cache/
 .direnv/

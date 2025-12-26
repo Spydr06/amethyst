@@ -1,4 +1,4 @@
-{ lib, pkgs, kernel, ... }: 
+{ lib, pkgs, ... }: 
 lib.mkKernelModule rec {
     name = "test";
     version = "0.0.1";
@@ -12,8 +12,6 @@ lib.mkKernelModule rec {
 
     moduleSource = "${pkgs.amethyst-source}/source/modules/${name}";
 
-    moduleFile = lib.buildKernelModule [
-        "test.c"
-    ] kernel;
+#    moduleFile = lib.makeKernelModule kernel moduleSource;
 }
 

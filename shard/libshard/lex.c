@@ -510,7 +510,7 @@ static int pop_interpolation(struct shard_lexer* l, struct shard_token* token) {
         return lex_string(l, token, top.is_end_quote, top.is_path);
 }
 
-static void skip_whitesapce(struct shard_lexer* l) {
+static void skip_whitespace(struct shard_lexer* l) {
     while(isspace(peek_char(l)))
         next_char(l);
 }
@@ -520,7 +520,7 @@ int shard_lex(struct shard_lexer* l, struct shard_token* token) {
         return pop_interpolation(l, token);
 
 repeat:
-    skip_whitesapce(l);
+    skip_whitespace(l);
 
     switch(peek_char(l)) {
         case EOF:

@@ -1,0 +1,27 @@
+{ lib, pkgs, config, ... }:
+lib.mkPackage rec {
+    name = "shard-libc-driver";
+    version = "0.0.1";
+
+    buildDir = lib.realpath "./build";
+    sourceDir = builtins.toPath "${pkgs.amethyst-source}/source/shard";
+
+    makeTarget = "libc-driver";
+    installTarget = "install-libc-driver";
+
+    env = {
+        PREFIX = builtins.toString lib.prefix;
+        CFLAGS = "-specs=${lib.prefix}/lib/gcc/cross-libc.specs -D_SHARD_NO_FFI -D_SHARD_NO_LIBEDIT -g";
+        LDFLAGS = "-static -specs=${lib.prefix}/lib/gcc/cross-libc.specs -l:libgetopt.a";
+    };
+
+    buildDependencies = with pkgs; [
+        libc
+        libshard
+    ];
+
+    buildPhase = lib.make [ "-C" sourceDir makeTarget ];
+
+    installPhase = lib.make [ "-C" sourceDir installTarget "PREFIX=${env.PREFIX}" "BUILD_DIR=${buildDir}" ];
+}
+

@@ -9,6 +9,7 @@
 #include <filesystem/tmpfs.h>
 #include <filesystem/vfs.h>
 #include <init/cmdline.h>
+#include <init/module.h>
 #include <io/pseudo_devices.h>
 #include <io/tty.h>
 #include <mem/heap.h>
@@ -60,6 +61,8 @@ void kmain(size_t cmdline_size, const char* cmdline)
     vfs_init();
     tmpfs_init();
     devfs_init();
+
+    kmodule_init();
 
     pseudodevices_init();
 

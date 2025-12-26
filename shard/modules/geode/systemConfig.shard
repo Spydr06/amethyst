@@ -25,10 +25,11 @@ let
                 };
 
             initrdEnabled = initrd.enable or false;
-
+            
             extraArguments = if initrdEnabled
                 then [ "initrd=${initrdFile}" "rootfs=tmpfs" ]
                 else [];
+
         in 
         {
             package = kernelPkg;
@@ -57,6 +58,11 @@ let
         $ extraPackages.limine or
         $ builtins.throw "No supported boot loader selected in `boot.initrd.extraArguments'";
 
+    defaultModules = [];
+
+    modules = (config.overrideModules or defaultModules)
+        ++ (config.extraModules or []);
+
     finishBootstrap = let
         isoFile = "amethyst-${version}-${stdenv.targetArch}.iso";
     in [
@@ -66,6 +72,15 @@ let
                 0 => 0;
                 errno :: int => "`${isoFile}': ${stdenv.errnoString errno}"
             );
+        }
+        {
+            name = "create kernel module list";
+            task = let
+                    configPkg = pkgs.module-list.override {
+                        inherit modules;
+                    };
+                in
+                    if builtins.isPath configPkg.outPath then 0 else 1;
         }
         {
             name = "install limine-config";
@@ -93,9 +108,7 @@ let
             ];
         }
     ];
-
-in
-{
+in {
     inherit (derivHeader) name version;
 
     env = config.env or {};

@@ -19,6 +19,10 @@ rec {
             _ :: string => geode.file.exists $ builtins.toPath file
         );
 
+    assertExists = file :: path | string: if fileExists file
+        then file
+        else builtins.throw "Assertion failed: `${file}` does not exist.";
+
     removeFile = file :: path | string: if fileExists file 
         then (case file of
                 _ :: path => geode.file.removeFile file;

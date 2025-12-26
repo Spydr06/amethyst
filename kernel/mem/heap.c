@@ -88,6 +88,9 @@ void* krealloc(void* ptr, size_t size) {
 }
 
 void kfree(void* ptr) {
+    if(!ptr)
+        return;
+
     size_t* start = ((size_t*) ptr) - 2;
     size_t size = start[0];
     struct scache* cache = get_cache_from_size(size);

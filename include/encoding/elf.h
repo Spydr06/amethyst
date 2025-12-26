@@ -4341,6 +4341,9 @@ typedef struct {
     Elf64_auxv_t null;
 } Elf64_auxv_list_t;
 
+int elf_read_exact(struct vnode *node, void* buff, size_t count, uintmax_t offset);
+bool elf_validate_ehdr(const Elf64_Ehdr* header, Elf64_Half type);
+
 int elf_load(struct vnode* node, void* base, void** entry, char** interpreter, Elf64_auxv_list_t* auxv, void** brk);
 
 void* elf_prepare_stack(void* top, Elf64_auxv_list_t* auxv, char** argv, char** envp);

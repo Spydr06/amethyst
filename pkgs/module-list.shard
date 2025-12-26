@@ -1,0 +1,17 @@
+{ lib, pkgs, stdenv, config ? {}, ... }:
+let
+    moduleFile = "modules.shard";
+    etcDir = config.overrideBootDir or /etc;
+
+    collectModules = let
+        modules = config.modules or (builtins.throw "No modules provided to the configuration of the module list builder.");
+    in builtins.map builtins.toString modules;
+in lib.mkPackage {
+    name = "module-list";
+    version = "0.0.1";
+
+    buildPhase = stdenv.writeFile moduleFile $ builtins.serialize $ collectModules;
+
+    installPhase = lib.installFile { src = moduleFile; dst = "${etcDir}/${moduleFile}"; };
+}
+

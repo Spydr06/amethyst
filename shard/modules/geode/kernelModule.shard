@@ -1,0 +1,29 @@
+baseModule:
+let
+    lib = import ./lib.shard;
+    pkgs = import ./pkgs.shard;
+    stdenv = import ./stdenv.shard;
+
+    sourceDir = "${pkgs.amethyst-source}/source/modules";
+    defaultDir = "${sourceDir}/${baseModule.name}";
+    moduleDir = baseModule.moduleDir or defaultDir;
+    buildDir = lib.realpath "./build";
+    moduleTarget = lib.realpath "./module.ko";
+
+    defaultEnv = {
+    };
+in {
+    inherit (baseModule) name version license;
+
+    env = defaultEnv // baseModule.env or {};
+
+    buildDependencies = (baseModule.buildDependencies or [])
+        ++ [ pkgs.amethyst-headers ];
+
+    buildPhase = lib.make ["-C" sourceDir
+        "CFLAGS=-I${lib.prefix}/include -I${lib.prefix}/usr/include"
+        "MODULE_DIR=${moduleDir}"
+        "BUILD_DIR=${buildDir}"
+        "MODULE_TARGET=${moduleTarget}"
+    ];
+}

@@ -65,7 +65,7 @@ SECTIONS
 
     . = ALIGN(0x08);
     _STATIC_SYSCALLS_START_ = .;
-    *(.static_syscalls)
+    KEEP(*(.static_syscalls))
     _STATIC_SYSCALLS_END_ = .;
 
     _DATA_END_ = .;

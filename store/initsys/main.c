@@ -1,4 +1,5 @@
-#define _AMETHYST_SOURCE
+#include "initsys.h"
+
 #include <errno.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -12,6 +13,9 @@
 #include <dirent.h>
 #include <getopt.h>
 #include <sys/time.h>
+
+#include <libshard.h>
+#include <shard_libc_driver.h>
 
 #define DEFAULT_CONFIGURATION_PATH "/bin/configuration.shard"
 
@@ -52,8 +56,9 @@ void umount_target(struct target* target) {
 }
 
 static struct option long_options[] = {
-    { "loglevel", required_argument, NULL, 'l' },
-    { "help",     no_argument,       NULL, 'h' },
+    { "loglevel",    required_argument, NULL, 'l' },
+    { "module-list", required_argument, NULL, 'm'},
+    { "help",        no_argument,       NULL, 'h' },
     { NULL, 0, NULL, 0 },
 };
 
@@ -66,6 +71,7 @@ static void help(void) {
     usage(stdout); 
     
     printf("Options:\n"
+        "-m, --module-list <path>   Set the module list path\n"
         "-l, --loglevel <num>   Set the log level to <num>\n"
         "-h, --help             Display this help text and exit\n"
     );
@@ -74,10 +80,13 @@ static void help(void) {
 int main(int argc, char** argv) {
     int c;
 
+    const char *module_list_path = DEFAULT_MODULE_LIST;
     while((c = getopt_long(argc, argv, "l:h", long_options, NULL)) != EOF) {
         switch(c) {
             case 'h':
                 help();
+            case 'm':
+                module_list_path = optarg;
             case '?':
                 break;
             default:
@@ -108,18 +117,36 @@ int main(int argc, char** argv) {
     int fb = open("/dev/fb0", O_WRONLY, 0);
     if(!fb) {
         fprintf(stderr, "/dev/fb0: open() failed: %m\n");
-        return 1;
+        return EXIT_FAILURE;
     }
 
     draw_logo_to_fb(fb, 6);
 
     close(fb);
 
-    int err = execv(shell_bin, (char* const[]){shell_bin, NULL});
+    struct shard_context ctx;
+    shard_context_default(&ctx);
 
+    int err = shard_init(&ctx);
+    if(err) {
+        fprintf(stderr, "%s: error initializing libshard: %s\n", argv[0], strerror(err));
+        return EXIT_FAILURE;
+    }
+
+    // load modules:
+    if((err = load_kernel_modules(&ctx, module_list_path))) {
+        fprintf(stderr, "%s: failed loading modules specified in `%s`: %s\n", argv[0], module_list_path, strerror(err));
+        fflush(stderr);
+    }
+
+    shard_deinit(&ctx);
+
+    execv(shell_bin, (char* const[]){shell_bin, NULL});
     fprintf(stderr, "%s: error executing %s: %s\n", argv[0], shell_bin, strerror(errno));
 
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         umount_target(mount_targets + i);
+
+    return EXIT_FAILURE;
 }
 

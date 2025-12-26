@@ -21,7 +21,7 @@
 #define STACK_MMU_FLAGS (MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC | MMU_FLAGS_USER)
 #define STACK_SIZE (1024 * 1024 * 4)
 
-static int read_exact(struct vnode* node, void* buff, size_t count, uintmax_t offset) {
+int elf_read_exact(struct vnode* node, void* buff, size_t count, uintmax_t offset) {
     size_t bytes_read;
     int err = vfs_read(node, buff, count, offset, &bytes_read, 0);
     if(err)
@@ -31,9 +31,9 @@ static int read_exact(struct vnode* node, void* buff, size_t count, uintmax_t of
     return 0;
 }
 
-static bool validate_ehdr(Elf64_Ehdr* header) {
+bool elf_validate_ehdr(const Elf64_Ehdr* header, Elf64_Half type) {
     return memcmp(header->e_ident, ELFMAG, 4) == 0 
-        && header->e_type == ET_EXEC 
+        && header->e_type == type 
         && header->e_machine == _ELF_MACHINE;
 }
 
@@ -69,7 +69,7 @@ static int load(struct vnode* node, Elf64_Phdr* phdr, void** brk) {
         if(!vmm_map(page, PAGE_SIZE, VMM_FLAGS_EXACT | VMM_FLAGS_ALLOCATE, mmu_flags, nullptr))
             return ENOMEM;
 
-        if((err = read_exact(node, (void*) mem_address, first_page_count, offset)))
+        if((err = elf_read_exact(node, (void*) mem_address, first_page_count, offset)))
             return err;
 
         memset(page, 0, first_page_offset);
@@ -103,7 +103,7 @@ static int load(struct vnode* node, Elf64_Phdr* phdr, void** brk) {
             return ENOMEM;
 
         size_t byte_size = file_page_count * PAGE_SIZE;
-        if((err = read_exact(node, (void*) mem_address, byte_size, offset)))
+        if((err = elf_read_exact(node, (void*) mem_address, byte_size, offset)))
             return err;
 
         mem_address += byte_size;
@@ -118,7 +118,7 @@ static int load(struct vnode* node, Elf64_Phdr* phdr, void** brk) {
         if(!vmm_map((void*) mem_address, PAGE_SIZE, VMM_FLAGS_EXACT | VMM_FLAGS_ALLOCATE, mmu_flags, nullptr))
             return ENOMEM;
 
-        if((err = read_exact(node, (void*) mem_address, last_page_count, offset)))
+        if((err = elf_read_exact(node, (void*) mem_address, last_page_count, offset)))
             return err;
 
         memset((void*)(mem_address + last_page_count), 0, PAGE_SIZE - last_page_count);
@@ -145,10 +145,10 @@ int elf_load(struct vnode* node, void* base, void** entry, char** interpreter, E
     int err = 0;
     Elf64_Ehdr header;
 
-    if((err = read_exact(node, &header, sizeof(Elf64_Ehdr), 0)))
+    if((err = elf_read_exact(node, &header, sizeof(Elf64_Ehdr), 0)))
         return err;
 
-    if(!validate_ehdr(&header))
+    if(!elf_validate_ehdr(&header, ET_EXEC))
         return ENOEXEC;
 
     auxv->null.a_type = AT_NULL;
@@ -170,7 +170,7 @@ int elf_load(struct vnode* node, void* base, void** entry, char** interpreter, E
     if(!phdrs)
         return ENOMEM;
 
-    if((err = read_exact(node, phdrs, phtable_size, header.e_phoff)))
+    if((err = elf_read_exact(node, phdrs, phtable_size, header.e_phoff)))
         goto cleanup;
 
     Elf64_Phdr* interpreter_phdr = nullptr;
@@ -204,7 +204,7 @@ int elf_load(struct vnode* node, void* base, void** entry, char** interpreter, E
             goto cleanup;
         }
 
-        if((err = read_exact(node, buff, interpreter_phdr->p_filesz, interpreter_phdr->p_offset)))
+        if((err = elf_read_exact(node, buff, interpreter_phdr->p_filesz, interpreter_phdr->p_offset)))
             goto cleanup;
 
         *interpreter = buff;

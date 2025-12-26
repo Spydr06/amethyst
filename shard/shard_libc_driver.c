@@ -111,7 +111,7 @@ static void print_file_error(FILE* stream, struct shard_error* error, bool color
     assert(fd);
 
     size_t fd_pos = ftell(fd);
-    size_t line_start = error->loc.offset - error->loc.column;
+    size_t line_start = error->loc.offset - error->loc.column + 1;
     size_t line_end = error->loc.offset + error->loc.width - 1;
     fseek(fd, line_end, SEEK_SET);
 
@@ -152,3 +152,10 @@ void print_shard_error(FILE* stream, struct shard_error* error) {
         print_file_error(stream, error, colorize);
 }
 
+void shard_emit_errors(struct shard_context *ctx) {
+    struct shard_error* errors = shard_get_errors(ctx);
+    for(size_t i = 0; i < shard_get_num_errors(ctx); i++)
+        print_shard_error(stderr, &errors[i]);
+
+    shard_remove_errors(ctx);
+}
