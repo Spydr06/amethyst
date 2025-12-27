@@ -78,6 +78,13 @@ rec {
             );
         in removeLast $ builtins.split "." file;
 
+    stripPrefix = file :: string: let
+            xs = builtins.splitFirst (builtins.toString systemPrefix) file;
+        in (case builtins.length xs of
+            2 => builtins.elemAt xs 1;
+            _ => file
+        );
+
     systemPrefix = geode.prefix; 
 
     errnoString = geode.builtins.errnoString;

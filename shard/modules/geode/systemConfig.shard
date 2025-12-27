@@ -30,9 +30,9 @@ let
                     kernelName = kernelPkg.publicName;
                     outputFile = initrdFile;
 
-                    extraPackages = with pkgs; [
-                        (module-list.override { modules = systemModules ++ extraModules; })
-                    ];
+                    extraPackages = let
+                            modules = systemModules ++ extraModules;
+                        in [ (pkgs.module-list.override { inherit modules; }) ] ++ modules;
                 };
 
             initrdEnabled = initrd.enable or false;

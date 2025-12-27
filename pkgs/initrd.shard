@@ -21,7 +21,8 @@ let
     filterExisting = builtins.filter (p: stdenv.fileExists "${lib.prefix}/${p}");
 
     # TODO: include additional paths provided by extraPackages
-    defaultFiles = [ stdenv.configPath stdenv.pkgsPath /bin /sbin /include /etc ];
+    defaultFiles = [ stdenv.configPath stdenv.pkgsPath /bin /sbin /include /etc ]
+        ++ (builtins.map (builtins.toPath << stdenv.stripPrefix << builtins.toString) extraPackages);
 
     extraDirs = config.extraDirs or [];
     initrdDirs = builtins.map removeTrailingSep 

@@ -5,7 +5,7 @@ let
 
     collectModules = let
         modules = config.modules or (builtins.throw "No modules provided to the configuration of the module list builder.");
-    in builtins.map (x: "${x}/module.ko") modules;
+    in builtins.map (x: stdenv.stripPrefix "${x}/module.ko") modules;
 in lib.mkPackage {
     name = "module-list";
     version = "0.0.1";
