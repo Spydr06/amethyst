@@ -12,16 +12,27 @@ let
     version = config.version or "0.0.0";
     derivHeader = { name = "system"; inherit version; };
 
+    defaultModules = [];
+
+    systemModules = (config.overrideModules or defaultModules)
+        ++ (config.extraModules or []);
+
     patchKernelConfig = name: kconf: let
             kernelPkg = wrapKernelPkg name kconf.package;
 
             initrd = kconf.initrd or config.boot.initrd or {};
+
+            extraModules = kconf.extraModules or [];
 
             initrdFile = "/boot/${kernelPkg.publicName}-${kernelPkg.publicVersion}-${geode.architecture}.initrd";
             initrdPkg = (initrd.package or pkgs.initrd).override {
                     kernelVersion = kernelPkg.publicVersion;
                     kernelName = kernelPkg.publicName;
                     outputFile = initrdFile;
+
+                    extraPackages = with pkgs; [
+                        (module-list.override { modules = systemModules ++ extraModules; })
+                    ];
                 };
 
             initrdEnabled = initrd.enable or false;
@@ -52,16 +63,11 @@ let
 
     kernelPkgs = builtins.mapAttrs getKernelPkg kernels;
 
-    initrdPkgs = builtins.mapAttrs getInitrdPkg kernels;
+    initrdPkgs = (builtins.mapAttrs getInitrdPkg kernels);
 
     bootloader = config.boot.loader or 
         $ extraPackages.limine or
         $ builtins.throw "No supported boot loader selected in `boot.initrd.extraArguments'";
-
-    defaultModules = [];
-
-    modules = (config.overrideModules or defaultModules)
-        ++ (config.extraModules or []);
 
     finishBootstrap = let
         isoFile = "amethyst-${version}-${stdenv.targetArch}.iso";
@@ -72,15 +78,6 @@ let
                 0 => 0;
                 errno :: int => "`${isoFile}': ${stdenv.errnoString errno}"
             );
-        }
-        {
-            name = "create kernel module list";
-            task = let
-                    configPkg = pkgs.module-list.override {
-                        inherit modules;
-                    };
-                in
-                    if builtins.isPath configPkg.outPath then 0 else 1;
         }
         {
             name = "install limine-config";

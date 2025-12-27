@@ -189,7 +189,7 @@ static struct shard_value builtin_file_writeFile(volatile struct shard_evaluator
     if(!fp)
         return (struct shard_value){.type=SHARD_VAL_INT, .integer=errno};
 
-    fwrite(data.string, data.strlen, sizeof(char), fp);
+    fwrite(data.string, sizeof(char), data.strlen, fp);
     int err = fclose(fp);
 
     return (struct shard_value){.type=SHARD_VAL_INT, .integer=err};

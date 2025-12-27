@@ -31,8 +31,8 @@ extern FILE *const stderr;
 FILE* fopen(const char *restrict filename, const char *restrict mode);
 int fclose(FILE* stream);
 
-size_t fread(void *restrict ptr, size_t nmemb, size_t size, FILE *restrict stream);
-size_t fwrite(const void *restrict ptr, size_t nmemb, size_t size, FILE *restrict stream);
+size_t fread(void *restrict ptr, size_t size, size_t nmemb, FILE *restrict stream);
+size_t fwrite(const void *restrict ptr, size_t size, size_t nmemb, FILE *restrict stream);
 
 int fputc(int c, FILE *restrict stream);
 int fputs(const char *restrict s, FILE *restrict stream);

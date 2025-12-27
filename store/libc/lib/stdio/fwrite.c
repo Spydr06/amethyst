@@ -33,7 +33,7 @@ static size_t fwrite_impl(const unsigned char *restrict s, size_t l, FILE *restr
     return l + i;
 }
 
-size_t fwrite(const void *restrict ptr, size_t nmemb, size_t size, FILE *restrict stream) {
+size_t fwrite(const void *restrict ptr, size_t size, size_t nmemb, FILE *restrict stream) {
     size_t l = size * nmemb;
     if(!size)
         nmemb = 0;
@@ -72,7 +72,7 @@ int fputc(int c, FILE *restrict stream) {
 
 int fputs(const char *restrict s, FILE *restrict stream) {
     size_t l = strlen(s);
-    return (fwrite(s, l, sizeof(char), stream) == l) - 1;
+    return (fwrite(s, sizeof(char), l, stream) == l) - 1;
 }
 
 int puts(const char *restrict s) {

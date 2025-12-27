@@ -17,6 +17,8 @@
 
 #include <libshard.h>
 
+#define QUOTE(_x) #_x
+
 #define NULL_VAL() ((struct shard_value) { .type = SHARD_VAL_NULL })
 #define INT_VAL(i) ((struct shard_value) { .type = SHARD_VAL_INT, .integer = (int64_t)(i) })
 
@@ -38,6 +40,7 @@ EXT_BUILTIN("system.printLn", printLn, SHARD_VAL_STRING);
 EXT_BUILTIN("system.readFile", readFile, SHARD_VAL_PATH);
 EXT_BUILTIN("system.writeFile", writeFile, SHARD_VAL_PATH, SHARD_VAL_STRING);
 EXT_BUILTIN("system.readDir", readDir, SHARD_VAL_PATH);
+EXT_BUILTIN("system.stat", stat, SHARD_VAL_PATH);
 EXT_BUILTIN("system.exists", exists, SHARD_VAL_PATH);
 
 static struct shard_builtin* ext_builtins[] = {
@@ -51,6 +54,7 @@ static struct shard_builtin* ext_builtins[] = {
     &ext_builtin_readFile,
     &ext_builtin_writeFile,
     &ext_builtin_readDir,
+    &ext_builtin_stat,
     &ext_builtin_exists,
 };
 
@@ -252,7 +256,7 @@ static struct shard_value builtin_readFile(volatile struct shard_evaluator* e, s
     fseek(fp, 0, SEEK_SET);
 
     char *data = shard_gc_malloc(e->gc, filesz + 1);
-    ssize_t bytes_read = fread(data, filesz, sizeof(char), fp);
+    ssize_t bytes_read = fread(data, sizeof(char), filesz, fp);
 
     data[bytes_read] = '\0';
 
@@ -269,7 +273,7 @@ static struct shard_value builtin_writeFile(volatile struct shard_evaluator* e, 
     if(!fp)
         return (struct shard_value){.type=SHARD_VAL_INT, .integer=errno};
 
-    fwrite(data.string, data.strlen, sizeof(char), fp);
+    fwrite(data.string, sizeof(char), data.strlen, fp);
     int err = fclose(fp);
 
     return (struct shard_value){.type=SHARD_VAL_INT, .integer=err};
@@ -328,3 +332,30 @@ static struct shard_value builtin_readDir(volatile struct shard_evaluator* e, st
     closedir(dir);
     return (struct shard_value){.type=SHARD_VAL_SET, .set=entries};
 }
+
+static struct shard_value builtin_stat(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value path = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    struct stat st;
+    if(stat(path.path, &st) < 0)
+        return (struct shard_value){.type=SHARD_VAL_INT, .integer=errno};
+
+    struct shard_set *st_set = shard_set_init(e->ctx, 13);
+
+#define ST_ENTRY(_set, _st, _field) shard_set_put((_set), shard_get_ident(e->ctx, QUOTE(_field)), shard_unlazy(e->ctx, (struct shard_value){.type=SHARD_VAL_INT, .integer=(_st)._field}));
+
+    ST_ENTRY(st_set, st, st_dev);
+    ST_ENTRY(st_set, st, st_ino);
+    ST_ENTRY(st_set, st, st_nlink);
+    ST_ENTRY(st_set, st, st_mode);
+    ST_ENTRY(st_set, st, st_uid);
+    ST_ENTRY(st_set, st, st_gid);
+    ST_ENTRY(st_set, st, st_rdev);
+    ST_ENTRY(st_set, st, st_size);
+    ST_ENTRY(st_set, st, st_blksize);
+    ST_ENTRY(st_set, st, st_blocks);
+    
+#undef ST_ENTRY
+    return SET_VAL(st_set);
+}
+

@@ -122,7 +122,7 @@ static void print_file_error(FILE* stream, struct shard_error* error, bool color
     fseek(fd, line_start, SEEK_SET);
 
     char* line_str = calloc(line_end - line_start + 1, sizeof(char));
-    (void) !! fread(line_str, line_end - line_start, sizeof(char), fd);
+    (void) !! fread(line_str, sizeof(char), line_end - line_start, fd);
 
     print_basic_error(stream, error, color);
 
