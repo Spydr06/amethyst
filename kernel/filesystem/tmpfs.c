@@ -19,22 +19,22 @@ static int tmpfs_mount(struct vfs** vfs, struct vnode* mount_point, struct vnode
 static int tmpfs_unmount(struct vfs* vfs);
 static int tmpfs_root(struct vfs* vfs, struct vnode** node);
 
-static int tmpfs_access(struct vnode* node, mode_t mode, struct cred* cred);
+static int tmpfs_access(struct vnode* node, mode_t mode, struct amethyst_cred* cred);
 
-static int tmpfs_create(struct vnode* parent, const char* name, struct vattr* attr, int type, struct vnode** result, struct cred* cred);
+static int tmpfs_create(struct vnode* parent, const char* name, struct vattr* attr, int type, struct vnode** result, struct amethyst_cred* cred);
 
-static int tmpfs_open(struct vnode** nodep, int flags, struct cred* cred);
-static int tmpfs_close(struct vnode* node, int flags, struct cred* cred);
+static int tmpfs_open(struct vnode** nodep, int flags, struct amethyst_cred* cred);
+static int tmpfs_close(struct vnode* node, int flags, struct amethyst_cred* cred);
 
-static int tmpfs_getattr(struct vnode* node, struct vattr* attr, struct cred* cred);
-static int tmpfs_setattr(struct vnode* node, struct vattr* attr, int which, struct cred* cred);
-static int tmpfs_resize(struct vnode* node, size_t size, struct cred* cred);
+static int tmpfs_getattr(struct vnode* node, struct vattr* attr, struct amethyst_cred* cred);
+static int tmpfs_setattr(struct vnode* node, struct vattr* attr, int which, struct amethyst_cred* cred);
+static int tmpfs_resize(struct vnode* node, size_t size, struct amethyst_cred* cred);
 static int tmpfs_getpage(struct vnode* node, uintmax_t offset, struct page* page);
 static int tmpfs_putpage(struct vnode* node, uintmax_t offset, struct page* page);
 
-static int tmpfs_mmap(struct vnode *node, void *addr, uintmax_t offset, int flags, struct cred* cred);
+static int tmpfs_mmap(struct vnode *node, void *addr, uintmax_t offset, int flags, struct amethyst_cred* cred);
 
-static int tmpfs_lookup(struct vnode* parent, const char* name, struct vnode** result, struct cred* cred);
+static int tmpfs_lookup(struct vnode* parent, const char* name, struct vnode** result, struct amethyst_cred* cred);
 static int tmpfs_maxseek(struct vnode* node, size_t* max_offset);
 static int tmpfs_getdents(struct vnode* node, struct amethyst_dirent *buffer, size_t count, uintmax_t offset, size_t *readcount);
 
@@ -144,7 +144,7 @@ static int tmpfs_root(struct vfs* vfs, struct vnode** node) {
     return 0;
 }
 
-static int tmpfs_create(struct vnode* parent, const char* name, struct vattr* attr, int type, struct vnode** result, struct cred* cred) {
+static int tmpfs_create(struct vnode* parent, const char* name, struct vattr* attr, int type, struct vnode** result, struct amethyst_cred* cred) {
     if(parent->type != V_TYPE_DIR)
         return ENOTDIR;
 
@@ -212,14 +212,14 @@ static int tmpfs_create(struct vnode* parent, const char* name, struct vattr* at
     return err;
 }
 
-static int tmpfs_access(struct vnode* node, mode_t mode, struct cred* cred) {
+static int tmpfs_access(struct vnode* node, mode_t mode, struct amethyst_cred* cred) {
     (void) node;
     (void) cred;
     klog(WARN, "access() not yet implemented | mode: %x", mode);
     return 0;
 }
 
-static int tmpfs_open(struct vnode** nodep, int flags __unused, struct cred* cred __unused) {
+static int tmpfs_open(struct vnode** nodep, int flags __unused, struct amethyst_cred* cred __unused) {
     struct vnode* node = *nodep;
     struct tmpfs_node* tmpnode = (struct tmpfs_node*) node;
 
@@ -237,11 +237,11 @@ static int tmpfs_open(struct vnode** nodep, int flags __unused, struct cred* cre
     return 0;
 }
 
-static int tmpfs_close(struct vnode* node __unused, int flags __unused, struct cred* cred __unused) {
+static int tmpfs_close(struct vnode* node __unused, int flags __unused, struct amethyst_cred* cred __unused) {
     return 0;
 }
 
-static int tmpfs_getattr(struct vnode* node, struct vattr* attr, struct cred* cred __unused) {
+static int tmpfs_getattr(struct vnode* node, struct vattr* attr, struct amethyst_cred* cred __unused) {
     struct tmpfs_node* tmpnode = (struct tmpfs_node*) node;
     *attr = tmpnode->vattr;
     attr->blocks_used = ROUND_UP(attr->size, PAGE_SIZE) / PAGE_SIZE;
@@ -250,7 +250,7 @@ static int tmpfs_getattr(struct vnode* node, struct vattr* attr, struct cred* cr
     return 0;
 }
 
-static int tmpfs_setattr(struct vnode* node, struct vattr* attr, int which, struct cred* cred __unused) {
+static int tmpfs_setattr(struct vnode* node, struct vattr* attr, int which, struct amethyst_cred* cred __unused) {
     vop_lock(node);
 
     struct tmpfs_node* tmpnode = (struct tmpfs_node*) node;
@@ -272,7 +272,7 @@ static int tmpfs_setattr(struct vnode* node, struct vattr* attr, int which, stru
     return 0;
 }
 
-static int tmpfs_resize(struct vnode* node, size_t size, struct cred* cred __unused) {
+static int tmpfs_resize(struct vnode* node, size_t size, struct amethyst_cred* cred __unused) {
     vop_lock(node);
 
     struct tmpfs_node* tmpnode = (struct tmpfs_node*) node;
@@ -317,7 +317,7 @@ static int tmpfs_putpage(struct vnode* node, uintmax_t offset, struct page* page
     return 0;
 }
 
-static int tmpfs_mmap(struct vnode *node, void *addr, uintmax_t offset, int flags, struct cred* cred) {
+static int tmpfs_mmap(struct vnode *node, void *addr, uintmax_t offset, int flags, struct amethyst_cred* cred) {
     (void) node;
     (void) addr;
     (void) offset;
@@ -327,7 +327,7 @@ static int tmpfs_mmap(struct vnode *node, void *addr, uintmax_t offset, int flag
     return 0;
 }
 
-static int tmpfs_lookup(struct vnode* parent, const char* name, struct vnode** result, struct cred* cred __unused) {
+static int tmpfs_lookup(struct vnode* parent, const char* name, struct vnode** result, struct amethyst_cred* cred __unused) {
     struct tmpfs_node* tmpparent = (struct tmpfs_node*) parent;
     struct vnode* child = nullptr;
     if(parent->type != V_TYPE_DIR)

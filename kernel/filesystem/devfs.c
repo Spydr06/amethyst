@@ -143,7 +143,7 @@ int devfs_get_root(struct vfs* vfs, struct vnode** node) {
     return 0;
 }
 
-int devfs_lookup(struct vnode* node, const char* name, struct vnode** result, struct cred* __unused) {
+int devfs_lookup(struct vnode* node, const char* name, struct vnode** result, struct amethyst_cred* __unused) {
     struct dev_node* dev_node = (struct dev_node*) node;
     if(node->type != V_TYPE_DIR)
         return ENOTDIR;
@@ -194,7 +194,7 @@ int devfs_unmount(struct vfs* vfs) {
     return 0;
 }
 
-int devfs_getattr(struct vnode* node, struct vattr* attr, struct cred* cred) {
+int devfs_getattr(struct vnode* node, struct vattr* attr, struct amethyst_cred* cred) {
     struct dev_node* dev_node = (struct dev_node*) node;
 
     if(dev_node->physical && dev_node->physical != node)
@@ -205,7 +205,7 @@ int devfs_getattr(struct vnode* node, struct vattr* attr, struct cred* cred) {
     return 0;
 }
 
-int devfs_setattr(struct vnode* node, struct vattr* attr, int which, struct cred* cred) {
+int devfs_setattr(struct vnode* node, struct vattr* attr, int which, struct amethyst_cred* cred) {
     struct dev_node* dev_node = (struct dev_node*) node;
 
     if(dev_node->physical && dev_node->physical != node)
@@ -229,7 +229,7 @@ int devfs_setattr(struct vnode* node, struct vattr* attr, int which, struct cred
     return 0;
 }
 
-int devfs_create(struct vnode* parent, const char* name, struct vattr* attr, int type, struct vnode** result, struct cred* cred) {
+int devfs_create(struct vnode* parent, const char* name, struct vattr* attr, int type, struct vnode** result, struct amethyst_cred* cred) {
     if(type != V_TYPE_CHDEV && type != V_TYPE_BLKDEV && type != V_TYPE_DIR)
         return EINVAL;
 
@@ -298,7 +298,7 @@ int devfs_create(struct vnode* parent, const char* name, struct vattr* attr, int
     return 0;
 }
 
-int devfs_open(struct vnode** nodep, int flags, struct cred* __unused) {
+int devfs_open(struct vnode** nodep, int flags, struct amethyst_cred* __unused) {
     struct dev_node* dev_node = (struct dev_node*) *nodep;
 
     if((*nodep)->type != V_TYPE_CHDEV && (*nodep)->type != V_TYPE_BLKDEV)
@@ -313,7 +313,7 @@ int devfs_open(struct vnode** nodep, int flags, struct cred* __unused) {
     return dev_node->devops->open(dev_node->vattr.rdev_minor, nodep, flags);
 }
 
-int devfs_close(struct vnode* node, int flags, struct cred* __unused) {
+int devfs_close(struct vnode* node, int flags, struct amethyst_cred* __unused) {
     struct dev_node* dev_node = (struct dev_node*) node;
 
     if(node->type != V_TYPE_CHDEV && node->type != V_TYPE_BLKDEV)
@@ -328,7 +328,7 @@ int devfs_close(struct vnode* node, int flags, struct cred* __unused) {
     return dev_node->devops->close(dev_node->vattr.rdev_minor, flags);
 }
 
-int devfs_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_read, struct cred* __unused) {
+int devfs_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_read, struct amethyst_cred* __unused) {
     if(node->type == V_TYPE_DIR)
         return EISDIR;
 
@@ -345,7 +345,7 @@ int devfs_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, 
     return dev_node->devops->read(dev_node->vattr.rdev_minor, buffer, size, offset, flags, bytes_read);
 }
 
-int devfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_written, struct cred* __unused) {
+int devfs_write(struct vnode* node, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_written, struct amethyst_cred* __unused) {
     struct dev_node* dev_node = (struct dev_node*) node;
     if(dev_node->master)
         dev_node = dev_node->master;
@@ -403,7 +403,7 @@ int devfs_inactive(struct vnode* node) {
     return 0;
 }
 
-int devfs_ioctl(struct vnode* node, unsigned long request, void* arg, int* ret, struct cred* __unused) {
+int devfs_ioctl(struct vnode* node, unsigned long request, void* arg, int* ret, struct amethyst_cred* __unused) {
     if(node->type != V_TYPE_BLKDEV && node->type != V_TYPE_CHDEV)
         return ENODEV;
 
@@ -414,7 +414,7 @@ int devfs_ioctl(struct vnode* node, unsigned long request, void* arg, int* ret, 
     return dev_node->devops->ioctl ? dev_node->devops->ioctl(dev_node->vattr.dev_minor, request, arg, ret) : ENOTTY;
 }
 
-int devfs_mmap(struct vnode* node, void* addr, uintmax_t offset, int flags, struct cred* __unused) {
+int devfs_mmap(struct vnode* node, void* addr, uintmax_t offset, int flags, struct amethyst_cred* __unused) {
     if(node->type != V_TYPE_BLKDEV && node->type != V_TYPE_CHDEV)
         return ENODEV;
 

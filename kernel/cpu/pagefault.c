@@ -53,7 +53,7 @@ static bool handle_pagefault(void* addr, bool user, enum vmm_action actions) {
 
     struct thread* thread = current_thread();
     struct proc* proc = thread ? thread->proc : nullptr;
-    struct cred* cred = proc ? &proc->cred : nullptr;
+    struct amethyst_cred* cred = proc ? &proc->cred : nullptr;
 
     if(!mmu_is_present(thread->vmm_context->page_table, addr)) {
         uintmax_t map_offset = (uintptr_t) addr - (uintptr_t) range->start;
@@ -120,6 +120,7 @@ cleanup:
 }
 
 static void pagefault_interrupt(struct cpu_context* status) {
+    uintptr_t rip = status->rip;
     struct thread* thread = current_thread();
 
     interrupt_set(true);
@@ -146,7 +147,7 @@ static void pagefault_interrupt(struct cpu_context* status) {
         vmm_action_as_str(action, perms);
         
         panic_r(status, "\n+++ Page Fault at %p accessing %p (\"%s\", %s, cpu %d / tid %d / pid %d)", 
-                (void*) status->rip,
+                (void*) rip,
                 (void*) status->cr2, 
                 perms, 
                 in_userspace ? "user" : "kernel",

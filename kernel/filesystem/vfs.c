@@ -1,5 +1,7 @@
 #include <filesystem/vfs.h>
 
+#include <amethyst/cred.h>
+
 #include <cpu/cpu.h>
 #include <mem/heap.h>
 #include <mem/vmm.h>
@@ -26,12 +28,12 @@ struct vfs* vfs_list;
 
 static hashtable_t fs_table;
 
-static struct cred kernel_cred = {
-    .gid = 0,
-    .uid = 0
+static struct amethyst_cred kernel_cred = {
+    .gid = AMETHYST_ROOT_GID,
+    .uid = AMETHYST_ROOT_UID
 };
 
-static struct cred* get_cred(void);
+static struct amethyst_cred* get_cred(void);
 
 void vfs_init(void) {
     assert(hashtable_init(&fs_table, 20) == 0);
@@ -82,7 +84,7 @@ void vfs_inactive(struct vnode *node) {
     node->ops->inactive(node);
 }
 
-static struct cred* get_cred(void) {
+static struct amethyst_cred* get_cred(void) {
     struct proc* proc = current_proc();
     return proc ? &proc->cred : &kernel_cred;
 }

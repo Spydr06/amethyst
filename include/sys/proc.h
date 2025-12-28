@@ -39,7 +39,7 @@ struct proc {
     enum proc_state state;
 
     pid_t pid;
-    struct cred cred;
+    struct amethyst_cred cred;
 
     size_t running_thread_count;
 

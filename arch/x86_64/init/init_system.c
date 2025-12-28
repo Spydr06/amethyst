@@ -1,3 +1,4 @@
+#include "encoding/elf.h"
 #include <cpu/cpu.h>
 #include <drivers/pci/pci.h>
 #include <drivers/video/console.h>
@@ -52,7 +53,7 @@ __noreturn void _start(void)
     cpu_set(&init_cpu);
     early_console_init();
 
-    load_symtab(kernel_file_request.response);   
+    kernel_elf_init(kernel_file_request.response);
      
     klog(DEBUG, "_start() is at %p", (void*) _start);
     

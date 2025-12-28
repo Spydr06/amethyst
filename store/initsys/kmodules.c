@@ -9,14 +9,9 @@
 #include <string.h>
 
 static int load_module(const char *path) {
-    int fd = open(path, O_RDONLY, 0);
-    if(fd < 0)
+    printf("Loading kernel module '%s'...\n", path);
+    if(init_module(path, (const char* const[]){NULL}, 0))
         return errno;
-
-    if(finit_module(fd, (const char* const[]){NULL}, 0))
-        return errno;
-
-    close(fd);
     return 0;
 }
 

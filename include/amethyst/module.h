@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+#define AMETHYST_MODINFO_SECTION ".modinfo"
+#define AMETHYST_MODINFO_MAGIC 0x8fa19753bc65cc91ull
+
 typedef int (*module_main_t)(int argc, const char **argv);
 typedef void (*module_cleanup_t)(void);
 
@@ -11,6 +14,8 @@ enum amethyst_module_flags : uint32_t {
 };
 
 struct amethyst_module_spec {
+    uint64_t magic;
+
     const char *name;
     const char *license;
     const char *desc;
@@ -27,8 +32,8 @@ struct amethyst_module_spec {
     .version = (_version)
 
 #define _MODULE_REGISTER(...) \
-    static __attribute__((section(".modinfo"), used)) struct amethyst_module_spec __spec_##__LINE__ \
-        = { __VA_ARGS__ };
+    static __attribute__((section(AMETHYST_MODINFO_SECTION), used)) struct amethyst_module_spec __spec_##__LINE__ \
+        = { .magic = AMETHYST_MODINFO_MAGIC, __VA_ARGS__ };
 
 #endif /* _AMETHYST_MODULE_H */
 

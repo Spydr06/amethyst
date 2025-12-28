@@ -4333,6 +4333,8 @@ enum
 #define R_OR1K_TLS_DTPOFF	33
 #define R_OR1K_TLS_DTPMOD	34
 
+#include <mem/vmm.h>
+
 typedef struct {
     Elf64_auxv_t phdr;
     Elf64_auxv_t phnum;
@@ -4347,6 +4349,19 @@ bool elf_validate_ehdr(const Elf64_Ehdr* header, Elf64_Half type);
 int elf_load(struct vnode* node, void* base, void** entry, char** interpreter, Elf64_auxv_list_t* auxv, void** brk);
 
 void* elf_prepare_stack(void* top, Elf64_auxv_list_t* auxv, char** argv, char** envp);
+
+enum mmu_flags elf_shdr_to_mmu_flags(uintmax_t flags);
+enum mmu_flags elf_phdr_to_mmu_flags(uintmax_t flags);
+
+void kernel_elf_init(struct limine_kernel_file_response *response);
+bool kernel_elf_inited(void);
+const Elf64_Ehdr *kernel_elf_header(void);
+const Elf64_Shdr *kernel_elf_section_header(Elf64_Half idx);
+uintptr_t kernel_elf_section(Elf64_Half idx);
+uintptr_t kernel_elf_section(Elf64_Half idx);
+const Elf64_Shdr *kernel_elf_find_section(const char *name);
+const Elf64_Sym *kernel_resolve_symbol(const char *name);
+const char *kernel_lookup_symbol(uintptr_t addr);
 
 #endif	/* elf.h */
 

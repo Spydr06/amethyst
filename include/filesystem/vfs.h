@@ -3,6 +3,7 @@
 
 #include <abi.h>
 #include <amethyst/dirent.h>
+#include <amethyst/cred.h>
 #include <time.h>
 #include <sys/mutex.h>
 
@@ -54,11 +55,6 @@ enum vaccess {
     V_ACCESS_READ = 4
 };
 
-struct cred {
-    uid_t uid;
-    gid_t gid;
-};
-
 struct vattr {
     enum vtype type;
     mode_t mode;
@@ -99,7 +95,7 @@ struct vnode {
     struct vops* ops;
     mutex_t lock;
     mutex_t size_lock;
-    int refcount;
+    volatile int refcount;
     enum vflags flags;
     enum vtype type;
     struct vfs* vfs;
@@ -111,28 +107,28 @@ struct vnode {
 struct polldata;
 
 typedef struct vops {
-	int (*open)(struct vnode **node, int flags, struct cred *cred);
-	int (*close)(struct vnode *node, int flags, struct cred *cred);
-	int (*read)(struct vnode *node, void *buffer, size_t size, uintmax_t offset, int flags, size_t *readc, struct cred *cred);
-	int (*write)(struct vnode *node, void *buffer, size_t size, uintmax_t offset, int flags, size_t *writec, struct cred *cred);
-	int (*lookup)(struct vnode *node, const char *name, struct vnode **result, struct cred *cred);
-	int (*create)(struct vnode *parent, const char *name, struct vattr *attr, int type, struct vnode **result, struct cred *cred);
-	int (*getattr)(struct vnode *node, struct vattr *attr, struct cred *cred);
-	int (*setattr)(struct vnode *node, struct vattr *attr, int which, struct cred *cred);
+	int (*open)(struct vnode **node, int flags, struct amethyst_cred *cred);
+	int (*close)(struct vnode *node, int flags, struct amethyst_cred *cred);
+	int (*read)(struct vnode *node, void *buffer, size_t size, uintmax_t offset, int flags, size_t *readc, struct amethyst_cred *cred);
+	int (*write)(struct vnode *node, void *buffer, size_t size, uintmax_t offset, int flags, size_t *writec, struct amethyst_cred *cred);
+	int (*lookup)(struct vnode *node, const char *name, struct vnode **result, struct amethyst_cred *cred);
+	int (*create)(struct vnode *parent, const char *name, struct vattr *attr, int type, struct vnode **result, struct amethyst_cred *cred);
+	int (*getattr)(struct vnode *node, struct vattr *attr, struct amethyst_cred *cred);
+	int (*setattr)(struct vnode *node, struct vattr *attr, int which, struct amethyst_cred *cred);
 	int (*poll)(struct vnode *node, struct polldata *, int events);
-	int (*access)(struct vnode *node, mode_t mode, struct cred *cred);
-	int (*unlink)(struct vnode *node, const char *name, struct cred *cred);
-	int (*link)(struct vnode *node, struct vnode *dir, const char *name, struct cred *cred);
-	int (*symlink)(struct vnode *parent, const char *name, struct vattr *attr, const char *path, struct cred *cred);
-	int (*readlink)(struct vnode *parent, char **link, struct cred *cred);
+	int (*access)(struct vnode *node, mode_t mode, struct amethyst_cred *cred);
+	int (*unlink)(struct vnode *node, const char *name, struct amethyst_cred *cred);
+	int (*link)(struct vnode *node, struct vnode *dir, const char *name, struct amethyst_cred *cred);
+	int (*symlink)(struct vnode *parent, const char *name, struct vattr *attr, const char *path, struct amethyst_cred *cred);
+	int (*readlink)(struct vnode *parent, char **link, struct amethyst_cred *cred);
 	int (*inactive)(struct vnode *node);
-	int (*mmap)(struct vnode *node, void *addr, uintmax_t offset, int flags, struct cred *cred);
-	int (*munmap)(struct vnode *node, void *addr, uintmax_t offset, int flags, struct cred *cred);
+	int (*mmap)(struct vnode *node, void *addr, uintmax_t offset, int flags, struct amethyst_cred *cred);
+	int (*munmap)(struct vnode *node, void *addr, uintmax_t offset, int flags, struct amethyst_cred *cred);
 	int (*getdents)(struct vnode *node, struct amethyst_dirent *buffer, size_t count, uintmax_t offset, size_t *readcount);
 	int (*isatty)(struct vnode *node);
-	int (*ioctl)(struct vnode *node, unsigned long request, void *arg, int *result, struct cred* cred);
+	int (*ioctl)(struct vnode *node, unsigned long request, void *arg, int *result, struct amethyst_cred* cred);
 	int (*maxseek)(struct vnode *node, size_t *max);
-	int (*resize)(struct vnode *node, size_t newsize, struct cred *cred);
+	int (*resize)(struct vnode *node, size_t newsize, struct amethyst_cred *cred);
 	int (*rename)(struct vnode *source, char *oldname, struct vnode *target, char *newname, int flags);
     int (*getpage)(struct vnode* node, uintmax_t offset, struct page* page);
     int (*putpage)(struct vnode* node, uintmax_t offset, struct page* page);
@@ -186,7 +182,7 @@ static inline void vop_unlock(struct vnode* node) {
     mutex_release(&node->lock);
 }
 
-static inline int vop_access(struct vnode* node, mode_t mode, struct cred* cred) {
+static inline int vop_access(struct vnode* node, mode_t mode, struct amethyst_cred* cred) {
     return node->ops->access(node, mode, cred);
 }
 
@@ -201,27 +197,27 @@ static inline void vop_release(struct vnode** node) {
     }
 }
 
-static inline int vop_lookup(struct vnode* node, const char* name, struct vnode** result, struct cred* cred) {
+static inline int vop_lookup(struct vnode* node, const char* name, struct vnode** result, struct amethyst_cred* cred) {
     return node->ops->lookup(node, name, result, cred);
 }
 
-static inline int vop_create(struct vnode* node, const char* name, struct vattr* attr, int type, struct vnode** result, struct cred* cred) {
+static inline int vop_create(struct vnode* node, const char* name, struct vattr* attr, int type, struct vnode** result, struct amethyst_cred* cred) {
     return node->ops->create(node, name, attr, type, result, cred);
 }
 
-static inline int vop_open(struct vnode** dest, int flags, struct cred* cred) {
+static inline int vop_open(struct vnode** dest, int flags, struct amethyst_cred* cred) {
     return (*dest)->ops->open(dest, flags, cred);
 }
 
-static inline int vop_close(struct vnode* node, int flags, struct cred* cred) {
+static inline int vop_close(struct vnode* node, int flags, struct amethyst_cred* cred) {
     return node->ops->close(node, flags, cred);
 }
 
-static inline int vop_setattr(struct vnode* node, struct vattr* attr, int which, struct cred* cred) {
+static inline int vop_setattr(struct vnode* node, struct vattr* attr, int which, struct amethyst_cred* cred) {
     return node->ops->setattr(node, attr, which, cred);
 }
 
-static inline int vop_getattr(struct vnode *node, struct vattr *attr, struct cred *cred) {
+static inline int vop_getattr(struct vnode *node, struct vattr *attr, struct amethyst_cred *cred) {
     return node->ops->getattr(node, attr, cred);
 }
 
@@ -229,23 +225,23 @@ static inline int vop_getdents(struct vnode* node, struct amethyst_dirent *buffe
     return node->ops->getdents(node, buffer, count, offset, readcount);
 }
 
-static inline int vop_write(struct vnode *node, void *buffer, size_t size, uintmax_t offset, int flags, size_t *bytes_written, struct cred *cred) {
+static inline int vop_write(struct vnode *node, void *buffer, size_t size, uintmax_t offset, int flags, size_t *bytes_written, struct amethyst_cred *cred) {
     return node->ops->write(node, buffer, size, offset, flags, bytes_written, cred);
 }
 
-static inline int vop_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_read, struct cred* cred) {
+static inline int vop_read(struct vnode* node, void* buffer, size_t size, uintmax_t offset, int flags, size_t* bytes_read, struct amethyst_cred* cred) {
     return node->ops->read(node, buffer, size, offset, flags, bytes_read, cred);
 }
 
-static inline int vop_link(struct vnode* node, struct vnode* dir, const char* name, struct cred* cred) {
+static inline int vop_link(struct vnode* node, struct vnode* dir, const char* name, struct amethyst_cred* cred) {
     return node->ops->link(node, dir, name, cred);
 }
 
-static inline int vop_symlink(struct vnode* node, const char* name, struct vattr* attr, const char* path, struct cred* cred) {
+static inline int vop_symlink(struct vnode* node, const char* name, struct vattr* attr, const char* path, struct amethyst_cred* cred) {
     return node->ops->symlink(node, name, attr, path, cred);
 }
 
-static inline int vop_mmap(struct vnode* node, void *addr, uintmax_t offset, int flags, struct cred *cred){
+static inline int vop_mmap(struct vnode* node, void *addr, uintmax_t offset, int flags, struct amethyst_cred *cred){
     return node->ops->mmap(node, addr, offset, flags, cred);
 }
 
@@ -261,7 +257,7 @@ static inline void vop_init(struct vnode* node, struct vops* vops, enum vflags f
     node->vfsmounted = nullptr;
 }
 
-static inline int vop_ioctl(struct vnode* node, unsigned long request, void* arg, int* result, struct cred* cred) {
+static inline int vop_ioctl(struct vnode* node, unsigned long request, void* arg, int* result, struct amethyst_cred* cred) {
     return node->ops->ioctl(node, request, arg, result, cred);
 }
 
@@ -269,7 +265,7 @@ static inline int vop_maxseek(struct vnode* node, size_t* max_offset) {
     return node->ops->maxseek(node, max_offset);
 }
 
-static inline int vop_resize(struct vnode *node, size_t newsize, struct cred *cred) {
+static inline int vop_resize(struct vnode *node, size_t newsize, struct amethyst_cred *cred) {
     return node->ops->resize(node, newsize, cred);
 }
 

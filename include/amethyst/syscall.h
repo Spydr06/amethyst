@@ -35,7 +35,8 @@
 #define SYS_fchdir          81
 #define SYS_gettimeofday    96
 #define SYS_sysinfo         99
-#define SYS_finit_module    100
+#define SYS_init_module     100
+#define SYS_finit_module    101
 #define SYS_knldebug        255
 
 #define __SYS_invalid       1000

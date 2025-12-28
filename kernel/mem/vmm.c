@@ -422,7 +422,7 @@ static void destroy_range(struct vmm_range* range, uintmax_t start_offset, size_
 
         /*struct thread* thread = current_thread();
         struct proc* proc = current_proc();
-        struct cred* cred = proc ? &proc->cred : nullptr;*/
+        struct amethyst_cred* cred = proc ? &proc->cred : nullptr;*/
 
         // TODO: vfs caching if range->flags & VM_FLAGS_FILE and range is cacheable!
         

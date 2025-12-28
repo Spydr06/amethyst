@@ -8,14 +8,16 @@ endif
 MODULE_NAME ?= $(notdir $(MODULE_DIR))
 BUILD_DIR ?= $(MODULE_DIR)/build
 
-MODULE_TARGET ?= $(MODULE_DIR)/$(MODULE_NAME).ko
+MODULE_TARGET ?= $(BUILD_DIR)/$(MODULE_NAME).ko
+MODULE_SYM ?= $(BUILD_DIR)/$(MODULE_NAME).sym
+
 MODULE_SOURCES := $(shell find $(MODULE_DIR) -name '*.c' -or -name '*.cpp' -or -name '*.S')
 MODULE_HEADERS := $(shell find $(MODULE_DIR) -name '*.h' -or -name '*.hpp')
 
 TOOLPREFIX ?= $(ARCH)-elf-
 
-C_CXX_FLAGS += -Wall -Wextra -Wno-trigraphs \
-			   -ffreestanding -fstack-protector -fno-lto -fPIC \
+C_CXX_FLAGS += -Wall -Wextra -Wno-trigraphs -mcmodel=kernel \
+			   -ffreestanding -fstack-protector -fno-lto -fno-pic -fno-pie -fno-plt \
 			   -g \
 			   -D__$(ARCH)__ -D__$(ARCH) -D_AMETHYST_MODULE_SRC
 
@@ -44,6 +46,8 @@ LDFLAGS += -m elf_$(ARCH) -nostdlib \
 		   -static -no-pie --no-dynamic-linker -z max-page-size=0x1000 \
 		   -T $(LDSCRIPT)
 
+override OBJCOPY := $(TOOLPREFIX)objcopy
+
 ifeq ($(ARCH), x86_64)
 	C_CXX_FLAGS += -m64 -march=x86-64 -mcmodel=large -mno-red-zone -mno-mmx -mno-sse2
 else
@@ -51,8 +55,8 @@ _error:
 	$(error Unsupported architecture "$(ARCH)")
 endif
 
-CFLAGS += -std=c2x $(C_CXX_FLAGS)
-CXXFLAGS += -std=c++2x $(C_CXX_FLAGS)
+override CFLAGS += -std=c2x $(C_CXX_FLAGS)
+override CXXFLAGS += -std=c++2x $(C_CXX_FLAGS)
 
 MODULE_OBJECTS := $(patsubst $(MODULE_DIR)/%, $(BUILD_DIR)/%.o, $(MODULE_SOURCES))
 
@@ -65,11 +69,13 @@ module: $(MODULE_TARGET)
 $(MODULE_TARGET): $(MODULE_OBJECTS) | modulemake
 	@echo "  LD    $@"
 	@$(LD) $(LDFLAGS) -r -o $@ $^
+	@$(OBJCOPY) --only-keep-debug $@ $(MODULE_SYM)
+	@$(OBJCOPY) --strip-debug $@
 
 $(BUILD_DIR)/%.c.o: $(MODULE_DIR)/%.c $(MODULE_HEADERS)
 	@mkdir -p $(dir $@)
 	@echo "  CC    $<"
-	@$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.c.o=%.c.d)" -c $< -o $@
+	$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.c.o=%.c.d)" -c $< -o $@
 
 $(BUILD_DIR)/%.cpp.o: $(MODULE_DIR)/%.cpp $(MODULE_HEADERS)
 	@mkdir -p $(dir $@)

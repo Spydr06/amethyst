@@ -37,7 +37,7 @@ bool elf_validate_ehdr(const Elf64_Ehdr* header, Elf64_Half type) {
         && header->e_machine == _ELF_MACHINE;
 }
 
-static enum mmu_flags phdr_to_mmu_flags(Elf64_Word p_flags) {
+enum mmu_flags elf_phdr_to_mmu_flags(uintmax_t p_flags) {
     enum mmu_flags mmu_flags = MMU_FLAGS_USER;
     if(p_flags & PF_R)
         mmu_flags |= MMU_FLAGS_READ;
@@ -49,6 +49,16 @@ static enum mmu_flags phdr_to_mmu_flags(Elf64_Word p_flags) {
     return mmu_flags;
 };
 
+enum mmu_flags elf_shdr_to_mmu_flags(uintmax_t s_flags) {
+    enum mmu_flags mmu_flags = MMU_FLAGS_READ;
+    if(!(s_flags & SHF_EXECINSTR))
+        mmu_flags |= MMU_FLAGS_NOEXEC;
+    if(s_flags & SHF_WRITE)
+        mmu_flags |= MMU_FLAGS_WRITE;
+
+    return mmu_flags;
+}
+
 static int load(struct vnode* node, Elf64_Phdr* phdr, void** brk) {
     int err = 0;
 
@@ -58,7 +68,7 @@ static int load(struct vnode* node, Elf64_Phdr* phdr, void** brk) {
     size_t file_size = phdr->p_filesz;
     size_t mem_size = phdr->p_memsz;
 
-    enum mmu_flags mmu_flags = phdr_to_mmu_flags(phdr->p_flags) | MMU_FLAGS_USER | MMU_FLAGS_WRITE;
+    enum mmu_flags mmu_flags = elf_phdr_to_mmu_flags(phdr->p_flags) | MMU_FLAGS_USER | MMU_FLAGS_WRITE;
     uintmax_t first_page_offset = mem_address % PAGE_SIZE;
 
     // unaligned first page

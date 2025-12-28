@@ -62,8 +62,6 @@ void kmain(size_t cmdline_size, const char* cmdline)
     tmpfs_init();
     devfs_init();
 
-    kmodule_init();
-
     pseudodevices_init();
 
     keyboard_driver_init();
