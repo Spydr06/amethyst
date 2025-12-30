@@ -1,12 +1,13 @@
-#include <drivers/char/ps2.h>
-#include <drivers/char/mouse.h>
+#include "include/ps2-hid.h"
 
-#include <x86_64/cpu/idt.h>
+#include <drivers/char/mouse.h>
 #include <drivers/acpi/apic.h>
-#include <x86_64/dev/io.h>
 
 #include <assert.h>
-#include <kernelio.h>
+#include <errno.h>
+#include <x86_64/dev/io.h>
+
+static volatile bool mouse_inited = false;
 
 static uint8_t data_offset;
 static uint8_t data[4];
@@ -64,18 +65,21 @@ static inline bool ps2_mouse_identify(uint8_t identity[2]) {
     return false;
 }
 
-void ps2_mouse_init(void) {
+int ps2_mouse_init(void) {
+    if(__sync_bool_compare_and_swap(&mouse_inited, false, true))
+        return 0;
+
     uint8_t identity[2];
 
     if(ps2_mouse_identify(identity))
-        return;
+        return ENODEV;
 
     ps2_mouse_setrate(200);
     ps2_mouse_setrate(100);
     ps2_mouse_setrate(80);
 
     if(ps2_mouse_identify(identity))
-        return;
+        return ENODEV;
 
     if(identity[0] == PS2_MOUSE_Z) {
         has_wheel = true;
@@ -85,7 +89,7 @@ void ps2_mouse_init(void) {
         ps2_mouse_setrate(80);
 
         if(ps2_mouse_identify(identity))
-            return;
+            return ENODEV;
 
         if(identity[0] == PS2_MOUSE_5B)
             has_5buttons = true;
@@ -100,5 +104,5 @@ void ps2_mouse_init(void) {
     klog(INFO, "PS/2 mouse: wheel: %hhu, 5 buttons: %hhu", has_wheel, has_5buttons);
 
     mouse_init(&mouse);
+    return 0;
 }
-

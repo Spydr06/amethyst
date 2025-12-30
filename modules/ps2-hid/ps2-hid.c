@@ -1,9 +1,12 @@
-#include "sys/timekeeper.h"
-#include <drivers/char/ps2.h>
+#include <amethyst/module.h>
+#include "include/ps2-hid.h"
+#include "amethyst/amethyst.h"
 
+#include <sys/timekeeper.h>
+#include <errno.h>
 #include <time.h>
-#include <x86_64/dev/io.h>
 #include <kernelio.h>
+#include <x86_64/dev/io.h>
 
 static inline bool ps2_outbuffer_empty(void) {
     return !(inb(PS2_PORT_STATUS) & 1);
@@ -213,7 +216,7 @@ bool ps2_identify(uint8_t port, uint8_t identity[2]) {
     return !timeout;
 }
 
-void ps2_init(void) {
+static int ps2_init(int, const char**) {
     ps2_write_command(PS2_CMD_DISABLEP1);
     ps2_write_command(PS2_CMD_DISABLEP2);
 
@@ -233,7 +236,7 @@ void ps2_init(void) {
 
     if(result != PS2_SELFTEST_OK) {
         klog(ERROR, "controller self test failed (expected %x, got %x)", PS2_SELFTEST_OK, result);
-        return;
+        return EIO;
     }
 
     ps2_write_command(PS2_CMD_WRITECFG);
@@ -266,7 +269,7 @@ void ps2_init(void) {
 
     if(!working_flag) {
         klog(ERROR, "no working PS/2 ports");
-        return;
+        return ENODEV;
     }
 
     int connected_flag = 0;
@@ -332,4 +335,17 @@ void ps2_init(void) {
 
     ps2_write_command(PS2_CMD_WRITECFG);
     ps2_write_data(cfg);
+
+    return 0;
 }
+
+static void ps2_deinit(void) {
+    unimplemented();
+}
+
+_MODULE_REGISTER(
+    _MODULE_INFO("ps2-hid", "MIT", "0.0.2", "PS/2 Input Device Driver"),
+    .main_func = ps2_init,
+    .cleanup_func = ps2_deinit
+)
+

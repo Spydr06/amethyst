@@ -21,7 +21,7 @@ in {
         ++ [ pkgs.amethyst-headers ];
 
     buildPhase = lib.make ["-C" sourceDir
-        "CFLAGS=-I${lib.prefix}/include -I${lib.prefix}/usr/include"
+        "CFLAGS=-I${moduleDir}/include -I${pkgs.amethyst-source}/source/include -I${pkgs.amethyst-source}/source/arch/include"
         "MODULE_DIR=${moduleDir}"
         "BUILD_DIR=${buildDir}"
         "MODULE_TARGET=${moduleTarget}"

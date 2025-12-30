@@ -75,7 +75,7 @@ $(MODULE_TARGET): $(MODULE_OBJECTS) | modulemake
 $(BUILD_DIR)/%.c.o: $(MODULE_DIR)/%.c $(MODULE_HEADERS)
 	@mkdir -p $(dir $@)
 	@echo "  CC    $<"
-	$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.c.o=%.c.d)" -c $< -o $@
+	@$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.c.o=%.c.d)" -c $< -o $@
 
 $(BUILD_DIR)/%.cpp.o: $(MODULE_DIR)/%.cpp $(MODULE_HEADERS)
 	@mkdir -p $(dir $@)

@@ -1,8 +1,11 @@
 #include <amethyst/module.h>
 #include <amethyst/amethyst.h>
 
+#include <kernelio.h>
+
 static int test_main(int argc, const char **argv) {
     printk("\033[96m[Test Module] Hello, World!\033[0m\n");
+    
     return 0;
 }
 

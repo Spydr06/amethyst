@@ -1,6 +1,12 @@
 #ifndef _AMETHYST_AMETHYST_H
 #define _AMETHYST_AMETHYST_H
 
+#if defined(_AMETHYST_MODULE_SRC) || defined(_AMETHYST_KERNEL_SRC)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define panic_r(ctx, ...) (__panic(__FILE__, __LINE__, __func__, (ctx), __VA_ARGS__))
 #define panic(...) panic_r(nullptr, __VA_ARGS__)
 
@@ -32,6 +38,12 @@ void __klog_inl(enum klog_severity severity, const char* file, const char* forma
 
 _Noreturn void __panic(const char* file, int line, const char* function, struct cpu_context* ctx, const char* error, ...)
     __attribute__((format(printf, 5, 6)));
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _AMETHYST_MODULE_SRC || _AMETHYST_KERNEL_SRC */
 
 #endif /* _AMETHYST_AMETHYST_H */
 

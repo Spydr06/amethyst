@@ -61,5 +61,6 @@ void kmodule_unload_section(struct kmodule_mapping *map, Elf64_Half sh_idx) {
         return;
 
     vmm_unmap((void*) map->sections[sh_idx], map->shdrs[sh_idx].sh_size, 0);
+    map->sections[sh_idx] = 0;
 }
 

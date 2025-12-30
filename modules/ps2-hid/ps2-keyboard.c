@@ -1,16 +1,17 @@
-#include <drivers/char/ps2.h>
-#include <drivers/char/keyboard.h>
+#include "include/ps2-hid.h"
 
-#include <x86_64/cpu/idt.h>
+#include <drivers/char/keyboard.h>
 #include <drivers/acpi/apic.h>
 #include <x86_64/dev/io.h>
 
 #include <assert.h>
 #include <kernelio.h>
 
+static volatile bool keyboard_inited = false;
+
 static const uint8_t SCANCODE_EXT = 0xe0;
 
-static uint8_t keycodes[128] = {
+static const uint8_t keycodes[128] = {
 	KEYCODE_RESERVED,
 	KEYCODE_ESCAPE,
 	KEYCODE_1,
@@ -100,7 +101,7 @@ static uint8_t keycodes[128] = {
 	KEYCODE_F12
 };
 
-static uint8_t ext_keycodes[128] = {
+static const uint8_t ext_keycodes[128] = {
     [0x1C] = KEYCODE_KEYPADENTER,
 	[0x1D] = KEYCODE_RCTRL, 
 	[0x35] = KEYCODE_KEYPADSLASH,
@@ -148,12 +149,17 @@ static void keyboard_isr(struct cpu_context* __unused) {
     keyboard_event(&keyboard, event);
 }
 
-void ps2_keyboard_init(void) {
+int ps2_keyboard_init(void) {
+    if(!__sync_bool_compare_and_swap(&keyboard_inited, false, true))
+        return 0;
+
     struct isr* isr = interrupt_allocate(keyboard_isr, apic_send_eoi, IPL_KEYBOARD);
     assert(isr);
     io_apic_register_interrupt(KEYBOARD_INTERRUPT, isr->id & 0xff, _cpu()->id, false);
     keyboard_init(&keyboard);
     keyboard_register(&keyboard);
     klog(INFO, "PS/2 keyboard interrupt enabled with vector %lu", isr->id & 0xff);
+    return 0;
 }
+
 

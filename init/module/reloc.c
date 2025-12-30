@@ -1,6 +1,7 @@
 #include <encoding/elf.h>
 #include <init/module.h>
 
+#include <memory.h>
 #include <errno.h>
 #include <kernelio.h>
 
@@ -94,7 +95,10 @@ static int apply_reloc(struct kmodule_mapping *map, const Elf64_Shdr *shdr, cons
         case R_X86_64_64: {
             // symbol + offset
             uint64_t *ref = (uint64_t*)(base_addr + offset);
-            *ref = symval + *ref + rel->r_addend;
+            uint64_t reloc;
+            memcpy(&reloc, ref, sizeof(uint64_t));
+            reloc += symval + rel->r_addend;
+            memcpy(ref, &reloc, sizeof(uint64_t));
         } break;
         default:
             klog(ERROR, "Unsupported relocation type %zu.", ELF64_R_TYPE(rel->r_info));

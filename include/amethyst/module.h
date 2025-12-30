@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#if defined(_AMETHYST_KERNEL_SRC) || defined(_AMETHYST_MODULE_SRC)
+
 #define AMETHYST_MODINFO_SECTION ".modinfo"
 #define AMETHYST_MODINFO_MAGIC 0x8fa19753bc65cc91ull
 
@@ -34,6 +36,8 @@ struct amethyst_module_spec {
 #define _MODULE_REGISTER(...) \
     static __attribute__((section(AMETHYST_MODINFO_SECTION), used)) struct amethyst_module_spec __spec_##__LINE__ \
         = { .magic = AMETHYST_MODINFO_MAGIC, __VA_ARGS__ };
+
+#endif /* _AMETHYST_KERNEL_SRC || _AMETHYST_MODULE_SRC */
 
 #endif /* _AMETHYST_MODULE_H */
 

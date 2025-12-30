@@ -1,5 +1,5 @@
-#ifndef _AMETHYST_DRIVERS_CHAR_PS2_H
-#define _AMETHYST_DRIVERS_CHAR_PS2_H
+#ifndef _AMETHYST_PS2_HID_H
+#define _AMETHYST_PS2_HID_H
 
 #include <stdint.h>
 
@@ -57,12 +57,10 @@ enum ps2_config : uint8_t {
     PS2_CFG_TRANSLATION = 0x40
 };
 
-void ps2_init(void);
-void ps2_keyboard_init(void);
-void ps2_mouse_init(void);
+int ps2_keyboard_init(void);
+int ps2_mouse_init(void);
 
 bool ps2_identify(uint8_t port, uint8_t identity[2]);
 bool ps2_device_write_ok(uint8_t port, uint8_t rate);
 
-#endif /* _AMETHYST_DRIVERS_CHAR_PS2_H */
-
+#endif /* _AMETHYST_PS2_HID_H */

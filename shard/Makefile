@@ -257,6 +257,6 @@ clean-gcboehm: clean
 	rm -rf $(GCBOEHM_SRC_DIR) $(GCBOEHM_TAR)
 
 .PHONY: clean-libffi
-clean-libff: clean
+clean-libffi: clean
 	rm -rf $(LIBFFI_SRC_DIR) $(LIBFFI_TAR)
 

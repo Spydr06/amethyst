@@ -8,11 +8,14 @@ lib.mkSystemConfig {
     };
 
     extraModules = with pkgs.modules; [
+        pkgs.ps2-hid
         pkgs.test
     ];
 
     kernel."amethyst-default" = {
-        package = pkgs.amethyst-kernel;
+        package = pkgs.amethyst-kernel.override {
+            optlevel = 2;
+        };
 
         arguments = [ "loglevel=info" ];       
     };
