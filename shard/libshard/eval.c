@@ -176,7 +176,7 @@ static inline struct shard_value eval_path(volatile struct shard_evaluator* e, s
             }
 
             if(!e->ctx->realpath(current_path, tmpbuf))
-                shard_eval_throw(e, expr->loc, "could not resolve relative path");
+                shard_eval_throw(e, expr->loc, "could not resolve relative path [%s]", current_path);
 
             e->ctx->free(current_path);
 
@@ -496,6 +496,11 @@ static inline struct shard_value eval_multiplication(volatile struct shard_evalu
 }
 
 struct shard_value shard_eval_division(volatile struct shard_evaluator* e, struct shard_value left, struct shard_value right, struct shard_location* loc) {
+    if((right.type == SHARD_VAL_INT && right.integer == 0)
+        || (left.type == SHARD_VAL_INT && right.type == SHARD_VAL_FLOAT && right.floating == 0.0)) {
+        shard_eval_throw(e, *loc, "`/`: division by zero");
+    }
+
     ARITH_OP_INT_FLT(/)
 }
 
@@ -1024,6 +1029,18 @@ int shard_eval_lazy(struct shard_context* ctx, struct shard_lazy_value* value) {
         value->eval = eval(&e, value->lazy);
         value->evaluated = true;
     }
+
+    evaluator_free(&e);
+
+    return ctx->errors.count;
+}
+
+SHARD_DECL int shard_serialize(struct shard_context* ctx, struct shard_string* dest, struct shard_value value) {
+    jmp_buf exception;
+    volatile struct shard_evaluator e;
+    evaluator_init(&e, ctx, &exception);
+
+    shard_serialize2(&e, dest, value);
 
     evaluator_free(&e);
 

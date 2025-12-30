@@ -1,0 +1,18 @@
+{ lib, pkgs, stdenv, config ? {}, ... }:
+lib.mkCollection rec {
+    name = "modules";
+    version = "0.0.1";
+
+    providePkgs = with builtins; let
+        modulePath = "${pkgs.amethyst-source}/source/modules";
+        modulePkgs = map (x: import $ stdenv.assertExists $ toPath "${modulePath}/${x}/module.shard")
+            $ attrNames
+            $ filterAttrs (x: t: t == "directory" && x != "." && x != "..")
+            $ stdenv.readDir modulePath;
+
+        unresolvedPkgs = mpkgs: let
+            allPkgs = setAttr name mpkgs pkgs;
+        in builtins.foldl (lib.callPackageWith allPkgs) {} modulePkgs;
+    in lib.fix unresolvedPkgs;
+}
+

@@ -1,7 +1,7 @@
 #ifndef _AMETHYST_MEM_VMM_H
 #define _AMETHYST_MEM_VMM_H
 
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 #include <mem/slab.h>
 #include <mem/mmap.h>
 #include <mem/pmm.h>
@@ -102,6 +102,8 @@ void vmm_switch_context(struct vmm_context* context);
 
 void* vmm_map(void* addr, size_t size, enum vmm_flags flags, enum mmu_flags mmu_flags, void* private);
 void vmm_unmap(void* addr, size_t size, enum vmm_flags flags);
+
+int vmm_change_mmu_flags(void* addr, size_t size, enum mmu_flags mmu_flags, enum vmm_flags flags);
 
 struct vmm_space* vmm_get_space(void* addr);
 struct vmm_range* vmm_get_range(struct vmm_space* space, void* addr);

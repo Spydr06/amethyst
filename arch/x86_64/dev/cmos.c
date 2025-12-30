@@ -1,8 +1,10 @@
 #include <x86_64/dev/cmos.h>
 
 #include <x86_64/dev/io.h>
-#include <x86_64/cpu/acpi.h>
 #include <x86_64/cpu/cpu.h>
+
+#include <drivers/acpi/acpi.h>
+#include <drivers/acpi/tables.h>
 
 #include <kernelio.h>
 #include <stdint.h>
@@ -13,7 +15,7 @@
     #error "_CMOS_YEAR undefined"
 #endif
 
-static_assert(offsetof(struct FADT, century) == 108);
+static_assert(offsetof(struct fadt, century) == 108);
 
 static uint8_t rtc_century_register = 0;
 
@@ -28,7 +30,8 @@ static __always_inline uint8_t rtc_read_register(uint8_t reg) {
 }
 
 void cmos_init(void) {
-    struct FADT* fadt = acpi_get_fadt();
+    struct sdt_header* header = acpi_find_table("FACP");
+    struct fadt* fadt = (struct fadt*) header;
     if(fadt)
         rtc_century_register = fadt->century;
     

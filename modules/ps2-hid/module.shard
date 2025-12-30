@@ -1,0 +1,15 @@
+{ lib, pkgs, ... }: 
+lib.mkKernelModule rec {
+    name = "ps2-hid";
+    version = "0.0.2";
+
+    license = "MIT";
+    description = "PS/2 input device driver";
+
+    exportHeaders = [
+        ./include/ps2-hid.h
+    ];
+
+    moduleSource = "${pkgs.amethyst-source}/source/modules/${name}";
+}
+

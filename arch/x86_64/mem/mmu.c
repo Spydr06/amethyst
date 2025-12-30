@@ -11,8 +11,10 @@
 #include <x86_64/cpu/cpu.h>
 #include <x86_64/cpu/idt.h>
 #include <x86_64/cpu/smp.h>
-#include <x86_64/dev/apic.h>
+#include <drivers/acpi/apic.h>
 #include <x86_64/dev/pic.h>
+
+#include <limine.h>
 
 #include <assert.h>
 #include <kernelio.h>
@@ -327,7 +329,7 @@ void mmu_invalidate_range(void* vaddr, size_t size) {
     }
 }
 
-void mmu_tlb_shootdown(void *page __attribute__((unused))) {
+void mmu_tlb_shootdown(void *page) {
     struct proc* proc = current_proc();
     if(!proc || smp_cpus_awake == 1)
         return;

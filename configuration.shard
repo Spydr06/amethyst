@@ -7,14 +7,27 @@ lib.mkSystemConfig {
 
     };
 
+    extraModules = with pkgs.modules; [
+        pkgs.ps2-hid
+        # pkgs.test
+    ];
+
     kernel."amethyst-default" = {
-        package = pkgs.amethyst-kernel;
+        package = pkgs.amethyst-kernel.override {
+            optlevel = 2;
+        };
 
         arguments = [ "loglevel=info" ];       
     };
 
     kernel."amethyst-debug" = with pkgs; {
-        package = pkgs.amethyst-kernel.override { sanitize = [ "undefined" ]; };
+        package = pkgs.amethyst-kernel.override {
+            sanitize = [ "undefined" ]; 
+
+            defines = {
+                _SCHED_DEBUG = 1;
+            };
+        };
 
         arguments = [ "loglevel=debug" "log-syscalls" ];
     };
@@ -24,9 +37,12 @@ lib.mkSystemConfig {
     systemPackages = with pkgs; [
         initsys
         musl
+        shard
     ];
 
     systemArch = "x86_64";
     systemVersion = builtins.trim $ stdenv.readFile "${pkgs.amethyst-source}/source/version";
+
+    /* foo */
 }
 

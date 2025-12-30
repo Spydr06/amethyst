@@ -49,3 +49,5 @@ __syscall syscallret_t _sys_sysinfo(struct cpu_context*, struct sysinfo* u_sysin
     ret.ret = 0;
     return ret;
 }
+
+_SYSCALL_REGISTER(SYS_sysinfo, _sys_sysinfo, "sysinfo", "%p");

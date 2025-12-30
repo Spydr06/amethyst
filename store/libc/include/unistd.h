@@ -10,6 +10,10 @@
 extern "C" {
 #endif
 
+#define STDIN_FILENO  0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+
 #define O_RDONLY    00
 #define O_WRONLY    01
 #define O_RDWR      02
@@ -34,6 +38,9 @@ int access(const char *path, int amode);
 int brk(void* addr);
 void* sbrk(intptr_t increment);
 
+int dup(int oldfd);
+int dup2(int oldfd, int newfd);
+
 int execve(const char *pathname, char *const argv[], char *const envp[]);
 
 int execl(const char *pathname, const char *arg, ...);
@@ -51,12 +58,17 @@ int close(int fd);
 ssize_t read(int fd, void* buf, size_t count);
 ssize_t write(int fd, const void* buf, size_t size);
 
+off_t lseek(int fd, off_t offset, int whence);
+
 _Noreturn void _exit(int status);
 
 // include <sys/syscalls.h> for syscall numbers
 long syscall(long number, ...);
 
 char *getcwd(char *buf, size_t size);
+
+int chdir(const char* pathname);
+int fchdir(int fd);
 
 pid_t getpid(void);
 

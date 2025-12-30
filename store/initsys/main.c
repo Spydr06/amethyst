@@ -1,4 +1,5 @@
-#define _AMETHYST_SOURCE
+#include "initsys.h"
+
 #include <errno.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -11,11 +12,15 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <getopt.h>
+#include <sys/time.h>
+
+#include <libshard.h>
+#include <shard_libc_driver.h>
 #include <fcntl.h>
 
 #define DEFAULT_CONFIGURATION_PATH "/bin/configuration.shard"
 
-static char shell_bin[] = "/bin/shard-sh";
+static char shell_bin[] = "/bin/shard";
 
 int draw_logo_to_fb(int fb, int scale);
 
@@ -58,8 +63,9 @@ void umount_target(struct target* target) {
 }
 
 static struct option long_options[] = {
-    { "loglevel", required_argument, NULL, 'l' },
-    { "help",     no_argument,       NULL, 'h' },
+    { "loglevel",    required_argument, NULL, 'l' },
+    { "module-list", required_argument, NULL, 'm'},
+    { "help",        no_argument,       NULL, 'h' },
     { NULL, 0, NULL, 0 },
 };
 
@@ -72,6 +78,7 @@ static void help(void) {
     usage(stdout); 
     
     printf("Options:\n"
+        "-m, --module-list <path>   Set the module list path\n"
         "-l, --loglevel <num>   Set the log level to <num>\n"
         "-h, --help             Display this help text and exit\n"
     );
@@ -81,10 +88,13 @@ int main(int argc, char** argv) {
     int c;
     progname = argv[0];
 
+    const char *module_list_path = DEFAULT_MODULE_LIST;
     while((c = getopt_long(argc, argv, "l:h", long_options, NULL)) != EOF) {
         switch(c) {
             case 'h':
                 help();
+            case 'm':
+                module_list_path = optarg;
             case '?':
                 break;
             default:
@@ -103,7 +113,7 @@ int main(int argc, char** argv) {
 
     pid_t pid = getpid();
     if(pid != 1) {
-        fprintf(stderr, "%s: not running as pid 1", argv[0]);
+        fprintf(stderr, "%s: not running as pid 1 [%d]", argv[0], pid);
         return EXIT_FAILURE;
     }
 
@@ -116,6 +126,8 @@ int main(int argc, char** argv) {
     
     int fb = open("/dev/fb0", O_WRONLY, 0);
     if(!fb) {
+        fprintf(stderr, "/dev/fb0: open() failed: %m\n");
+        return EXIT_FAILURE;
         fprintf(stdout, "/dev/fb0: open() failed: %m\n");
         return 1;
     }
@@ -124,12 +136,28 @@ int main(int argc, char** argv) {
 
     close(fb);
 
+    struct shard_context ctx;
+    shard_context_default(&ctx);
+
+    int err = shard_init(&ctx);
+    if(err) {
+        fprintf(stderr, "%s: error initializing libshard: %s\n", argv[0], strerror(err));
+        return EXIT_FAILURE;
 /*    DIR* dir = opendir("/");
     if(!dir) {
         fprintf(stderr, "/: opendir() failed: %m\n");
         return 1;
     }
 
+    // load modules:
+    if((err = load_kernel_modules(&ctx, module_list_path))) {
+        fprintf(stderr, "%s: failed loading modules specified in `%s`: %s\n", argv[0], module_list_path, strerror(err));
+        fflush(stderr);
+    }
+
+    shard_deinit(&ctx);
+
+    execv(shell_bin, (char* const[]){shell_bin, NULL});
     struct dirent* ent;
 
     int i = 0;
@@ -170,5 +198,7 @@ int main(int argc, char** argv) {
 
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         umount_target(mount_targets + i);
+
+    return EXIT_FAILURE;
 }
 

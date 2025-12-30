@@ -69,7 +69,7 @@ int copy_file(const char *src_path, const char *dst_path) {
     if(!fd_in)
         return errno;
 
-    int fd_out = open(dst_path, O_WRONLY | O_CREAT, _stat.st_mode & 0777);
+    int fd_out = open(dst_path, O_WRONLY | O_CREAT | O_TRUNC, _stat.st_mode & 0777);
     if(!fd_out) {
         close(fd_in);
         return errno;

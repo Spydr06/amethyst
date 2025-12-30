@@ -1,9 +1,12 @@
+#include "sys/mutex.h"
 #include <mem/vmm.h>
 #include <mem/pmm.h>
 #include <mem/slab.h>
 #include <mem/page.h>
 
-#include <filesystem/virtual.h>
+#include <limine.h>
+
+#include <filesystem/vfs.h>
 #include <sys/proc.h>
 #include <sys/thread.h>
 
@@ -137,7 +140,7 @@ struct vmm_context* vmm_context_fork(struct vmm_context* old) {
 
     memcpy(&new->brk, &old->brk, sizeof(struct brk));
 
-    mutex_acquire(&new->space.lock, false);
+    mutex_acquire(&new->space.lock);
 
     struct vmm_range* range = old->space.ranges;
     while(range) {
@@ -204,7 +207,7 @@ void* vmm_map(void* addr, size_t size, enum vmm_flags flags, enum mmu_flags mmu_
     if(!space)
         return nullptr;
 
-    mutex_acquire(&space->lock, false);
+    mutex_acquire(&space->lock);
     struct vmm_range* range = nullptr;
 
     void* start = get_free_range(space, addr, size);
@@ -293,11 +296,36 @@ void vmm_unmap(void* addr, size_t size, enum vmm_flags flags) {
     if(!space)
         return;
 
-    mutex_acquire(&space->lock, false);
+    mutex_acquire(&space->lock);
     change_map(space, addr, size, false, flags, 0);
     mmu_invalidate_range(addr, size);
     change_map(space, addr, size, true, flags, 0);
     mutex_release(&space->lock);
+}
+
+int vmm_change_mmu_flags(void* addr, size_t size, enum mmu_flags mmu_flags, enum vmm_flags flags) {
+    addr = (void*) ROUND_DOWN((uintptr_t) addr, PAGE_SIZE);
+    
+    if(flags & VMM_FLAGS_PAGESIZE)
+        size *= PAGE_SIZE;
+    else
+        size = ROUND_UP(size, PAGE_SIZE);
+
+    if(!size)
+        return 0;
+
+    struct vmm_space* space = vmm_get_space(addr);
+    if(!space)
+        return ENOMEM;
+
+    mutex_acquire(&space->lock);
+
+    int err = change_map(space, addr, size, false, flags, mmu_flags);
+    mmu_invalidate_range(addr, size);
+
+    mutex_release(&space->lock);
+
+    return err;
 }
 
 static struct vmm_cache* new_cache(void) {
@@ -396,7 +424,7 @@ static void destroy_range(struct vmm_range* range, uintmax_t start_offset, size_
 
         /*struct thread* thread = current_thread();
         struct proc* proc = current_proc();
-        struct cred* cred = proc ? &proc->cred : nullptr;*/
+        struct amethyst_cred* cred = proc ? &proc->cred : nullptr;*/
 
         // TODO: vfs caching if range->flags & VM_FLAGS_FILE and range is cacheable!
         
@@ -412,7 +440,7 @@ static void destroy_range(struct vmm_range* range, uintmax_t start_offset, size_
 
 static void free_range(struct vmm_range* range) {
     struct vmm_cache* cache = (struct vmm_cache*) ROUND_DOWN((uintptr_t) range, PAGE_SIZE);
-    mutex_acquire(&cache->header.lock, false);
+    mutex_acquire(&cache->header.lock);
 
     uintptr_t range_offset = ((uintptr_t) range - (uintptr_t) cache->ranges) / sizeof(struct vmm_range);
     range->size = 0;
@@ -428,7 +456,7 @@ static struct vmm_range* alloc_range(void) {
     struct vmm_range* range = nullptr;
 
     while(cache) {
-        mutex_acquire(&cache->header.lock, false);
+        mutex_acquire(&cache->header.lock);
         if(cache->header.free_count > 0) {
             cache->header.free_count--;
             uintmax_t r = get_entry_number(cache);

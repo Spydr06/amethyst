@@ -8,3 +8,4 @@ __syscall syscallret_t _sys_exit(struct cpu_context* __unused, int exit_code) {
     unreachable();
 }
 
+_SYSCALL_REGISTER(SYS_exit, _sys_exit, "exit", "%ld");

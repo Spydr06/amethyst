@@ -2,7 +2,7 @@
 
 #include <sys/proc.h>
 #include <sys/fd.h>
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 #include <mem/user.h>
 #include <mem/heap.h>
 
@@ -83,7 +83,7 @@ retry:
         goto cleanup;
 
     if(vnode->type == V_TYPE_REGULAR && (flags & O_TRUNC) && (flags & FILE_WRITE)) {
-        mutex_acquire(&vnode->size_lock, false);
+        mutex_acquire(&vnode->size_lock);
         vop_lock(vnode);
 
         ret._errno = vop_resize(vnode, 0, &current_proc()->cred);
@@ -108,6 +108,9 @@ cleanup:
         vop_release(&vnode);
     }
 
+    if(ref)
+        vop_release(&ref);
+
     if(new_file && ret._errno)
         assert(fd_close(new_fd) == 0);
 
@@ -117,3 +120,4 @@ cleanup:
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_open, _sys_open, "open", "%p, %lx, %lx");

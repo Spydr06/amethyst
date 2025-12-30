@@ -76,7 +76,9 @@ struct dirent *readdir(DIR *dir) {
 
 
 void rewinddir(DIR *dir) {
+    lseek(dir->fd, 0, SEEK_SET);
     dir->read_offset = 0l; 
+    dir->buffer_size = 0lu;
     dir->eod = false;
 }
 

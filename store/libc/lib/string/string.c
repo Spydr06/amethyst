@@ -2,6 +2,8 @@
 #include <string.h>
 
 #include <stdbool.h>
+#include <errno.h>
+#include <stdlib.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Winfinite-recursion"
@@ -118,3 +120,18 @@ size_t strlen(const char* s) {
     return l;
 }
 
+char *strdup(const char *s) {
+    if(!s) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    size_t l = strlen(s);
+    char *d = malloc((l + 1) * sizeof(char));
+    if(!d)
+        return NULL;
+
+    memcpy(d, s, (l + 1) * sizeof(char));
+
+    return d;
+}

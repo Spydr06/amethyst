@@ -1,13 +1,15 @@
 #ifndef _AMETHYST_SYS_SPINLOCK_H
 #define _AMETHYST_SYS_SPINLOCK_H
 
-typedef bool spinlock_t;
+typedef volatile bool spinlock_t;
 
-#define spinlock_init(x) ((x) = 0)
+#define SPINLOCK_INIT ((spinlock_t) false)
+
+#define spinlock_init(x) ((x) = SPINLOCK_INIT)
 
 static inline void spinlock_acquire(spinlock_t* lock) {
     while(!__sync_bool_compare_and_swap(lock, false, true))
-        __asm__("pause");
+        __asm__ volatile ("pause");
 }
 
 static inline bool spinlock_try(spinlock_t* lock) {

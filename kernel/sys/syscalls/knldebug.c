@@ -49,3 +49,4 @@ extern __syscall syscallret_t _sys_knldebug(struct cpu_context* __unused, enum k
     };
 }
 
+_SYSCALL_REGISTER(SYS_knldebug, _sys_knldebug, "knldebug", "%ld, %p, %ld");

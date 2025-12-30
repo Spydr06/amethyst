@@ -55,3 +55,5 @@ __syscall syscallret_t _sys_brk(struct cpu_context* __unused, void* addr) {
     ret._errno = 0;
     return ret;
 }
+
+_SYSCALL_REGISTER(SYS_brk, _sys_brk, "brk", "%p");

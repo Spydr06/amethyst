@@ -19,6 +19,10 @@ rec {
             _ :: string => geode.file.exists $ builtins.toPath file
         );
 
+    assertExists = file :: path | string: if fileExists file
+        then file
+        else builtins.throw "Assertion failed: `${file}` does not exist.";
+
     removeFile = file :: path | string: if fileExists file 
         then (case file of
                 _ :: path => geode.file.removeFile file;
@@ -73,6 +77,13 @@ rec {
                 _ => x + if xn == "" then "" else ".${xn}"
             );
         in removeLast $ builtins.split "." file;
+
+    stripPrefix = file :: string: let
+            xs = builtins.splitFirst (builtins.toString systemPrefix) file;
+        in (case builtins.length xs of
+            2 => builtins.elemAt xs 1;
+            _ => file
+        );
 
     systemPrefix = geode.prefix; 
 

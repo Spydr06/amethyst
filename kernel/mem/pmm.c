@@ -12,7 +12,7 @@
 
 #include <limine.h>
 
-static struct bitmap physical;
+static bitmap_t physical;
 static spinlock_t pmm_lock;
 
 static hashtable_t refcounts;

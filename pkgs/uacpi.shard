@@ -1,0 +1,12 @@
+{ lib, stdenv, config ? {}, ... }:
+lib.mkDerivation rec {
+    name = "uacpi";
+    version = "3.0.0";
+
+    fetchUrl = "https://github.com/${name}/${name}/archive/refs/tags/${version}.tar.gz";
+    sourceDir = lib.fetchTarball fetchUrl;
+
+    fetchPhase = lib.requireFile sourceDir;
+
+
+}

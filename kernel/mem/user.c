@@ -43,7 +43,7 @@ int memcpy_to_user(void* user_dest, const void* kernel_src, size_t size) {
         .size = size
     };
 
-    if(is_userspace_addr(user_dest) == false)
+    if(!is_userspace_addr(user_dest))
         return EFAULT;
 
     return _context_save_and_call(_memcpy, nullptr, &desc);
@@ -72,7 +72,8 @@ int user_strlen(const char* user_str, size_t* size) {
         .size = size
     };
 
-    // TODO: check if `user_str` is really a user address
+    if(!is_userspace_addr(user_str))
+        return EFAULT;
     
     return _context_save_and_call(_strlen, nullptr, &desc);
 }

@@ -241,8 +241,16 @@ static inline bool is_ident_char(char c) {
     return isalnum(c) || c == '_' || c == '-';
 }
 
+bool shard_is_valid_identifier(const char *ident) {
+    for(size_t i = 0; ident[i]; i++)
+        if(!is_ident_char(ident[i]))
+            return false;
+
+    return true;
+}
+
 static int is_path_terminator(int c) {
-    return isspace(c) || c == ';' || c == ',' || c == ')' || c == ']' || c == '}';
+    return c == EOF || isspace(c) || c == ';' || c == ',' || c == ')' || c == ']' || c == '}';
 }
 
 static int lex_ident(struct shard_lexer* l, struct shard_token* token) {
@@ -395,11 +403,11 @@ static int lex_string(struct shard_lexer* l, struct shard_token* token, int (*is
             }
             break;
         case '\n':
-            ERR_TOK(token, l, "unterminated string literal before newline");
+            ERR_TOK(token, l, is_path ? "unterminated path literal before newline" : "unterminated string literal before newline");
             break;
         case EOF:
             dynarr_free(l->ctx, &str);
-            ERR_TOK(token, l, "unterminated string literal");
+            ERR_TOK(token, l, is_path ? "unterminated path literal" : "unterminated string literal");
             return EINVAL;
         }
 
@@ -502,7 +510,7 @@ static int pop_interpolation(struct shard_lexer* l, struct shard_token* token) {
         return lex_string(l, token, top.is_end_quote, top.is_path);
 }
 
-static void skip_whitesapce(struct shard_lexer* l) {
+static void skip_whitespace(struct shard_lexer* l) {
     while(isspace(peek_char(l)))
         next_char(l);
 }
@@ -512,7 +520,7 @@ int shard_lex(struct shard_lexer* l, struct shard_token* token) {
         return pop_interpolation(l, token);
 
 repeat:
-    skip_whitesapce(l);
+    skip_whitespace(l);
 
     switch(peek_char(l)) {
         case EOF:

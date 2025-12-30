@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <cdefs.h>
 
-#include <limine.h>
+struct limine_memmap_response;
 
 struct mmap {
     struct limine_memmap_response* map;

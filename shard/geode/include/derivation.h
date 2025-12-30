@@ -48,6 +48,7 @@ struct geode_derivation {
 
     uint8_t hash[16];
     const char *prefix;
+    const char *lockfile;
 
     struct geode_builder builder;
 };

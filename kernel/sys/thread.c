@@ -1,4 +1,3 @@
-#include "kernelio.h"
 #include <sys/thread.h>
 #include <sys/proc.h>
 
