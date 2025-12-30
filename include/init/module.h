@@ -1,7 +1,8 @@
 #ifndef _AMETHYST_INIT_MODULE_H
 #define _AMETHYST_INIT_MODULE_H
 
-#include "sys/spinlock.h"
+#include <sys/spinlock.h>
+#include <sys/thread.h>
 #include <amethyst/module.h>
 
 #include <encoding/elf.h>
@@ -24,6 +25,7 @@ struct kmodule {
     spinlock_t lock;
     volatile bool initialized;
 
+    struct thread *thread;
     const struct amethyst_module_spec *spec;
     struct kmodule_mapping *mapping;
 };

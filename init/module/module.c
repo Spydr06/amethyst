@@ -1,9 +1,11 @@
+#include "sys/thread.h"
 #include <init/module.h>
 #include <amethyst/module.h>
 
 #include <encoding/elf.h>
 #include <hashtable.h>
 #include <sys/spinlock.h>
+#include <sys/scheduler.h>
 #include <mem/heap.h>
 #include <mem/slab.h>
 
@@ -132,7 +134,20 @@ static Elf64_Half find_section(const struct kmodule_mapping *map, const char *na
     return 0;
 }
 
-static int kmodule_init(struct kmodule *kmod, size_t argc, char **args) {
+static void kmodule_thread_call(struct kmodule *kmod, size_t argc, char **args) {
+    assert(kmod != nullptr);
+
+    int ret = kmod->spec->main_func(argc, (const char **)args);
+    if(ret != 0) {
+        klog(INFO, "%s::main() returned with exit code '%d'.", kmod->spec->name, ret);
+        kmod->initialized = false;
+    }
+
+    spinlock_release(&kmod->lock);
+    sched_thread_exit();
+}
+
+static int kmodule_init(struct kmodule *kmod, size_t argc, char **args, enum amethyst_module_flags flags) {
     spinlock_acquire(&kmod->lock);
 
     int err = 0;
@@ -142,11 +157,23 @@ static int kmodule_init(struct kmodule *kmod, size_t argc, char **args) {
     klog(INFO, "Loaded kernel module '%s' [v%s, %s License]...",
         kmod->spec->name, kmod->spec->version, kmod->spec->license);
 
-    int ret = kmod->spec->main_func(argc, (const char **)args);
-    if(ret != 0) {
-        klog(INFO, "%s::main() returned with exit code '%d'.", kmod->spec->name, ret);
-        err = EINVAL;
-        goto cleanup;
+    if(flags & AMETHYST_MODULE_INIT_NONBLOCKING) {
+        if(!(kmod->thread = 
+            thread_create(kmodule_thread_call, PAGE_SIZE * 4, 0, nullptr, nullptr))) {
+            err = ENOMEM;
+            return 0;
+        }
+        CPU_ARG0(&kmod->thread->context) = (uintptr_t) kmod;
+        sched_queue(kmod->thread);
+        return 0; // keep kmod locked
+    }
+    else {
+        int ret = kmod->spec->main_func(argc, (const char **)args);
+        if (ret != 0) {
+            klog(INFO, "%s::main() returned with exit code '%d'.", kmod->spec->name, ret);
+            err = EINVAL;
+            goto cleanup;
+        }
     }
 
 cleanup:
@@ -156,7 +183,7 @@ cleanup:
     return 0;
 }
 
-int kmodule_load(struct vnode *node, size_t argc, char **args, enum amethyst_module_flags flags __unused) {
+int kmodule_load(struct vnode *node, size_t argc, char **args, enum amethyst_module_flags flags) {
     int err;
     if((err = init_module_table()))
         return err;
@@ -264,7 +291,7 @@ int kmodule_load(struct vnode *node, size_t argc, char **args, enum amethyst_mod
 
         spinlock_release(&module_table_lock);
 
-        if((err = kmodule_init(kmod, argc, args))) {
+        if((err = kmodule_init(kmod, argc, args, kmod->spec->flags | flags))) {
             slab_free(kmodule_scache, kmod);
             goto cleanup;
         }

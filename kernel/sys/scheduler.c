@@ -489,7 +489,7 @@ static void sched_proc_exit(void) {
     PROC_RELEASE(proc);
 }
 
-static __noreturn void sched_thread_exit(void) {
+__noreturn void sched_thread_exit(void) {
     struct thread* thread = current_thread();
     assert(thread);
 

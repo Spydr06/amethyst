@@ -346,6 +346,7 @@ static void ps2_deinit(void) {
 _MODULE_REGISTER(
     _MODULE_INFO("ps2-hid", "MIT", "0.0.2", "PS/2 Input Device Driver"),
     .main_func = ps2_init,
-    .cleanup_func = ps2_deinit
+    .cleanup_func = ps2_deinit,
+    .flags = AMETHYST_MODULE_INIT_NONBLOCKING
 )
 

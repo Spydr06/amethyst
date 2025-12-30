@@ -4335,6 +4335,8 @@ enum
 
 #include <mem/vmm.h>
 
+struct limine_kernel_file_response;
+
 typedef struct {
     Elf64_auxv_t phdr;
     Elf64_auxv_t phnum;

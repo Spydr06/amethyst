@@ -14,6 +14,8 @@
 #include <drivers/acpi/apic.h>
 #include <x86_64/dev/pic.h>
 
+#include <limine.h>
+
 #include <assert.h>
 #include <kernelio.h>
 #include <stdint.h>

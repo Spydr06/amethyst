@@ -8,12 +8,13 @@
 #define AMETHYST_MODINFO_SECTION ".modinfo"
 #define AMETHYST_MODINFO_MAGIC 0x8fa19753bc65cc91ull
 
+enum amethyst_module_flags {
+    AMETHYST_MODULE_DEFAULT_FLAGS    = 0,
+    AMETHYST_MODULE_INIT_NONBLOCKING = 0x01
+};
+
 typedef int (*module_main_t)(int argc, const char **argv);
 typedef void (*module_cleanup_t)(void);
-
-enum amethyst_module_flags : uint32_t {
-    MODULE_DEFAULT_FLAGS = 0
-};
 
 struct amethyst_module_spec {
     uint64_t magic;

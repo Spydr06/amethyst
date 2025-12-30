@@ -4,6 +4,8 @@
 #include <mem/slab.h>
 #include <mem/page.h>
 
+#include <limine.h>
+
 #include <filesystem/vfs.h>
 #include <sys/proc.h>
 #include <sys/thread.h>
