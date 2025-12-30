@@ -143,10 +143,6 @@ int main(int argc, char** argv) {
     if(err) {
         fprintf(stderr, "%s: error initializing libshard: %s\n", argv[0], strerror(err));
         return EXIT_FAILURE;
-/*    DIR* dir = opendir("/");
-    if(!dir) {
-        fprintf(stderr, "/: opendir() failed: %m\n");
-        return 1;
     }
 
     // load modules:
@@ -156,37 +152,6 @@ int main(int argc, char** argv) {
     }
 
     shard_deinit(&ctx);
-
-    execv(shell_bin, (char* const[]){shell_bin, NULL});
-    struct dirent* ent;
-
-    int i = 0;
-    while((ent = readdir(dir))) {
-        printf(" %d) \"%s\"\n", i++, ent->d_name);
-    }
-
-    closedir(dir);
-
-    int err = execv(shell_bin, (char* const[]){shell_bin, NULL});
-
-    fprintf(stderr, "%s: error executing %s: %s\n", argv[0], shell_bin, strerror(errno));
-
-    pid = fork();
-    if(pid == 0) {
-        struct timespec ts = {.tv_nsec = 10000000, .tv_sec = 0};
-        nanosleep(&ts, NULL);
-        printf("fork you!\n");
-
-        ts.tv_nsec = 0;
-        ts.tv_sec = 1;
-        nanosleep(&ts, NULL);
-        printf("goodbye\n");
-
- //       while(1);
-        exit(1);
-    }
-
-    printf("forked pid %d\n", pid); */
 
     char buffer[100];
     while(1) {

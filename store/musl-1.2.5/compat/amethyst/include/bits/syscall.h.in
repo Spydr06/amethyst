@@ -13,7 +13,7 @@
 #define __NR_poll				(7 + __SYS_invalid)
 //#define __NR_lseek			SYS_lseek
 //#define __NR_mmap				SYS_mmap
-#define __NR_mprotect		    (10 + __SYS_invalid)
+//#define __NR_mprotect		    (10 + __SYS_invalid)
 //#define __NR_munmap				SYS_munmap
 //#define __NR_brk				SYS_brk
 #define __NR_rt_sigaction		(13 + __SYS_invalid)
@@ -35,8 +35,8 @@
 #define __NR_shmget				(29 + __SYS_invalid)
 #define __NR_shmat				(30 + __SYS_invalid)
 #define __NR_shmctl			    (31 + __SYS_invalid)
-#define __NR_dup				(32 + __SYS_invalid)
-#define __NR_dup2				(33 + __SYS_invalid)
+//#define __NR_dup				(32 + __SYS_invalid)
+//#define __NR_dup2				(33 + __SYS_invalid)
 #define __NR_pause				(34 + __SYS_invalid)
 //#define __NR_nanosleep			SYS_nanosleep
 #define __NR_getitimer			(36 + __SYS_invalid)
@@ -83,8 +83,8 @@
 #define __NR_ftruncate			(77 + __SYS_invalid)
 //#define __NR_getdents			SYS_getdents
 //#define __NR_getcwd			SYS_getcwd
-#define __NR_chdir				(80 + __SYS_invalid)
-#define __NR_fchdir				(81 + __SYS_invalid)
+//#define __NR_chdir				(80 + __SYS_invalid)
+//#define __NR_fchdir				(81 + __SYS_invalid)
 #define __NR_rename				(82 + __SYS_invalid)
 //#define __NR_mkdir				SYS_mkdir
 #define __NR_rmdir				(84 + __SYS_invalid)
@@ -99,7 +99,7 @@
 #define __NR_fchown				(93 + __SYS_invalid)
 #define __NR_lchown				(94 + __SYS_invalid)
 #define __NR_umask				(95 + __SYS_invalid)
-#define __NR_gettimeofday		(96 + __SYS_invalid)
+//#define __NR_gettimeofday		(96 + __SYS_invalid)
 #define __NR_getrlimit			(97 + __SYS_invalid)
 #define __NR_getrusage			(98 + __SYS_invalid)
 //#define __NR_sysinfo			SYS_sysinfo
@@ -178,7 +178,7 @@
 #define __NR_iopl					(172 + __SYS_invalid)
 #define __NR_ioperm					(173 + __SYS_invalid)
 #define __NR_create_module			(174 + __SYS_invalid)
-#define __NR_init_module			(175 + __SYS_invalid)
+//#define __NR_init_module			(175 + __SYS_invalid)
 #define __NR_delete_module			(176 + __SYS_invalid)
 #define __NR_get_kernel_syms		(177 + __SYS_invalid)
 #define __NR_query_module			(178 + __SYS_invalid)
@@ -315,7 +315,7 @@
 #define __NR_process_vm_readv			(310 + __SYS_invalid)
 #define __NR_process_vm_writev			(311 + __SYS_invalid)
 #define __NR_kcmp				(312 + __SYS_invalid)
-#define __NR_finit_module			(313 + __SYS_invalid)
+//#define __NR_finit_module			(313 + __SYS_invalid)
 #define __NR_sched_setattr			(314 + __SYS_invalid)
 #define __NR_sched_getattr			(315 + __SYS_invalid)
 #define __NR_renameat2				(316 + __SYS_invalid)

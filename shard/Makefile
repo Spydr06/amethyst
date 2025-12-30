@@ -241,8 +241,8 @@ install-shell: $(SHELL_BIN)
 
 .PHONY: install-libc-driver
 install-libc-driver: $(LIBC_DRIVER)
-	install -m "644" $(LIBC_DRIVER) $(PREFIX)/lib/$(notdir $(LIBC_DIRVER))
-	install -m "644" $(LIBC_DRIVER_HEADER) $(PREFIX)/include/$(notdir $(LIBC_DRIVER_HEADER))
+	install -m "644" $(LIBC_DRIVER) $(PREFIX)/usr/lib/$(notdir $(LIBC_DIRVER))
+	install -m "644" $(LIBC_DRIVER_HEADER) $(PREFIX)/usr/include/$(notdir $(LIBC_DRIVER_HEADER))
 
 .PHONY: clean-all
 clean-all: clean clean-gcboehm clean-libffi

@@ -11,13 +11,13 @@ lib.mkPackage rec {
 
     env = {
         PREFIX = builtins.toString lib.prefix;
-        CFLAGS = "-specs=${lib.prefix}/lib/gcc/cross-libc.specs -D_SHARD_NO_FFI -D_SHARD_NO_LIBEDIT -g";
-        LDFLAGS = "-static -specs=${lib.prefix}/lib/gcc/cross-libc.specs -l:libgetopt.a";
+        CFLAGS = "-specs=${lib.prefix}/usr/lib/musl-gcc.specs -D_SHARD_NO_FFI -D_SHARD_NO_LIBEDIT -g";
+        LDFLAGS = "-static -specs=${lib.prefix}/usr/lib/musl-gcc.specs";
     };
 
     buildDependencies = with pkgs; [
-        libc
-        getopt
+        musl
+        #getopt
         libshard
     ];
 
