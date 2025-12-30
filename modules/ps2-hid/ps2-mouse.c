@@ -1,4 +1,5 @@
 #include "include/ps2-hid.h"
+#include "sys/spinlock.h"
 
 #include <drivers/char/mouse.h>
 #include <drivers/acpi/apic.h>
@@ -9,8 +10,9 @@
 
 static volatile bool mouse_inited = false;
 
-static uint8_t data_offset;
-static uint8_t data[4];
+static spinlock_t data_lock;
+static volatile uint8_t data_offset;
+static volatile uint8_t data[4];
 
 static bool has_wheel;
 static bool has_5buttons;
@@ -18,20 +20,25 @@ static bool has_5buttons;
 static struct mouse mouse;
 
 static inline bool received_all_data(void) {
-    return data_offset == 3 + (uint8_t) has_wheel;
+    return has_wheel ? data_offset == 4 : data_offset == 3;
 }
 
 static void mouse_isr(struct cpu_context* __unused) {
-    assert(data_offset < __len(data));
+    spinlock_acquire(&data_lock);
+
+    assert(data_offset < __len(data) - 1);
     data[data_offset++] = inb(PS2_PORT_DATA);
 
     if((data[0] & 8) == 0) {
         data_offset = 0;
+        spinlock_release(&data_lock);
         return;
     }
 
-    if(!received_all_data())
+    if(!received_all_data()) {
+        spinlock_release(&data_lock);
         return;
+    }
 
     data_offset = 0;
 
@@ -46,6 +53,8 @@ static void mouse_isr(struct cpu_context* __unused) {
     event.middle = !!(data[0] & 4);
     event.button4 = !!(data[3] & 0x10);
     event.button5 = !!(data[3] & 0x20);
+
+    spinlock_release(&data_lock);
 
     mouse_event(&mouse, event);
 }
@@ -69,6 +78,7 @@ int ps2_mouse_init(void) {
     if(__sync_bool_compare_and_swap(&mouse_inited, false, true))
         return 0;
 
+    spinlock_init(data_lock);
     uint8_t identity[2];
 
     if(ps2_mouse_identify(identity))

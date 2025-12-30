@@ -9,7 +9,7 @@ lib.mkSystemConfig {
 
     extraModules = with pkgs.modules; [
         pkgs.ps2-hid
-        pkgs.test
+        # pkgs.test
     ];
 
     kernel."amethyst-default" = {

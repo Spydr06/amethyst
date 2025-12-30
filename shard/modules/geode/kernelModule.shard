@@ -26,5 +26,8 @@ in {
         "BUILD_DIR=${buildDir}"
         "MODULE_TARGET=${moduleTarget}"
     ];
+
+    # TODO: implement exportHeaders
+    # installPhase = 
 }
 

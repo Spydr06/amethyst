@@ -164,6 +164,8 @@ static int kmodule_init(struct kmodule *kmod, size_t argc, char **args, enum ame
             return 0;
         }
         CPU_ARG0(&kmod->thread->context) = (uintptr_t) kmod;
+        CPU_ARG1(&kmod->thread->context) = (uintptr_t) argc;
+        CPU_ARG2(&kmod->thread->context) = (uintptr_t) args;
         sched_queue(kmod->thread);
         return 0; // keep kmod locked
     }

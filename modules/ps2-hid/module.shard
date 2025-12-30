@@ -6,6 +6,10 @@ lib.mkKernelModule rec {
     license = "MIT";
     description = "PS/2 input device driver";
 
+    exportHeaders = [
+        ./include/ps2-hid.h
+    ];
+
     moduleSource = "${pkgs.amethyst-source}/source/modules/${name}";
 }
 
