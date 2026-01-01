@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <kernelio.h>
 #include <memory.h>
+#include <string.h>
 
 extern const struct syscall_entry _STATIC_SYSCALLS_START_[];
 extern const struct syscall_entry _STATIC_SYSCALLS_END_[];
@@ -39,31 +40,21 @@ static void populate_syscall_table(void) {
         return;
 
     spinlock_init(syscall_table_lock);
-    spinlock_acquire(&syscall_table_lock);
 
-    const struct syscall_entry* static_cur = _STATIC_SYSCALLS_START_;
-    const struct syscall_entry* static_end = _STATIC_SYSCALLS_END_;
+    int err = syscall_register_section(_STATIC_SYSCALLS_START_, _STATIC_SYSCALLS_END_);
+    if(err) {
+        panic("Could not register syscalls: %s", strerror(err));
+    }
+}
 
-    size_t i;
-    for(i = 0; static_cur < static_end; static_cur++, i++) {
-        assert(static_cur->syscall && "invalid syscall_entry in .static_syscalls section");
-        syscallnum_t number = static_cur->number;
-
-        assert(number < SYS_MAXIMUM && "syscall entry has invalid number");
-
-        struct syscall_entry *entry = syscall_table + number;
-        if(entry->syscall) {
-            spinlock_release(&syscall_table_lock);
-            panic("Duplicate syscall `%u`: Tried to register `%s`, but `%s` already exists.",
-                number, static_cur->name, entry->name);
-        }
-
-        memcpy(entry, static_cur, sizeof(struct syscall_entry));
+int syscall_register_section(const void *start, const void *end) {
+    for(; start < end; start += sizeof(struct syscall_entry)) {
+        int err = syscall_register(start);
+        if(err)
+            return err;
     }
 
-    spinlock_release(&syscall_table_lock);
-
-    klog(DEBUG, "Registered %zu system calls.", i);
+    return 0;
 }
 
 bool syscalls_init(void)

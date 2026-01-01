@@ -1,12 +1,15 @@
 #ifndef _AMETHYST_MODULE_H
 #define _AMETHYST_MODULE_H
 
-#include <stdint.h>
-
 #if defined(_AMETHYST_KERNEL_SRC) || defined(_AMETHYST_MODULE_SRC)
+
+#include <stdint.h>
+#include <cdefs.h>
 
 #define AMETHYST_MODINFO_SECTION ".modinfo"
 #define AMETHYST_MODINFO_MAGIC 0x8fa19753bc65cc91ull
+
+#define AMETHYST_EXPORT_SECTION ".export"
 
 enum amethyst_module_flags {
     AMETHYST_MODULE_DEFAULT_FLAGS    = 0,
@@ -37,6 +40,15 @@ struct amethyst_module_spec {
 #define _MODULE_REGISTER(...) \
     static __attribute__((section(AMETHYST_MODINFO_SECTION), used)) struct amethyst_module_spec __spec_##__LINE__ \
         = { .magic = AMETHYST_MODINFO_MAGIC, __VA_ARGS__ };
+
+struct amethyst_module_export {
+    const char *name;
+    uintptr_t addr;
+};
+
+#define _MODULE_EXPORT(_symbol) \
+    static __attribute__((section(AMETHYST_EXPORT_SECTION), used)) struct amethyst_module_export __export_##__LINE__ \
+        = { .name = __quote(_symbol), .addr = (uintptr_t)(_symbol) };
 
 #endif /* _AMETHYST_KERNEL_SRC || _AMETHYST_MODULE_SRC */
 

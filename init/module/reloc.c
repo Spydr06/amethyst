@@ -33,13 +33,16 @@ static int resolve_symbol(struct kmodule_mapping *map, uintptr_t *symval, Elf64_
 
             const char *name = ((const char*) map->sections[symtab->sh_link]) + symbol->st_name;
             const Elf64_Sym *target = kernel_resolve_symbol(name);
-            if(!target) {
-                klog(ERROR, "Undefined Symbol '%s'.", name);
-                return EINVAL;
+            if(target) {
+                *symval = target->st_value;
+                break;
             }
 
-            // klog(INFO, "'%s' found at %p.", name, (void*) target->st_value);
-            *symval = target->st_value;
+            if((*symval = kmodule_lookup_exported_symbol(name)))
+                break;
+
+            klog(ERROR, "Undefined Symbol '%s'.", name);
+            return EINVAL;
         } break;
         case SHN_ABS: // absolute symbol
             // klog(INFO, "absolute symbol at %p.", symbol->st_value);

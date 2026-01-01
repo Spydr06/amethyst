@@ -43,6 +43,8 @@ struct syscall_entry {
 bool syscalls_init(void);
 
 int syscall_register(const struct syscall_entry *entry);
+int syscall_register_section(const void *start, const void *end);
+
 const struct syscall_entry *syscall_get(syscallnum_t number);
 
 const char* _syscall_get_name(size_t i);

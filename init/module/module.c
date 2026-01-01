@@ -1,6 +1,6 @@
-#include "sys/thread.h"
 #include <init/module.h>
 #include <amethyst/module.h>
+#include <amethyst/syscall.h>
 
 #include <encoding/elf.h>
 #include <hashtable.h>
@@ -233,7 +233,6 @@ int kmodule_load(struct vnode *node, size_t argc, char **args, enum amethyst_mod
         }
     }
 
-
     Elf64_Half modinfo_idx = find_section(map, AMETHYST_MODINFO_SECTION);
     if(!modinfo_idx) {
         klog(ERROR, "Module file does not contain section '%s'.", AMETHYST_MODINFO_SECTION);
@@ -245,6 +244,16 @@ int kmodule_load(struct vnode *node, size_t argc, char **args, enum amethyst_mod
         klog(ERROR, "Module file has empty '%s' section.", AMETHYST_MODINFO_SECTION);
         err = EINVAL;
         goto cleanup;
+    }
+
+    Elf64_Half syscall_idx = find_section(map, AMETHYST_SYSCALL_SECTION);
+    if(syscall_idx) {
+        const Elf64_Shdr *shdr = &map->shdrs[syscall_idx];
+        const void *section = (const void*) map->sections[syscall_idx];
+        if((err = syscall_register_section(section, section + shdr->sh_size))) {
+            klog(ERROR, "Could not register system calls from section '%s': %s", AMETHYST_SYSCALL_SECTION, strerror(err));
+            goto cleanup;
+        }
     }
 
     size_t spec_memsize = ROUND_UP(sizeof(struct amethyst_module_spec), _Alignof(struct amethyst_module_spec));
@@ -326,4 +335,33 @@ const struct kmodule *kmodule_query(const char *name) {
 
     spinlock_release(&module_table_lock);
     return module;
+}
+
+// TODO: reduce iterations in lookup function
+uintptr_t kmodule_lookup_exported_symbol(const char *name) {
+    spinlock_acquire(&module_table_lock);
+
+    uintptr_t addr = 0;
+    HASHTABLE_FOREACH(&module_table, e) {
+        const struct kmodule_mapping* map = ((struct kmodule*) e->value)->mapping;
+        Elf64_Half export_idx = find_section(map, AMETHYST_EXPORT_SECTION);
+        if(!export_idx)
+            continue;
+        
+        const Elf64_Shdr *export_shdr = map->shdrs + export_idx;
+        for(size_t i = 0; i < export_shdr->sh_size / sizeof(struct amethyst_module_export); i++) {
+            const struct amethyst_module_export *export = ((struct amethyst_module_export*) map->sections[export_idx]) + i;
+            if(!export->name)
+                continue;
+
+            if(strcmp(name, export->name) == 0) {
+                addr = export->addr;
+                goto cleanup;
+            }
+        }
+    }
+
+cleanup:
+    spinlock_release(&module_table_lock);
+    return addr;
 }

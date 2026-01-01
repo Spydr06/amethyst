@@ -59,7 +59,7 @@ enum mmu_flags elf_shdr_to_mmu_flags(uintmax_t s_flags) {
     return mmu_flags;
 }
 
-static int load(struct vnode* node, Elf64_Phdr* phdr, void** brk) {
+static int load(struct vnode* node, const Elf64_Phdr* phdr, void** brk) {
     int err = 0;
 
     uintptr_t mem_address = phdr->p_vaddr;
@@ -161,13 +161,14 @@ int elf_load(struct vnode* node, void* base, void** entry, char** interpreter, E
     if(!elf_validate_ehdr(&header, ET_EXEC))
         return ENOEXEC;
 
+    memset(auxv, 0, sizeof(Elf64_auxv_list_t));
+
     auxv->null.a_type = AT_NULL;
     auxv->phdr.a_type = AT_PHDR;
     auxv->phnum.a_type = AT_PHNUM;
     auxv->phent.a_type = AT_PHENT;
     auxv->entry.a_type = AT_ENTRY;
 
-    auxv->phnum.a_un.a_val = header.e_phnum;
     auxv->phent.a_un.a_val = header.e_phentsize;
     auxv->entry.a_un.a_val = header.e_entry;
 
@@ -176,7 +177,7 @@ int elf_load(struct vnode* node, void* base, void** entry, char** interpreter, E
     assert(header.e_phentsize == sizeof(Elf64_Phdr));
 
     size_t phtable_size = header.e_phentsize * header.e_phnum;
-    Elf64_Phdr* phdrs = kmalloc(phtable_size);
+    void* phdrs = kmalloc(phtable_size);
     if(!phdrs)
         return ENOMEM;
 
@@ -186,23 +187,25 @@ int elf_load(struct vnode* node, void* base, void** entry, char** interpreter, E
     Elf64_Phdr* interpreter_phdr = nullptr;
 
     for(size_t i = 0; i < header.e_phnum; i++) {
-        phdrs[i].p_vaddr += (uintptr_t) base;
+        Elf64_Phdr *phdr = phdrs + i * header.e_phentsize;
+        phdr->p_vaddr += (uintptr_t) base;
 
-        klog(DEBUG, "phdr %zu: %d @ %p (%Zu)", i, phdrs[i].p_type, (void*) phdrs[i].p_vaddr, phdrs[i].p_memsz);
+        klog(DEBUG, "phdr %zu: %d @ %p (%Zu)", i, phdr->p_type, (void*) phdr->p_vaddr, phdr->p_memsz);
         
-        switch(phdrs[i].p_type) {
+        switch(phdr->p_type) {
             case PT_INTERP:
-                interpreter_phdr = phdrs + i;
+                interpreter_phdr = phdr;
                 break;
             case PT_PHDR:
-                auxv->phdr.a_un.a_val = phdrs[i].p_vaddr;
+                auxv->phnum.a_un.a_val = header.e_phnum;
+                auxv->phdr.a_un.a_val = phdr->p_vaddr;
                 break;
             case PT_LOAD:
-                if((err = load(node, phdrs + i, brk)))
+                if((err = load(node, phdr, brk)))
                     goto cleanup;
                 break;
             default:
-                klog(WARN, "ignored ELF program header %zx (type %d)", i, phdrs[i].p_type);
+                klog(WARN, "ignored ELF program header %zx (type %d)", i, phdr->p_type);
                 break;
         }
     }

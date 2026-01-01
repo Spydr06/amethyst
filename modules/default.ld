@@ -21,14 +21,18 @@ SECTIONS
 
     .syscalls : ALIGN(0x8)
     {
-        __syscalls_start__ = .;
         KEEP(*(.static_syscalls))
-        __syscalls_end__ = .;
     }
 
     .modinfo : ALIGN(0x8)
     {
-        *(.modinfo) 
+        KEEP(*(.modinfo))
+    }
+
+    .export : ALIGN(0x8)
+    {
+        KEEP(*(.export))
+        KEEP(*(.export.*))
     }
 
     .bss : ALIGN(0x1000)

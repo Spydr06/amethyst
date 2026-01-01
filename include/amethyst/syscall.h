@@ -1,6 +1,8 @@
 #ifndef _AMETHYST_SYSCALL_H
 #define _AMETHYST_SYSCALL_H
 
+#define AMETHYST_SYSCALL_SECTION ".syscall"
+
 // Syscall list for the amethyst kernel
 
 #define SYS_read            0

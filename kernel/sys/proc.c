@@ -89,7 +89,7 @@ struct proc* proc_create(void) {
     }
     mutex_release(&pid_table_mutex);
 
-    klog(WARN, "proc [pid %d] is at %p", proc->pid, proc);
+    // klog(WARN, "proc [pid %d] is at %p", proc->pid, proc);
 
     return proc;
 }
@@ -97,7 +97,7 @@ struct proc* proc_create(void) {
 void proc_delete(struct proc* proc) {
     assert(proc->ref_count == 0);
 
-    klog(WARN, "deleting proc [pid %d] at %p", proc->pid, proc);
+    // klog(WARN, "deleting proc [pid %d] at %p", proc->pid, proc);
 
     mutex_acquire(&pid_table_mutex);
     hashtable_remove(&pid_table, &proc->pid, sizeof(pid_t));

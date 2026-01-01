@@ -41,6 +41,8 @@
 
 #define __either(a, b) ((a) ? (a) : (b))
 
+#define __quote(a) #a
+
 #ifndef ASM_FILE
 
 extern char _KERNEL_BASE_[];

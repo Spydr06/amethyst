@@ -111,7 +111,7 @@ struct vmm_context* vmm_context_new(void) {
     
     memset(&ctx->brk, 0, sizeof(struct brk));
 
-    klog(WARN, "created VMM context at %p", ctx);
+    klog(DEBUG, "created VMM context at %p", ctx);
 
     return ctx;
 }
@@ -120,7 +120,7 @@ void vmm_context_destroy(struct vmm_context* context) {
     if(!context)
         return;
 
-    klog(WARN, "deleting VMM context at %p", context);
+    klog(DEBUG, "deleting VMM context at %p", context);
 
     struct vmm_context* old_ctx = current_vmm_context();
     vmm_switch_context(context);

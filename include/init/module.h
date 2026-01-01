@@ -41,6 +41,7 @@ int kmodule_reloc_section(struct kmodule_mapping *map, Elf64_Half sh_idx);
 void kmodule_unload_section(struct kmodule_mapping *map, Elf64_Half sh_idx);
 
 const struct kmodule *kmodule_query(const char *name);
+uintptr_t kmodule_lookup_exported_symbol(const char *name);
 
 static inline void kmodule_mapping_hold(struct kmodule_mapping *map) {
     __atomic_add_fetch(&map->refcount, 1, __ATOMIC_SEQ_CST);
