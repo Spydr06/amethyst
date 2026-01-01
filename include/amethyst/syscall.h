@@ -25,6 +25,7 @@
 #define SYS_dup             32
 #define SYS_dup2            33
 #define SYS_getpid          39
+#define SYS_gettid          40
 #define SYS_fork            57
 #define SYS_execve          59
 #define SYS_exit            60
@@ -37,6 +38,7 @@
 #define SYS_sysinfo         99
 #define SYS_init_module     100
 #define SYS_finit_module    101
+#define SYS_arch_prctl      158
 #define SYS_knldebug        255
 
 #define __SYS_invalid       1000

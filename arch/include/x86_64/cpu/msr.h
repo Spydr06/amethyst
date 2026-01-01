@@ -15,7 +15,7 @@ enum msr_register : uint32_t {
     MSR_KERNELGSBASE = 0xC0000102
 };
 
-static __always_inline uint64_t rdmsr(enum msr_register which) {
+static inline uint64_t rdmsr(enum msr_register which) {
     uint64_t low, high;
     __asm__ volatile(
         "rdmsr"
@@ -25,7 +25,7 @@ static __always_inline uint64_t rdmsr(enum msr_register which) {
     return (high << 32) | low;
 }
 
-static __always_inline void wrmsr(enum msr_register which, uint64_t value) {
+static inline void wrmsr(enum msr_register which, uint64_t value) {
     uint32_t low = value & 0xffffffff,
              high = (value >> 32) & 0xffffffff;
     __asm__ volatile(

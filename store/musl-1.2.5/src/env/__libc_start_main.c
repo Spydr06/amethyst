@@ -37,11 +37,11 @@ void __init_libc(char **envp, char *pn)
 	for (i=0; pn[i]; i++) if (pn[i]=='/') __progname = pn+i+1;
 
     // FIXME: no auxv information passed from the kernel atm.
-	//__init_tls(aux);
-	//__init_ssp((void *)aux[AT_RANDOM]);
+	__init_tls(aux);
+	__init_ssp((void *)aux[AT_RANDOM]);
 
-	//if (aux[AT_UID]==aux[AT_EUID] && aux[AT_GID]==aux[AT_EGID]
-	//	&& !aux[AT_SECURE]) return;
+	if (aux[AT_UID]==aux[AT_EUID] && aux[AT_GID]==aux[AT_EGID]
+		&& !aux[AT_SECURE]) return;
 
 	struct pollfd pfd[3] = { {.fd=0}, {.fd=1}, {.fd=2} };
 	int r =

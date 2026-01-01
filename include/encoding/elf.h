@@ -4342,6 +4342,9 @@ typedef struct {
     Elf64_auxv_t phnum;
     Elf64_auxv_t phent;
     Elf64_auxv_t entry;
+    Elf64_auxv_t execfn;
+    Elf64_auxv_t secure;
+    Elf64_auxv_t pagesz;
     Elf64_auxv_t null;
 } Elf64_auxv_list_t;
 
