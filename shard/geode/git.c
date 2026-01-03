@@ -106,14 +106,15 @@ struct shard_value builtin_git_checkoutBranch(volatile struct shard_evaluator* e
         goto cleanup;
     }
 
-    struct git_strarray refspecs = {
-        .strings = NULL,
-        .count = 1
-    };
 
     assert(!"unimplemented!");
 
-    /*struct git_checkout_options opts = GIT_CHECKOUT_OPTIONS_INIT;
+    /*struct git_strarray refspecs = {
+        .strings = NULL,
+        .count = 1
+    };
+    
+    struct git_checkout_options opts = GIT_CHECKOUT_OPTIONS_INIT;
     opts.checkout_strategy = GIT_CHECKOUT_SAFE;
 
     if((err = git_checkout_tree(repo, tree, &opts))) {
@@ -121,9 +122,7 @@ struct shard_value builtin_git_checkoutBranch(volatile struct shard_evaluator* e
         goto cleanup_tree;
     }*/
 
-cleanup_remote:
     git_remote_free(remote);
-cleanup_repo:
     git_repository_free(repo);
 cleanup:
     if(ex)

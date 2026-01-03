@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include <ff/psf.h>
+#include <encoding/psf.h>
 
 #define VGACON_COLORED (1 << 0)
 #define VGACON_DEFAULT_OPTS (VGACON_COLORED)

@@ -5,6 +5,12 @@ LIBSHARD_DIR := libshard
 GEODE_DIR := geode
 SHELL_DIR := shell
 
+LIBFFI_TAR_LINK ?= https://github.com/libffi/libffi/releases/download/v3.4.5/libffi-3.4.5.tar.gz
+LIBFFI_TAR := $(shell basename $(LIBFFI_TAR_LINK))
+LIBFFI_SRC_DIR := $(patsubst %.tar.gz, %, $(LIBFFI_TAR))
+
+LIBFFI_LIB := $(BUILD_DIR)/libffi.a
+
 LIBATOMIC_OPS_TAR_LINK ?= https://www.hboehm.info/gc/gc_source/libatomic_ops-7.8.0.tar.gz
 LIBATOMIC_OPS_TAR := $(shell basename $(LIBATOMIC_OPS_TAR_LINK))
 LIBATOMIC_OPS_SRC_DIR := $(patsubst %.tar.gz, %, $(LIBATOMIC_OPS_TAR))
@@ -50,6 +56,7 @@ SHELL_LDFLAGS := -ledit
 
 LIBC_DRIVER := $(BUILD_DIR)/shard_libc_driver.o
 LIBC_DRIVER_SOURCE := shard_libc_driver.c
+LIBC_DRIVER_HEADER := shard_libc_driver.h
 
 AR ?= ar
 RANLIB ?= ranlib
@@ -65,7 +72,19 @@ override CFLAGS := $(call unique, $(CFLAGS))
 
 ifneq (,$(findstring SHARD_USE_GCBOEHM, $(CFLAGS)))
 	LIBSHARD_OBJECTS += $(GCBOEHM_LIB)
+	GCBOEHM_INCLUDE_DIR := $(GCBOEHM_SRC_DIR)
 	override CFLAGS += -I$(GCBOEHM_SRC_DIR)/include
+endif
+
+ifneq (,$(findstring SHARD_ENABLE_FFI, $(CFLAGS)))
+	LIBSHARD_OBJECTS += $(LIBFFI_LIB)
+	override CFLAGS += -I$(LIBFFI_SRC_DIR)/x86_64-pc-linux-gnu/include
+endif
+
+override BIN_LDFLAGS := 
+
+ifeq (,$(findstring _SHARD_NO_LIBEDIT, $(CFLAGS)))
+	override BIN_LDFLAGS += -ledit	
 endif
 
 .PHONY: all
@@ -93,8 +112,8 @@ $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
 
 $(SHARD_BIN): $(SHARDBIN_OBJECTS) $(LIBSHARD_OBJ) $(LIBC_DRIVER)
-	@echo "  LD    $@"
-	@$(CC) $(LDFLAGS) -o $@ $^ -ledit
+	@echo "  CCLD  $@"
+	@$(CC) -o $@ $^ $(LDFLAGS) $(BIN_LDFLAGS) 
 
 $(LIBSHARD): $(LIBSHARD_OBJ)
 	@echo "  AR    $@"	
@@ -117,7 +136,7 @@ $(LIBSHARD_OBJ): $(LIBSHARD_OBJECTS) | $(BUILD_DIR)
 	@echo "  LD    $@"
 	@$(LD) -r $^ -o $@
 
-$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR) $(GCBOEHM_INCLUDE_DIR)
 	@echo "  CC    $^"
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) \
@@ -129,6 +148,29 @@ $(BUILD_DIR)/%.o: %.S | $(BUILD_DIR)
 	@echo "  AS    $^"
 	@mkdir -p $(dir $@)
 	@$(AS) $(ASFLAGS) $^ -o $@
+
+.PHONY: libffi
+libffi: $(LIBFFI_LIB)
+
+$(LIBFFI_LIB): $(LIBFFI_SRC_DIR)/Makefile | $(BUILD_DIR)
+	$(MAKE) -C $(LIBFFI_SRC_DIR)
+	cp -rv $(shell find -name 'libffi.a') $@
+
+$(LIBFFI_SRC_DIR)/Makefile: $(LIBFFI_SRC_DIR)
+	@echo "  PUSHD $(LIBFFI_SRC_DIR)"		&& \
+		pushd $(LIBFFI_SRC_DIR)				&& \
+		echo "Configuring libffi..."		&& \
+		CC=$(CC) CXX=$(CXX)					&& \
+		./configure --enable-static=yes --enable-shared=no --disable-docs	&& \
+		echo "Configuring libffi done."
+
+$(LIBFFI_SRC_DIR): $(LIBFFI_TAR)
+	@echo "  TAR   $^"
+	@tar xf $^ -C $(dir $(LIBFFI_SRC_DIR))
+
+$(LIBFFI_TAR):
+	@echo "  WGET  $@"
+	@wget $(LIBFFI_TAR_LINK) -O $@
 
 .PHONY: gcboehm
 gcboehm: $(GCBOEHM_LIB)
@@ -197,6 +239,14 @@ install-bin: $(SHARD_BIN)
 install-shell: $(SHELL_BIN)
 	install -m "777" $(SHELL_BIN) $(PREFIX)/bin/$(notdir $(SHELL_BIN))
 
+.PHONY: install-libc-dirver
+install-libc-driver: $(LIBC_DRIVER)
+	install -m "644" $(LIBC_DRIVER) $(PREFIX)/lib/$(notdir $(LIBC_DIRVER))
+	install -m "644" $(LIBC_DRIVER_HEADER) $(PREFIX)/include/$(notdir $(LIBC_DRIVER_HEADER))
+
+.PHONY: clean-all
+clean-all: clean clean-gcboehm clean-libffi
+
 .PHONY: clean
 clean:
 	rm -rf $(BUILD_DIR)
@@ -205,4 +255,8 @@ clean:
 clean-gcboehm: clean
 	rm -rf $(LIBATOMIC_OPS_SRC_DIR) $(LIBATOMIC_OPS_TAR)
 	rm -rf $(GCBOEHM_SRC_DIR) $(GCBOEHM_TAR)
+
+.PHONY: clean-libffi
+clean-libffi: clean
+	rm -rf $(LIBFFI_SRC_DIR) $(LIBFFI_TAR)
 

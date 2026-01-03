@@ -1,0 +1,4 @@
+with system.ffi; {
+    FILE = cVoid;
+}
+

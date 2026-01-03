@@ -207,6 +207,7 @@ static void bootstrap_monorepo(struct geode_context *context) {
 
     const char *version_filename = "./" VERSION_FILENAME;
     char *version_string = NULL;
+    char *version = NULL;
 
     if((err = (int) read_whole_file(&context->l_global, version_filename, &version_string)) < 0)
         geode_throw(context, geode_io_ex(context, -err, "Could not open `%s'", version_filename));
@@ -242,7 +243,7 @@ static void bootstrap_monorepo(struct geode_context *context) {
         goto cleanup_ref;
     }
 
-    char *version = l_sprintf(&context->l_global, "%s-%.7s", version_string, head_hash);
+    version = l_sprintf(&context->l_global, "%s-%.7s", version_string, head_hash);
 
     git_object_free(head_obj);
 cleanup_ref:

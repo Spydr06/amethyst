@@ -15,6 +15,13 @@
 #define CPU_RET(ctx) ((ctx)->rax)
 #define CPU_ERRNO(ctx) ((ctx)->_errno)
 
+#define CPU_ARG0(ctx) ((ctx)->rdi)
+#define CPU_ARG1(ctx) ((ctx)->rsi)
+#define CPU_ARG2(ctx) ((ctx)->rdx)
+#define CPU_ARG3(ctx) ((ctx)->rcx)
+#define CPU_ARG4(ctx) ((ctx)->r8)
+#define CPU_ARG5(ctx) ((ctx)->r9)
+
 #define CPU_CONTEXT_INTSTATUS(ctx) ((bool) ((ctx)->rflags & 0x200))
 
 #define CPU_CONTEXT_THREADSAVE(t, c) do {                                        \
@@ -159,11 +166,7 @@ static __always_inline void cpu_extra_ctx_init(struct cpu_extra_context* ctx) {
     ctx->fx[4] = 0;
 }
 
-static __always_inline
-#ifdef _AMETHYST_CPU_SYSCALLS_H
-    __no_caller_saved_registers __general_regs_only
-#endif
-bool cpu_ctx_is_user(struct cpu_context* ctx) {
+static inline bool cpu_ctx_is_user(struct cpu_context* ctx) {
     return ctx->cs == 0x23;
 }
 
@@ -183,6 +186,10 @@ struct cpu* _cpu(void) {
         : "=a"(cpu)
     );
     return cpu->this;
+}
+
+static inline struct cpu* _wcpu(void) {
+    return _cpu();
 }
 
 static __always_inline void hlt_until_int(void) {

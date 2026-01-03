@@ -5,6 +5,7 @@
 *.a
 *.iso
 *.kdev*
+*.ko
 
 .cache/
 .devinclude/
@@ -14,6 +15,10 @@
 build/
 compile_commands.json
 vgcore.*
+.devinclude/
 
 include/limine.h
+include/version.h
+
+tools/pci.ids
 

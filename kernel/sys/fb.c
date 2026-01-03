@@ -11,8 +11,8 @@
 #include <mem/user.h>
 #include <mem/pmm.h>
 
-#include <filesystem/device.h>
-#include <filesystem/virtual.h>
+#include <filesystem/devfs.h>
+#include <filesystem/vfs.h>
 #include <kernelio.h>
 #include <drivers/video/vga.h>
 

@@ -10,7 +10,7 @@
 #include <sys/thread.h>
 #include <cpu/cpu.h>
 
-#include <filesystem/virtual.h>
+#include <filesystem/vfs.h>
 
 #define PROC_HOLD(v) do {                                                   \
         int rc = __atomic_add_fetch(&(v)->ref_count, 1, __ATOMIC_SEQ_CST);  \
@@ -39,7 +39,7 @@ struct proc {
     enum proc_state state;
 
     pid_t pid;
-    struct cred cred;
+    struct amethyst_cred cred;
 
     size_t running_thread_count;
 
@@ -82,6 +82,8 @@ void proc_delete(struct proc*);
 
 struct vnode* proc_get_root(void);
 struct vnode* proc_get_cwd(void);
+
+void proc_set_cwd(struct vnode* cwd);
 
 size_t proc_count(void);
 

@@ -43,3 +43,4 @@ cleanup:
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_read, _sys_read, "read", "%d, %p, %zu");

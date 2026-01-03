@@ -1,13 +1,14 @@
-#include "drivers/char/keyboard.h"
 #include <cpu/cpu.h>
-#include <drivers/char/ps2.h>
+#include <drivers/char/keyboard.h>
+#include <drivers/pci/nvme.h>
 #include <drivers/pci/pci.h>
 #include <drivers/video/vga.h>
-#include <filesystem/device.h>
+#include <filesystem/devfs.h>
 #include <filesystem/initrd.h>
-#include <filesystem/temporary.h>
-#include <filesystem/virtual.h>
+#include <filesystem/tmpfs.h>
+#include <filesystem/vfs.h>
 #include <init/cmdline.h>
+#include <init/module.h>
 #include <io/pseudo_devices.h>
 #include <io/tty.h>
 #include <mem/heap.h>
@@ -68,12 +69,13 @@ void kmain(size_t cmdline_size, const char* cmdline)
 
     keyboard_driver_init();
 
-    ps2_init();
+//    ps2_init();
     fbdev_init();
     tty_init();
     create_ttys(); 
 
     pci_init(); 
+    nvme_init();
 
     greet();
     color_test();

@@ -5,9 +5,6 @@
 #include <limine.h>
 #include <cpu/cpu.h>
 
-void load_symtab(struct limine_kernel_file_response* response);
-const char* symtab_lookup(uintptr_t address);
-
 void dump_stack(void);
 void dump_registers(struct cpu_context* ctx);
 

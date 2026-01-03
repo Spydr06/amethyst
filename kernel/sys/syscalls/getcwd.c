@@ -43,3 +43,4 @@ cleanup:
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_getcwd, _sys_getcwd, "getcwd", "%p, %lx");

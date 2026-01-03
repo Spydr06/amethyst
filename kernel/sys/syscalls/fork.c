@@ -46,7 +46,7 @@ __syscall syscallret_t _sys_fork(struct cpu_context* ctx) {
     if((ret._errno = fd_clone(new_proc)))
         goto cleanup;
 
-    mutex_acquire(&proc->mutex, false);
+    mutex_acquire(&proc->mutex);
     
     new_proc->parent = proc;
     new_proc->sibling = proc->child;
@@ -78,4 +78,6 @@ __syscall syscallret_t _sys_fork(struct cpu_context* ctx) {
 cleanup:
     return ret;
 }
+
+_SYSCALL_REGISTER(SYS_fork, _sys_fork, "fork", "");
 

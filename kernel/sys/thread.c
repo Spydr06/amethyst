@@ -1,4 +1,3 @@
-#include "kernelio.h"
 #include <sys/thread.h>
 #include <sys/proc.h>
 
@@ -48,7 +47,7 @@ struct thread* thread_create(void* ip, size_t kernel_stack_size, int priority, s
     spinlock_init(thread->sleep_lock);
     spinlock_init(thread->signals.lock);
 
-    klog(WARN, "thread [tid %d] is at %p", thread->tid, thread);
+    // klog(WARN, "thread [tid %d] is at %p", thread->tid, thread);
 
     return thread;
 }
@@ -63,7 +62,7 @@ void thread_delete(struct thread* thread) {
     if(thread->proc)
         PROC_RELEASE(thread->proc);
 
-    klog(WARN, "deleting theread [tid %d] at %p", thread->tid, thread);
+    // klog(WARN, "deleting theread [tid %d] at %p", thread->tid, thread);
 
     slab_free(thread_cache, thread);
 }

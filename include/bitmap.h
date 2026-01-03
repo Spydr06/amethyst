@@ -18,6 +18,7 @@ struct bitmap {
     size_t mem_start;
 };
 
+typedef struct bitmap bitmap_t;
 typedef bool bit_t;
 
 bit_t bitmap_get(struct bitmap* bitmap, size_t block);

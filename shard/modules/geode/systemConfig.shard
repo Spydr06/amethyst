@@ -12,23 +12,35 @@ let
     version = config.version or "0.0.0";
     derivHeader = { name = "system"; inherit version; };
 
+    defaultModules = [];
+
+    systemModules = (config.overrideModules or defaultModules)
+        ++ (config.extraModules or []);
+
     patchKernelConfig = name: kconf: let
             kernelPkg = wrapKernelPkg name kconf.package;
 
             initrd = kconf.initrd or config.boot.initrd or {};
+
+            extraModules = kconf.extraModules or [];
 
             initrdFile = "/boot/${kernelPkg.publicName}-${kernelPkg.publicVersion}-${geode.architecture}.initrd";
             initrdPkg = (initrd.package or pkgs.initrd).override {
                     kernelVersion = kernelPkg.publicVersion;
                     kernelName = kernelPkg.publicName;
                     outputFile = initrdFile;
+
+                    extraPackages = let
+                            modules = systemModules ++ extraModules;
+                        in [ (pkgs.module-list.override { inherit modules; }) ] ++ modules;
                 };
 
             initrdEnabled = initrd.enable or false;
-
+            
             extraArguments = if initrdEnabled
                 then [ "initrd=${initrdFile}" "rootfs=tmpfs" ]
                 else [];
+
         in 
         {
             package = kernelPkg;
@@ -51,7 +63,7 @@ let
 
     kernelPkgs = builtins.mapAttrs getKernelPkg kernels;
 
-    initrdPkgs = builtins.mapAttrs getInitrdPkg kernels;
+    initrdPkgs = (builtins.mapAttrs getInitrdPkg kernels);
 
     bootloader = config.boot.loader or 
         $ extraPackages.limine or
@@ -93,9 +105,7 @@ let
             ];
         }
     ];
-
-in
-{
+in {
     inherit (derivHeader) name version;
 
     env = config.env or {};

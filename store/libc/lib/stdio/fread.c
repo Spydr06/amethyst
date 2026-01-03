@@ -6,7 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 
-size_t fread(void *restrict ptr, size_t nmemb, size_t size, FILE *restrict f) {
+size_t fread(void *restrict ptr, size_t size, size_t nmemb, FILE *restrict f) {
     unsigned char *dst = ptr;
     size_t len = size * nmemb;
     size_t l = len;

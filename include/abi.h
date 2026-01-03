@@ -3,10 +3,11 @@
 
 #include <stdint.h>
 
-#define KiB (1024ull)
-#define MiB (KiB * 1024ull)
-#define GiB (MiB * 1024ull)
-#define TiB (GiB * 1024ull)
+#define Byte (1ull)
+#define KiB (Byte << 10ull)
+#define MiB (KiB << 10ull)
+#define GiB (MiB << 10ull)
+#define TiB (GiB << 10ull)
 
 #define STACK_TOP        ((void*) 0x0000800000000000)
 #define INTERPRETER_BASE ((void*) 0x00000beef0000000)

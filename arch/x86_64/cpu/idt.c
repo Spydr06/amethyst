@@ -98,7 +98,9 @@ void interrupts_apinit(void) {
     _cpu()->ipl = IPL_NORMAL;
     
     _idt_reload(&idtr);
-    interrupt_set(true);
+
+    _interrupt_enable();
+    _cpu()->interrupt_status = true;
 
     load_default();
 }

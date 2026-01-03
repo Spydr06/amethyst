@@ -1,0 +1,39 @@
+with system.ffi; let
+    t = import ./types.shard;
+in
+{
+    isalnum = cFunc cInt [ cInt ];
+    isalpha = cFunc cInt [ cInt ];
+    isblank = cFunc cInt [ cInt ];
+    iscntrl = cFunc cInt [ cInt ];
+    isdigit = cFunc cInt [ cInt ];
+    isgraph = cFunc cInt [ cInt ];
+    islower = cFunc cInt [ cInt ];
+    isprint = cFunc cInt [ cInt ];
+    ispunct = cFunc cInt [ cInt ];
+    isspace = cFunc cInt [ cInt ];
+    isupper = cFunc cInt [ cInt ];
+    isxdigit = cFunc cInt [ cInt ];
+
+    tolower = cFunc cInt [ cInt ];
+    toupper = cFunc cInt [ cInt ];
+
+    remove = cFunc cInt [ (cPointer cChar) ];
+    rename = cFunc cInt [ (cPointer cChar) (cPointer cChar) ];
+
+    tmpfile = cFunc (cPointer t.FILE) [ ];
+    tmpnam = cFunc (cPointer cChar) [ (cPointer cChar) ];
+
+    fclose = cFunc cInt [ (cPointer t.FILE) ];
+    fflush = cFunc cInt [ (cPointer t.FILE) ];
+    fopen = cFunc (cPointer t.FILE) [ (cPointer cChar) (cPointer cChar) ];
+    freopen = cFunc (cPointer t.FILE) [ (cPointer cChar) (cPointer cChar) (cPointer t.FILE) ];
+
+    setbuf = cFunc cVoid [ (cPointer t.FILE) (cPointer cChar) ];
+    setvbuf = cFunc cInt [ (cPointer t.FILE) (cPointer cChar) cInt cSizeT ];
+
+    # fprintf
+    # fscanf
+
+    exit = cFunc cVoid [ cInt ];
+}

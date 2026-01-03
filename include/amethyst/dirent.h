@@ -1,7 +1,7 @@
 #ifndef _AMETHYST_DIRENT_H
 #define _AMETHYST_DIRENT_H
 
-#ifdef _AMETHYST_KERNEL_SRC
+#if defined(_AMETHYST_KERNEL_SRC) || defined(_AMETHYST_MODULE_SRC)
     #include <abi.h>
 #else
     #include <bits/alltypes.h>

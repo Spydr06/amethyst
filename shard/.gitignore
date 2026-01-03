@@ -3,3 +3,5 @@ gc-*
 libatomic_ops-*
 perf.data
 perf.data.*
+libffi-*
+

@@ -62,6 +62,12 @@ SECTIONS
     *(.padata)
     *(.data .data.*)
     *(.gnu.linkonce.d*)
+
+    . = ALIGN(0x08);
+    _STATIC_SYSCALLS_START_ = .;
+    KEEP(*(.static_syscalls))
+    _STATIC_SYSCALLS_END_ = .;
+
     _DATA_END_ = .;
   } :data
 

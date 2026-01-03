@@ -1,6 +1,6 @@
-#include "filesystem/virtual.h"
-#include "sys/proc.h"
+#include "amethyst/syscall.h"
 #include <sys/syscall.h>
+#include <sys/proc.h>
 
 #include <mem/heap.h>
 #include <mem/user.h>
@@ -124,3 +124,5 @@ cleanup:
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_mount, _sys_mount, "mount", "%p, %p, %p, %lx, %p");
+_SYSCALL_REGISTER(SYS_umount, _sys_umount, "umount", "%p");

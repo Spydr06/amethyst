@@ -1,4 +1,5 @@
-#define _AMETHYST_SOURCE
+#include "initsys.h"
+
 #include <errno.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -11,10 +12,14 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <getopt.h>
+#include <sys/time.h>
+
+#include <libshard.h>
+#include <shard_libc_driver.h>
 
 #define DEFAULT_CONFIGURATION_PATH "/bin/configuration.shard"
 
-static char shell_bin[] = "/bin/shard-sh";
+static char shell_bin[] = "/bin/shard";
 
 int draw_logo_to_fb(int fb, int scale);
 
@@ -51,8 +56,9 @@ void umount_target(struct target* target) {
 }
 
 static struct option long_options[] = {
-    { "loglevel", required_argument, NULL, 'l' },
-    { "help",     no_argument,       NULL, 'h' },
+    { "loglevel",    required_argument, NULL, 'l' },
+    { "module-list", required_argument, NULL, 'm'},
+    { "help",        no_argument,       NULL, 'h' },
     { NULL, 0, NULL, 0 },
 };
 
@@ -65,6 +71,7 @@ static void help(void) {
     usage(stdout); 
     
     printf("Options:\n"
+        "-m, --module-list <path>   Set the module list path\n"
         "-l, --loglevel <num>   Set the log level to <num>\n"
         "-h, --help             Display this help text and exit\n"
     );
@@ -73,10 +80,13 @@ static void help(void) {
 int main(int argc, char** argv) {
     int c;
 
+    const char *module_list_path = DEFAULT_MODULE_LIST;
     while((c = getopt_long(argc, argv, "l:h", long_options, NULL)) != EOF) {
         switch(c) {
             case 'h':
                 help();
+            case 'm':
+                module_list_path = optarg;
             case '?':
                 break;
             default:
@@ -95,7 +105,7 @@ int main(int argc, char** argv) {
 
     pid_t pid = getpid();
     if(pid != 1) {
-        fprintf(stderr, "%s: not running as pid 1", argv[0]);
+        fprintf(stderr, "%s: not running as pid 1 [%d]", argv[0], pid);
         return EXIT_FAILURE;
     }
 
@@ -107,59 +117,36 @@ int main(int argc, char** argv) {
     int fb = open("/dev/fb0", O_WRONLY, 0);
     if(!fb) {
         fprintf(stderr, "/dev/fb0: open() failed: %m\n");
-        return 1;
+        return EXIT_FAILURE;
     }
 
     draw_logo_to_fb(fb, 6);
 
     close(fb);
 
-    DIR* dir = opendir("/");
-    if(!dir) {
-        fprintf(stderr, "/: opendir() failed: %m\n");
-        return 1;
+    struct shard_context ctx;
+    shard_context_default(&ctx);
+
+    int err = shard_init(&ctx);
+    if(err) {
+        fprintf(stderr, "%s: error initializing libshard: %s\n", argv[0], strerror(err));
+        return EXIT_FAILURE;
     }
 
-    struct dirent* ent;
-
-    int i = 0;
-    while((ent = readdir(dir))) {
-        printf(" %d) \"%s\"\n", i++, ent->d_name);
+    // load modules:
+    if((err = load_kernel_modules(&ctx, module_list_path))) {
+        fprintf(stderr, "%s: failed loading modules specified in `%s`: %s\n", argv[0], module_list_path, strerror(err));
+        fflush(stderr);
     }
 
-    closedir(dir);
+    shard_deinit(&ctx);
 
-next:
-    int err = execv(shell_bin, (char* const[]){shell_bin, NULL});
-
+    execv(shell_bin, (char* const[]){shell_bin, NULL});
     fprintf(stderr, "%s: error executing %s: %s\n", argv[0], shell_bin, strerror(errno));
-
-    pid = fork();
-    if(pid == 0) {
-        struct timespec ts = {.tv_nsec = 10000000, .tv_sec = 0};
-        nanosleep(&ts, NULL);
-        printf("fork you!\n");
-
-        ts.tv_nsec = 0;
-        ts.tv_sec = 1;
-        nanosleep(&ts, NULL);
-        printf("goodbye\n");
-
- //       while(1);
-        exit(1);
-    }
-
-    printf("forked pid %d\n", pid);
-
-    char buffer[100];
-    while(1) {
-        printf("echo> ");
-        fflush(stdout);
-        fgets(buffer, sizeof(buffer), stdin);
-        puts(buffer);
-    }
 
     for(size_t i = 0; i < sizeof(mount_targets) / sizeof(struct target); i++)
         umount_target(mount_targets + i);
+
+    return EXIT_FAILURE;
 }
 

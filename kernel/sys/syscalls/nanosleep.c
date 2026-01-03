@@ -60,3 +60,4 @@ __syscall syscallret_t _sys_nanosleep(struct cpu_context*, const struct timespec
     return ret;
 }
 
+_SYSCALL_REGISTER(SYS_nanosleep, _sys_nanosleep, "nanosleep", "%p, %p");

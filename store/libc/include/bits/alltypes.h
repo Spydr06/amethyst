@@ -55,6 +55,11 @@ typedef unsigned int uint32_t;
 typedef unsigned _Int64 uint64_t;
 typedef unsigned _Int64 uintmax_t;
 
+typedef int32_t wchar_t;
+
+typedef unsigned wint_t;
+typedef unsigned long wctype_t;
+
 typedef int32_t pid_t;
 typedef int32_t tid_t;
 typedef int32_t gid_t;

@@ -23,6 +23,21 @@ static inline struct vnode* lock_vnode(struct proc* proc, struct vnode** vnode_p
     return vnode;
 }
 
+static inline void change_vnode(struct proc* proc, struct vnode** vnode_ptr, struct vnode* vnode_new) {
+    vop_hold(vnode_new);
+
+    bool int_status = interrupt_set(false);
+    spinlock_acquire(&proc->nodes_lock);
+
+    struct vnode* vnode_old = *vnode_ptr;
+    *vnode_ptr = vnode_new;
+
+    spinlock_release(&proc->nodes_lock);
+    interrupt_set(int_status);
+
+    vop_release(&vnode_old);
+}
+
 void proc_init(void) {
     proc_cache = slab_newcache(sizeof(struct proc), 0, nullptr, nullptr);
     assert(proc_cache);
@@ -45,7 +60,7 @@ struct proc* proc_create(void) {
     mutex_init(&proc->mutex);
     spinlock_init(proc->nodes_lock);
     
-    proc->pid = __atomic_fetch_add(&_current_pid, 1, __ATOMIC_SEQ_CST);
+    proc->pid = proc_new_pid();
 
     proc->ref_count = 1;
     proc->state = PROC_STATE_NORMAL;
@@ -65,7 +80,7 @@ struct proc* proc_create(void) {
     
     semaphore_init(&proc->wait_sem, 0);
 
-    mutex_acquire(&pid_table_mutex, false);
+    mutex_acquire(&pid_table_mutex);
     if(hashtable_set(&pid_table, proc, &proc->pid, sizeof(pid_t), true)) {
         mutex_release(&pid_table_mutex);
         kfree(proc->fd);
@@ -74,7 +89,7 @@ struct proc* proc_create(void) {
     }
     mutex_release(&pid_table_mutex);
 
-    klog(WARN, "proc [pid %d] is at %p", proc->pid, proc);
+    // klog(WARN, "proc [pid %d] is at %p", proc->pid, proc);
 
     return proc;
 }
@@ -82,9 +97,9 @@ struct proc* proc_create(void) {
 void proc_delete(struct proc* proc) {
     assert(proc->ref_count == 0);
 
-    klog(WARN, "deleting proc [pid %d] at %p", proc->pid, proc);
+    // klog(WARN, "deleting proc [pid %d] at %p", proc->pid, proc);
 
-    mutex_acquire(&pid_table_mutex, false);
+    mutex_acquire(&pid_table_mutex);
     hashtable_remove(&pid_table, &proc->pid, sizeof(pid_t));
     mutex_release(&pid_table_mutex);
 
@@ -101,11 +116,25 @@ struct vnode* proc_get_root(void) {
 struct vnode* proc_get_cwd(void) {
     struct proc* proc = current_proc();
     assert(proc);
-    return lock_vnode(proc, &proc->root);
+    return lock_vnode(proc, &proc->cwd);
+}
+
+void proc_set_cwd(struct vnode* cwd) {
+    struct proc* proc = current_proc();
+    assert(proc);
+
+    change_vnode(proc, &proc->cwd, cwd);
+}
+
+void proc_set_root(struct vnode* root) {
+    struct proc* proc = current_proc();
+    assert(proc);
+
+    change_vnode(proc, &proc->root, root);
 }
 
 size_t proc_count(void) {
-    mutex_acquire(&pid_table_mutex, false);
+    mutex_acquire(&pid_table_mutex);
     size_t size = hashtable_size(&pid_table);
     mutex_release(&pid_table_mutex);
     return size;

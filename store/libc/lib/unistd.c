@@ -8,6 +8,14 @@ int access(const char *path, int amode) {
     return syscall(SYS_access, path, amode);
 }
 
+int dup(int oldfd) {
+    return syscall(SYS_dup, oldfd);
+}
+
+int dup2(int oldfd, int newfd) {
+    return syscall(SYS_dup2, oldfd, newfd);
+}
+
 int open(const char *pathname, int flags, mode_t mode) {
     return syscall(SYS_open, pathname, flags, mode);
 }
@@ -22,6 +30,10 @@ ssize_t read(int fd, void* buf, size_t count) {
 
 ssize_t write(int fd, const void* buf, size_t size) {
     return syscall(SYS_write, fd, buf, size);
+}
+
+off_t lseek(int fd, off_t offset, int whence) {
+    return syscall(SYS_lseek, fd, offset, whence);
 }
 
 _Noreturn void _exit(int status) {
@@ -39,3 +51,12 @@ int uname(struct utsname *utsname) {
 pid_t getpid(void) {
     return syscall(SYS_getpid);
 }
+
+int chdir(const char* pathname) {
+    return syscall(SYS_chdir, pathname);
+}
+
+int fchdir(int fd) {
+    return syscall(SYS_fchdir, fd);
+}
+

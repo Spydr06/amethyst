@@ -9,12 +9,14 @@ lib.mkPackage rec {
     env = {
         PREFIX = builtins.toString lib.prefix;
         CFLAGS = "-specs=${lib.prefix}/lib/gcc/cross-libc.specs";
+        LDFLAGS = "-l:shard_libc_driver.o";
     };
 
     buildDependencies = with pkgs; [
         libc
         getopt
         libshard
+        shard-libc-driver
     ];
 
     buildPhase = lib.make ["-C" sourceDir 

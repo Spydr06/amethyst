@@ -4,7 +4,6 @@
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202300
     #define true true
     #define false false
-    #define 
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201100
     #define bool _Bool
     #define true ((bool) 1)

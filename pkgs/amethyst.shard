@@ -2,6 +2,7 @@ let
     defaultConfig = {
         sanitize = [];
         defines = {};
+        optlevel = 0;
     };
 in
 { lib, pkgs, stdenv, config ? defaultConfig, ... }: 
@@ -30,12 +31,12 @@ lib.mkPackage rec {
     };
 
     env = {
-            # kernel cannot use system import
-            C_CXX_FLAGS="-I${pkgs.limine} -I${uacpi}/${uacpi.exports.includeDir}" + getDefines;
-            LDFLAGS="${uacpi}/${uacpi.exports.staticLib}";
-            BUILD_DIR=builtins.toString buildDir;
-            SANITIZERS=getSanitizers;
-        };
+        # kernel cannot use system import
+        C_CXX_FLAGS="-O${config.optlevel} -I${pkgs.limine} -I${uacpi}/${uacpi.exports.includeDir}" + getDefines;
+        LDFLAGS="${uacpi}/${uacpi.exports.staticLib}";
+        BUILD_DIR=builtins.toString buildDir;
+        SANITIZERS=getSanitizers;
+    };
 
     buildDependencies = [
         pkgs.limine
@@ -43,12 +44,21 @@ lib.mkPackage rec {
     ];
 
     getDefines = with builtins;
-        join " " $ attrValues $ mapAttrs (key: val: "${key} ${val}") config.defines;
+        join " " $ attrValues $ mapAttrs (key: val: "-D${key}=${val}") config.defines;
 
-    getSanitizers = builtins.join "," config.sanitize;
+    getSanitizers = builtins.join "," $ config.sanitize;
 
-    buildPhase = lib.make ["-C" sourceDir buildTarget "BUILD_DIR=${buildDir}" "SANITIZERS=${getSanitizers}"];
+    buildPhase = lib.make [
+        "-C" sourceDir buildTarget
+        "BUILD_DIR=${buildDir}"
+        "SANITIZERS=${getSanitizers}"
+        "PCI_IDS_LIST=${pkgs.pci-ids}/pci.ids"
+    ];
 
-    installPhase = lib.installFile { src = buildTarget; dst = /boot/ + kernelElf; mode = "755"; };
+    installPhase = lib.installFile { 
+        src = buildTarget;
+        dst = /boot/ + kernelElf;
+        mode = "755";
+    };
 }
 

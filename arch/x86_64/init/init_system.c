@@ -1,7 +1,12 @@
+#include "encoding/elf.h"
 #include <cpu/cpu.h>
 #include <drivers/pci/pci.h>
 #include <drivers/video/console.h>
 #include <drivers/video/vga.h>
+#include <drivers/acpi/acpi.h>
+#include <drivers/acpi/hpet.h>
+#include <drivers/acpi/apic.h>
+#include <drivers/acpi/aml.h>
 #include <init/interrupts.h>
 #include <limine.h>
 #include <mem/heap.h>
@@ -13,13 +18,10 @@
 #include <sys/scheduler.h>
 #include <sys/timekeeper.h>
 #include <sys/tty.h>
-#include <x86_64/cpu/acpi.h>
 #include <x86_64/cpu/gdt.h>
 #include <x86_64/cpu/idt.h>
 #include <x86_64/cpu/smp.h>
-#include <x86_64/dev/apic.h>
 #include <x86_64/dev/cmos.h>
-#include <x86_64/dev/hpet.h>
 #include <x86_64/dev/pic.h>
 #include <x86_64/trace.h>
 
@@ -51,7 +53,7 @@ __noreturn void _start(void)
     cpu_set(&init_cpu);
     early_console_init();
 
-    load_symtab(kernel_file_request.response);   
+    kernel_elf_init(kernel_file_request.response);
      
     klog(DEBUG, "_start() is at %p", (void*) _start);
     
@@ -79,7 +81,11 @@ __noreturn void _start(void)
         vga_console_init(VGACON_DEFAULT_OPTS);   
 
     acpi_init();
-    time_t ticks_per_us = hpet_init();
+    
+    if(!hpet_exists())
+        klog(ERROR, "HPET does not exist on this system");
+
+    time_t ticks_per_us = hpet_ticks_per_us();
 
     cmos_init();
     if(ticks_per_us > 0) {

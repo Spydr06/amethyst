@@ -28,7 +28,7 @@ struct str_data {
 
 static ssize_t stream_printer(void *restrict userp, const char *restrict str, size_t size) {
     FILE *restrict stream = userp;
-    return fwrite(str, size, sizeof(char), stream);
+    return fwrite(str, sizeof(char), size, stream);
 }
 
 static ssize_t fd_printer(void *restrict userp, const char *restrict str, size_t size) {

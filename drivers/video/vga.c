@@ -44,11 +44,6 @@ void vga_clear(uint32_t color) {
         fb[i] = color;
 }
 
-static inline void memcpy64(uint64_t* dest, uint64_t* src, size_t n) {
-    for(size_t i = 0; i < n >> 3; i++)
-        dest[i] = src[i];
-}
-
 uint32_t vga_color_map[256] = {
 0x000000,
 0x800000,

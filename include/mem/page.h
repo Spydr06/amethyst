@@ -52,6 +52,7 @@ static inline void page_release(struct page* page) {
 
     // free page if not refrenced
     if(page->refcount == 0) {
+        klog(INFO, "free page");
         slab_free(page_meta_cache, page);
         pmm_free_page(page->physical_addr);
     }
