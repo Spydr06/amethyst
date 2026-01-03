@@ -1,13 +1,18 @@
-#include "mem/vmm.h"
-#include "sys/mutex.h"
-#include "sys/scheduler.h"
-#include "sys/timekeeper.h"
-#include "uacpi/log.h"
-#include "uacpi/types.h"
-#include <uacpi/status.h>
-#include <uacpi/uacpi.h>
+#include "sys/thread.h"
+#include "x86_64/dev/io.h"
+#include <drivers/acpi/acpi.h>
+#include <drivers/acpi/tables.h>
+
+#include <sys/mutex.h>
+#include <sys/scheduler.h>
+#include <sys/timekeeper.h>
+
 #include <uacpi/event.h>
 #include <uacpi/kernel_api.h>
+#include <uacpi/log.h>
+#include <uacpi/status.h>
+#include <uacpi/types.h>
+#include <uacpi/uacpi.h>
 
 #include <mem/heap.h>
 #include <mem/pmm.h>
@@ -18,21 +23,22 @@
 #include <assert.h>
 #include <math.h>
 
-#ifdef __x86_64__
-    #include <x86_64/cpu/acpi.h>
-#endif
-
 uacpi_status uacpi_kernel_get_rsdp(uacpi_phys_addr *out_rsdp_address) {
-    *out_rsdp_address = (uacpi_phys_addr) FROM_HHDM(acpi_get_rsdp());
+    uintptr_t rsdp = acpi_get_rsdp_phys();
+    if(!rsdp)
+        panic("No RSDP table found.");
+
+    *out_rsdp_address = (uacpi_phys_addr) FROM_HHDM(rsdp);
     return UACPI_STATUS_OK;
 }
 
 void *uacpi_kernel_map(uacpi_phys_addr addr, uacpi_size len) {
+    klog(DEBUG, "uacpi_kernel_map(%p, %zu)", addr, len);
     uintmax_t offset = (uintptr_t) addr % PAGE_SIZE;
 
-    void *virt = vmm_map(NULL, ROUND_UP(len + offset, PAGE_SIZE), VMM_FLAGS_PHYSICAL, MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, (void*) ROUND_DOWN(addr, PAGE_SIZE));
+    void *virt = vmm_map(nullptr, ROUND_UP(len + offset, PAGE_SIZE), VMM_FLAGS_PHYSICAL, MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, (void*) ROUND_DOWN(addr, PAGE_SIZE));
 
-    assert(virt != NULL);
+    assert(virt != nullptr);
     return (void*)((uintptr_t) virt + offset);
 }
 
@@ -137,66 +143,73 @@ void uacpi_kernel_io_unmap(uacpi_handle handle) {
 }
 
 uacpi_status uacpi_kernel_io_read8(
-    uacpi_handle, uacpi_size offset, uacpi_u8 *out_value
+    uacpi_handle handle, uacpi_size offset, uacpi_u8 *out_value
 ) {
-    unimplemented();
+    *out_value = inb((io_port_t) (handle + offset));
+    return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_read16(
-    uacpi_handle, uacpi_size offset, uacpi_u16 *out_value
+    uacpi_handle handle, uacpi_size offset, uacpi_u16 *out_value
 ) {
-    unimplemented();
+    *out_value = inw((io_port_t) (handle + offset));
+    return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_read32(
-    uacpi_handle, uacpi_size offset, uacpi_u32 *out_value
+    uacpi_handle handle, uacpi_size offset, uacpi_u32 *out_value
 ) {
-    unimplemented();
+    *out_value = inl((io_port_t) (handle + offset));
+    return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_write8(
-    uacpi_handle, uacpi_size offset, uacpi_u8 in_value
+    uacpi_handle handle, uacpi_size offset, uacpi_u8 in_value
 ) {
-    unimplemented();
+    outb((io_port_t) (handle + offset), in_value);
+    return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_write16(
-    uacpi_handle, uacpi_size offset, uacpi_u16 in_value
+    uacpi_handle handle, uacpi_size offset, uacpi_u16 in_value
 ) {
-    unimplemented();
+    outw((io_port_t) (handle + offset), in_value);
+    return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_write32(
-    uacpi_handle, uacpi_size offset, uacpi_u32 in_value
+    uacpi_handle handle, uacpi_size offset, uacpi_u32 in_value
 ) {
-    unimplemented();
+    outl((io_port_t) (handle + offset), in_value);
+    return UACPI_STATUS_OK;
 }
 
 void *uacpi_kernel_alloc(uacpi_size size) {
+    klog(DEBUG, "uacpi_kernel_alloc(%zu)", size);
     return kmalloc((size_t) size);
 }
 
 void *uacpi_kernel_alloc_zeroed(uacpi_size size) {
+    klog(DEBUG, "uacpi_kernel_alloc_zeroed(%zu)", size);
     return kcalloc(1, size);
 }
 
 void uacpi_kernel_free(void *mem) {
+    klog(DEBUG, "uacpi_kernel_free(%p)", mem);
     kfree(mem);
 }
 
 uacpi_u64 uacpi_kernel_get_nanoseconds_since_boot(void) {
-    here();
     struct timespec ts = timekeeper_time_from_boot();
     return ts.ns + ts.s * 1'000'000ull;
 }
 
 void uacpi_kernel_stall(uacpi_u8 usec) {
-    panic("UACPI STALL");
+    panic("UACPI STALL: %hhu", usec);
 }
 
 void uacpi_kernel_sleep(uacpi_u64 msec) {
-    here();
-    sched_sleep(msec * 1000ull);
+    sched_sleep((uintmax_t) msec * 1000ull);
 }
 
 uacpi_handle uacpi_kernel_create_mutex(void) {
@@ -221,25 +234,26 @@ void uacpi_kernel_free_event(uacpi_handle) {
 }
 
 uacpi_thread_id uacpi_kernel_get_thread_id(void) {
-    unimplemented();
+    return current_thread();
 }
 
 uacpi_status uacpi_kernel_acquire_mutex(uacpi_handle handle, uacpi_u16) {
-    here();
     // TODO: timer
     mutex_t *mut = (mutex_t*) handle;
+    assert(mut != nullptr);
 
-    mutex_acquire(mut, false);
+    mutex_acquire(mut);
     return UACPI_STATUS_OK;
 }
 
 void uacpi_kernel_release_mutex(uacpi_handle handle) {
     mutex_t *mut = (mutex_t*) handle;
+    assert(mut != nullptr);
 
     mutex_release(mut);
 }
 
-uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle, uacpi_u16) {
+uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle handle, uacpi_u16) {
     unimplemented();
 }
 
@@ -270,28 +284,28 @@ uacpi_status uacpi_kernel_uninstall_interrupt_handler(
 
 uacpi_handle uacpi_kernel_create_spinlock(void) {
     spinlock_t *lock = kmalloc(sizeof(spinlock_t));
-    assert(lock != NULL);
+    assert(lock != nullptr);
 
     spinlock_init(lock); 
-    return lock;
+    return (uacpi_handle) lock;
 }
 
 void uacpi_kernel_free_spinlock(uacpi_handle handle) {
     spinlock_t *lock = (spinlock_t *) handle;
 
-    kfree(lock);
+    kfree((void*) lock);
 }
 
 uacpi_cpu_flags uacpi_kernel_lock_spinlock(uacpi_handle handle) {
-    here();
+    assert(handle != nullptr);
     spinlock_t *lock = (spinlock_t *) handle;
     spinlock_acquire(lock);
 
-    return 0;
+    return UACPI_STATUS_OK;
 }
 
 void uacpi_kernel_unlock_spinlock(uacpi_handle handle, uacpi_cpu_flags flags) {
-    here();
+    assert(handle != nullptr);
     (void) flags;
 
     spinlock_t *lock = (spinlock_t *) handle;

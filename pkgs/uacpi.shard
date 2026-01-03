@@ -10,7 +10,7 @@ lib.mkPackage rec {
         then "uacpi-" + config.overrideName
         else "uacpi";
 
-    version = "3.0.0";
+    version = "3.2.0";
 
     sourceDir = let
             url = "https://github.com/uACPI/uACPI/archive/refs/tags/${version}.tar.gz";

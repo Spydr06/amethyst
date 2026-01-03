@@ -3,9 +3,12 @@
 
 #include <sys/spinlock.h>
 
+#include <mem/pmm.h>
+
 #include <kernelio.h>
 #include <stddef.h>
 #include <errno.h>
+#include <memory.h>
 
 typedef int (*table_behavior_t)(const struct sdt_header*);
 
@@ -78,20 +81,14 @@ int acpi_register_table(struct sdt_header* header) {
 }
 
 struct sdt_header* acpi_find_table(sdt_signature_t sig) {
-    union {
-        sdt_signature_t sig;
-        uint32_t u;
-    } *cur, *key = (void*) sig;
-
     spinlock_acquire(&tables_lock);
 
     struct sdt_header* found = nullptr;
 
     for(size_t i = 0; i < tables_count; i++) {
         struct sdt_header* header = tables[i];
-        cur = (void*) header->sig;
 
-        if(key->u == cur->u) {
+        if(memcmp(sig, header->sig, sizeof(sdt_signature_t)) == 0) {
             found = header;
             break;
         }

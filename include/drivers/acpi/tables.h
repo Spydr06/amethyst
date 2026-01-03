@@ -120,17 +120,10 @@ struct dsdt {
     uint8_t definition_block[];
 } __attribute__((packed));
 
-<<<<<<< HEAD:arch/include/x86_64/cpu/acpi.h
-struct RSDP *acpi_get_rsdp(void);
-
-struct SDT_header* acpi_find_header(const char* sig);
-bool acpi_validate_sdt(struct SDT_header* header);
-=======
 struct ssdt {
     struct sdt_header header;
     uint8_t definition_block[];
 } __attribute__((packed));
->>>>>>> 829590cef084ed6aac9dfafc101c67f4a3247f8d:include/drivers/acpi/tables.h
 
 struct hpet {
     struct sdt_header header;

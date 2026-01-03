@@ -18,27 +18,18 @@ lib.mkSystemConfig {
         };
 
         arguments = [ "loglevel=info" ];       
-
-        defines = {
-            UACPI_FORMATTED_LOGGING = 1;
-        };
     };
 
     kernel."amethyst-debug" = with pkgs; {
         package = pkgs.amethyst-kernel.override {
             sanitize = [ "undefined" ]; 
 
-            defines = {
+            extraDefines = {
                 _SCHED_DEBUG = 1;
             };
         };
 
         arguments = [ "loglevel=debug" "log-syscalls" ];
-
-        defines = {
-            _SCHED_DEBUG = 1;
-            UACPI_FORMATTED_LOGGING = 1;
-        };
     };
 
     boot.initrd.enable = true;

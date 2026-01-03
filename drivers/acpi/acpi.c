@@ -16,18 +16,25 @@ static volatile struct limine_rsdp_request rsdp_request = {
     .revision = 0
 };
 
+static uintptr_t rsdp_phys;
+static struct rsdp *rsdp;
+
+uintptr_t acpi_get_rsdp_phys(void) {
+    return rsdp_phys;
+}
+
 void acpi_init(void) {
     if(!rsdp_request.response)
         panic("No ACPI information received from bootloader");
 
-    struct rsdp* rsdp = rsdp_request.response->address;
+    rsdp_phys = (uintptr_t) rsdp_request.response->address;
 
-    uintptr_t page_offset = (uintptr_t) rsdp % PAGE_SIZE;
+    uintptr_t page_offset = (uintptr_t) rsdp_phys % PAGE_SIZE;
 
     // ensure the rsdp doesn't cross a page boundary
-    assert(ROUND_DOWN((uintptr_t) rsdp, PAGE_SIZE) == ROUND_DOWN((uintptr_t) rsdp - 1 + sizeof(struct rsdp), PAGE_SIZE));
+    assert(ROUND_DOWN(rsdp_phys, PAGE_SIZE) == ROUND_DOWN(rsdp_phys - 1 + sizeof(struct rsdp), PAGE_SIZE));
     
-    void* virtual = vmm_map(nullptr, sizeof(struct rsdp), VMM_FLAGS_PHYSICAL, MMU_FLAGS_READ | MMU_FLAGS_WRITE, FROM_HHDM(rsdp));
+    void* virtual = vmm_map(nullptr, sizeof(struct rsdp), VMM_FLAGS_PHYSICAL, MMU_FLAGS_READ | MMU_FLAGS_WRITE, FROM_HHDM(rsdp_phys));
     assert(virtual);
 
     rsdp = (struct rsdp*)((uintptr_t) virtual + page_offset);
@@ -57,4 +64,3 @@ void acpi_init(void) {
     acpi_print_tables();
 #endif
 }
-

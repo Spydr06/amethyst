@@ -48,7 +48,7 @@ static void color_test(void) {
     printk("\n\n");
 }
 
-int uacpi_init();
+extern int uacpi_init();
 
 void kmain(size_t cmdline_size, const char* cmdline)
 {
