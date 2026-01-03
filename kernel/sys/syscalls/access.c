@@ -7,7 +7,7 @@
 #include <assert.h>
 #include <errno.h>
 
-__syscall syscallret_t _sys_access(struct cpu_context* ctx, const char* filename, mode_t mode) {
+__syscall syscallret_t _sys_access(struct cpu_context*, const char* filename, mode_t mode) {
     syscallret_t ret = {
         .ret = -1,
         ._errno = -1

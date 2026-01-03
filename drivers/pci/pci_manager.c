@@ -16,7 +16,7 @@ static int instantiate(struct pci_driver *driver, const struct pci_driver_spec *
     memset(driver, 0, sizeof(struct pci_driver));
     spinlock_init(driver->driver_lock);
 
-    driver->device = device;
+    driver->device = (struct pci_device *) device;
     driver->userp = spec->userp;
 
     return spec->driver_instantiate(driver);

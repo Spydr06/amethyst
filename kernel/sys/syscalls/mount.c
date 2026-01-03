@@ -33,13 +33,13 @@ __syscall syscallret_t _sys_mount(struct cpu_context* __unused, char* u_backing,
     struct vnode* backing_ref_node = nullptr;
     struct vnode* mount_point_ref = nullptr;
     struct vnode* backing_node = nullptr;
+    char* backing = nullptr;
 
     if(memcpy_from_user(type, u_type, type_len) || memcpy_from_user(dir_name, u_dir_name, dir_name_len)) {
         ret._errno = EFAULT;
         goto cleanup;
     }
 
-    char* backing = nullptr;
     if(u_backing) {
         size_t backing_len;
         if(user_strlen(u_backing, &backing_len)) {

@@ -51,7 +51,7 @@ __syscall syscallret_t _sys_stat(struct cpu_context* __unused, const char* path,
         ._errno = -1
     };
 
-    struct vnode* vnode = nullptr;
+    struct vnode* vnode = nullptr, *ref = nullptr;
 
     size_t path_size;
     if((ret._errno = user_strlen(path, &path_size)))
@@ -61,7 +61,7 @@ __syscall syscallret_t _sys_stat(struct cpu_context* __unused, const char* path,
     if((ret._errno = memcpy_from_user(path_buf, path, path_size)))
         goto cleanup;
 
-    struct vnode* ref = path_buf[0] == '/' ? proc_get_root() : proc_get_cwd();
+    ref = path_buf[0] == '/' ? proc_get_root() : proc_get_cwd();
     assert(ref != nullptr);
 
     ret._errno = vfs_lookup(&vnode, ref, path_buf, nullptr, 0);
