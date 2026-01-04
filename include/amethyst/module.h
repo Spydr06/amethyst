@@ -11,6 +11,9 @@
 
 #define AMETHYST_EXPORT_SECTION ".export"
 
+#define MODULE_OK 0
+#define MODULE_FAILED 1
+
 enum amethyst_module_flags {
     AMETHYST_MODULE_DEFAULT_FLAGS    = 0,
     AMETHYST_MODULE_INIT_NONBLOCKING = 0x01
@@ -39,7 +42,7 @@ struct amethyst_module_spec {
 
 #define _MODULE_REGISTER(...) \
     static __attribute__((section(AMETHYST_MODINFO_SECTION), used)) struct amethyst_module_spec __spec_##__LINE__ \
-        = { .magic = AMETHYST_MODINFO_MAGIC, __VA_ARGS__ };
+        = { .magic = AMETHYST_MODINFO_MAGIC, __VA_ARGS__ }
 
 struct amethyst_module_export {
     const char *name;

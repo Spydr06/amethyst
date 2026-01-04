@@ -1,7 +1,7 @@
 #ifndef _AMETHYST_DRIVERS_PCI_NVME_H
 #define _AMETHYST_DRIVERS_PCI_NVME_H
 
-#include "sys/spinlock.h"
+#include <sys/spinlock.h>
 #include <stdint.h>
 
 #define PCI_PROG_IF_NVME 0x02
@@ -136,8 +136,6 @@ static inline struct nvme_version nvme_get_version(uint32_t ver) {
     u.a = ver;
     return u.b;
 }
-
-void nvme_init(void);
 
 #endif /* _AMETHYST_DRIVERS_PCI_NVME_H */
 

@@ -1,0 +1,15 @@
+{ lib, pkgs, ... }: 
+lib.mkKernelModule rec {
+    name = "nvme";
+    version = "0.0.1";
+
+    license = "MIT";
+    description = "NVM-Express (NVMe) Device Driver";
+
+    exportHeaders = [
+        ./include/nvme.h
+    ];
+
+    moduleSource = "${pkgs.amethyst-source}/source/modules/${name}";
+}
+

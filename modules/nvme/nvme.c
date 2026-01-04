@@ -1,12 +1,13 @@
-#include "mem/slab.h"
-#include "mem/vmm.h"
-#include "sys/spinlock.h"
-#include "x86_64/mem/mmu.h"
+#include "include/nvme.h"
+
+#include <amethyst/module.h>
+
 #include <drivers/pci/msi.h>
 #include <drivers/pci/pci.h>
-#include <drivers/pci/nvme.h>
-
 #include <drivers/pci/pci_manager.h>
+
+#include <mem/slab.h>
+#include <mem/vmm.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -125,14 +126,25 @@ static int nvme_instantiate(struct pci_driver* driver) {
     return 0;
 }
 
-void nvme_init(void) {
+static int nvme_init(int, const char**) {
     driver_cache = slab_newcache(sizeof(struct nvme_device), alignof(struct nvme_device), nullptr, nullptr);
     assert(driver_cache != nullptr);
 
     int err;
     if((err = pci_manager_load_driver(&nvme_driver_spec))) {
         klog(ERROR, "Failed registering NVME driver: %s", strerror(err));
-        return;
+        return MODULE_FAILED;
     }
+
+    return MODULE_OK;
 }
 
+static void nvme_cleanup(void) {
+    slab_freecache(driver_cache);
+}
+
+_MODULE_REGISTER(
+    _MODULE_INFO("nvme", "MIT", "0.0.1", "NVM-Express (NVMe) Device Driver"),
+    .main_func = nvme_init,
+    .cleanup_func = nvme_cleanup
+);

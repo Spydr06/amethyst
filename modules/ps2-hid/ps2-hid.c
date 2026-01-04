@@ -236,7 +236,7 @@ static int ps2_init(int, const char**) {
 
     if(result != PS2_SELFTEST_OK) {
         klog(ERROR, "controller self test failed (expected %x, got %x)", PS2_SELFTEST_OK, result);
-        return EIO;
+        return MODULE_FAILED;
     }
 
     ps2_write_command(PS2_CMD_WRITECFG);
@@ -336,7 +336,7 @@ static int ps2_init(int, const char**) {
     ps2_write_command(PS2_CMD_WRITECFG);
     ps2_write_data(cfg);
 
-    return 0;
+    return MODULE_OK;
 }
 
 static void ps2_deinit(void) {
@@ -348,5 +348,4 @@ _MODULE_REGISTER(
     .main_func = ps2_init,
     .cleanup_func = ps2_deinit,
     .flags = AMETHYST_MODULE_INIT_NONBLOCKING
-)
-
+);

@@ -7,9 +7,9 @@ lib.mkSystemConfig {
 
     };
 
-    extraModules = with pkgs.modules; [
-        pkgs.ps2-hid
-        # pkgs.test
+    extraModules = let modules = pkgs.modules.pkgs; in [
+        modules.ps2-hid
+        modules.nvme
     ];
 
     kernel."amethyst-default" = {
@@ -25,7 +25,7 @@ lib.mkSystemConfig {
             sanitize = [ "undefined" ]; 
 
             extraDefines = {
-                _SCHED_DEBUG = 1;
+                # _SCHED_DEBUG = 1;
             };
         };
 
@@ -41,7 +41,5 @@ lib.mkSystemConfig {
 
     systemArch = "x86_64";
     systemVersion = builtins.trim $ stdenv.readFile "${pkgs.amethyst-source}/source/version";
-
-    /* foo */
 }
 

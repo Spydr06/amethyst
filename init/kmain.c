@@ -1,6 +1,5 @@
 #include <cpu/cpu.h>
 #include <drivers/char/keyboard.h>
-#include <drivers/pci/nvme.h>
 #include <drivers/pci/pci.h>
 #include <drivers/video/vga.h>
 #include <filesystem/devfs.h>
@@ -69,12 +68,9 @@ void kmain(size_t cmdline_size, const char* cmdline)
     pci_init(); 
     uacpi_init();
 
-//    ps2_init();
     fbdev_init();
     tty_init();
     create_ttys(); 
-
-    nvme_init();
 
     greet();
     color_test();
