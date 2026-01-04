@@ -2,7 +2,7 @@
 #define _AMETHYST_DRIVERS_PCI_H
 
 #include <kernelio.h>
-#include "dynarray.h"
+#include <hashtable.h>
 
 #define PCI_DATA_PORT    0x0cfc
 #define PCI_COMMAND_PORT 0x0cf8
@@ -143,8 +143,9 @@ struct pci_capability {
 
 struct pci_device {
     spinlock_t lock;
+    volatile int refcount;
 
-    int64_t parent;
+    struct pci_device *parent;
     uint8_t bus;
     uint8_t func;
     uint8_t device;
@@ -177,9 +178,28 @@ struct pci_vendor_id {
 extern const size_t pci_id_lookup_table_size;
 extern const struct pci_vendor_id pci_id_lookup_table[];
 
-extern struct dynarray pci_devices;
+extern spinlock_t pci_devices_lock;
+extern hashtable_t pci_devices;
 
 void pci_init(void);
+
+void pci_device_free(struct pci_device *device);
+
+static inline void pci_device_hold(struct pci_device *device) {
+    __atomic_add_fetch(&device->refcount, 1, __ATOMIC_SEQ_CST);
+}
+
+static inline void pci_device_release(struct pci_device *device) {
+    if(__atomic_sub_fetch(&device->refcount, 1, __ATOMIC_SEQ_CST) <= 0)
+        pci_device_release(device);
+}
+
+static inline uint64_t pci_device_hash(uint16_t segment, uint8_t bus, uint8_t device, uint8_t function) {
+    return (uint64_t) segment << 24 | (uint64_t) bus << 16 | (uint64_t) device << 8 | function;
+}
+
+uint8_t pci_device_read_byte(const struct pci_device* device, uint32_t offset);
+void pci_device_write_byte(const struct pci_device* device, uint32_t offset, uint8_t value);
 
 uint16_t pci_device_read_word(const struct pci_device* device, uint32_t offset);
 void pci_device_write_word(const struct pci_device* device, uint32_t offset, uint16_t value);

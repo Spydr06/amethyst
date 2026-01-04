@@ -76,7 +76,7 @@ void uacpi_kernel_log(uacpi_log_level level, const uacpi_char* msg) {
     if(!msg)
         return;
 
-    __klog_inl(uacpi_log_level_to_severity(level), "[uACPI]", "%s", msg);
+    __klog_inl(uacpi_log_level_to_severity(level), "[uacpi]", "%s", msg);
 }
 #else
 void uacpi_kernel_log(uacpi_log_level level, const uacpi_char* fmt, ...) {
@@ -87,7 +87,7 @@ void uacpi_kernel_log(uacpi_log_level level, const uacpi_char* fmt, ...) {
 }
 
 void uacpi_kernel_vlog(uacpi_log_level level, const uacpi_char* fmt, uacpi_va_list ap) {
-    __vklog_inl(uacpi_log_level_to_severity(level), "[uACPI]", fmt, ap);
+    __vklog_inl(uacpi_log_level_to_severity(level), "[uacpi]", fmt, ap);
 }
 #endif
 
@@ -104,22 +104,26 @@ uacpi_status uacpi_kernel_pci_device_open(
     return UACPI_STATUS_OK;
 }
 
-void uacpi_kernel_pci_device_close(uacpi_handle) {
-    // nothing to do
+void uacpi_kernel_pci_device_close(uacpi_handle handle) {
+    struct pci_device *dev = (struct pci_device*) handle;
+    if(!dev)
+        return;
+
+    pci_device_release(dev);
 }
 
 uacpi_status uacpi_kernel_pci_read8(
     uacpi_handle device, uacpi_size offset, uacpi_u8 *value
 ) {
-    unimplemented();
+    *value = pci_device_read_byte(device, offset);
+    return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_pci_read16(
     uacpi_handle device, uacpi_size offset, uacpi_u16 *value
 ) {
-    //*value = pci_device_read_word(device, offset);
-    //return UACPI_STATUS_OK;
-    unimplemented();
+    *value = pci_device_read_word(device, offset);
+    return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_pci_read32(
@@ -132,15 +136,15 @@ uacpi_status uacpi_kernel_pci_read32(
 uacpi_status uacpi_kernel_pci_write8(
     uacpi_handle device, uacpi_size offset, uacpi_u8 value
 ) {
-    unimplemented();
+    pci_device_write_byte(device, offset, value);
+    return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_pci_write16(
     uacpi_handle device, uacpi_size offset, uacpi_u16 value
 ) {
-    //pci_device_write_word(device, offset, value);
-    //return UACPI_STATUS_OK;
-    unimplemented();
+    pci_device_write_word(device, offset, value);
+    return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_pci_write32(
