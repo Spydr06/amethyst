@@ -64,17 +64,16 @@ void kmain(size_t cmdline_size, const char* cmdline)
     devfs_init();
 
     pseudodevices_init();
-
-    uacpi_init();
-
     keyboard_driver_init();
+
+    pci_init(); 
+    uacpi_init();
 
 //    ps2_init();
     fbdev_init();
     tty_init();
     create_ttys(); 
 
-    pci_init(); 
     nvme_init();
 
     greet();

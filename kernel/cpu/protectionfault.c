@@ -3,7 +3,7 @@
 #include <mem/vmm.h>
 #include <sys/thread.h>
 
-static void protectionfault_interrupt(struct cpu_context* status) {
+static void protectionfault_interrupt(struct cpu_context* status, void*) {
     struct thread* thread = current_thread();
 
     interrupt_set(true);

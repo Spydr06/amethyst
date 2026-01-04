@@ -177,7 +177,7 @@ struct pci_vendor_id {
 extern const size_t pci_id_lookup_table_size;
 extern const struct pci_vendor_id pci_id_lookup_table[];
 
-extern struct dynarray devices;
+extern struct dynarray pci_devices;
 
 void pci_init(void);
 
@@ -193,6 +193,8 @@ static inline bool pci_device_has_capabilities(const struct pci_device* device) 
     uint16_t status = pci_device_get_status(device);
     return !!(status & 0x10);
 }
+
+struct pci_device *pci_search_device(uint16_t segment, uint8_t bus, uint8_t device, uint8_t function);
 
 //int pci_device_get_capabilities(const struct pci_device* device, uint8_t* capabilities);
 

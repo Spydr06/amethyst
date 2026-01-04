@@ -23,7 +23,7 @@ static inline bool received_all_data(void) {
     return has_wheel ? data_offset == 4 : data_offset == 3;
 }
 
-static void mouse_isr(struct cpu_context* __unused) {
+static void mouse_isr(struct cpu_context*, void*) {
     spinlock_acquire(&data_lock);
 
     assert(data_offset < __len(data) - 1);

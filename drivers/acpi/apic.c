@@ -138,11 +138,11 @@ void apic_init(void) {
     idt_change_eoi(apic_send_eoi);
 }
 
-static void spurious(struct cpu_context* ctx) {
+static void spurious(struct cpu_context* ctx, void*) {
     panic_r(ctx, "Spurious interrupt!");
 }
 
-static void nmi(struct cpu_context* ctx) {
+static void nmi(struct cpu_context* ctx, void*) {
     panic_r(ctx, "NMI interrupt!");
 }
 
@@ -179,7 +179,7 @@ void apic_initap(void) {
     }
 }
 
-static void _timer_isr(struct cpu_context* context)  {
+static void _timer_isr(struct cpu_context* context, void*)  {
     timer_isr(_cpu()->timer, context);
 }
 

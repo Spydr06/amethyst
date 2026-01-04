@@ -163,7 +163,7 @@ static uint64_t* get_page(page_table_ptr_t top, void* vaddr) {
     return pt + pt_offset;
 }
 
-void mmu_tlbipi(struct cpu_context* status __unused) {
+void mmu_tlbipi(struct cpu_context*, void*) {
     mmu_invalidate(shootdown_page, shootdown_size);
     __atomic_sub_fetch(&shootdown_remaining, 1, __ATOMIC_SEQ_CST);
 }

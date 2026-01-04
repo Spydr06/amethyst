@@ -1,4 +1,9 @@
+#include "amethyst/amethyst.h"
+#include "drivers/acpi/apic.h"
+#include "drivers/pci/pci.h"
+#include "sys/semaphore.h"
 #include "sys/thread.h"
+#include "x86_64/cpu/idt.h"
 #include "x86_64/dev/io.h"
 #include <drivers/acpi/acpi.h>
 #include <drivers/acpi/tables.h>
@@ -33,7 +38,7 @@ uacpi_status uacpi_kernel_get_rsdp(uacpi_phys_addr *out_rsdp_address) {
 }
 
 void *uacpi_kernel_map(uacpi_phys_addr addr, uacpi_size len) {
-    klog(DEBUG, "uacpi_kernel_map(%p, %zu)", addr, len);
+    klog(DEBUG, "uacpi_kernel_map(%p, %zu)", (void*) addr, len);
     uintmax_t offset = (uintptr_t) addr % PAGE_SIZE;
 
     void *virt = vmm_map(nullptr, ROUND_UP(len + offset, PAGE_SIZE), VMM_FLAGS_PHYSICAL, MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, (void*) ROUND_DOWN(addr, PAGE_SIZE));
@@ -89,11 +94,18 @@ void uacpi_kernel_vlog(uacpi_log_level level, const uacpi_char* fmt, uacpi_va_li
 uacpi_status uacpi_kernel_pci_device_open(
     uacpi_pci_address address, uacpi_handle *out_handle
 ) {
-    unimplemented();
+    struct pci_device *dev = pci_search_device(address.segment, address.bus, address.device, address.function);
+    if(!dev) {
+        klog(ERROR, "requested pci device %x:%x:%x:%x not found", address.segment, address.bus, address.device, address.function);
+        return UACPI_STATUS_NOT_FOUND;
+    }
+
+    *out_handle = dev;
+    return UACPI_STATUS_OK;
 }
 
 void uacpi_kernel_pci_device_close(uacpi_handle) {
-    unimplemented();
+    // nothing to do
 }
 
 uacpi_status uacpi_kernel_pci_read8(
@@ -105,13 +117,16 @@ uacpi_status uacpi_kernel_pci_read8(
 uacpi_status uacpi_kernel_pci_read16(
     uacpi_handle device, uacpi_size offset, uacpi_u16 *value
 ) {
+    //*value = pci_device_read_word(device, offset);
+    //return UACPI_STATUS_OK;
     unimplemented();
 }
 
 uacpi_status uacpi_kernel_pci_read32(
     uacpi_handle device, uacpi_size offset, uacpi_u32 *value
 ) {
-    unimplemented();
+    *value = pci_device_read_dword(device, offset);
+    return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_pci_write8(
@@ -123,19 +138,23 @@ uacpi_status uacpi_kernel_pci_write8(
 uacpi_status uacpi_kernel_pci_write16(
     uacpi_handle device, uacpi_size offset, uacpi_u16 value
 ) {
+    //pci_device_write_word(device, offset, value);
+    //return UACPI_STATUS_OK;
     unimplemented();
 }
 
 uacpi_status uacpi_kernel_pci_write32(
     uacpi_handle device, uacpi_size offset, uacpi_u32 value
 ) {
-    unimplemented();
+    pci_device_write_dword(device, offset, value);
+    return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_map(
     uacpi_io_addr base, uacpi_size len, uacpi_handle *out_handle
 ) {
-    unimplemented();
+    *out_handle = (uacpi_handle) base;
+    return UACPI_STATUS_OK;
 }
 
 void uacpi_kernel_io_unmap(uacpi_handle handle) {
@@ -185,17 +204,17 @@ uacpi_status uacpi_kernel_io_write32(
 }
 
 void *uacpi_kernel_alloc(uacpi_size size) {
-    klog(DEBUG, "uacpi_kernel_alloc(%zu)", size);
+    // klog(DEBUG, "uacpi_kernel_alloc(%zu)", size);
     return kmalloc((size_t) size);
 }
 
 void *uacpi_kernel_alloc_zeroed(uacpi_size size) {
-    klog(DEBUG, "uacpi_kernel_alloc_zeroed(%zu)", size);
+    // klog(DEBUG, "uacpi_kernel_alloc_zeroed(%zu)", size);
     return kcalloc(1, size);
 }
 
 void uacpi_kernel_free(void *mem) {
-    klog(DEBUG, "uacpi_kernel_free(%p)", mem);
+    // klog(DEBUG, "uacpi_kernel_free(%p)", mem);
     kfree(mem);
 }
 
@@ -214,7 +233,8 @@ void uacpi_kernel_sleep(uacpi_u64 msec) {
 
 uacpi_handle uacpi_kernel_create_mutex(void) {
     mutex_t *mut = kmalloc(sizeof(mutex_t));
-    assert(mut != NULL);
+    if(!mut)
+        return nullptr;
 
     mutex_init(mut);
     return (uacpi_handle) mut;
@@ -226,11 +246,16 @@ void uacpi_kernel_free_mutex(uacpi_handle handle) {
 }
 
 uacpi_handle uacpi_kernel_create_event(void) {
-    unimplemented();
+    semaphore_t *sem = kmalloc(sizeof(semaphore_t));
+    if(!sem)
+        return nullptr;
+
+    semaphore_init(sem, 1);
+    return sem; 
 }
 
-void uacpi_kernel_free_event(uacpi_handle) {
-    unimplemented();
+void uacpi_kernel_free_event(uacpi_handle handle) {
+    kfree(handle);
 }
 
 uacpi_thread_id uacpi_kernel_get_thread_id(void) {
@@ -269,24 +294,58 @@ uacpi_status uacpi_kernel_handle_firmware_request(uacpi_firmware_request*) {
     unimplemented();
 }
 
+struct acpi_interrupt {
+    uacpi_interrupt_handler handler;
+    uacpi_handle ctx;
+};
+
+static void acpi_irq(struct cpu_context*, void* userp) {
+    struct acpi_interrupt *ai = userp;
+    ai->handler(ai->ctx);
+}
+
 uacpi_status uacpi_kernel_install_interrupt_handler(
-    uacpi_u32 irq, uacpi_interrupt_handler, uacpi_handle ctx,
+    uacpi_u32 irq, uacpi_interrupt_handler handler, uacpi_handle ctx,
     uacpi_handle *out_irq_handle
 ) {
-    unimplemented();
+    struct acpi_interrupt *ai = kmalloc(sizeof(struct acpi_interrupt));
+    if(!ai)
+        return UACPI_STATUS_OUT_OF_MEMORY;
+
+    ai->ctx = ctx;
+    ai->handler = handler;
+
+    struct isr *isr = interrupt_allocate(acpi_irq, apic_send_eoi, IPL_ACPI);
+    assert(isr);
+
+    isr->userp = (void*) ai;
+    io_apic_register_interrupt(irq, isr->id & 0xff, _cpu()->id, false);
+
+    *out_irq_handle = isr;
+    return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_uninstall_interrupt_handler(
     uacpi_interrupt_handler, uacpi_handle irq_handle
 ) {
-    unimplemented();
+    struct isr *isr = irq_handle;
+    if(!isr)
+        return UACPI_STATUS_OK;
+
+    struct acpi_interrupt *ai = isr->userp;
+    kfree(ai);
+
+    klog(ERROR, "io_apic_unregister not implemented!");
+
+    interrupt_unregister(isr->id);
+    return UACPI_STATUS_OK;
 }
 
 uacpi_handle uacpi_kernel_create_spinlock(void) {
     spinlock_t *lock = kmalloc(sizeof(spinlock_t));
     assert(lock != nullptr);
 
-    spinlock_init(lock); 
+    spinlock_init(*lock); 
     return (uacpi_handle) lock;
 }
 

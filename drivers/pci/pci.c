@@ -273,4 +273,11 @@ const struct pci_device_id* pci_lookup_device_id(const struct pci_vendor_id* ven
     return nullptr;
 }
 
-
+struct pci_device *pci_search_device(uint16_t parent, uint8_t bus, uint8_t device, uint8_t func) {
+    for(size_t i = 0; i < pci_devices.size; i++) {
+        struct pci_device *dev = dynarr_getelem(&pci_devices, i);
+        if(dev->parent == parent && dev->bus == bus && dev->device == device && dev->func == func)
+            return dev;
+    }
+    return nullptr;
+}
