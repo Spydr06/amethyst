@@ -8,6 +8,7 @@
 *.ko
 
 .cache/
+.devinclude/
 .direnv/
 .envrc
 .kdev*/

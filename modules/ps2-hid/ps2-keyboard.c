@@ -121,7 +121,7 @@ static const uint8_t ext_keycodes[128] = {
 static bool extended = false;
 static struct keyboard keyboard;
 
-static void keyboard_isr(struct cpu_context* __unused) {
+static void keyboard_isr(struct cpu_context*, void*) {
     uint8_t scancode = inb(PS2_PORT_DATA);
     if(scancode == SCANCODE_EXT) {
         extended = true;

@@ -1,12 +1,15 @@
-#include "drivers/pci/pci_manager.h"
 #include <drivers/pci/pci.h>
+#include <drivers/pci/pci_manager.h>
 
 #include <mem/heap.h>
+#include <mem/slab.h>
+
+#include <sys/spinlock.h>
 
 #include <errno.h>
 #include <kernelio.h>
 #include <assert.h>
-#include <dynarray.h>
+#include <hashtable.h>
 
 #ifdef __x86_64__
     #include <x86_64/dev/io.h>
@@ -14,14 +17,18 @@
     #define PCI_COMMAND_PORT 0x0cf8
 #endif
 
+#define PCI_MAX_ENTRIES 256
+
 #define MAX_DEVICE 32
 #define MAX_FUNCTION 8
 
-struct dynarray pci_devices;
+spinlock_t pci_devices_lock;
+hashtable_t pci_devices;
+static struct scache *pci_device_cache;
 
-static void pci_check_bus(uint8_t bus, uint64_t parent);
+static void pci_check_bus(uint8_t bus, struct pci_device *parent);
 
-static void get_address(const struct pci_device* device, uint32_t offset) {
+static void get_address(const struct pci_device *device, uint32_t offset) {
     uint32_t address = (device->bus << 16)
         | (device->device << 11)
         | (device->func << 8)
@@ -57,52 +64,66 @@ static void pci_device_load_cardbus_bridge_header(struct pci_device* device) {
     }
 }
 
-static void pci_check_function(uint8_t bus, uint8_t slot, uint8_t func, int64_t parent) {
-    struct pci_device device = {0};
-    device.bus = bus;
-    device.func = func;
-    device.device = slot;
+static void pci_check_function(uint8_t bus, uint8_t slot, uint8_t func, struct pci_device *parent) {
+    struct pci_device *device = slab_alloc(pci_device_cache);
+    assert(device != nullptr);
 
-    uint32_t config_0 = pci_device_read_dword(&device, 0x00);
+    device->bus = bus;
+    device->func = func;
+    device->device = slot;
 
-    if(config_0 == 0xffffffff)
+    uint32_t config_0 = pci_device_read_dword(device, 0x00);
+
+    if(config_0 == 0xffffffff) {
+        slab_free(pci_device_cache, device);
         return;
-
-    uint32_t config_8 = pci_device_read_dword(&device, 0x08);
-    uint32_t config_c = pci_device_read_dword(&device, 0x0c);
-
-    device.parent = parent;
-    device.header.device_id = (uint16_t) (config_0 >> 16);
-    device.header.vendor_id = (uint16_t) config_0;
-    device.header.class = (uint8_t) (config_8 >> 24);
-    device.header.subclass = (uint8_t) (config_8 >> 16);
-    device.header.prog_if = (uint8_t) (config_8 >> 8);
-    device.header.rev_id = (uint8_t) config_8;
-    device.header.type = (uint8_t) (config_c >> 16);
-
-    switch(device.header.type) {
-        case PCI_HEADER_GENERAL:
-            pci_device_load_default_header(&device);
-            break;
-        case PCI_HEADER_PCI_TO_PCI_BRIDGE:
-            pci_device_load_pci_bridge_header(&device);
-            break;
-        case PCI_HEADER_PCI_TO_CARDBUS_BRIDGE:
-            pci_device_load_cardbus_bridge_header(&device);
-            break;
-        default:
-            klog(ERROR, "Unsupported header type %02hhx", device.header.type);
     }
 
-    size_t id = dynarr_push(&pci_devices, &device);
-    if(device.header.class == PCI_CLASS_BRIDGE && device.header.subclass == PCI_SUB_PCI_TO_PCI) {
+    uint32_t config_8 = pci_device_read_dword(device, 0x08);
+    uint32_t config_c = pci_device_read_dword(device, 0x0c);
+
+    if(parent) {
+        pci_device_hold(parent);
+        device->parent = parent;
+    }
+
+    device->header.device_id = (uint16_t) (config_0 >> 16);
+    device->header.vendor_id = (uint16_t) config_0;
+    device->header.class = (uint8_t) (config_8 >> 24);
+    device->header.subclass = (uint8_t) (config_8 >> 16);
+    device->header.prog_if = (uint8_t) (config_8 >> 8);
+    device->header.rev_id = (uint8_t) config_8;
+    device->header.type = (uint8_t) (config_c >> 16);
+
+    switch(device->header.type) {
+        case PCI_HEADER_GENERAL:
+            pci_device_load_default_header(device);
+            break;
+        case PCI_HEADER_PCI_TO_PCI_BRIDGE:
+            pci_device_load_pci_bridge_header(device);
+            break;
+        case PCI_HEADER_PCI_TO_CARDBUS_BRIDGE:
+            pci_device_load_cardbus_bridge_header(device);
+            break;
+        default:
+            klog(ERROR, "Unsupported header type %02hhx", device->header.type);
+    }
+
+    uint64_t hash = pci_device_hash(0, device->bus, device->device, device->func);
+
+    spinlock_acquire(&pci_devices_lock);
+    assert(hashtable_set(&pci_devices, device, &hash, sizeof(uint64_t), true) == 0);
+
+    spinlock_release(&pci_devices_lock);
+
+    if(device->header.class == PCI_CLASS_BRIDGE && device->header.subclass == PCI_SUB_PCI_TO_PCI) {
         // PCI to PCI bridge
-        uint32_t config_18 = pci_device_read_dword(&device, 0x18);
-        pci_check_bus((config_18 >> 8) & 0xff, id);
+        uint32_t config_18 = pci_device_read_dword(device, 0x18);
+        pci_check_bus((config_18 >> 8) & 0xff, device);
     }
 }
 
-static void pci_check_bus(uint8_t bus, uint64_t parent) {
+static void pci_check_bus(uint8_t bus, struct pci_device *parent) {
     for(size_t dev = 0; dev < MAX_DEVICE; dev++) {
         for(size_t func = 0; func < MAX_FUNCTION; func++) {
             pci_check_function(bus, dev, func, parent);
@@ -116,7 +137,7 @@ static void pci_init_root_bus(void) {
     uint32_t config_0;
 
     if(!(config_c & 0x800000)) {
-        pci_check_bus(0, -1);
+        pci_check_bus(0, nullptr);
         return;
     }
     
@@ -126,19 +147,40 @@ static void pci_init_root_bus(void) {
         if(config_0 & 0xffffffff)
             continue;
 
-        pci_check_bus(func, -1);
+        pci_check_bus(func, nullptr);
     }
 }
 
+static void pci_device_ctor(struct scache *, void *ptr) {
+    struct pci_device *device = ptr;
+    memset(device, 0, sizeof(struct pci_device));
+
+    device->refcount = 1; 
+}
+
+static void pci_device_dtor(struct scache *, void *ptr) {
+    struct pci_device *device = ptr;
+    if(device->parent)
+        pci_device_release(device->parent);
+
+    uint64_t hash = pci_device_hash(0, device->bus, device->device, device->func);
+
+    spinlock_acquire(&pci_devices_lock);
+    hashtable_remove(&pci_devices, &hash, sizeof(uint64_t));
+    spinlock_release(&pci_devices_lock);
+}
+
 void pci_init(void) {
-    dynarr_init(&pci_devices, sizeof(struct pci_device), 0);
+    hashtable_init(&pci_devices, PCI_MAX_ENTRIES);
+    pci_device_cache = slab_newcache(sizeof(struct pci_device), _Alignof(struct pci_device), pci_device_ctor, pci_device_dtor);
+    assert(pci_device_cache != nullptr);
 
     pci_init_root_bus();
 
-    klog(INFO, "\e[95mPCI Scan:\e[0m found %zu devices:", pci_devices.size);
+    klog(INFO, "\e[95mPCI Scan:\e[0m found %zu devices:", pci_devices.entry_count);
 
-    for(size_t i = 0; i < pci_devices.size; i++) {
-        struct pci_device* dev = dynarr_getelem(&pci_devices, i);
+    HASHTABLE_FOREACH(&pci_devices, entry) {
+        struct pci_device* dev = entry->value;
 
         const struct pci_vendor_id* vendor_id = pci_lookup_vendor_id(dev->header.vendor_id);
         const struct pci_device_id* dev_id = pci_lookup_device_id(vendor_id, dev->header.device_id);
@@ -241,16 +283,40 @@ struct pci_capability* pci_device_get_capability(struct pci_device* device, enum
     return nullptr;
 }
 
+uint8_t pci_device_read_byte(const struct pci_device *device, uint32_t offset) {
+    return (pci_device_read_dword(device, offset) >> ((offset & 2) * 8)) & 0xff;
+}
+
+void pci_device_write_byte(const struct pci_device *device, uint32_t offset, uint8_t value) {
+    uint32_t dword = pci_device_read_dword(device, offset & ~3);
+    uint32_t shift = (offset & 2) * 8;
+    dword &= ~(0xff << shift);
+    dword |= value << shift;
+    pci_device_write_dword(device, offset & ~3, dword);
+}
+
+uint16_t pci_device_read_word(const struct pci_device *device, uint32_t offset) {
+    return (pci_device_read_dword(device, offset) >> ((offset & 2) * 8)) & 0xffff;
+}
+
+void pci_device_write_word(const struct pci_device *device, uint32_t offset, uint16_t value) {
+    uint32_t dword = pci_device_read_dword(device, offset & ~3);
+    uint32_t shift = (offset & 3) * 8;
+    dword &= ~(0xffff << shift);
+    dword |= value << shift;
+    pci_device_write_dword(device, offset & ~3, dword);
+}
+
 uint32_t pci_device_read_dword(const struct pci_device* device, uint32_t offset) {
-    assert(!(offset & 1));
+    // assert((offset & ~3) == 0);
     get_address(device, offset);
-    return inl(PCI_DATA_PORT + (offset & 3));
+    return inl(PCI_DATA_PORT);
 }
 
 void pci_device_write_dword(const struct pci_device* device, uint32_t offset, uint32_t value) {
-    assert(!(offset & 3));
+    assert((offset & ~3) == 0);
     get_address(device, offset);
-    outl(PCI_DATA_PORT + (offset & 3), value);
+    outl(PCI_DATA_PORT, value);
 }
 
 const struct pci_vendor_id* pci_lookup_vendor_id(uint16_t vendor_id) {
@@ -273,4 +339,16 @@ const struct pci_device_id* pci_lookup_device_id(const struct pci_vendor_id* ven
     return nullptr;
 }
 
+struct pci_device *pci_search_device(uint16_t parent, uint8_t bus, uint8_t device, uint8_t func) {
+    spinlock_acquire(&pci_devices_lock);
+
+    uint64_t hash = pci_device_hash(0, bus, device, func);
+    struct pci_device *pci_device;
+    if(hashtable_get(&pci_devices, (void**) &pci_device, &hash, sizeof(uint64_t)) == 0) {
+        pci_device_hold(pci_device);
+    }
+    
+    spinlock_release(&pci_devices_lock);
+    return pci_device;
+}
 

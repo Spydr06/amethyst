@@ -24,7 +24,7 @@ lib.mkSystemConfig {
         package = pkgs.amethyst-kernel.override {
             sanitize = [ "undefined" ]; 
 
-            defines = {
+            extraDefines = {
                 _SCHED_DEBUG = 1;
             };
         };

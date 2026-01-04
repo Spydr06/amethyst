@@ -9,6 +9,7 @@
 #include <limine.h>
 #include <mem/heap.h>
 #include <mem/user.h>
+#include <mem/pmm.h>
 
 #include <filesystem/devfs.h>
 #include <filesystem/vfs.h>

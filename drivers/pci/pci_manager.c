@@ -1,18 +1,18 @@
+#include "hashtable.h"
 #include "mem/slab.h"
+#include "sys/spinlock.h"
 #include <drivers/pci/pci_manager.h>
 
 #include <memory.h>
 #include <assert.h>
 #include <dynarray.h>
 
-extern struct dynarray pci_devices;
-
 static struct scache *driver_cache;
 
 static spinlock_t drivers_lock;
 static struct dynarray drivers;
 
-static int instantiate(struct pci_driver *driver, const struct pci_driver_spec *spec, const struct pci_device *device) {
+static int instantiate(struct pci_driver *driver, const struct pci_driver_spec *spec, struct pci_device *device) {
     memset(driver, 0, sizeof(struct pci_driver));
     spinlock_init(driver->driver_lock);
 
@@ -28,8 +28,9 @@ int pci_manager_load_driver(const struct pci_driver_spec *spec) {
     assert(spec->accept_device != nullptr);
     int err = 0;
 
-    for(size_t i = 0; i < pci_devices.size; i++) {
-        struct pci_device *device = dynarr_getelem(&pci_devices, i);
+    spinlock_acquire(&pci_devices_lock);
+    HASHTABLE_FOREACH(&pci_devices, entry) {
+        struct pci_device *device = entry->value;
 
         if(!spec->accept_device(device))
             continue;
@@ -44,6 +45,7 @@ int pci_manager_load_driver(const struct pci_driver_spec *spec) {
     }
 
 cleanup:
+    spinlock_release(&pci_devices_lock);
     spinlock_release(&drivers_lock);
     return err;
 }
@@ -55,3 +57,4 @@ void pci_manager_init(void) {
     driver_cache = slab_newcache(sizeof(struct pci_driver), alignof(struct pci_driver), nullptr, nullptr);
     assert(driver_cache != nullptr);
 }
+

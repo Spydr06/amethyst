@@ -119,7 +119,7 @@ cleanup:
     return handled;
 }
 
-static void pagefault_interrupt(struct cpu_context* status) {
+static void pagefault_interrupt(struct cpu_context* status, void*) {
     uintptr_t rip = status->rip;
     struct thread* thread = current_thread();
 

@@ -29,6 +29,7 @@ struct rsdp {
 } __attribute__((packed));
 
 void acpi_init(void);
+uintptr_t acpi_get_rsdp_phys(void);
 
 #endif /* _AMETHYST_DRIVERS_ACPI_H */
 

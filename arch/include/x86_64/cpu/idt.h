@@ -68,16 +68,19 @@ enum ipl {
     IPL_DISK     = 500,
     IPL_KEYBOARD = 600,
     IPL_MOUSE    = 650,
+    IPL_ACPI     = 700,
     IPL_DPC      = 900,
     IPL_NORMAL   = 1000
 };
 
 struct isr {
     uint64_t id;
-    void (*handler)(struct cpu_context*);
+    void (*handler)(struct cpu_context*, void*);
     void (*eoi_handler)(uint32_t);
     enum ipl priority;
     bool pending;
+
+    void *userp;
 
     struct isr* next;
     struct isr* prev;
@@ -91,8 +94,10 @@ void interrupts_apinit(void);
 void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags);
 void idt_reload(void);
 
-void interrupt_register(uint8_t vector, void (*handler)(struct cpu_context*), void (*eoi_handler)(uint32_t), enum ipl priority);
-struct isr* interrupt_allocate(void (*handler)(struct cpu_context*), void(*eoi_handler)(uint32_t), enum ipl priority);
+void interrupt_register(uint8_t vector, void (*handler)(struct cpu_context*, void*), void (*eoi_handler)(uint32_t), enum ipl priority);
+struct isr* interrupt_allocate(void (*handler)(struct cpu_context*, void*), void(*eoi_handler)(uint32_t), enum ipl priority);
+
+void interrupt_unregister(uint8_t vector);
 
 void idt_change_eoi(void (*eoi_handler)(uint32_t isr));
 

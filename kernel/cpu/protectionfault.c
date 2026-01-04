@@ -5,7 +5,7 @@
 
 #include <kernelio.h>
 
-static void protectionfault_interrupt(struct cpu_context* status) {
+static void protectionfault_interrupt(struct cpu_context*, void*) {
     /*struct thread* thread = current_thread();
 
     interrupt_set(true);
@@ -17,3 +17,4 @@ static void protectionfault_interrupt(struct cpu_context* status) {
 void protectionfault_init(void) {
     interrupt_register(0x0d, protectionfault_interrupt, nullptr, IPL_IGNORE);
 }
+

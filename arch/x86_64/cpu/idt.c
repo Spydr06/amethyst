@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <cdefs.h>
 #include <stdint.h>
+#include <memory.h>
 
 #include <kernelio.h>
 
@@ -69,7 +70,7 @@ static const char *exception_names[] = {
 
 static void load_default(void);
 
-static void tick(struct cpu_context* status __unused) {
+static void tick(struct cpu_context*, void*) {
     _millis++;
 }
 
@@ -109,11 +110,11 @@ void idt_reload(void) {
     _idt_reload(&idtr);
 }
 
-static void double_fault_handler(struct cpu_context* status) {
+static void double_fault_handler(struct cpu_context* status, void*) {
     klog(ERROR, "Double Fault at %p.", (void*) status->error_code);
 }
 
-static void divide_error_handler(struct cpu_context* status) {
+static void divide_error_handler(struct cpu_context* status, void*) {
     panic_r(status, "Division by Zero (%lu).", status->error_code);
 }
 
@@ -122,19 +123,20 @@ static void load_default(void) {
     interrupt_register(DIVIDE_ERROR, divide_error_handler, nullptr, IPL_NORMAL);
 }
 
-void interrupt_register(uint8_t vector, void (*handler)(struct cpu_context*), void (*eoi_handler)(uint32_t), enum ipl priority) {
+void interrupt_register(uint8_t vector, void (*handler)(struct cpu_context*, void*), void (*eoi_handler)(uint32_t), enum ipl priority) {
     _cpu()->isr[vector] = (struct isr) {
         .id = (uint64_t) _cpu()->id << 32 | vector,
         .handler = handler,
         .eoi_handler = eoi_handler,
         .priority = priority,
         .pending = false,
+        .userp = nullptr,
         .next = nullptr,
         .prev = nullptr
     };
 }
 
-struct isr* interrupt_allocate(void (*handler)(struct cpu_context *), void (*eoi_handler)(uint32_t), enum ipl priority) {
+struct isr* interrupt_allocate(void (*handler)(struct cpu_context*, void*), void (*eoi_handler)(uint32_t), enum ipl priority) {
     struct isr* isr = nullptr;
 
     for(size_t i = 32; i < 0x100; i++) {
@@ -146,6 +148,10 @@ struct isr* interrupt_allocate(void (*handler)(struct cpu_context *), void (*eoi
     }
 
     return isr;
+}
+
+void interrupt_unregister(uint8_t vector) {
+    memset(_cpu()->isr + vector, 0, sizeof(struct isr));
 }
 
 void interrupt_raise(struct isr* isr) {
@@ -192,7 +198,7 @@ static inline void isr_run(struct isr* isr, struct cpu_context* ctx) {
     if(isr->priority != IPL_IGNORE)
         old_ipl = interrupt_raise_ipl(isr->priority);
 
-    isr->handler(ctx);
+    isr->handler(ctx, isr->userp);
     interrupt_set(false);
 
     if(isr->priority != IPL_IGNORE)

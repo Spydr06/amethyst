@@ -1,12 +1,60 @@
-{ lib, stdenv, config ? {}, ... }:
-lib.mkDerivation rec {
-    name = "uacpi";
-    version = "3.0.0";
+let
+    defaultConfig = {
+        extraCFlags = []; 
+        extraLDFlags = [];
+    };
+in
+{ lib, pkgs, stdenv, config ? defaultConfig, ... }:
+lib.mkPackage rec {
+    name = if config ? overrideName
+        then "uacpi-" + config.overrideName
+        else "uacpi";
 
-    fetchUrl = "https://github.com/${name}/${name}/archive/refs/tags/${version}.tar.gz";
-    sourceDir = lib.fetchTarball fetchUrl;
+    version = "3.2.0";
 
-    fetchPhase = lib.requireFile sourceDir;
+    sourceDir = let
+            url = "https://github.com/uACPI/uACPI/archive/refs/tags/${version}.tar.gz";
+        in lib.fetchTarball url;
 
+    includeDir = "${sourceDir}/include";
 
+    cFlags = [ "-I${includeDir}" ] ++ config.extraCFlags or [];
+
+    ldFlags = [] ++ config.extraLDFlags or [];
+
+    buildDir = "./build";
+
+    buildTarget = "uacpi-${version}.o";
+
+    exports = {
+        inherit includeDir;
+        staticLib = buildTarget;
+    };
+
+    makefile = builtins.join "\n" [
+        "SOURCES = $(wildcard ${sourceDir}/source/*.c)"
+        "OBJECTS = $(patsubst ${sourceDir}/source/%.c, ${buildDir}/%.o, $(SOURCES))"
+        "" 
+        "${buildTarget}: $(OBJECTS)"
+        "\t$(LD) -r $^ -o $@"
+        #"\t@echo \"  AR    $@\""
+        #"\t$(AR) rcs $@ $^"
+        #"\t@echo \"  RANLIB $@\""
+        #"\t@$(RANLIB) $@"
+        ""
+        "${buildDir}/%.o: ${sourceDir}/source/%.c ${buildDir}"
+        "\t@echo \"  CC    $(basename $<)\""
+        "\t@$(CC) $(CFLAGS) ${builtins.join " " cFlags} -MMD -MP -MF \"$(@:%.o=%.d)\" -c -o $@ $<"
+        ""
+        "${buildDir}:"
+        "\t@echo \"  MKDIR $@\""
+        "\t@mkdir -p $@"
+    ];
+
+    configurePhase = if !stdenv.fileExists "Makefile" || makefile != stdenv.readFile "Makefile"
+        then stdenv.writeFile "Makefile" makefile
+        else 0;
+
+    buildPhase = lib.make [ buildTarget ];
 }
+

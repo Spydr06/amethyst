@@ -25,7 +25,7 @@ static void dequeue(struct dpc* dpc) {
         dpc->next->prev = dpc->prev;
 }
 
-static void isr_callback(struct cpu_context* context) {
+static void isr_callback(struct cpu_context* context, void*) {
     while(_cpu()->dpc_queue)
     {
         struct dpc* dpc = _cpu()->dpc_queue;

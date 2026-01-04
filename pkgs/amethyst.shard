@@ -19,19 +19,44 @@ lib.mkPackage rec {
     buildTarget = "${buildDir}/${targetElf}";
     installTarget = "install";
 
+    linkerScript = "${sourceDir}/arch/${stdenv.targetArch}/link.ld";
+
+    uacpi = pkgs.uacpi.override { 
+        overrideName = name;
+        extraCFlags = [
+            "-ffreestanding" "-fstack-protector" "-fno-lto" "-fPIE" "-g"
+        ]; 
+        extraLDFlags = [
+        ];
+    };
+
     env = {
         # kernel cannot use system import
-        C_CXX_FLAGS="-O${config.optlevel or $ defaultConfig.optlevel} -I${pkgs.limine} " + getDefines;
+        C_CXX_FLAGS=builtins.join " " $ [ "-O${config.optlevel}" ] ++ getIncludes ++ getDefines;
+        LDFLAGS="${uacpi}/${uacpi.exports.staticLib}";
         BUILD_DIR=builtins.toString buildDir;
         SANITIZERS=getSanitizers;
     };
 
     buildDependencies = [
         pkgs.limine
+        uacpi
     ];
 
+    defaultIncludeDirs = [
+        pkgs.limine
+        "${uacpi}/${uacpi.exports.includeDir}"
+    ];
+
+    defaultDefines = {
+        UACPI_FORMATTED_LOGGING = 1;
+    };
+
     getDefines = with builtins;
-        join " " $ attrValues $ mapAttrs (key: val: "-D${key}=${val}") config.defines;
+        attrValues $ mapAttrs (key: val: "-D${key}=${val}") $ defaultDefines // config.extraDefines or {};
+
+    getIncludes = with builtins;
+        map (x: "-I${x}") $ defaultIncludeDirs ++ config.extraIncludeDirs or [];
 
     getSanitizers = builtins.join "," $ config.sanitize;
 
