@@ -12,7 +12,7 @@ enum smp_ipi_target {
     SMP_IPI_OTHERCPUS
 };
 
-extern size_t smp_cpus_awake;
+extern volatile size_t smp_cpus_awake;
 
 void smp_init(void);
 

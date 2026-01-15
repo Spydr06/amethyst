@@ -100,10 +100,11 @@ void interrupts_apinit(void) {
     
     _idt_reload(&idtr);
 
+    load_default();
+
     _interrupt_enable();
     _cpu()->interrupt_status = true;
 
-    load_default();
 }
 
 void idt_reload(void) {

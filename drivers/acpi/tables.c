@@ -43,15 +43,8 @@ bool acpi_validate_sdt(const struct sdt_header* header) {
 }
 
 static table_behavior_t find_behavior(sdt_signature_t sig) {
-    union {
-        sdt_signature_t sig;
-        uint32_t u;
-    } *cur, *key = (void*) sig;
-
     for(size_t i = 0; table_behaviors[i].behavior; i++) {
-        cur = (void*) table_behaviors[i].sig;    
-
-        if(cur->u == key->u)
+        if(memcmp(sig, table_behaviors[i].sig, sizeof(sdt_signature_t)) == 0)
             return table_behaviors[i].behavior;
     }
 

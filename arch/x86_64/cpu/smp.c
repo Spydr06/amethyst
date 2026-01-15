@@ -24,7 +24,8 @@
 
 #include <limine.h>
 
-size_t smp_cpus_awake = 1;
+size_t volatile smp_cpus_awake = 0;
+static volatile size_t smp_cpus_total = 0;
 static struct cpu* smp_cpus;
 
 static volatile struct limine_smp_request smp_request = {
@@ -37,14 +38,22 @@ struct cpu* smp_get_cpu(unsigned smp_id) {
     return &smp_cpus[smp_id];
 }
 
+static inline void sync_cpu_wakeup(void) {
+    __atomic_add_fetch(&smp_cpus_awake, 1, __ATOMIC_SEQ_CST);
+    while(__atomic_load_n(&smp_cpus_awake, __ATOMIC_SEQ_CST) < smp_cpus_total)
+        pause();
+    assert(smp_cpus_awake == smp_cpus_total);
+}
+
 static __noreturn void cpu_wakeup(struct limine_smp_info* smp_info) {
-    cpu_set((struct cpu*) smp_info->extra_argument);
+    struct cpu *cpu = (struct cpu*) smp_info->extra_argument;
+    memset(cpu, 0, sizeof(struct cpu));
+
+    cpu_set(cpu);
     cpu_enable_features();
 
     gdt_reload();
     interrupts_apinit();
-
-    dpc_init();
 
     mmu_apswitch();
     vmm_apinit();
@@ -52,7 +61,9 @@ static __noreturn void cpu_wakeup(struct limine_smp_info* smp_info) {
     apic_initap();
     apic_timer_init();
 
-    __atomic_add_fetch(&smp_cpus_awake, 1, __ATOMIC_SEQ_CST);
+    dpc_init();
+
+    sync_cpu_wakeup();
 
     scheduler_apentry();
 
@@ -66,75 +77,32 @@ void smp_init(void) {
         return;
     }
 
-    size_t cpu_count = smp_request.response->cpu_count;
-    klog(DEBUG, "[%zu] smp processor%s", cpu_count, cpu_count == 1 ? "" : "s");
+    smp_cpus_total = smp_request.response->cpu_count;
+    klog(DEBUG, "[%zu] smp processor%s", smp_cpus_total, smp_cpus_total == 1 ? "" : "s");
 
-    size_t smp_cpu_size = ROUND_UP(sizeof(struct cpu) * smp_request.response->cpu_count, PAGE_SIZE);
+    size_t smp_cpu_size = ROUND_UP(sizeof(struct cpu) * smp_cpus_total, PAGE_SIZE);
 
     smp_cpus = pmm_alloc(smp_cpu_size / PAGE_SIZE, PMM_SECTION_DEFAULT);
     assert(smp_cpus);
     smp_cpus = MAKE_HHDM(smp_cpus);
 
-    memset(smp_cpus, 0, sizeof(smp_cpu_size));
+    memset(smp_cpus, 0, smp_cpu_size);
 
-    void (*wakeup_fn)(struct limine_smp_info*) = cpu_wakeup;
+    __atomic_add_fetch(&smp_cpus_awake, 1, __ATOMIC_SEQ_CST);
 
-    for(size_t i = 0; i < cpu_count; i++) {
+    for(size_t i = 0; i < smp_cpus_total; i++) {
         if(smp_request.response->cpus[i]->lapic_id == smp_request.response->bsp_lapic_id) {
             continue;
         }
 
         smp_request.response->cpus[i]->extra_argument = (uint64_t) &smp_cpus[i];
 
-        __atomic_store_n(&smp_request.response->cpus[i]->goto_address, wakeup_fn, __ATOMIC_SEQ_CST);
+        __atomic_store_n(&smp_request.response->cpus[i]->goto_address, cpu_wakeup, __ATOMIC_SEQ_CST);
     }
 
-    if(wakeup_fn == cpu_wakeup)
-        while(__atomic_load_n(&smp_cpus_awake, __ATOMIC_SEQ_CST) != cpu_count)
-            pause();
+    sync_cpu_wakeup();
 
     klog(DEBUG, "awoke other processors");
-
-/*    assert(smp_request.response);
-
-    size_t lapic_count = apic_lapic_count();
-
-    klog(DEBUG, "%zu lapics, %zu smp processors", lapic_count, smp_request.response->cpu_count);
-
-    struct lapic_entry lapics[lapic_count];
-    assert(apic_get_lapic_entries(lapics, lapic_count) == lapic_count);
-
-    uint8_t bootstrap_id;
-    __asm__ volatile(
-        "mov $1, %%eax;"
-        "cpuid;"
-        "shrl $24, %%ebx;"
-        : "=b"(bootstrap_id)
-    );
-
-
-
-    klog(DEBUG, "bootstrap id: %hhu", bootstrap_id);
-    for(size_t i = 0; i < lapic_count; i++) {
-        klog(DEBUG, "lapic[%zu].id = %hhu", i, lapics[i].lapicid);
-    }
-
-    for(size_t i = 1; i < smp_request.response->cpu_count; i++) {
-//        klog(DEBUG, "SMP core %zu, lapic %zu", i, i * lapics_per_cpu);
-//        if(lapics[i].lapicid == bootstrap_id)
-//            continue;
-//        here();
-
-        smp_request.response->cpus[i]->extra_argument = (uint64_t)&smp_cpus[i];
-
-        __atomic_store_n(&smp_request.response->cpus[i]->goto_address, wakeup_fn, __ATOMIC_SEQ_CST);
-    }
-
-    if(wakeup_fn == cpu_wakeup)
-        while(__atomic_load_n(&smp_cpus_awake, __ATOMIC_SEQ_CST) != smp_request.response->cpu_count)
-            pause();
-
-    klog(INFO, "awoke other processors");*/
 }
 
 void smp_send_ipi(struct cpu* cpu, struct isr* isr, enum smp_ipi_target target, bool nmi) {

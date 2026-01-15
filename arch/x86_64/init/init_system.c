@@ -97,6 +97,7 @@ __noreturn void _start(void)
     apic_init();
     apic_timer_init();
     scheduler_init();
+
     smp_init();
 
     if(kernel_file_request.response) {

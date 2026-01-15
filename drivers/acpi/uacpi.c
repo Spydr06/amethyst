@@ -38,7 +38,7 @@ uacpi_status uacpi_kernel_get_rsdp(uacpi_phys_addr *out_rsdp_address) {
 }
 
 void *uacpi_kernel_map(uacpi_phys_addr addr, uacpi_size len) {
-    klog(DEBUG, "uacpi_kernel_map(%p, %zu)", (void*) addr, len);
+    // klog(DEBUG, "uacpi_kernel_map(%p, %zu)", (void*) addr, len);
     uintmax_t offset = (uintptr_t) addr % PAGE_SIZE;
 
     void *virt = vmm_map(nullptr, ROUND_UP(len + offset, PAGE_SIZE), VMM_FLAGS_PHYSICAL, MMU_FLAGS_READ | MMU_FLAGS_WRITE | MMU_FLAGS_NOEXEC, (void*) ROUND_DOWN(addr, PAGE_SIZE));
@@ -48,7 +48,7 @@ void *uacpi_kernel_map(uacpi_phys_addr addr, uacpi_size len) {
 }
 
 void uacpi_kernel_unmap(void *addr, uacpi_size len) {
-    klog(DEBUG, "uacpi_kernel_unmap(%p, %zu)", addr, len);
+    // klog(DEBUG, "uacpi_kernel_unmap(%p, %zu)", addr, len);
     uintmax_t offset = (uintptr_t) addr % PAGE_SIZE;
 
 //    vmm_unmap((void*) ROUND_DOWN((uintptr_t) addr, PAGE_SIZE), ROUND_UP(len + offset, PAGE_SIZE), 0);

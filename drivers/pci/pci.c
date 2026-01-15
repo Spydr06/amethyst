@@ -314,7 +314,7 @@ uint32_t pci_device_read_dword(const struct pci_device* device, uint32_t offset)
 }
 
 void pci_device_write_dword(const struct pci_device* device, uint32_t offset, uint32_t value) {
-    assert((offset & ~3) == 0);
+    // assert((offset & ~3) == 0);
     get_address(device, offset);
     outl(PCI_DATA_PORT, value);
 }
