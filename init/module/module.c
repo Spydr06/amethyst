@@ -1,3 +1,4 @@
+#include "amethyst/amethyst.h"
 #include <init/module.h>
 #include <amethyst/module.h>
 #include <amethyst/syscall.h>
@@ -147,10 +148,45 @@ static void kmodule_thread_call(struct kmodule *kmod, size_t argc, char **args) 
     sched_thread_exit();
 }
 
+static int kmodule_check_dependencies(struct kmodule *kmod) {
+    if(!kmod->spec->dependencies)
+        return 0;
+
+    const char *const *dep_entry = kmod->spec->dependencies;
+    while(*dep_entry) {
+        if(strcmp(*dep_entry, kmod->spec->name) == 0)
+            continue; // self-dependency ignored
+        
+        const struct kmodule *dep = kmodule_query(*dep_entry);
+        if(!dep)
+            return ENOENT; // dependency not found
+
+        if(!dep->initialized)
+            return EINVAL;
+    }
+
+    return 0;
+}
+
 static int kmodule_init(struct kmodule *kmod, size_t argc, char **args, enum amethyst_module_flags flags) {
     spinlock_acquire(&kmod->lock);
 
     int err = 0;
+    if((err = kmodule_check_dependencies(kmod))) {
+        if(flags & AMETHYST_MODULE_INIT_LAZY) {
+            klog(INFO, "Deferred loading module '%s' [v%s, %s License] until dependencies are met.",
+                    kmod->spec->name, kmod->spec->version, kmod->spec->license);
+
+            unimplemented();
+            goto cleanup;
+        }
+
+        klog(ERROR, "Dependencies of module '%s' [v%s, %s License] were not met: %s",
+                kmod->spec->name, kmod->spec->version, kmod->spec->license, strerror(err));
+        err = ENOENT;
+        goto cleanup;
+    }
+
     if(!__sync_bool_compare_and_swap(&kmod->initialized, false, true))
         goto cleanup;
 
@@ -182,7 +218,7 @@ cleanup:
     if(err != 0)
         kmod->initialized = false;
     spinlock_release(&kmod->lock);
-    return 0;
+    return err;
 }
 
 int kmodule_load(struct vnode *node, size_t argc, char **args, enum amethyst_module_flags flags) {

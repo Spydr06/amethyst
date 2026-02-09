@@ -3,6 +3,7 @@
 
 #if defined(_AMETHYST_KERNEL_SRC) || defined(_AMETHYST_MODULE_SRC)
 
+#include <stddef.h>
 #include <stdint.h>
 #include <cdefs.h>
 
@@ -16,7 +17,8 @@
 
 enum amethyst_module_flags {
     AMETHYST_MODULE_DEFAULT_FLAGS    = 0,
-    AMETHYST_MODULE_INIT_NONBLOCKING = 0x01
+    AMETHYST_MODULE_INIT_NONBLOCKING = 0x01,
+    AMETHYST_MODULE_INIT_LAZY        = 0x02,
 };
 
 typedef int (*module_main_t)(int argc, const char **argv);
@@ -33,12 +35,21 @@ struct amethyst_module_spec {
 
     module_main_t main_func;
     module_cleanup_t cleanup_func;
+
+    const char *const *dependencies;
 };
 
-#define _MODULE_INFO(_name, _license, _version, _desc) .name = (_name), \
-    .license = (_license), \
-    .desc = (_desc), \
+#define _MODULE_INFO(_name, _license, _version, _desc) \
+    .name = (_name),        \
+    .license = (_license),  \
+    .desc = (_desc),        \
     .version = (_version)
+
+#define _MODULE_DEPENDENCIES(...)          \
+    .dependencies = (const char *const[]){ \
+        __VA_ARGS__ __VA_OPT__(,)          \
+        NULL                               \
+    }
 
 #define _MODULE_REGISTER(...) \
     static __attribute__((section(AMETHYST_MODINFO_SECTION), used)) struct amethyst_module_spec __spec_##__LINE__ \

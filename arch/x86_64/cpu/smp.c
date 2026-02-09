@@ -88,8 +88,6 @@ void smp_init(void) {
 
     memset(smp_cpus, 0, smp_cpu_size);
 
-    __atomic_add_fetch(&smp_cpus_awake, 1, __ATOMIC_SEQ_CST);
-
     for(size_t i = 0; i < smp_cpus_total; i++) {
         if(smp_request.response->cpus[i]->lapic_id == smp_request.response->bsp_lapic_id) {
             continue;

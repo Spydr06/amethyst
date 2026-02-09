@@ -29,7 +29,7 @@ lib.mkSystemConfig {
             };
         };
 
-        arguments = [ "loglevel=debug" "log-syscalls" ];
+        arguments = [ "loglevel=debug" /* "log-syscalls" */ ];
     };
 
     boot.initrd.enable = true;

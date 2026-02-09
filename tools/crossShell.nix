@@ -16,6 +16,7 @@ cross.mkShell.override {
     ];
 
     nativeBuildInputs = with pkgs; [
+        llvmPackages.clang-tools
         gcc14
         gf
         binutils
