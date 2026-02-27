@@ -6,9 +6,10 @@
 
 #include <sys/timer.h>
 
-#include "msr.h"
 #include "gdt.h"
 #include "idt.h"
+#include "msr.h"
+#include "smp.h"
 
 #define CPU_SP(ctx) ((ctx)->rsp)
 #define CPU_IP(ctx) ((ctx)->rip)

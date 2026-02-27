@@ -45,6 +45,12 @@ static inline void sync_cpu_wakeup(void) {
     assert(smp_cpus_awake == smp_cpus_total);
 }
 
+static inline void cpu_hlt(struct cpu_context*, void*) {
+    __atomic_sub_fetch(&smp_cpus_awake, 1, __ATOMIC_SEQ_CST);
+    hlt();
+    unreachable();
+}
+
 static __noreturn void cpu_wakeup(struct limine_smp_info* smp_info) {
     struct cpu *cpu = (struct cpu*) smp_info->extra_argument;
     memset(cpu, 0, sizeof(struct cpu));
@@ -54,6 +60,8 @@ static __noreturn void cpu_wakeup(struct limine_smp_info* smp_info) {
 
     gdt_reload();
     interrupts_apinit();
+
+    interrupt_register(0xfd, cpu_hlt, NULL, IPL_IGNORE);
 
     mmu_apswitch();
     vmm_apinit();
@@ -107,3 +115,11 @@ void smp_send_ipi(struct cpu* cpu, struct isr* isr, enum smp_ipi_target target, 
     apic_send_ipi(cpu ? cpu->id : 0, ISR_ID_TO_VECTOR(isr->id), target, nmi ? APIC_MODE_NMI : 0, 0);
 }
 
+__noreturn void smp_hlt(void) {
+    if(smp_cpus_awake > 1) {
+        smp_send_ipi(_cpu(), &_cpu()->isr[0xfd], SMP_IPI_OTHERCPUS, true);
+    }
+
+    hlt();
+    unreachable();
+}

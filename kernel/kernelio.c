@@ -269,7 +269,7 @@ void __panic(const char* file, int line, const char* func, struct cpu_context* c
     dump_stack();
 
     spinlock_release(&io_lock);
-    hlt();
+    smp_hlt();
 }
 
 #ifdef NDEBUG
