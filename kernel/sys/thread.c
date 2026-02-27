@@ -1,5 +1,6 @@
 #include <sys/thread.h>
 #include <sys/proc.h>
+#include <sys/signal.h>
 
 #include <mem/slab.h>
 
@@ -45,8 +46,11 @@ struct thread* thread_create(void* ip, size_t kernel_stack_size, int priority, s
     CPU_IP(&thread->context) = (register_t) ip;
 
     spinlock_init(thread->sleep_lock);
-    spinlock_init(thread->signals.lock);
 
+    for(size_t i = 0; i < __len(thread->sig_queue); i++) {
+        int err = sig_queue_init(thread->sig_queue + i);
+        assert(err == 0 && "Failed initializing signal queue");
+    }
     // klog(WARN, "thread [tid %d] is at %p", thread->tid, thread);
 
     return thread;
@@ -63,6 +67,9 @@ void thread_delete(struct thread* thread) {
         PROC_RELEASE(thread->proc);
 
     // klog(WARN, "deleting theread [tid %d] at %p", thread->tid, thread);
+    for(size_t i = 0; i < __len(thread->sig_queue); i++) {
+        sig_queue_delete(thread->sig_queue + i);
+    }
 
     slab_free(thread_cache, thread);
 }

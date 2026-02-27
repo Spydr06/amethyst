@@ -190,7 +190,7 @@ static int kmodule_init(struct kmodule *kmod, size_t argc, char **args, enum ame
     if(!__sync_bool_compare_and_swap(&kmod->initialized, false, true))
         goto cleanup;
 
-    klog(INFO, "Loaded kernel module '%s' [v%s, %s License]...",
+    klog(INFO, "\033[32mLoaded kernel module '%s' [v%s, %s License]\033[0m",
         kmod->spec->name, kmod->spec->version, kmod->spec->license);
 
     if(flags & AMETHYST_MODULE_INIT_NONBLOCKING) {

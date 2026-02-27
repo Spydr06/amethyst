@@ -1,0 +1,19 @@
+let
+    dl = system.dlOpen null;
+
+    sqrt = x :: float: let
+        f = system.dlSym dl "sqrt" $ with builtins;       
+            ffi.cFunc ffi.cDouble [ ffi.cDouble ];
+        in f x;
+
+    solveQuad = {a, b, c}: (case a of
+        0.0 => if b == 0.0 then [] else [(-c / b)];
+        _   => let
+                sq = b * b - 4 * a * c;
+            in if sq < 0 then []
+                         else [(((-b*b) + (sqrt sq)) / (2*a))
+                               (((-b*b) - (sqrt sq)) / (2*a))]
+    );
+in
+    solveQuad {a=3.0; b=2.0; c=-1.0;} 
+

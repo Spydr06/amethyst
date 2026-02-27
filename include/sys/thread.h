@@ -2,8 +2,8 @@
 #define _AMETHYST_SCHEDULER_THREAD_H
 
 #include <abi.h>
-#include <signal.h>
 
+#include <sys/signal.h>
 #include <sys/spinlock.h>
 #include <cpu/cpu.h>
 #include <mem/vmm.h>
@@ -29,12 +29,13 @@ struct thread {
     void* kernel_stack;
 
     // queue for the scheduler
-    struct thread* prev;
-    struct thread* next;
+    struct thread *prev, *next;
 
     // queue for semaphores
-    struct thread* sleep_prev;
-    struct thread* sleep_next;
+    struct thread *sleep_prev, *sleep_next;
+
+    // queue for process
+    struct thread *proc_prev, *proc_next;
 
     struct vmm_context* vmm_context;
     struct proc* proc;
@@ -60,17 +61,13 @@ struct thread {
 
     struct cpu_context* user_memcpy_context;
 
-    struct {
-        spinlock_t lock;
-        struct stack stack;
-        struct sigset mask;
-        struct sigset pending;
-        struct sigset urgent;
-        bool stopped;
-    } signals;
+    spinlock_t sig_mask_lock;
+    volatile sigset_t sig_mask;
+
+    struct sig_queue sig_queue[SIGNAL_NUM_PRIORITIES];
 };
 
-static_assert(sizeof(struct thread) <= PAGE_SIZE);
+// static_assert(sizeof(struct thread) <= PAGE_SIZE);
 
 static inline struct thread* current_thread(void) {
     return _cpu()->thread;
@@ -84,6 +81,14 @@ static inline tid_t current_tid(void) {
 static inline struct vmm_context* current_vmm_context(void) {
     struct thread* thread = current_thread();
     return thread ? thread->vmm_context : nullptr;
+}
+
+static inline bool thread_signalled(struct thread *thread) {
+    for(size_t i = 0; i < __len(thread->sig_queue); i++) {
+        if(signal_pending(thread->sig_queue + i))
+            return true;
+    }
+    return false;
 }
 
 void thread_init(void);

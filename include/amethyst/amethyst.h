@@ -16,6 +16,8 @@ extern "C" {
 #define vklog(sev, fmt, ap) (__vklog(KLOG_##sev, __FILENAME__, (fmt), (ap)))
 #define vklog_inl(sev, fmt, ap) (__vklog_inl(KLOG_##sev, __FILENAME__, (fmt), (ap)))
 
+#define todo(what) (__klog(KLOG_WARN, __FILENAME__, __FILE__ ":%d:%s() [TODO]: %s", __LINE__, __func__, (what)))
+
 #define here() (__klog(KLOG_DEBUG, __FILENAME__, "\e[34m" __FILE__ ":%d:%s(): here\e[0m", __LINE__, __func__))
 
 #define unimplemented() (panic("unimplemented()"))

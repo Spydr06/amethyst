@@ -31,6 +31,7 @@
 #define SYS_execve          59
 #define SYS_exit            60
 #define SYS_waitpid         61
+#define SYS_kill            62
 #define SYS_uname           63
 #define SYS_getcwd          79
 #define SYS_chdir           80

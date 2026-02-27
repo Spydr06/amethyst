@@ -1,6 +1,7 @@
 #ifndef _AMETHYST_SYS_PROC_H
 #define _AMETHYST_SYS_PROC_H
 
+#include "amethyst/signal.h"
 #include <abi.h>
 
 #include <sys/mutex.h>
@@ -9,6 +10,7 @@
 #include <sys/fd.h>
 #include <sys/thread.h>
 #include <cpu/cpu.h>
+#include <sys/signal.h>
 
 #include <filesystem/vfs.h>
 
@@ -27,6 +29,9 @@
         }                                                                   \
     } while(0)
 
+#define PROC_STATUS_SIGNALLED(x) ((x) & 0xff)
+#define PROC_STATUS_EXITED(x) ((x) << 8)
+
 enum proc_state {
     PROC_STATE_NORMAL,
     PROC_STATE_ZOMBIE
@@ -42,6 +47,10 @@ struct proc {
     struct amethyst_cred cred;
 
     size_t running_thread_count;
+    spinlock_t thread_list_lock;
+    struct {
+        struct thread *head, *tail;
+    } threads;
 
     size_t fd_count;
     uintmax_t fd_first;
@@ -57,7 +66,12 @@ struct proc {
     spinlock_t exiting;
 
     struct proc *parent, *sibling, *child;
+
+    spinlock_t sig_handlers_lock;
+    sighandler_t sig_handlers[_AMETHYST_NSIG];
 };
+
+static_assert(sizeof(struct proc) <= PAGE_SIZE);
 
 static inline struct proc* current_proc(void) {
     struct thread* thread = current_thread();
@@ -77,6 +91,8 @@ void proc_init(void);
 
 pid_t proc_new_pid(void);
 
+struct proc *proc_lookup(pid_t pid);
+
 struct proc* proc_create(void);
 void proc_delete(struct proc*);
 
@@ -84,6 +100,7 @@ struct vnode* proc_get_root(void);
 struct vnode* proc_get_cwd(void);
 
 void proc_set_cwd(struct vnode* cwd);
+void proc_add_thread(struct proc *proc, struct thread *thread);
 
 size_t proc_count(void);
 

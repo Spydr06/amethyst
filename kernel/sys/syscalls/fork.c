@@ -65,6 +65,7 @@ __syscall syscallret_t _sys_fork(struct cpu_context* ctx) {
     CPU_IP(&new_thread->context) = ip;
     CPU_RET(&new_thread->context) = 0;
 
+    proc_add_thread(new_proc, new_thread);
     // TODO: signals
     
     ret.ret = new_proc->pid;

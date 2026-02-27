@@ -8,6 +8,10 @@ void* memcpy(void* dst, const void* src, size_t n);
 char* mempcpy(void *restrict dst, const void *restrict src, size_t n);
 void* memmove(void* dest, const void *src, size_t n);
 
+volatile void* vmemset(volatile void *s, int c, size_t n);
+volatile void* vmemcpy(volatile void *dst, const volatile void* src, size_t n);
+int vmemcmp(const volatile void *vl, const volatile void *vr, size_t n);
+
 int memcmp(const void* vl, const void* vr, size_t n);
 void* memrchr(const void* s, int c, size_t n);
 

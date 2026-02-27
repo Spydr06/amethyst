@@ -1,4 +1,7 @@
 #include "sys/mutex.h"
+#include "sys/scheduler.h"
+#include "sys/spinlock.h"
+#include "sys/thread.h"
 #include <sys/proc.h>
 
 #include <mem/heap.h>
@@ -59,6 +62,8 @@ struct proc* proc_create(void) {
 
     mutex_init(&proc->mutex);
     spinlock_init(proc->nodes_lock);
+
+    spinlock_init(proc->thread_list_lock);
     
     proc->pid = proc_new_pid();
 
@@ -140,3 +145,37 @@ size_t proc_count(void) {
     return size;
 }
 
+struct proc *proc_lookup(pid_t pid) {
+    mutex_acquire(&pid_table_mutex);
+    struct proc *proc;
+    int err = hashtable_get(&pid_table, (void**) &proc, &pid, sizeof(pid_t));
+    if(err) {
+        mutex_release(&pid_table_mutex);
+        return nullptr;
+    }
+
+    PROC_HOLD(proc);
+    mutex_release(&pid_table_mutex);
+    return proc;
+}
+
+void proc_add_thread(struct proc *proc, struct thread *thread) {
+    assert(thread->proc == proc);
+    mutex_acquire(&proc->mutex);
+
+    if(proc->threads.head) {
+        assert(proc->threads.tail != nullptr);
+
+        thread->proc_prev = proc->threads.tail;
+        proc->threads.tail->proc_next = thread;
+        proc->threads.tail = thread;
+    }
+    else {
+        assert(proc->threads.tail == nullptr);
+
+        proc->threads.head = proc->threads.tail = thread;
+        thread->proc_next = thread->proc_prev = nullptr;
+    }
+
+    mutex_release(&proc->mutex);
+}

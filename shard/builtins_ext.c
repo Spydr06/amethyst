@@ -14,6 +14,8 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <signal.h>
+#include <limits.h>
 
 #include <libshard.h>
 
@@ -42,6 +44,8 @@ EXT_BUILTIN("system.writeFile", writeFile, SHARD_VAL_PATH, SHARD_VAL_STRING);
 EXT_BUILTIN("system.readDir", readDir, SHARD_VAL_PATH);
 EXT_BUILTIN("system.stat", stat, SHARD_VAL_PATH);
 EXT_BUILTIN("system.exists", exists, SHARD_VAL_PATH);
+EXT_BUILTIN("system.raise", raise, SHARD_VAL_INT);
+EXT_BUILTIN("system.kill", kill, SHARD_VAL_INT, SHARD_VAL_INT);
 
 static struct shard_builtin* ext_builtins[] = {
     &ext_builtin_getEnv,
@@ -56,6 +60,8 @@ static struct shard_builtin* ext_builtins[] = {
     &ext_builtin_readDir,
     &ext_builtin_stat,
     &ext_builtin_exists,
+    &ext_builtin_raise,
+    &ext_builtin_kill
 };
 
 static struct shard_value gen_arg_list(struct shard_context* ctx, int argc, char** argv) {
@@ -359,3 +365,23 @@ static struct shard_value builtin_stat(volatile struct shard_evaluator* e, struc
     return SET_VAL(st_set);
 }
 
+static struct shard_value builtin_raise(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value sig = shard_builtin_eval_arg(e, builtin, args, 0);
+
+    if(sig.integer < INT_MIN || sig.integer > INT_MAX)
+        return INT_VAL(ERANGE);
+    if(raise(sig.integer))
+        return INT_VAL(errno);
+    return INT_VAL(0);
+}
+
+static struct shard_value builtin_kill(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value pid = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value sig = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    if(sig.integer < INT_MIN || sig.integer > INT_MAX || pid.integer < INT_MIN || pid.integer > INT_MAX)
+        return INT_VAL(ERANGE);
+    if(kill(pid.integer, sig.integer))
+        return INT_VAL(errno);
+    return INT_VAL(0);
+}

@@ -84,7 +84,7 @@ endif
 override BIN_LDFLAGS := 
 
 ifeq (,$(findstring _SHARD_NO_LIBEDIT, $(CFLAGS)))
-	override BIN_LDFLAGS += -ledit	
+	override BIN_LDFLAGS += -ledit -lm
 endif
 
 .PHONY: all
@@ -154,7 +154,7 @@ libffi: $(LIBFFI_LIB)
 
 $(LIBFFI_LIB): $(LIBFFI_SRC_DIR)/Makefile | $(BUILD_DIR)
 	$(MAKE) -C $(LIBFFI_SRC_DIR)
-	cp -rv $(shell find -name 'libffi.a') $@
+	cp -rv $(shell find $(LIBFFI_SRC_DIR) -name 'libffi.a') $@
 
 $(LIBFFI_SRC_DIR)/Makefile: $(LIBFFI_SRC_DIR)
 	@echo "  PUSHD $(LIBFFI_SRC_DIR)"		&& \

@@ -26,7 +26,8 @@ int sched_queue(struct thread* thread);
 int sched_yield(void);
 
 int scheduler_exec(const char* path, char* argv[], char* envp[]);
-void scheduler_terminate(int status);
+
+__noreturn void scheduler_terminate(int status);
 
 __noreturn void sched_thread_exit(void);
 void sched_stop_other_threads(void);

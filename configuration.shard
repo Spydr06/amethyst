@@ -26,6 +26,7 @@ lib.mkSystemConfig {
 
             extraDefines = {
                 # _SCHED_DEBUG = 1;
+                UACPI_FORMATTED_LOGGING = 1;
             };
         };
 

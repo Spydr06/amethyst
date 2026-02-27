@@ -1,3 +1,5 @@
+#include "sys/signal.h"
+#include "x86_64/cpu/idt.h"
 #include <sys/scheduler.h>
 
 #include <cpu/cpu.h>
@@ -40,8 +42,8 @@ struct run_queue {
 struct check_args {
     struct cpu_context* context;
     bool syscall;
-    uint64_t syscall_errno;
-    uint64_t syscall_ret;
+    register_t syscall_errno;
+    register_t syscall_ret;
 };
 
 static spinlock_t run_queue_lock;
@@ -299,10 +301,8 @@ static void yield(struct cpu_context* context, void* __unused) {
 
     struct thread* next = dequeue_next_thread(sleeping ? 0x0fffffff : thread->priority);
 
-    bool got_signal = false;
-    // TODO: signal handling
-    
-    if(sleeping && (thread->should_exit || got_signal) && (thread->flags & THREAD_FLAGS_INTERRUPTIBLE)) {
+    // continue when thread is marked as exit or received a signal
+    if(sleeping && (thread->should_exit || thread_signalled(thread)) && (thread->flags & THREAD_FLAGS_INTERRUPTIBLE)) {
         sleeping = false;
         if(next)
             enqueue_thread(next);
@@ -518,19 +518,43 @@ __noreturn void sched_thread_exit(void) {
 }
 
 void sched_stop_other_threads(void) {
-    // TODO:
+    struct thread *thread = current_thread();
+    struct proc *proc = current_proc();
+
+    spinlock_acquire(&proc->thread_list_lock);
+
+    for(struct thread *cur = proc->threads.head; cur; cur = cur->next) {
+        if(cur == thread)
+            continue;
+
+        cur->should_exit = true;
+        sched_wakeup(cur, WAKEUP_REASON_INTERRUPTED);
+    }
+
+    while(__atomic_load_n(&proc->running_thread_count, __ATOMIC_SEQ_CST) > 1)
+        sched_yield();
+    
+    spinlock_release(&proc->thread_list_lock);
 }
 
-static void userspace_check(struct check_args* __unused) {
+static void userspace_check(struct check_args* args) {
     struct thread* thread = current_thread();
     assert(thread);
 
-    if(thread->should_exit) {
-        interrupt_set(true);
-        sched_thread_exit();
-    }
+    if(thread->should_exit)
+        goto thread_exit;
+    
+    // handle received signals
+    while(dispatch_signal(thread, args->context, args->syscall, args->syscall_errno, args->syscall_ret));
 
-    // TODO: check signals
+    if(thread->should_exit)
+        goto thread_exit;
+    
+    return;
+thread_exit:
+    interrupt_set(true);
+    sched_thread_exit();
+    unreachable();
 }
 
 static void userspace_check_routine(struct cpu_context* ctx, void* userp) {
@@ -662,7 +686,8 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
         .top = brk
     };
 
-    // TODO: proc
+    proc_add_thread(proc, user_thread);
+    // TODO: setup signals
 
     user_thread->vmm_context = vmm_ctx;
     err = sched_queue(user_thread);
@@ -676,15 +701,13 @@ int scheduler_exec(const char* path, char* argv[], char* envp[]) {
 }
 
 void scheduler_terminate(int status) {
-    struct thread* thread = current_thread();
-    assert(thread);
+    struct proc *proc = current_proc();
+    assert(proc);
 
-    struct proc* proc = thread->proc;
-    if(!spinlock_try(&proc->exiting))
-        sched_thread_exit();
-
-    sched_stop_other_threads();
-    proc->status = status;
+    if(spinlock_try(&proc->exiting)) {
+        sched_stop_other_threads();
+        proc->status = status;
+    }
 
     if(proc->pid == 1)
         panic("`init` process (pid 1) terminated. This should never happen!");

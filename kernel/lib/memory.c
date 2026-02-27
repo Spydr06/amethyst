@@ -50,6 +50,30 @@ void *memmove(void *dest, const void *src, size_t n)
 	return dest;
 }
 
+volatile void* vmemset(volatile void *s, int c, size_t n) {
+	volatile uint8_t* p = s;
+    while(n--)
+    	*p++ = (uint8_t) c;
+	return s;
+}
+
+volatile void* vmemcpy(volatile void *dst, const volatile void* src, size_t n) {
+	volatile uint8_t* cdst = dst;
+    const volatile uint8_t* csrc = src;
+
+    for(size_t i = 0; i < n; i++) {
+        cdst[i] = csrc[i];
+    }
+
+    return dst;
+}
+
+int vmemcmp(const volatile void *vl, const volatile void *vr, size_t n) {
+    const volatile unsigned char *l = vl, *r = vr;
+	for (; n && *l == *r; n--, l++, r++);
+	return n ? *l - *r : 0;
+}
+
 int memcmp(const void* vl, const void* vr, size_t n) {
     const unsigned char *l = vl, *r = vr;
 	for (; n && *l == *r; n--, l++, r++);
