@@ -1,3 +1,4 @@
+#include "sys/thread.h"
 #include <sys/syscall.h>
 #include <sys/spinlock.h>
 #include <amethyst/syscall.h>

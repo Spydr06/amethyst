@@ -1,11 +1,13 @@
-#include "amethyst/signal.h"
-#include "amethyst/amethyst.h"
-#include "sys/coredump.h"
-#include "sys/scheduler.h"
-#include "sys/spinlock.h"
-#include "x86_64/cpu/idt.h"
-#include <sys/signal.h>
+#include <amethyst/signal.h>
+#include <amethyst/amethyst.h>
+
+#include <sys/coredump.h>
 #include <sys/proc.h>
+#include <sys/scheduler.h>
+#include <sys/signal.h>
+#include <sys/spinlock.h>
+
+#include <errno.h>
 
 const char unknown_signal[] = "<unknown signal>";
 
@@ -74,6 +76,8 @@ const enum signal_priority signal_priorities[_AMETHYST_NSIG + 1] = {
 };
 
 int signal_thread(struct thread *thread, struct siginfo *sig) {
+    if(sig->si_signo > _AMETHYST_NSIG)
+        return EINVAL;
     return signal_raise(&thread->sig_queue[signal_priorities[sig->si_signo]], sig);
 }
 
@@ -81,17 +85,18 @@ int signal_proc(struct proc *proc, struct siginfo *sig) {
     bool int_save = interrupt_set(false);
     PROC_HOLD(proc);
 
+    int err = 0;
     for(struct thread *thread = proc->threads.head; thread; thread = thread->proc_next) {
         if(thread->flags & THREAD_FLAGS_DEAD)
             continue;
 
-        if(signal_thread(thread, sig) == 0)
+        if((err = signal_thread(thread, sig)) == 0)
             break; // signal successfully raised
     }
 
     PROC_RELEASE(proc);
     interrupt_set(int_save);
-    return 0;
+    return err;
 }
 
 void sighandler_term(int sig, struct siginfo *, void *) {
@@ -112,8 +117,8 @@ void sighandler_ign(int sig, struct siginfo *info, void *p) {
     unimplemented();
 }
 
-void sighandler_core(int sig, struct siginfo *, void *) {
-    core_dump(current_proc());
+void sighandler_core(int sig, struct siginfo *info, void *) {
+    core_dump(current_proc(), info);
     scheduler_terminate(PROC_STATUS_SIGNALLED(sig));
 }
 

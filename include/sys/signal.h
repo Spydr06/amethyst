@@ -76,6 +76,9 @@ bool signal_pending(struct sig_queue *queue);
 struct proc;
 int signal_proc(struct proc *proc, struct siginfo *sig);
 
+struct thread;
+int signal_thread(struct thread *thread, struct siginfo *sig);
+
 void sighandler_term(int sig, struct siginfo *info, void *p);
 void sighandler_ign(int sig, struct siginfo *info, void *p);
 void sighandler_core(int sig, struct siginfo *info, void *p);

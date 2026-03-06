@@ -1,4 +1,6 @@
+#include <cpu/exceptions.h>
 #include <cpu/interrupts.h>
+#include <sys/signal.h>
 
 #include <sys/thread.h>
 #include <sys/proc.h>
@@ -21,7 +23,7 @@ static bool handle_pagefault(void* addr, bool user, enum vmm_action actions) {
     struct vmm_space* space = vmm_get_space(addr);
 
     if(!space || (space == &vmm_kernel_space && user)) {
-        klog(ERROR, "no such space or space accessed in kernel\n");
+        // klog(ERROR, "no such space or space accessed in kernel\n");
         return false;
     }
 
@@ -119,7 +121,7 @@ cleanup:
     return handled;
 }
 
-static void pagefault_interrupt(struct cpu_context* status, void*) {
+void pagefault_interrupt(struct cpu_context* status, void*) {
     uintptr_t rip = status->rip;
     struct thread* thread = current_thread();
 
@@ -141,7 +143,13 @@ static void pagefault_interrupt(struct cpu_context* status, void*) {
         thread->user_memcpy_context = nullptr;
         CPU_RET(status) = EFAULT;
     }
-    // TODO: signal user proc
+    else if(cpu_ctx_is_user(status)) {
+        struct siginfo siginfo = {
+            .si_signo = SIGSEGV,
+            .si_attrs.fault = { .addr = rip },
+        };
+        signal_thread(thread, &siginfo);
+    }
     else {
         char perms[4];
         vmm_action_as_str(action, perms);
@@ -156,8 +164,3 @@ static void pagefault_interrupt(struct cpu_context* status, void*) {
                 current_proc() ? current_proc()->pid : -1);
     }
 }
-
-void pagefault_init(void) {
-    interrupt_register(0x0e, pagefault_interrupt, nullptr, IPL_IGNORE);
-}
-

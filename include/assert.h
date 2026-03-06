@@ -4,7 +4,7 @@
 #include <kernelio.h>
 
 #ifdef NO_ASSERT
-#define assert(_expr) ((void) 0)
+#define assert(_expr) ((void) (_expr))
 #else
 #define assert(expr) ((expr) ? (void) 0 : panic("assertion failed: %s", #expr))
 #endif

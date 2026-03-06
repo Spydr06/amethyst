@@ -3,6 +3,6 @@
 
 #include <sys/proc.h>
 
-void core_dump(struct proc *proc);
+void core_dump(struct proc *proc, struct siginfo *info);
 
 #endif /* _AMETHYST_COREDUMP_H */
