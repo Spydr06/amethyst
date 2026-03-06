@@ -8,6 +8,10 @@ BUILD_DIR="$PROJECT_DIR/build"
 
 ENABLE_DEBUG=0
 ENABLE_KVM=0
+ENABLE_SDL=0
+ENABLE_X11=0
+ENABLE_GL=1
+
 MEMORY="4G"
 CPUS=4
 QEMU_ARCH=x86_64
@@ -31,6 +35,9 @@ function show_help() {
     echo "-d, --debug                       | Enable debugging via gdb"
     echo "-I <image>, --image=<image>       | Set the image file to be loaded [$QEMU_IMAGE]"
     echo "-K, --kvm                         | Enable KVM accelleration"
+    echo "-S, --sdl                         | Enable SDL"
+    echo "    --x11                         | Enable X11"
+    echo "    --gl                          | Disable OpenGL"
     echo "-m <memory>, --memory=<memory>    | Amount of allocated memory for the virtual machine [$MEMORY]"
     echo
 }
@@ -46,6 +53,15 @@ while [[ $# -gt 0 ]]; do
             ;;
         -K | --kvm)
             ENABLE_KVM=1
+            ;;
+        -S | --sdl)
+            ENABLE_SDL=1
+            ;;
+        --x11)
+            ENABLE_X11=1
+            ;;
+        --gl)
+            ENABLE_GL=0
             ;;
         -c)
             shift
@@ -113,9 +129,23 @@ if [ ! -e "${QEMU_IMAGE}" ]; then
     exit 1
 fi
 
+if [ $ENABLE_SDL -eq 1 ]; then
+    QEMUFLAGS+=" -display sdl"
+    export SDL_RENDER_SCALE_QUALITY=0
+else
+    QEMUFLAGS+=" -display gtk"
+fi
+
+[ $ENABLE_GL -eq 1 ] && QEMUFLAGS+=",gl=on"
+
+[ $ENABLE_X11 -eq 1 ] && export GDK_BACKEND=x11
+
 if [ $ENABLE_DEBUG -eq 1 ]; then
     $QEMU $QEMUFLAGS -s -S &
     $GDB -ex "target remote localhost:1234" -ex "symbol-file ${SYMBOL_FILE}"
 else
     $QEMU $QEMUFLAGS
+    # GDK_BACKEND=x11 GDK_SCALE=1 GDK_DPI_SCALE=1 $QEMU $QEMUFLAGS -display gtk,zoom-to-fit=off,gl=on
+    # SDL_RENDER_SCALE_QUALITY=0 $QEMU $QEMUFLAGS -display sdl,gl=on
 fi
+
