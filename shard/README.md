@@ -2,6 +2,10 @@
 
 Shard is a programming language designed for declarative builds and configuration of the Amethyst Operating System.
 
+> [!IMPORTANT]
+> Shard's development has been moved to [spydr06/shard](https://github.com/Spydr06/shard).
+> I will push changes made there periodically to this repository.
+
 Shard is a...
 
 - declarative

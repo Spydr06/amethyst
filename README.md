@@ -59,6 +59,10 @@ Shard is a functional programming language designed for declarative builds and c
 
 See [./shard](./shard) and [./shard/README.md](./shard/README.md) for more information.
 
+> [!IMPORTANT]
+> Shard's development has been moved to [spydr06/shard](https://github.com/Spydr06/shard).
+> I will push changes made there periodically to this repository.
+
 ### c) Geode - A declarative package manager based on Shard
 
 Geode is the package manager and build system of the Amethyst Operating System.
