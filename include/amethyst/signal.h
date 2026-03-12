@@ -10,6 +10,10 @@
 #define SIG_DFL ((void*) 0)
 #define SIG_IGN ((void*) 1)
 
+#define SIG_BLOCK 0
+#define SIG_UNBLOCK 1
+#define SIG_SETMASK 2
+
 enum amethyst_signo {
     SIGHUP = 1,
     SIGINT,
@@ -43,7 +47,7 @@ struct amethyst_sigset {
 
 struct siginfo;
 
-struct amethyst_sigaction {
+struct sigaction {
     union {
         void (*sa_handler)(int);
         void (*sa_sigaction)(int, struct siginfo *, void *);
@@ -60,7 +64,7 @@ struct amethyst_sigaction {
 
 typedef enum amethyst_signo signo_t;
 typedef struct amethyst_sigset sigset_t;
-typedef struct amethyst_sigaction sigaction_t;
+typedef struct sigaction sigaction_t;
 typedef void (*sighandler_t)(int, struct siginfo *, void *);
 
 #endif

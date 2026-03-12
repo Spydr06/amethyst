@@ -28,7 +28,7 @@ bool dispatch_signal(struct thread *thread, struct cpu_context *context, bool sy
     assert(thread->proc && !thread->should_exit);
     klog(ERROR, "[tid %u] received signal '%s' (%d)", thread->tid, strsignal(sig.si_signo), sig.si_signo);
 
-    if(sig.si_signo < 0 || sig.si_signo >= _AMETHYST_NSIG)
+    if(sig.si_signo <= 0 || sig.si_signo >= _AMETHYST_NSIG)
         return true; // invalid signal number
 
     if(sig.si_signo == SIGKILL) { // SIGKILL always terminates
@@ -36,15 +36,15 @@ bool dispatch_signal(struct thread *thread, struct cpu_context *context, bool sy
         unreachable();
     }
 
-    sighandler_t handler = thread->proc->sig_handlers[sig.si_signo];
-    if(handler == SIG_IGN) {
+    sigaction_t action = thread->proc->sig_actions[sig.si_signo - 1];
+    if(action.sa_handler == SIG_IGN) {
         if(priority >= SIGNAL_PRIO_URGENT)
             goto default_handler; // cannot ignore urgent signals
         
         return true; // ignore signal
     }
 
-    if(handler == SIG_DFL) {
+    if(action.sa_handler == SIG_DFL) {
 default_handler:
         sighandler_t handler = sighandler_default[sig.si_signo];
         if(!handler)
@@ -52,7 +52,7 @@ default_handler:
         
         handler(sig.si_signo, &sig, nullptr);
     }
-    else if(is_userspace_addr(handler)) {
+    else if(is_userspace_addr(action.sa_handler)) {
         unimplemented();
     }
     else { // invalid signal handler

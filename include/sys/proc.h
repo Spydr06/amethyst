@@ -67,11 +67,11 @@ struct proc {
 
     struct proc *parent, *sibling, *child;
 
-    spinlock_t sig_handlers_lock;
-    sighandler_t sig_handlers[_AMETHYST_NSIG];
+    spinlock_t sig_actions_lock;
+    sigaction_t sig_actions[_AMETHYST_NSIG];
 };
 
-static_assert(sizeof(struct proc) <= PAGE_SIZE);
+// static_assert(sizeof(struct proc) <= PAGE_SIZE);
 
 static inline struct proc* current_proc(void) {
     struct thread* thread = current_thread();

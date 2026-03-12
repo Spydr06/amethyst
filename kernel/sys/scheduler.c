@@ -479,7 +479,15 @@ static void sched_proc_exit(void) {
         proc->parent->child = proc->child;
     }
 
-    // TODO: signals
+    // signal parent
+    struct siginfo siginfo = {
+        .si_signo = SIGCHLD,
+        .si_attrs.chld = {
+            .exit_status = proc->status,
+            .pid = proc->pid,
+        }
+    };
+    assert(signal_proc(proc->parent, &siginfo) == 0);
 
     mutex_release(&proc->parent->mutex);
     mutex_release(&proc->mutex);

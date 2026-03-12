@@ -21,6 +21,8 @@
 #define SYS_mount           13
 #define SYS_umount          14
 #define SYS_ioctl           16
+#define SYS_sigaction       17
+#define SYS_sigprocmask     18
 #define SYS_access          21
 #define SYS_yield           24
 #define SYS_nanosleep       25

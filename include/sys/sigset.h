@@ -30,4 +30,9 @@ static inline void sigset_unblock(volatile sigset_t *set, const sigset_t *new) {
         set->set[i] &= ~(new->set[i]);
 }
 
+static inline void sigset_setmask(volatile sigset_t *set, const sigset_t *new) {
+    for(size_t i = 0; i < __len(set->set); i++)
+        set->set[i] = new->set[i];
+}
+
 #endif /* _AMETHYST_SYS_SIGSET_H */
