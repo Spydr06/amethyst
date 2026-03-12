@@ -6,6 +6,7 @@
 #include <cpu/cpu.h>
 #include <mem/slab.h>
 #include <mem/heap.h>
+#include <sys/fd.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -243,8 +244,10 @@ int fd_clone(struct proc* dest) {
     }
 
     for(size_t i = 0; i < dest->fd_count; i++) {
-        if(!proc->fd[i].file)
+        if(!proc->fd[i].file || proc->fd[i].flags & O_CLOFORK) {
+            memset(&proc->fd[i], 0, sizeof(struct fd));
             continue;
+        }
 
         dest->fd[i] = proc->fd[i];
         fd_hold(dest->fd[i].file);

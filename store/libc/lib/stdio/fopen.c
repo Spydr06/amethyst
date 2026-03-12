@@ -22,6 +22,8 @@ int _fmodeflags(const char* mode) {
         fl |= O_EXCL;
     if(strchr(mode, 'e'))
         fl |= O_CLOEXEC;
+    if(strchr(mode, 'f'))
+        fl |= O_CLOFORK;
     if(*mode != 'r')
         fl |= O_CREAT;
     if(*mode == 'w')
@@ -72,7 +74,9 @@ FILE* fopen(const char *restrict filename, const char *restrict mode) {
 
     /* TODO: enable cloexec once implemented in kernel
     if(flags & O_CLOEXEC)
-        fcntl(fd, F_SETFD, FD_CLOEXEC); */
+        fcntl(fd, F_SETFD, FD_CLOEXEC); 
+    if(flags & O_CLOFORK)
+        fcntl(fd, F_SETFD, FD_CLOFORK); */
 
     FILE* fp = _fdopen(fd, mode);
     if(fp)

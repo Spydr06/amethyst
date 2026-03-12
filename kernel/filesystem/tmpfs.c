@@ -1,3 +1,4 @@
+#include "x86_64/mem/mmu.h"
 #include <filesystem/tmpfs.h>
 #include <filesystem/vfs.h>
 #include <filesystem/devfs.h>
@@ -244,6 +245,7 @@ static int tmpfs_close(struct vnode* node __unused, int flags __unused, struct a
 static int tmpfs_getattr(struct vnode* node, struct vattr* attr, struct amethyst_cred* cred __unused) {
     struct tmpfs_node* tmpnode = (struct tmpfs_node*) node;
     *attr = tmpnode->vattr;
+    attr->fsblock_size = PAGE_SIZE;
     attr->blocks_used = ROUND_UP(attr->size, PAGE_SIZE) / PAGE_SIZE;
     attr->dev_major = 0;
     attr->dev_minor = ((struct tmpfs*) node->vfs)->id;

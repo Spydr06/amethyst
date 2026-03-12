@@ -42,7 +42,7 @@ lib.mkPackage rec {
         #"\t@echo \"  RANLIB $@\""
         #"\t@$(RANLIB) $@"
         ""
-        "${buildDir}/%.o: ${sourceDir}/source/%.c ${buildDir}"
+        "${buildDir}/%.o: ${sourceDir}/source/%.c | ${buildDir}"
         "\t@echo \"  CC    $(basename $<)\""
         "\t@$(CC) $(CFLAGS) ${builtins.join " " cFlags} -MMD -MP -MF \"$(@:%.o=%.d)\" -c -o $@ $<"
         ""

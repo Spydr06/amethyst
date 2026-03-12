@@ -41,7 +41,7 @@ __syscall syscallret_t _sys_open(struct cpu_context* __unused, const char *path,
 retry:
     struct file* new_file = nullptr;
     int new_fd;
-    ret._errno = fd_new(flags & O_CLOEXEC, &new_file, &new_fd);
+    ret._errno = fd_new(flags & (O_CLOEXEC | O_CLOFORK), &new_file, &new_fd);
     if(ret._errno)
         goto cleanup;
 

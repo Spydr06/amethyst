@@ -15,6 +15,11 @@ __syscall syscallret_t _sys_kill(struct cpu_context* context, pid_t pid, signo_t
     // TODO: fill out specifics
     struct siginfo siginfo = {0};
     siginfo.si_signo = signo;
+
+    // TODO: other faults too
+    if(signo == SIGSEGV) {
+        siginfo.si_attrs.fault.addr = context->rip;
+    }
     
     if(pid == 0) { // signal self
         assert(current_proc() != nullptr);
