@@ -12,10 +12,16 @@ imaxdiv_t imaxdiv(intmax_t numer, intmax_t denom) {
 }
 
 intmax_t strtoimax(const char *restrict nptr, char **restrict endptr, int base) {
+    (void) nptr;
+    (void) endptr;
+    (void) base;
     unimplemented();
 }
 
 uintmax_t strtoumax(const char *restrict nptr, char **restrict endptr, int base) {
+    (void) nptr;
+    (void) endptr;
+    (void) base;
     unimplemented();
 }
 

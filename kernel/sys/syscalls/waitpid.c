@@ -22,9 +22,14 @@ __syscall syscallret_t _sys_waitpid(struct cpu_context* ctx, pid_t pid, int *wst
         return ret;
     }
 
-    struct proc* prev = nullptr;
+    /* struct proc* prev = nullptr;
     struct proc* cur = proc->child;
-    struct proc* want = nullptr;
+    struct proc* want = nullptr; */
+
+    (void) ctx;
+    (void) pid;
+    (void) wstatus;
+    (void) options;
 
     unimplemented();
 

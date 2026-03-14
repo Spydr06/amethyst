@@ -52,8 +52,9 @@ void *memmove(void *dest, const void *src, size_t n)
 
 volatile void* vmemset(volatile void *s, int c, size_t n) {
 	volatile uint8_t* p = s;
-    while(n--)
+    while(n--) {
     	*p++ = (uint8_t) c;
+    }
 	return s;
 }
 

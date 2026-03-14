@@ -20,6 +20,11 @@ static int fetch_signal(struct thread *thread, struct siginfo *sig) {
 }
 
 bool dispatch_signal(struct thread *thread, struct cpu_context *context, bool syscall, register_t syscall_errno, register_t syscall_ret) {
+    (void) context;
+    (void) syscall;
+    (void) syscall_errno;
+    (void) syscall_ret;
+
     struct siginfo sig;
     int priority;
     if((priority = fetch_signal(thread, &sig)) < 0)

@@ -340,6 +340,7 @@ const struct pci_device_id* pci_lookup_device_id(const struct pci_vendor_id* ven
 }
 
 struct pci_device *pci_search_device(uint16_t parent, uint8_t bus, uint8_t device, uint8_t func) {
+    (void) parent;
     spinlock_acquire(&pci_devices_lock);
 
     uint64_t hash = pci_device_hash(0, bus, device, func);

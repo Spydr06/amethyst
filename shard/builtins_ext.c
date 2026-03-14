@@ -167,6 +167,9 @@ static struct shard_value builtin_dlOpen(volatile struct shard_evaluator* e, str
 
     return SET_VAL(dylib);
 #else
+    (void) e;
+    (void) builtin;
+    (void) args;
     return NULL_VAL();
 #endif
 }
@@ -188,6 +191,9 @@ static struct shard_value builtin_dlClose(volatile struct shard_evaluator* e, st
     void* handle = (void*) handle_val.integer;
     return INT_VAL(dlclose(handle));
 #else
+    (void) e;
+    (void) builtin;
+    (void) args;
     return NULL_VAL();
 #endif
 }
@@ -227,6 +233,9 @@ static struct shard_value builtin_dlSym(volatile struct shard_evaluator* e, stru
 
     return shard_ffi_bind(e, symbol, sym, ffi_type_val.set);
 #else
+    (void) e;
+    (void) builtin;
+    (void) args;
     return NULL_VAL();
 #endif
 }

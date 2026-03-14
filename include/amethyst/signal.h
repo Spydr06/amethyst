@@ -6,9 +6,9 @@
 #define _AMETHYST_NSIG 64
 #define _AMETHYST_SISET_NWORDS (1024 / 64)
 
-#define SIG_ERR ((void*) -1)
-#define SIG_DFL ((void*) 0)
-#define SIG_IGN ((void*) 1)
+#define SIG_ERR ((void (*)(int)) -1)
+#define SIG_DFL ((void (*)(int)) 0)
+#define SIG_IGN ((void (*)(int)) 1)
 
 #define SIG_BLOCK 0
 #define SIG_UNBLOCK 1

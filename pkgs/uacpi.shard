@@ -51,9 +51,7 @@ lib.mkPackage rec {
         "\t@mkdir -p $@"
     ];
 
-    configurePhase = if !stdenv.fileExists "Makefile" || makefile != stdenv.readFile "Makefile"
-        then stdenv.writeFile "Makefile" makefile
-        else 0;
+    configurePhase = stdenv.writeFile "Makefile" makefile;
 
     buildPhase = lib.make [ buildTarget ];
 }

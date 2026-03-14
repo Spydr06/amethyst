@@ -70,7 +70,7 @@ int sig_queue_init(struct sig_queue* queue);
 void sig_queue_delete(struct sig_queue *queue);
 
 int signal_raise(struct sig_queue *queue, const struct siginfo *sig);
-int signal_acquire(struct sig_queue *queue, struct siginfo *sig, const sigset_t *mask);
+int signal_acquire(struct sig_queue *queue, struct siginfo *sig, volatile const sigset_t *mask);
 bool signal_pending(struct sig_queue *queue);
 
 struct proc;

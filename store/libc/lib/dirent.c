@@ -68,7 +68,7 @@ struct dirent *readdir(DIR *dir) {
         return NULL;
     }
 
-    struct amethyst_dirent* dent = dir->buffer + dir->read_offset;
+    struct amethyst_dirent* dent = (struct amethyst_dirent*)((uintptr_t) dir->buffer + dir->read_offset);
     dir->read_offset += dent->d_reclen;
 
     return (struct dirent*) dent;

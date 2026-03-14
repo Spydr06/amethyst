@@ -38,7 +38,7 @@ int signal_raise(struct sig_queue *queue, const struct siginfo *sig) {
     return 0;
 }
 
-int signal_acquire(struct sig_queue *queue, struct siginfo *sig, const sigset_t *mask) {
+int signal_acquire(struct sig_queue *queue, struct siginfo *sig, volatile const sigset_t *mask) {
     spinlock_acquire(&queue->lock);
     
     for(int i = 1; i <= _AMETHYST_NSIG; i++) {

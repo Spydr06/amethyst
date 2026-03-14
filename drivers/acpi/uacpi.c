@@ -48,10 +48,11 @@ void *uacpi_kernel_map(uacpi_phys_addr addr, uacpi_size len) {
 }
 
 void uacpi_kernel_unmap(void *addr, uacpi_size len) {
+    klog(WARN, "FIXME: uacpi_kernel_unmap(%p, %zu)", addr, len);
     // klog(DEBUG, "uacpi_kernel_unmap(%p, %zu)", addr, len);
-    uintmax_t offset = (uintptr_t) addr % PAGE_SIZE;
+    // uintmax_t offset = (uintptr_t) addr % PAGE_SIZE;
 
-//    vmm_unmap((void*) ROUND_DOWN((uintptr_t) addr, PAGE_SIZE), ROUND_UP(len + offset, PAGE_SIZE), 0);
+    // vmm_unmap((void*) ROUND_DOWN((uintptr_t) addr, PAGE_SIZE), ROUND_UP(len + offset, PAGE_SIZE), 0);
 }
 
 static inline enum klog_severity uacpi_log_level_to_severity(enum uacpi_log_level level) {
@@ -157,53 +158,55 @@ uacpi_status uacpi_kernel_pci_write32(
 uacpi_status uacpi_kernel_io_map(
     uacpi_io_addr base, uacpi_size len, uacpi_handle *out_handle
 ) {
+    (void) len;
     *out_handle = (uacpi_handle) base;
     return UACPI_STATUS_OK;
 }
 
 void uacpi_kernel_io_unmap(uacpi_handle handle) {
+    (void) handle;
     unimplemented();
 }
 
 uacpi_status uacpi_kernel_io_read8(
     uacpi_handle handle, uacpi_size offset, uacpi_u8 *out_value
 ) {
-    *out_value = inb((io_port_t) (handle + offset));
+    *out_value = inb((io_port_t)(uintptr_t)(handle + offset));
     return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_read16(
     uacpi_handle handle, uacpi_size offset, uacpi_u16 *out_value
 ) {
-    *out_value = inw((io_port_t) (handle + offset));
+    *out_value = inw((io_port_t)(uintptr_t)(handle + offset));
     return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_read32(
     uacpi_handle handle, uacpi_size offset, uacpi_u32 *out_value
 ) {
-    *out_value = inl((io_port_t) (handle + offset));
+    *out_value = inl((io_port_t)(uintptr_t)(handle + offset));
     return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_write8(
     uacpi_handle handle, uacpi_size offset, uacpi_u8 in_value
 ) {
-    outb((io_port_t) (handle + offset), in_value);
+    outb((io_port_t)(uintptr_t)(handle + offset), in_value);
     return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_write16(
     uacpi_handle handle, uacpi_size offset, uacpi_u16 in_value
 ) {
-    outw((io_port_t) (handle + offset), in_value);
+    outw((io_port_t)(uintptr_t)(handle + offset), in_value);
     return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_write32(
     uacpi_handle handle, uacpi_size offset, uacpi_u32 in_value
 ) {
-    outl((io_port_t) (handle + offset), in_value);
+    outl((io_port_t)(uintptr_t)(handle + offset), in_value);
     return UACPI_STATUS_OK;
 }
 
@@ -282,7 +285,7 @@ void uacpi_kernel_release_mutex(uacpi_handle handle) {
     mutex_release(mut);
 }
 
-uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle handle, uacpi_u16) {
+uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle, uacpi_u16) {
     unimplemented();
 }
 
@@ -376,7 +379,7 @@ void uacpi_kernel_unlock_spinlock(uacpi_handle handle, uacpi_cpu_flags flags) {
 }
 
 uacpi_status uacpi_kernel_schedule_work(
-    uacpi_work_type, uacpi_work_handler, uacpi_handle ctx
+    uacpi_work_type, uacpi_work_handler, uacpi_handle
 ) {
     unimplemented();
 }

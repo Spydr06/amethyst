@@ -44,10 +44,10 @@ static inline int dentbuf_grow(DIR* d, size_t min) {
             d->buffer = new_buffer;
     }
 
-    long read = syscall(SYS_getdents, d->fd, d->buffer + d->buffer_size, d->buffer_alloc - d->buffer_size);
+    long read = syscall(SYS_getdents, d->fd, (uintptr_t) d->buffer + d->buffer_size, d->buffer_alloc - d->buffer_size);
     if(read < 0)
         return errno;
-    else if(read < min) {
+    else if((size_t) read < min) {
         d->eod = true;
     }
 

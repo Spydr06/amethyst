@@ -337,10 +337,6 @@ static char* multiline_prompt(void) {
     return "> ";
 }
 
-static char* empty_prompt(void) {
-    return "";
-}
-
 #else
 
 static char* repl_prompt(EditLine* el) {
@@ -373,6 +369,7 @@ int shard_repl(const char* progname, struct shard_context* ctx, bool echo_result
     repl_init(&repl, ctx, echo_result);
 
 #ifdef _SHARD_NO_LIBEDIT
+    (void) progname;
     char* (*prompt)(void) = repl_prompt;
 #else
     EditLine* el = el_init(progname, stdin, stdout, stderr);

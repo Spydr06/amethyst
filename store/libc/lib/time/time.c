@@ -4,5 +4,6 @@
 #include <assert.h>
 
 time_t time(time_t *tloc) {
+    (void) tloc;
     unimplemented(); 
 }

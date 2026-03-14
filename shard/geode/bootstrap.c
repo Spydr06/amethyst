@@ -166,7 +166,8 @@ cleanup_cloned_head:
 
     geode_verbosef(context, "Patching `%s/%s'...", deriv->prefix, DEFAULT_SOURCE_DIR);
 
-    git_diff_options diff_opts = GIT_DIFF_OPTIONS_INIT;
+    git_diff_options diff_opts;
+    git_diff_options_init(&diff_opts, GIT_DIFF_OPTIONS_VERSION);
     diff_opts.flags = GIT_DIFF_INCLUDE_UNTRACKED | GIT_DIFF_RECURSE_UNTRACKED_DIRS | GIT_DIFF_SHOW_UNTRACKED_CONTENT;
 
     struct git_diff *workdir_diff = NULL;
@@ -178,8 +179,10 @@ cleanup_cloned_head:
     if((ex = git_diff_create_untracked(context, workdir_diff, DEFAULT_SOURCE_DIR)))
         goto cleanup_diff;
 
-    git_apply_options apply_opts = GIT_APPLY_OPTIONS_INIT;
+    git_apply_options apply_opts;
+    git_apply_options_init(&apply_opts, GIT_APPLY_OPTIONS_VERSION);
     apply_opts.flags = GIT_APPLY_LOCATION_WORKDIR;
+
     if((err = git_apply(cloned, workdir_diff, GIT_APPLY_LOCATION_WORKDIR, &apply_opts))) {
         ex = geode_git_ex(context, git_error_last(), "Could not apply diff to cloned repository `%s/%s'", deriv->prefix, DEFAULT_SOURCE_DIR);
         goto cleanup_diff;

@@ -20,7 +20,7 @@ char *realpath(const char *restrict filename, char *restrict resolved)
 {
 	char stack[PATH_MAX+1];
 	char output[PATH_MAX];
-	size_t p, q, l, l0, cnt=0, nup=0;
+	size_t p, q, l, l0, /*cnt=0,*/ nup=0;
 	int check_dir=0;
 
 	if (!filename) {

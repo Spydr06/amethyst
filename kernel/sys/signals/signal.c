@@ -114,6 +114,9 @@ void sighandler_term(int sig, struct siginfo *, void *) {
 }
 
 void sighandler_ign(int sig, struct siginfo *info, void *p) {
+    (void) sig;
+    (void) info;
+    (void) p;
     unimplemented();
 }
 
@@ -123,9 +126,15 @@ void sighandler_core(int sig, struct siginfo *info, void *) {
 }
 
 void sighandler_stop(int sig, struct siginfo *info, void *p) {
+    (void) sig;
+    (void) info;
+    (void) p;
     unimplemented();
 }
 
 void sighandler_cont(int sig, struct siginfo *info, void *p) {
+    (void) sig;
+    (void) info;
+    (void) p;
     unimplemented();
 }
