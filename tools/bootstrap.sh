@@ -126,6 +126,7 @@ CFLAGS="${USE_GCBOEHM} -g" make -C ${PROJECT_DIR}/shard -j${NJOBS} ${GEODE_BIN} 
 unset C_CXX_FLAGS
 unset CFLAGS
 unset LDFLAGS
+unset SOURCE_DATE_EPOCH
 
 set -x
 

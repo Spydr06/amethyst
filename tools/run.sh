@@ -12,6 +12,8 @@ ENABLE_SDL=0
 ENABLE_X11=0
 ENABLE_GL=1
 
+TRACE_FILE=/dev/stderr
+
 MEMORY="4G"
 CPUS=4
 QEMU_ARCH=x86_64
@@ -38,6 +40,8 @@ function show_help() {
     echo "-S, --sdl                         | Enable SDL"
     echo "    --x11                         | Enable X11"
     echo "    --gl                          | Disable OpenGL"
+    echo "    --nvme=<image>                | Use <image> as an NVMe device"
+    echo "    --nvme-trace                  | Enable NVMe tracing"
     echo "-m <memory>, --memory=<memory>    | Amount of allocated memory for the virtual machine [$MEMORY]"
     echo
 }
@@ -90,7 +94,10 @@ while [[ $# -gt 0 ]]; do
         --nvme=*)
             QEMU_NVME=${1#*=}
             ;;
-        (--gdb=*)
+        --nvme-trace)
+            QEMUFLAGS+="-trace pci_nvme_*"
+            ;;
+        --gdb=*)
             GDB=${1#*=}
             ;;
         --help)
@@ -112,10 +119,11 @@ done
 SYMBOL_FILE="$BUILD_DIR/amethyst-0.0.1-${QEMU_ARCH}.sym"
 
 QEMU="qemu-system-${QEMU_ARCH}"
-QEMUFLAGS+="-m ${MEMORY} -serial stdio \
+QEMUFLAGS+=" -m ${MEMORY} -serial stdio \
     -smp cpus=${CPUS} -no-reboot -no-shutdown \
     -drive file=${QEMU_IMAGE},media=cdrom \
-    -boot order=d"
+    -boot order=d \
+    -trace file=${TRACE_FILE}"
 
 [ $ENABLE_KVM -eq 1 ] && QEMUFLAGS+=" -enable-kvm"
 
