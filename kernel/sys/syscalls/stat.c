@@ -100,5 +100,41 @@ __syscall syscallret_t _sys_fstat(struct cpu_context* __unused, int fd, struct s
     return ret;
 }
 
+__syscall syscallret_t _sys_lstat(struct cpu_context *__unused, const char *path, struct stat *statbuf) {
+    syscallret_t ret = {
+        .ret = -1,
+        ._errno = -1
+    };
+
+    struct vnode* vnode = nullptr, *ref = nullptr;
+
+    size_t path_size;
+    if((ret._errno = user_strlen(path, &path_size)))
+        return ret;
+
+    char* path_buf = kmalloc(path_size + 1);
+    if((ret._errno = memcpy_from_user(path_buf, path, path_size)))
+        goto cleanup;
+
+    ref = path_buf[0] == '/' ? proc_get_root() : proc_get_cwd();
+    assert(ref != nullptr);
+
+    ret._errno = vfs_lookup(&vnode, ref, path_buf, nullptr, VFS_LOOKUP_NOLINK);
+    if(ret._errno)
+        goto cleanup;
+
+    ret = stat_vnode(vnode, statbuf);
+
+cleanup:
+    if(vnode)
+        vop_release(&vnode);
+
+    if(ref)
+        vop_release(&ref);
+
+    kfree(path_buf);
+}
+
 _SYSCALL_REGISTER(SYS_stat, _sys_stat, "stat", "%p, %p");
 _SYSCALL_REGISTER(SYS_fstat, _sys_fstat, "fstat", "%d, %p");
+_SYSCALL_REGISTER(SYS_lstat, _sys_lstat, "lstat", "%p, %p");

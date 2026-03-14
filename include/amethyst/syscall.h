@@ -11,7 +11,7 @@
 #define SYS_close           3
 #define SYS_stat            4
 #define SYS_fstat           5
-#define SYS_mkdir           6
+#define SYS_lstat           6
 #define SYS_lseek           7
 #define SYS_getdents        8
 #define SYS_mmap            9
@@ -38,6 +38,8 @@
 #define SYS_getcwd          79
 #define SYS_chdir           80
 #define SYS_fchdir          81
+#define SYS_mkdir           83
+#define SYS_creat
 #define SYS_gettimeofday    96
 #define SYS_sysinfo         99
 #define SYS_init_module     100
