@@ -37,9 +37,35 @@ __syscall syscallret_t stat_vnode(struct vnode *vnode, struct stat *statbuf) {
     stat.st_size = attr.size;
     stat.st_blksize = attr.fsblock_size;
     stat.st_blocks = attr.blocks_used;
-    stat.st_atim = attr.atime;
-    stat.st_mtim = attr.mtime;
-    stat.st_ctim = attr.ctime;
+    stat.st_atime = attr.atime.s;
+    stat.st_mtime = attr.mtime.s;
+    stat.st_ctime = attr.ctime.s;
+
+    switch(attr.type) {
+    case V_TYPE_DIR:
+        attr.mode |= S_IFDIR;
+        break;
+    case V_TYPE_REGULAR:
+        attr.mode |= S_IFREG;
+        break;
+    case V_TYPE_BLKDEV:
+        attr.mode |= S_IFBLK;
+        break;
+    case V_TYPE_CHDEV:
+        attr.mode |= S_IFCHR;
+        break;
+    case V_TYPE_FIFO:
+        attr.mode |= S_IFIFO;
+        break;
+    case V_TYPE_SOCKET:
+        attr.mode |= S_IFSOCK;
+        break;
+    case V_TYPE_LINK:
+        attr.mode |= S_IFLNK;
+        break;
+    default:
+        unreachable();
+    }
 
     ret._errno = memcpy_to_user(statbuf, &stat, sizeof(struct stat));
     return ret;

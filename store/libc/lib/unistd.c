@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <stdarg.h>
 #include <stdlib.h>
 
 #include <sys/syscall.h>
@@ -16,8 +17,15 @@ int dup2(int oldfd, int newfd) {
     return syscall(SYS_dup2, oldfd, newfd);
 }
 
-int open(const char *pathname, int flags, mode_t mode) {
-    return syscall(SYS_open, pathname, flags, mode);
+int open(const char *pathname, int flags, ...) {
+    va_list ap;
+    va_start(ap, flags);
+
+    mode_t mode = va_arg(ap, mode_t);
+    int res = syscall(SYS_open, pathname, flags, mode);
+
+    va_end(ap);
+    return res;
 }
 
 int close(int fd) {
@@ -44,12 +52,41 @@ int fork(void) {
     return syscall(SYS_fork);
 }
 
+int vfork(void) {
+    // FIXME!
+    return fork();
+}
+
+int pipe2(int pipefd[2], int flags) {
+    return syscall(SYS_pipe, pipefd, flags);
+}
+
+int pipe(int pipefd[2]) {
+    return pipe2(pipefd, 0);
+}
+
 int uname(struct utsname *utsname) {
     return syscall(SYS_uname, utsname);
 }
 
 pid_t getpid(void) {
     return syscall(SYS_getpid);
+}
+
+uid_t getuid(void) {
+
+}
+
+uid_t geteuid(void) {
+
+}
+
+gid_t getgid(void) {
+
+}
+
+gid_t getegid(void) {
+
 }
 
 int chdir(const char* pathname) {

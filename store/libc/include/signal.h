@@ -12,6 +12,8 @@ extern "C" {
 
 typedef struct amethyst_sigset sigset_t;
 
+typedef int sig_atomic_t;
+
 int sigemptyset(sigset_t *set);
 int sigfillset(sigset_t *set);
 

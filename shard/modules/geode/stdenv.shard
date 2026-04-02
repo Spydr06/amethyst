@@ -96,6 +96,13 @@ rec {
 
     applyEnvSet = builtins.mapAttrs setEnv;
 
+    withEnvSet = e :: set: f:
+        let
+            saved = builtins.mapAttrs (k: v: getEnv k) e;
+            result = f;
+            restored = applyEnvSet saved;
+        in builtins.seqList [ saved result restored result ];
+
     # TODO: figure out dynamically
     configPath = /shard/configuration.shard;
     pkgsPath = /shard/pkgs;

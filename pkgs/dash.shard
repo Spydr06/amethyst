@@ -1,0 +1,36 @@
+{ lib, pkgs, stdenv, config ? {}, ... }:
+lib.mkPackage rec {
+    name = "dash";
+    version = "0.5.13";
+    license = "MIT";
+
+    buildDependencies = with pkgs; [
+        libc
+    ];
+
+    sourceDir = lib.fetchTarball "http://gondor.apana.org.au/~herbert/dash/files/dash-${version}.tar.gz";
+
+    fetchPhase = lib.requireFile sourceDir;
+
+    configurePhase = lib.spawnProcess [ "${sourceDir}/configure"
+        "--enable-static" 
+        "--prefix=${lib.prefix}"
+        "PREFIX=${lib.prefix}"
+
+        "CC=${stdenv.defaultCompileEnv.CC}" "CXX=${stdenv.defaultCompileEnv.CXX}"
+        "LD=${stdenv.defaultCompileEnv.LD}"
+        
+        "CFLAGS=-specs=${lib.prefix}/lib/gcc/cross-libc.specs"
+    ];
+
+    buildPhase = builtins.seqList [
+        (lib.make [ "-C" "src" "token.h" ])
+        (lib.spawnProcess [ "gcc" "${sourceDir}/src/mknodes.c" "-I./src" "-o" "${sourceDir}/src/mknodes" ])
+        (lib.spawnProcess [ "gcc" "${sourceDir}/src/mksyntax.c" "-I./src" "-o" "${sourceDir}/src/mksyntax" ])
+        (lib.make [ "all" ])
+    ];
+
+        #
+    installPhase = lib.make [ "install" ]; 
+}
+

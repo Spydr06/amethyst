@@ -15,3 +15,7 @@ int stat(const char *restrict pathname, struct stat *restrict buf) {
     return syscall(SYS_stat, pathname, buf);
 }
 
+int lstat(const char *restrict pathname, struct stat *restrict buf) {
+    return syscall(SYS_lstat, pathname, buf);
+}
+

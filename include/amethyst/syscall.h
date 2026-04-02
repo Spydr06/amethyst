@@ -24,11 +24,16 @@
 #define SYS_sigaction       17
 #define SYS_sigprocmask     18
 #define SYS_access          21
+#define SYS_pipe            22
 #define SYS_yield           24
 #define SYS_nanosleep       25
 #define SYS_dup             32
 #define SYS_dup2            33
 #define SYS_getpid          39
+#define SYS_getuid          40
+#define SYS_geteuid         41
+#define SYS_getgid          42
+#define SYS_getegid         43
 #define SYS_fork            57
 #define SYS_execve          59
 #define SYS_exit            60

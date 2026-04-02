@@ -77,7 +77,9 @@ typedef _Int64 blkcnt_t;
 
 typedef __builtin_va_list va_list;
 
-typedef struct _mbstate mbstate_t;
+typedef struct __mbstate {
+    unsigned __reserved0, __reserved1;
+} mbstate_t;
 
 typedef struct _fpos64 {
     size_t dummy;

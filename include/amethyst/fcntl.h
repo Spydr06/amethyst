@@ -1,6 +1,19 @@
 #ifndef _AMETHYST_FILE_H
 #define _AMETHYST_FILE_H
 
+#undef O_RDONLY
+#undef O_WRONLY
+#undef O_RDWR
+#undef O_CREAT
+#undef O_EXCL
+#undef O_NOCTTY
+#undef O_TRUNC
+#undef O_APPEND
+#undef O_NONBLOCK
+#undef O_DIRECTORY
+#undef O_CLOEXEC
+#undef O_CLOFORK
+
 enum o_flags {
     O_RDONLY   = 00,
     O_WRONLY   = 01,

@@ -41,8 +41,12 @@ int execvp(const char *file, char *const argv[]);
 int execvpe(const char *file, char *const argv[], char *const envp[]);
 
 int fork(void);
+int vfork(void);
 
-int open(const char* pathname, int flags, mode_t mode);
+int pipe2(int pipefd[2], int flags);
+int pipe(int pipefd[2]);
+
+int open(const char* pathname, int flags, ...);
 int close(int fd);
 
 ssize_t read(int fd, void* buf, size_t count);
@@ -61,6 +65,12 @@ int chdir(const char* pathname);
 int fchdir(int fd);
 
 pid_t getpid(void);
+
+uid_t getuid(void);
+uid_t geteuid(void);
+
+gid_t getgid(void);
+gid_t getegid(void);
 
 int uname(struct utsname *utsname);
 
